@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
+
+    <title>Shared</title>
+
+</head>
+
+<body>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        var profile, flexlist
+        var scripturl = 'https://script.google.com/macros/s/AKfycbyzG1Rvks3zwXHmHjIga9hlLTyqZg88WRHxXU3TltA3r7yaLCd8MC0dlxzp9zQ_uUAh/exec'
+        async function main() {
+            await liff.init({ liffId: '1655873446-elo5GG7P' });
+            if (!liff.isLoggedIn()) {
+                liff.login()
+            } else {
+                sendMessage()
+            }
+        }
+        main();
+    </script>
+    <script>
+        function sendMessage() {
+            let url_string = window.location.href
+            let url = new URL(url_string);
+            let id = url.searchParams.get("id");
+            if(!id) $('body').append('ผิดพลาด!!')
+            $.getJSON(scripturl, {
+                id: id
+            }, function(data) {
+                if(data.result){
+                    sendShare(data.result)
+                }
+            })
+            liff.getProfile().then(function (profile) {
+                var name = profile.displayName
+                var picture = profile.pictureUrl
+                var userid = profile.userId
+                var email = profile.email
+                var data = {
+                    name: name,
+                    picture: picture,
+                    userid: userid,
+                    email: email
+                }
+                $.ajax({
+                    url: scripturl,
+                    type: 'POST',
+                    data: data,
+                    success: function (data) {
+                        console.log(data)
+                    }
+                })
+            })
+        }
+
+         async function sendShare(flex) {
+                const result = await liff.shareTargetPicker([flex]);
+                if (result) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ส่งข้อความสำเร็จ',
+                        showConfirmButton: false,
+                        timer: 1500
+                    })
+                    liff.closeWindow();
+                } else {
+                    const [majorVer, minorVer, patchVer] = (
+                        liff.getLineVersion() || ''
+                    ).split('.');
+                    if (minorVer === undefined) {
+                        Swal.fire({
+                            icon: 'error',
+                            text: 'ShareTargetPicker was canceled in external browser'
+                        })
+                        console.log('ShareTargetPicker was canceled in external browser');
+                        return;
+                    }
+                    if (
+                        parseInt(majorVer) >= 10 &&
+                        parseInt(minorVer) >= 10 &&
+                        parseInt(patchVer) > 0
+                    ) {
+                         Swal.fire({
+                            icon: 'error',
+                            text: 'ShareTargetPicker was canceled in external browser'
+                        })
+                        console.log('ShareTargetPicker was canceled in LINE app');
+                    }
+                }
+            }
+    </script>
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+
+</html>
