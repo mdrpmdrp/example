@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous" />
+    <script src="flexhtml.js"></script>
+    <link rel="stylesheet" href="flexhtml.css">
+    <title>My LIFF App</title>
+    <style>
+        body {
+            background-color: #fafafa;
+        }
+
+        .hide {
+            display: none;
+        }
+
+        #login-sec {
+            min-height: 100vh;
+        }
+
+        .linebg {
+            background-color: #00B900;
+        }
+    </style>
+</head>
+
+<body>
+    <section id="login-sec" class="d-flex justify-content-center align-items-center">
+        <div class="border rounded-3 shadow p-4">
+            <p class="text-dark fw-bold">กรุณา Login ด้วยไลน์ เพื่อส่งข้อความไปยังผู้รับ</p>
+
+            <div class="col-12 text-center mt-2">
+                <button class="btn btn-lg linebg text-light" id="login-btn"><img src="https://img.icons8.com/fluency-systems-regular/48/ffffff/line-me.png" />Login</button>
+            </div>
+        </div>
+
+
+    </section>
+    <section id="input-sec" class="hide">
+        <div class="container">
+            <div class="display-4 mt-4">สวัสดี&nbsp;<span id="displayName"></span></div>
+            <div class="row justify-content-center mt-3">
+                <div class="col">
+                    <label for="altText">ข้อความแสดงแทน FLEX หน้าแชท</label>
+                    <input type="text" class="form-control" id="altText">
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-12 mt-3">
+                    <label for="json">JSON</label>
+                    <textarea name="json" id="json" rows="15" class="form-control"></textarea>
+                </div>
+                <div class="col mt-2 text-end">
+                    <button id="save" class="btn btn-success">บันทึก</button>
+                    <button id="send" class="btn btn-warning">ส่งข้อความ</button>
+                    <button id="preview" class="btn btn-info">ดูตัวอย่าง</button>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <div class="modal fade" id="previewModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title " id="previewModalLabel">Flex Preview</h5>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                </div>
+                <div class="modal-body" style="background-color: #849ebf;">
+                    <div class="reset-this">
+                        <div id="flex1"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="reset-this">
+        <div id="flextest"></div>
+    </div>
+
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        var testflex = `{
+  "type": "carousel",
+  "contents": [
+    {
+      "type": "bubble",
+      "hero": {
+        "type": "image",
+        "size": "full",
+        "aspectRatio": "20:13",
+        "aspectMode": "cover",
+        "url": "https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_5_carousel.png"
+      },
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "type": "text",
+            "text": "Arm Chair, White",
+            "wrap": true,
+            "weight": "bold",
+            "size": "xl"
+          },
+          {
+            "type": "box",
+            "layout": "baseline",
+            "contents": [
+              {
+                "type": "text",
+                "text": "$49",
+                "wrap": true,
+                "weight": "bold",
+                "size": "xl",
+                "flex": 0
+              },
+              {
+                "type": "text",
+                "text": ".99",
+                "wrap": true,
+                "weight": "bold",
+                "size": "sm",
+                "flex": 0
+              }
+            ]
+          }
+        ]
+      },
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "type": "button",
+            "style": "primary",
+            "action": {
+              "type": "uri",
+              "label": "Add to Cart",
+              "uri": "https://linecorp.com"
+            }
+          },
+          {
+            "type": "button",
+            "action": {
+              "type": "uri",
+              "label": "Add to wishlist",
+              "uri": "https://linecorp.com"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "bubble",
+      "hero": {
+        "type": "image",
+        "size": "full",
+        "aspectRatio": "20:13",
+        "aspectMode": "cover",
+        "url": "https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_6_carousel.png"
+      },
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "type": "text",
+            "text": "Metal Desk Lamp",
+            "wrap": true,
+            "weight": "bold",
+            "size": "xl"
+          },
+          {
+            "type": "box",
+            "layout": "baseline",
+            "flex": 1,
+            "contents": [
+              {
+                "type": "text",
+                "text": "$11",
+                "wrap": true,
+                "weight": "bold",
+                "size": "xl",
+                "flex": 0
+              },
+              {
+                "type": "text",
+                "text": ".99",
+                "wrap": true,
+                "weight": "bold",
+                "size": "sm",
+                "flex": 0
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": "Temporarily out of stock",
+            "wrap": true,
+            "size": "xxs",
+            "margin": "md",
+            "color": "#ff5551",
+            "flex": 0
+          }
+        ]
+      },
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "type": "button",
+            "flex": 2,
+            "style": "primary",
+            "color": "#aaaaaa",
+            "action": {
+              "type": "uri",
+              "label": "Add to Cart",
+              "uri": "https://linecorp.com"
+            }
+          },
+          {
+            "type": "button",
+            "action": {
+              "type": "uri",
+              "label": "Add to wish list",
+              "uri": "https://linecorp.com"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "bubble",
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "type": "button",
+            "flex": 1,
+            "gravity": "center",
+            "action": {
+              "type": "uri",
+              "label": "See more",
+              "uri": "https://linecorp.com"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}`
+        // $(document).ready(function () {
+        //     let flex = {
+        //         type: 'flex',
+        //         altText: $('#altText').val(),
+        //         contents: JSON.parse(testflex)
+        //     }
+        //     $('#flextest').html('');
+        //     flex2html("flextest", flex);
+        // });
+        $('#preview').click(function () {
+            let flex = getJSON()
+            console.log("🚀 ~ flex", flex)
+            if (flex) {
+                $('#flex1').html('');
+                flex2html("flex1", flex);
+            }
+            $('.modal').modal('show');
+
+            // var win = window.open('', 'printwindow', 'width=700,height=500');
+            // win.document.write('<html><head><title>Preview!!</title><link rel="stylesheet" type="text/css" href="flexhtml.css"><style>body{background-color: #fcfc}</style></head><body>');
+            // win.document.write($("#flex1").html());
+            // win.document.write('</body></html>');
+
+        })
+
+        $('#send').click(function () {
+            var flex = getJSON()
+            if (flex) sendShare(flex);
+        })
+
+        $('#save').click(function () {
+            let flex = getJSON()
+            if (flex) {
+                Swal.fire({
+                    title: 'กรุณาใส่ชื่อ FLEX',
+                    input: 'text',
+                    inputAttributes: {
+                        autocapitalize: 'off'
+                    },
+                    showCancelButton: true,
+                    confirmButtonText: 'Save',
+                    showLoaderOnConfirm: true,
+                    preConfirm: (templateName) => {
+                        return $.post('https://script.google.com/macros/s/AKfycbyzG1Rvks3zwXHmHjIga9hlLTyqZg88WRHxXU3TltA3r7yaLCd8MC0dlxzp9zQ_uUAh/exec', {
+                            q: 'put',
+                            name: templateName,
+                            flex: JSON.stringify(flex),
+                            uid: profile.userId
+                        })
+                    },
+                    allowOutsideClick: () => !Swal.isLoading()
+                }).then((output) => {
+                    console.log("🚀 ~ output", output)
+                    if (output.value.result == 'duplicate') {
+                        return Swal.fire({
+                            icon: 'warning',
+                            title: 'Oops...',
+                            text: 'ชื่อซ้ำ',
+                            showConfirmButton: false,
+                            timer: 1500
+                        })
+                    }
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกเรียบร้อย',
+                        showConfirmButton: false,
+                        timer: 1500
+                    })
+                })
+
+                console.log(json);
+            }
+
+        })
+
+        function getJSON() {
+            let json
+            try {
+                json = JSON.parse($('#json').val())
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: 'Invalid JSON'
+                })
+                return false
+            }
+            let altText = $('#altText').val()
+            if (altText == '') altText = 'FLEX MESSAGE'
+            let flex = {
+                type: 'flex',
+                altText: $('#altText').val(),
+                contents: json
+            }
+            return flex
+        }
+
+        async function sendShare(flex) {
+            const result = await liff.shareTargetPicker([flex]);
+            if (result) {
+                alert(`[${result.status}] Message sent!`);
+            } else {
+                const [majorVer, minorVer, patchVer] = (
+                    liff.getLineVersion() || ''
+                ).split('.');
+
+                if (minorVer === undefined) {
+                    alert('ShareTargetPicker was canceled in external browser');
+                    return;
+                }
+
+                if (
+                    parseInt(majorVer) >= 10 &&
+                    parseInt(minorVer) >= 10 &&
+                    parseInt(patchVer) > 0
+                ) {
+                    alert('ShareTargetPicker was canceled in LINE app');
+                }
+            }
+        }
+
+    </script>
+    <script>
+        var profile
+        async function main() {
+            await liff.init({ liffId: '1655873446-MpmBPPzl' });
+            if (liff.isLoggedIn()) {
+                $('#login-sec').hide();
+                $('#input-sec').show();
+                profile = await liff.getProfile();
+                $('#displayName').val(profile.displayName);
+            } else {
+                $('#login-btn').click(function () {
+                    liff.login();
+                })
+            }
+        }
+        main();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+
+</html>
