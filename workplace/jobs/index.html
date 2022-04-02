@@ -64,7 +64,6 @@
             </div>
         </div>
     </section>
-
     <div class="modal fade" id="previewModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
@@ -80,12 +79,54 @@
             </div>
         </div>
     </div>
+    <section>
+        <div class="container mb-5">
 
-    <div class="reset-this">
-        <div id="flextest"></div>
-    </div>
+            <div class="row justify-content-start listtemplate mt-3 hide">
+                <div class="col-md-8">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline-info text-dark fw-bold btn-head" style="max-width: 80vw; min-width: 40vw; word-wrap: break-word;"></button>
+                        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="visually-hidden">Toggle Dropdown</span>
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+                            <li class="m-1"><a class="btn btn-warning send-flex w-100">ส่งข้อความ</a></li>
+                            <li class="m-1"><a class="btn btn-info show-preview w-100">ดูตัวอย่าง</a></li>
+                            <li class="m-1"><a class="btn btn-secondary show-json w-100">ดู JSON</a></li>
+                            <li class="m-1"><a class="btn btn-danger delete-list w-100">ลบ</a></li>
+                        </ul>
+                    </div>
+
+                </div>
+
+            </div>
+            <div id="flexlist"></div>
+        </div>
+    </section>
+
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        var profile, flexlist
+        var scripturl = 'https://script.google.com/macros/s/AKfycbyzG1Rvks3zwXHmHjIga9hlLTyqZg88WRHxXU3TltA3r7yaLCd8MC0dlxzp9zQ_uUAh/exec'
+        async function main() {
+            await liff.init({ liffId: '1655873446-MpmBPPzl' });
+            if (liff.isLoggedIn()) {
+                $('#login-sec').removeClass('d-flex').hide();
+                $('#input-sec').show();
+                profile = await liff.getProfile();
+                $('#displayName').html(profile.displayName);
+                getFlex()
+            } else {
+                $('#login-sec').addClass('d-flex').show();
+                $('#login-btn').click(function () {
+                    liff.login();
+                })
+            }
+        }
+            main();
+            // getFlex()
+    </script>
     <script>
         var testflex = `{
   "type": "carousel",
@@ -279,8 +320,9 @@
             if (flex) {
                 $('#flex1').html('');
                 flex2html("flex1", flex);
+                $('.modal').modal('show');
             }
-            $('.modal').modal('show');
+
 
             // var win = window.open('', 'printwindow', 'width=700,height=500');
             // win.document.write('<html><head><title>Preview!!</title><link rel="stylesheet" type="text/css" href="flexhtml.css"><style>body{background-color: #fcfc}</style></head><body>');
@@ -288,6 +330,8 @@
             // win.document.write('</body></html>');
 
         })
+
+
 
         $('#send').click(function () {
             var flex = getJSON()
@@ -307,7 +351,7 @@
                     confirmButtonText: 'Save',
                     showLoaderOnConfirm: true,
                     preConfirm: (templateName) => {
-                        return $.post('https://script.google.com/macros/s/AKfycbyzG1Rvks3zwXHmHjIga9hlLTyqZg88WRHxXU3TltA3r7yaLCd8MC0dlxzp9zQ_uUAh/exec', {
+                        return $.post(scripturl, {
                             q: 'put',
                             name: templateName,
                             flex: JSON.stringify(flex),
@@ -338,6 +382,91 @@
             }
 
         })
+        getFlex()
+        function getFlex() {
+            // let uid = profile.userId;
+            let uid = 'aaaa'
+            $.post(scripturl, {
+                q: 'get',
+                uid: uid
+            }, function (result) {
+                flexlist = result.data
+                if (result.data.length > 0) {
+                    console.log("🚀 ~ result.data", result.data)
+                    $('#flexlist').html('');
+                    result.data.forEach(function (item, index) {
+                        let row = $('.listtemplate').clone()
+                        $(row).removeClass('hide listtemplate')
+                        $(row).find('.btn-head').text(item[1])
+                        $(row).find('.show-preview').append(`<p style="display: none">${item[2]}</p>`);
+                        $(row).find('.delete-list').attr('id', item[0])
+                        $(row).find('.show-json').append(`<p style="display: none">${item[2]}</p>`);
+                        $('#flexlist').append(row)
+                    })
+                }
+                $('.show-preview').click(function () {
+                    console.log($(this).html())
+                    $('#flex1').html('');
+                    console.log($(this).find('p').text());
+                    flex2html("flex1", JSON.parse($(this).find('p').text()));
+                    $('.modal').modal('show');
+                })
+                $('.show-json').click(function () {
+                    $('#flex1').html(`<div><textarea class="p-2 form-control bg-white" rows="20">${JSON.stringify(JSON.parse($(this).find('p').text()), undefined, 4)
+                        }</textarea></div>`);
+                    $('.modal').modal('show');
+                })
+                $('.delete-list').click(function () {
+                    let button = $(this)
+                    Swal.fire({
+                        title: 'คุณต้องการลบรายการนี้ใช่หรือไม่?',
+                        text: "การลบรายการนี้จะไม่สามารถกู้คืนได้",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'ลบรายการนี้',
+                        cancelButtonText: 'ยกเลิก'
+                    }).then((result) => {
+                        if (result.value) {
+                            Swal.fire({
+                                title: 'กำลังลบรายการ',
+                                text: 'กรุณารอสักครู่',
+                                allowOutsideClick: false,
+                            })
+                            Swal.showLoading(Swal.getConfirmButton())
+                            $.post(scripturl, {
+                                q: 'delete',
+                                id: $(this).attr('id')
+                            }, function (result) {
+                                if (result.result == 'success') {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'ลบรายการสำเร็จ',
+                                        showConfirmButton: false,
+                                        timer: 1500
+                                    })
+                                    $(button).closest('.row').remove()
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'ลบรายการไม่สำเร็จ',
+                                        showConfirmButton: false,
+                                        timer: 1500
+                                    })
+                                }
+                            })
+                        }
+                    })
+                })
+                $('.send-flex').click(function(){
+                    let button = $(this)
+                    let flex = JSON.parse($(this).closest('.row').find('.show-json').find('p').text())
+                    sendShare(flex)
+                })
+            })
+
+        }
 
         function getJSON() {
             let json
@@ -360,6 +489,7 @@
             }
             return flex
         }
+
 
         async function sendShare(flex) {
             const result = await liff.shareTargetPicker([flex]);
@@ -386,24 +516,7 @@
         }
 
     </script>
-    <script>
-        var profile
-        async function main() {
-            await liff.init({ liffId: '1655873446-MpmBPPzl' });
-            if (liff.isLoggedIn()) {
-                $('#login-sec').removeClass('d-flex').hide();
-                $('#input-sec').show();
-                profile = await liff.getProfile();
-                $('#displayName').html(profile.displayName);
-            } else {
-                $('#login-sec').addClass('d-flex').show();
-                $('#login-btn').click(function () {
-                    liff.login();
-                })
-            }
-        }
-        main();
-    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
     <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
