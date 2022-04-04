@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
@@ -13,22 +12,24 @@
     <style>
         body {
             background-color: #fafafa;
+            /* background-color: #000; */
         }
-
         .hide {
             display: none;
         }
-
         #login-sec {
             min-height: 100vh;
         }
-
         .linebg {
             background-color: #00B900;
         }
+        #flexlist {
+            height: 200px;
+            /* width: 200px; */
+            /* background-color: #000; */
+        }
     </style>
 </head>
-
 <body>
     <section id="login-sec" class="d-flex justify-content-center align-items-center">
         <div class="border rounded-3 shadow p-4 hide">
@@ -54,7 +55,8 @@
                 </div>
                 <div class="col mt-2 text-end">
                     <button id="save" class="btn btn-success">บันทึก</button>
-                    <button id="send" class="btn btn-warning">ส่งข้อความ</button>
+                    <button id="send" class="btn btn-warning hide">ส่งในห้องแชทนี้</button>
+                    <button id="shared" class="btn btn-success">แชร์ไปห้องแชทอื่น</button>
                     <button id="preview" class="btn btn-info">ดูตัวอย่าง</button>
                 </div>
             </div>
@@ -98,8 +100,9 @@
     </section>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
-        $(document).ready(()=>{
+        $(document).ready(() => {
             $.LoadingOverlay("show");
+            // flex2html('testflex', JSON.parse(testflex))
         })
     </script>
     <script>
@@ -113,6 +116,9 @@
                 $('#input-sec').show();
                 profile = await liff.getProfile();
                 $('#displayName').html(profile.displayName);
+                if (liff.isInClient()) {
+                    $('#send').show();
+                }
                 getFlex()
             } else {
                 $.LoadingOverlay("hide");
@@ -134,12 +140,14 @@
                 $('.modal').modal('show');
             }
         })
-
-        $('#send').click(function () {
+        $('#shared').click(function () {
             var flex = getJSON()
             if (flex) sendShare(flex);
         })
-
+        $('#send').click(function () {
+            var flex = getJSON()
+            if (flex) sendInChat(flex);
+        })
         $('#save').click(function () {
             let flex = getJSON()
             if (flex) {
@@ -197,6 +205,7 @@
                 uid: uid
             }, function (result) {
                 flexlist = result.data
+                $('#flexlist').LoadingOverlay("hide");
                 if (result.data.length > 0) {
                     $('#flexlist').html('');
                     result.data.forEach(function (item, index) {
@@ -208,9 +217,10 @@
                         $(row).find('.show-json').append(`<p style="display: none">${item[2]}</p>`);
                         $('#flexlist').append(row)
                     })
+                }else{
+                    $('#flexlist').css('height','100%')
                 }
                 setButtonEventListener()
-                $('#flexlist').LoadingOverlay("hide");
             })
         }
         function getJSON() {
@@ -225,12 +235,17 @@
                 })
                 return false
             }
-            let altText = $('#altText').val()
-            if (altText == '') altText = 'FLEX MESSAGE'
-            let flex = {
-                type: 'flex',
-                altText: $('#altText').val(),
-                contents: json
+            let flex
+            if (json.type != 'flex') {
+                let altText = $('#altText').val()
+                if (altText == '') altText = 'FLEX MESSAGE'
+                flex = {
+                    type: 'flex',
+                    altText: $('#altText').val(),
+                    contents: json
+                }
+            } else {
+                flex = json
             }
             return flex
         }
@@ -260,7 +275,27 @@
                 }
             }
         }
-
+        async function sendInChat(flex) {
+            liff.sendMessages([flex])
+                .then(() => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ส่งข้อความสำเร็จ',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        liff.closeWindow();
+                    })
+                })
+                .catch((err) => {
+                    console.log("error", err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        text: 'ไม่สามารถส่งข้อความได้'
+                    })
+                });
+        }
         function setButtonEventListener() {
             $('.show-preview').click(function () {
                 $('#flex1').html('');
@@ -328,5 +363,4 @@
     <script src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
     <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
-
 </html>
