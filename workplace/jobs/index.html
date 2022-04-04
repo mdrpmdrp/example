@@ -80,6 +80,10 @@
                         <div id="flex1"></div>
                     </div>
                 </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-info" data-bs-dismiss="modal" id="json-copy">Copy</button>
+                    <button type="button" class="btn btn-warning" id="json-update">Update</button>
+                </div>
             </div>
         </div>
     </div>
@@ -107,10 +111,29 @@
     </section>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 1500,
+            timerProgressBar: true,
+        })
         $(document).ready(() => {
             $.LoadingOverlay("show");
             // flex2html('testflex', JSON.parse(testflex))
         })
+        function copy(value) {
+            let $temp = $('<input>')
+            $('body').append($temp)
+            $temp.val(value).select()
+
+            document.execCommand('copy')
+            $temp.remove()
+            Toast.fire({
+                icon: 'success',
+                title: 'Copy!!'
+            })
+        }
     </script>
     <script>
         var profile, flexlist
@@ -312,6 +335,9 @@
             $('.show-json').click(function () {
                 $('#flex1').html(`<div><textarea class="p-2 form-control bg-white" rows="20">${JSON.stringify(JSON.parse($(this).find('p').text()), undefined, 4)
                     }</textarea></div>`);
+                $('#json-copy').click(function () {
+                    copy($(this).closest('.modal-body').find('textarea').val())
+                })
                 $('.modal').modal('show');
             })
             $('.delete-list').click(function () {
