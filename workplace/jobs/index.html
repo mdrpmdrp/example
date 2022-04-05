@@ -127,14 +127,22 @@
             console.log("🚀 ~ value", value)
             let $temp = $('<input>')
             $('body').append($temp)
-            $temp.val(value).select()
-
-            document.execCommand('copy')
-            $temp.remove()
-            Toast.fire({
-                icon: 'success',
-                title: 'Copy!!'
+            value.select()
+            value.setSelectionRange(0, 99999)
+            navigator.clipboard.writeText(value.value).then(() => {
+                $temp.remove()
+                Toast.fire({
+                    icon: 'success',
+                    title: 'คัดลอกเรียบร้อย'
+                })
+            }, () => {
+                $temp.remove()
+                Toast.fire({
+                    icon: 'error',
+                    title: 'คัดลอกล้มเหลว'
+                })
             })
+
         }
     </script>
     <script>
@@ -379,7 +387,7 @@
                 $('#flex1').html(`<div><textarea class="p-2 form-control bg-white" rows="20">${JSON.stringify(JSON.parse($(this).find('p').text()), undefined, 4)
                     }</textarea></div>`);
                 $('#json-copy').click(function () {
-                    copy($('#flex1').find('textarea').val())
+                    copy($('#flex1').find('textarea'))
                 })
                 let showjsonbtn = $(this)
                 $('#json-update').click(function () {
