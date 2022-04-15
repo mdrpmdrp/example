@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mitr&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w==" crossorigin="anonymous"
+        referrerpolicy="no-referrer" />
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.2.0/dist/select2-bootstrap-5-theme.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.25/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/searchbuilder/1.1.0/css/searchBuilder.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.1.9/css/fixedHeader.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/datetime/1.1.0/css/dataTables.dateTime.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            font-family: 'Mitr', sans-serif;
+            background: rgb(247, 247, 247);
+
+
+        }
+
+        .btn-primary {
+            min-width: 100px;
+            border-radius: 70px;
+            border: 0;
+        }
+
+        .btn-warning {
+            min-width: 200px;
+        }
+
+        .btn-warning:hover {
+            background-color: #00a8ff;
+            border: 3px solid #00a8ff;
+        }
+
+        .hide {
+            display: none;
+        }
+
+        .form-control:read-only {
+            background-color: #fff;
+        }
+
+       
+    </style>
+    <title>Document</title>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">งานรับส่งเอกสาร</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+                <div class="navbar-nav">
+                    <a class="nav-link active" aria-current="page" href="/index.html">Home</a>
+                    <a class="nav-link" href="/sender.html">ส่งเอกสาร</a>
+                    <a class="nav-link" href="/reviever.html">รับเอกสาร</a>
+                   
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="text-center mt-3">
+        <p class="header h2">ตรวจสอบสถานะการรับ-ส่งเอกสาร</p>
+    </div>
+    <div class="container-fluid table-responsive p-2">
+
+    </div>
+
+    <script>
+        var script_url = 'https://script.google.com/macros/s/AKfycbwVrlkleL-8EaKxYcaUYSNX13hZrYCs19vFeyp10EmifEo1KVfSQMEQYniJ2-82OQly/exec'
+        var employee_list = []
+        $(document).ready(function () {
+            getData()
+        });
+
+        function getData() {
+            $.LoadingOverlay("show");
+            $.post(script_url, {
+                opt: 'data'
+            }, json => {
+                crateTable(json)
+                $.LoadingOverlay("hide");
+            })
+        }
+        function crateTable(data) {
+            console.log("🚀 ~ data", data)
+            $('.table-responsive').html('')
+            let table = `<table class="table table-striped table-hover" id="dataTable">
+                <thead class="bg-primary text-light text-nowrap text-center"></thead>
+                </table>`
+            $('.table-responsive').append(table)
+            let tabledata = data.data
+            let tableheader = data.headers
+            let tb = $('#dataTable').DataTable({
+                data: tabledata,
+                destroy: true,
+                columns: tableheader.map(item => {
+                    return {
+                        data: item,
+                        title: item
+                    }
+                }),
+                scrollX: true,
+                language: {
+                    url: "https://cdn.datatables.net/plug-ins/1.10.25/i18n/Thai.json",
+                },
+                responsive: {
+                    details: {
+                        renderer: function (api, rowIdx, columns) {
+                            var data = $.map(columns, function (col, i) {
+                                return col.hidden ?
+                                    '<tr data-dt-row="' + col.rowIndex + '" data-dt-column="' + col.columnIndex + '" class="border-none">' +
+                                    '<td>' + col.title + ':  ' + '</td> ' +
+                                    '<td>&nbsp;&nbsp;' + col.data + '</td>' +
+                                    '</tr>' :
+                                    '';
+                            }).join('');
+                            return data ?
+                                $('<table/>').append(data) :
+                                false;
+                        },
+
+                        type: 'column'
+
+                    }
+                },
+                lengthMenu: [
+                    [10, 25, 50, -1],
+                    [10, 25, 50, "All"]
+                ],
+                // dom: 'ltip',
+                order: [[0, "desc"]],
+                columnDefs: [{
+                    targets: 14,
+                    className: 'all'
+                }]
+            });
+        }
+    </script>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js">
+    </script>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.25/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/fixedheader/3.1.9/js/dataTables.fixedHeader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js" integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==" crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.datatables.net/datetime/1.1.0/js/dataTables.dateTime.min.js"></script>
+
+    <script src="https://cdn.datatables.net/plug-ins/1.10.21/sorting/datetime-moment.js"></script>
+</body>
+
+</html>
