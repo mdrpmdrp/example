@@ -182,11 +182,29 @@
     })
     $('#shared').click(function () {
       var flex = getJSON()
-      if (flex) sendShare(flex);
+      if (flex) {
+        if (JSON.stringify(flex).indexOf('{{sharedFlex}}') > -1) {
+          Swal.fire({
+            icon: 'error',
+            title: 'หากกำหนดให้มีคีย์เวิร์ด sharedFlex คุณจำเป็นที่จะต้องบันทึก Flex นี้ก่อนการแชร์',
+          })
+          return false
+        }
+        sendShare(flex);
+      }
     })
     $('#send').click(function () {
       var flex = getJSON()
-      if (flex) sendInChat(flex);
+      if (flex) {
+        if (JSON.stringify(flex).indexOf('{{sharedFlex}}') > -1) {
+          Swal.fire({
+            icon: 'error',
+            title: 'หากกำหนดให้มีคีย์เวิร์ด sharedFlex คุณจำเป็นที่จะต้องบันทึก Flex นี้ก่อนการแชร์',
+          })
+          return false
+        }
+        sendInChat(flex);
+      }
     })
     $('#save').click(function () {
       let flex = getJSON()
@@ -306,6 +324,7 @@
     }
     function getJSON() {
       let json
+
       try {
         json = JSON.parse($('#json').val())
       } catch (error) {
@@ -449,12 +468,6 @@
           let button = $(this)
           let id = $(this).closest('.col-md-4').find('.delete-list').attr('id')
           let flextext = $(this).closest('.col-md-4').find('.show-json').find('p').text()
-           if(flextext.indexOf('{{sharedFlex}}')){
-          return Swal.fire({
-            icon: 'error',
-            title: 'หากกำหนดให้มีคีย์เวิร์ด sharedFlex คุณจำเป็นที่จะต้องบันทึก Flex นี้ก่อนการแชร์',
-          })
-        }
           let flex = JSON.parse(flextext)
           sendInChat(flex)
         })
@@ -465,12 +478,7 @@
         let button = $(this)
         let id = $(this).closest('.col-md-4').find('.delete-list').attr('id')
         let flextext = $(this).closest('.col-md-4').find('.show-json').find('p').text()
-        if(flextext.indexOf('{{sharedFlex}}')){
-          return Swal.fire({
-            icon: 'error',
-            title: 'หากกำหนดให้มีคีย์เวิร์ด sharedFlex คุณจำเป็นที่จะต้องบันทึก Flex นี้ก่อนการแชร์',
-          })
-        }
+
         let flex = JSON.parse(flextext)
         sendShare(flex)
       })
