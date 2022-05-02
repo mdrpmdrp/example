@@ -154,9 +154,12 @@
         $.LoadingOverlay("hide");
         $('#login-sec').removeClass('d-flex').hide();
         $('#input-sec').slideDown(200);
-        profile = await liff.getProfile();
+        let context = await liff.getContext()
+        if (context.type == 'square_chat') {
+          profile = { displayName: 'openchat', userId: context.squareMemberId, isSquare: true }
+        } else profile = await liff.getProfile();
         $('#displayName').html(profile.displayName);
-        if (liff.isInClient()) {
+        if (liff.isInClient() || liff.getContext().type === 'square_chat') {
           $('#send').slideDown(200);
         }
         getFlex()
@@ -221,6 +224,7 @@
           preConfirm: (templateName) => {
             return $.post(scripturl, {
               q: 'put',
+              isSquare: profile.isSquare,
               name: templateName,
               flex: JSON.stringify(flex),
               uid: profile.userId
@@ -279,6 +283,7 @@
         Swal.showLoading(Swal.getConfirmButton());
         $.post(scripturl, {
           q: 'update',
+          isSquare: profile.isSquare,
           id: id,
           flex: JSON.stringify(flex),
         }, function (output) {
@@ -301,6 +306,7 @@
       let uid = profile.userId;
       $.post(scripturl, {
         q: 'get',
+        isSquare: profile.isSquare,
         uid: uid
       }, function (result) {
         flexlist = result.data
@@ -323,7 +329,7 @@
       })
     }
     function getJSON() {
-      let json
+      let json = $('#json').val()
 
       try {
         json = JSON.parse($('#json').val())
@@ -440,6 +446,7 @@
             Swal.showLoading(Swal.getConfirmButton())
             $.post(scripturl, {
               q: 'delete',
+              isSquare: profile.isSquare,
               id: $(this).attr('id')
             }, function (result) {
               if (result.result == 'success') {
@@ -463,11 +470,12 @@
         })
       })
 
-      if (liff.isInClient()) {
+      if (liff.isInClient() || liff.getContext().type == 'square_chat') {
         $('.send-flex').click(function () {
           let button = $(this)
           let id = $(this).closest('.col-md-4').find('.delete-list').attr('id')
           let flextext = $(this).closest('.col-md-4').find('.show-json').find('p').text()
+
           let flex = JSON.parse(flextext)
           sendInChat(flex)
         })
