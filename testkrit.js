@@ -1,5 +1,4 @@
-
-// main();
+main();
 function main() {
   document.getElementById("back").style.display = "none";
   document.getElementById("login").style.display = "none";
