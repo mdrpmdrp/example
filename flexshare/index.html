@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+    integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <script src="flexhtml.js"></script>
+  <link rel="stylesheet" href="flexhtml.css">
+  <!-- icon -->
+  <link rel="icon" href="https://img.icons8.com/pulsar-color/48/share-3.png" type="image/x-icon">
+  <title>Liff Share FLex</title>
+  <style>
+    body {
+      background-color: #fafafa;
+      /* background-color: #000; */
+    }
+
+    .hide {
+      display: none;
+    }
+
+    #login-sec {
+      min-height: 100vh;
+    }
+
+    .linebg {
+      background-color: #00B900;
+    }
+
+    #flexlist {
+      height: 200px;
+      /* width: 200px; */
+      /* background-color: #000; */
+    }
+
+    .loader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: 10;
+      width: 160px;
+      height: 100px;
+      margin-left: -80px;
+      margin-top: -50px;
+      border-radius: 5px;
+      background: #1e3f57;
+      animation: dot1_ 3s cubic-bezier(0.55, 0.3, 0.24, 0.99) infinite;
+    }
+
+    #loader:before {
+      content: "Loading";
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      z-index: 10;
+      translate: -50% -50%;
+      font-size: 2rem;
+    }
+
+    .loader:nth-child(2) {
+      z-index: 11;
+      width: 150px;
+      height: 90px;
+      margin-top: -45px;
+      margin-left: -75px;
+      border-radius: 3px;
+      background: #3c517d;
+      animation-name: dot2_;
+    }
+
+    .loader:nth-child(3) {
+      z-index: 12;
+      width: 40px;
+      height: 20px;
+      margin-top: 50px;
+      margin-left: -20px;
+      border-radius: 0 0 5px 5px;
+      background: #6bb2cd;
+      animation-name: dot3_;
+    }
+
+    @keyframes dot1_ {
+
+      3%,
+      97% {
+        width: 160px;
+        height: 100px;
+        margin-top: -50px;
+        margin-left: -80px;
+      }
+
+      30%,
+      36% {
+        width: 80px;
+        height: 120px;
+        margin-top: -60px;
+        margin-left: -40px;
+      }
+
+      63%,
+      69% {
+        width: 40px;
+        height: 80px;
+        margin-top: -40px;
+        margin-left: -20px;
+      }
+    }
+
+    @keyframes dot2_ {
+
+      3%,
+      97% {
+        height: 90px;
+        width: 150px;
+        margin-left: -75px;
+        margin-top: -45px;
+      }
+
+      30%,
+      36% {
+        width: 70px;
+        height: 96px;
+        margin-left: -35px;
+        margin-top: -48px;
+      }
+
+      63%,
+      69% {
+        width: 32px;
+        height: 60px;
+        margin-left: -16px;
+        margin-top: -30px;
+      }
+    }
+
+    @keyframes dot3_ {
+
+      3%,
+      97% {
+        height: 20px;
+        width: 40px;
+        margin-left: -20px;
+        margin-top: 50px;
+      }
+
+      30%,
+      36% {
+        width: 8px;
+        height: 8px;
+        margin-left: -5px;
+        margin-top: 49px;
+        border-radius: 8px;
+      }
+
+      63%,
+      69% {
+        width: 16px;
+        height: 4px;
+        margin-left: -8px;
+        margin-top: -37px;
+        border-radius: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <section id="loader">
+    <div class="container">
+      <div class="loader"></div>
+      <div class="loader"></div>
+      <div class="loader"></div>
+    </div>
+  </section>
+
+  <section id="login-sec" class="d-flex justify-content-center align-items-center">
+    <div class="border rounded-3 shadow p-4" style="display: none;" <p class="text-dark fw-bold">กรุณา Login
+      ด้วยไลน์ เพื่อส่งข้อความไปยังผู้รับ</p>
+      <div class="col-12 text-center mt-2">
+        <button class="btn btn-lg linebg text-light" id="login-btn"><img
+            src="https://img.icons8.com/fluency-systems-regular/48/ffffff/line-me.png" />Login</button>
+      </div>
+    </div>
+  </section>
+  <section id="input-sec" style="display: none;">
+    <div class="container">
+      <div class="display-4 mt-4">สวัสดี&nbsp;<span id="displayName"></span> <img id="display-img"
+          class="rounded-circle" style="width: 50px;"></div>
+      <div class="row justify-content-start mt-3">
+        <div class="col-md-4">
+          <label for="altText">ข้อความแสดงแทน FLEX หน้าแชท <span class="text-muted"
+              id="text-count">(0/400)</span></label>
+          <input type="text" class="form-control" id="altText" maxlength="400">
+        </div>
+      </div>
+      <div class=" justify-content-center gap-2 d-flex flex-column-reverse flex-md-row mt-3 mt-md-3">
+        <div class="col-md-7 mt-3">
+          <label for="json">JSON</label>
+          <textarea name="json" id="json" rows="15" class="form-control"></textarea>
+          <div class="row g-3 mt-1">
+            <div class="col">
+              <button id="save" class="btn btn-primary w-100"><i class="bi bi-floppy2-fill"></i>&nbsp;บันทึก</button>
+            </div>
+            <!-- <div class="col">
+                            <button id="send" class="btn btn-warning hide">ส่งในห้องแชทนี้</button>
+                        </div> -->
+            <!-- <div class="col">
+                            <button id="preview" class="btn btn-warning w-100"><i
+                                    class="bi bi-eye-fill"></i>&nbsp;ดูตัวอย่าง</button>
+                        </div> -->
+            <div class="col">
+              <button id="shared" class="btn btn-success w-100"><i
+                  class="bi bi-share-fill"></i>&nbsp;แชร์ไปห้องแชทอื่น</button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-5 rounded"
+          style="background-color: #849ebf;background-image: url(./line\ bg.jpg);background-size: contain;overflow: auto;">
+          <div class="reset-this">
+            <div id="flex-show" style="padding-top: 10px;">
+              <div class="text-light w-100 text-center my-3">
+                พื้นที่แสดงตัวอย่าง Flex จะปรากฏที่นี่
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+  <div class="modal fade" id="previewModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header d-flex justify-content-between">
+          <h5 class="modal-title " id="previewModalLabel">Flex Preview</h5>
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+        </div>
+        <div class="modal-body"
+          style="background-color: #849ebf;background-image: url(./line\ bg.jpg);background-size: contain;">
+          <div class="reset-this container-fluid">
+            <div id="flex1"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-info" id="json-copy">Copy</button>
+          <button type="button" class="btn btn-warning" id="json-update">Update <span class="hide"
+              id="update-id"></span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <section>
+    <div class="container mb-5">
+      <div class="col-md-4 listtemplate mt-2 hide">
+        <div class="btn-group d-flex">
+          <button type="button" class="btn btn-outline-info text-dark fw-bold btn-head col-12"></button>
+          <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            <span class="visually-hidden">Toggle Dropdown</span>
+          </button>
+          <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+            <!-- <li class="m-1"><a class="btn btn-warning send-flex w-100">ส่งในห้องแชทนี้</a></li> -->
+            <li class="m-1"><a class="btn btn-success shared-flex w-100">แชร์ไปห้องแชทอื่น</a></li>
+            <li class="m-1"><a class="btn btn-secondary show-json w-100">ดู JSON</a></li>
+            <li class="m-1"><a class="btn btn-warning share-link w-100">คัดลอกลิ้งค์แชร์</a></li>
+            <li class="m-1"><a class="btn btn-danger delete-list w-100">ลบ</a></li>
+          </ul>
+        </div>
+      </div>
+      <div id="flexlist" class="row justify-content-start mt-3">
+
+      </div>
+    </div>
+  </section>
+  <!-- <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+
+    <script>
+
+        // VConsole will be exported to `window.VConsole` by default.
+
+        // var vConsole = new window.VConsole();
+
+    </script> -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    var Toast
+    $(document).ready(() => {
+      // $.LoadingOverlay("show");
+      Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 1500,
+        timerProgressBar: true,
+      })
+      main()
+      // flex2html('testflex', JSON.parse(testflex))
+    })
+    function copy(id = 'json-code') {
+      let $temp = $('<input>')
+      $('body').append($temp)
+      let element = document.getElementById(id)
+      element.select()
+      element.setSelectionRange(0, 99999)
+      navigator.clipboard.writeText(element.value).then(() => {
+        $temp.remove()
+        Toast.fire({
+          icon: 'success',
+          title: 'คัดลอกเรียบร้อย'
+        })
+      }, () => {
+        $temp.remove()
+        Toast.fire({
+          icon: 'error',
+          title: 'คัดลอกล้มเหลว'
+        })
+      })
+
+    }
+  </script>
+  <script>
+    const EXPIRE_USERS = [
+      'U026ec80e42049561bd41cf92d4c55955',
+      'U5fb67c286549e2eec9ff7f67e9c15690',
+      'Ud2256fed03eacac0ed0d5d679ebdacde',
+      'U0f88770ee60bc3b9ec52f9a95179d191',
+      'Ue86787127a9bb5465c58d3932ed06bbb'
+    ]
+    var profile, flexlist, flexid = undefined
+    var scripturl = 'https://script.google.com/macros/s/AKfycbymv-CcxMc-LSpxqkVNAIoBA7kmR3-FUiUMyKmDzWKIb6gsyxYhhXV_xsHAJvXRY-g/exec'
+    var starttime = new Date().getTime()
+    async function main() {
+      liff.init({
+        liffId: '1655873446-V51vbbQ7', withLoginOnExternalBrowser: true
+      });
+
+      liff.ready.then(async () => {
+        // if loader show less than 3 sec then wait 3 sec
+        let endtime = new Date().getTime()
+        let waittime = 3000 - (endtime - starttime)
+        if (waittime > 0) {
+          await new Promise(resolve => setTimeout(resolve, waittime))
+        }
+
+        console.log('liff ready')
+        if (liff.isLoggedIn()) {
+          if (EXPIRE_USERS.includes(liff.getDecodedIDToken().sub)) {
+            $('section').remove()
+            $('.modal').remove()
+            Swal.fire({
+              icon: 'error',
+              title: 'การทดลองใช้งานหมดอายุ',
+              html: 'กรุณาติดต่อผู้พัฒนาเพื่อใช้งานเวอร์ชั่นเต็ม<br>Line ID: <a href="https://line.me/ti/p/FrAUVjmBeJ" target="_blank">wmhakrook</a><br>หรือ โทร <a href="tel:0904017402">090-401-7402</a><br>ขอบคุณครับ',
+              allowOutsideClick: false,
+              showConfirmButton: true,
+              confirmButtonText: 'ปิดหน้านี้',
+            }).then(() => {
+              liff.closeWindow()
+            })
+          }
+          var parameter = new URLSearchParams(window.location.search)
+          flexid = parameter.get('s')
+          if (flexid) {
+            $.post(scripturl, {
+              q: 'getflex',
+              id: parameter.get('s')
+            }).done(function (result) {
+              
+              if (result.flex) {
+                $('#loader').hide()
+                $('#json').val(JSON.stringify(JSON.parse(result.flex), undefined, 4))
+                $('#altText').val(result.altText)
+                $('#shared').click()
+              } else {
+                $('section').remove()
+                $('.modal').remove()
+                $('#loader').hide()
+                Swal.fire({
+                  icon: 'error',
+                  title: 'เกิดข้อผิดพลาด',
+                  text: 'ไม่พบข้อมูล Flex ที่คุณต้องการ',
+                  allowOutsideClick: false,
+                  showConfirmButton: true,
+                  confirmButtonText: 'ปิดหน้านี้',
+                }).then(() => {
+                  liff.closeWindow()
+                })
+              }
+            })
+          } else {
+            flexid = undefined
+            $('#loader').hide()
+            $('#login-sec').removeClass('d-flex').hide();
+            $('#input-sec').slideDown(200);
+            let context = await liff.getContext()
+            if (context.type == 'square_chat') {
+              profile = { displayName: 'openchat', userId: context.squareMemberId, isSquare: true }
+            } else profile = await liff.getProfile();
+            $('#displayName').html(profile.displayName);
+            $('#display-img').attr('src', profile.pictureUrl);
+            if (liff.isInClient() || liff.getContext().type === 'square_chat') {
+              $('#send').slideDown(200);
+            }
+            getFlex()
+          }
+        }
+        else {
+          $('#loader').hide()
+          $('#login-sec div').slideDown(200);
+          $('#login-btn').click(function () {
+            liff.login({ redirectUri: window.location.href });
+          })
+        }
+      })
+
+
+    }
+    // getFlex()
+  </script>
+  <script>
+    $('#altText').on('input', function () {
+      let text = $(this).val()
+      $('#text-count').text(`(${text.length}/400)`)
+    })
+    $('#json').on('input', function () {
+      if ($(this).val() == '') {
+        $('#flex-show').html('<div class="text-light w-100 text-center my-3">พื้นที่แสดงตัวอย่าง Flex จะปรากฏที่นี่</div>')
+        return false
+      }
+      let json = getJSON(true)
+      if (json) {
+        $('#flex-show').html('')
+        flex2html('flex-show', json)
+        // get action from json tree
+        // let actions = getAction(json)
+      } else {
+        $('#flex-show').html(`<div style="color: white; font-size: 1rem; text-align: center; padding-top: 20px">
+                        Invalid JSON
+                    </div>`)
+      }
+    })
+    $('#preview').click(function () {
+      let flex = getJSON()
+      if (flex) {
+        $('#flex1').html('');
+        flex2html("flex1", flex);
+        $('.modal').modal('show');
+      }
+    })
+    $('#shared').click(function () {
+      var flex = getJSON()
+      if (flex) {
+        if (JSON.stringify(flex).indexOf('{{share}}') > -1 && !flexid) {
+          Swal.fire({
+            icon: 'error',
+            title: 'หากกำหนดให้มีคีย์เวิร์ด share คุณจำเป็นที่จะต้องบันทึก Flex นี้ก่อนการแชร์',
+          })
+          return false
+        }
+        sendShare(flex);
+      }
+    })
+    $('#send').click(function () {
+      var flex = getJSON()
+      if (flex) {
+        if (JSON.stringify(flex).indexOf('{{share}}') > -1 && !flexid) {
+          Swal.fire({
+            icon: 'error',
+            title: 'หากกำหนดให้มีคีย์เวิร์ด share คุณจำเป็นที่จะต้องบันทึก Flex นี้ก่อนการแชร์',
+          })
+          return false
+        }
+        sendInChat(flex);
+      }
+    })
+    $('#save').click(function () {
+      let flex = getJSON()
+      if (flex) {
+        Swal.fire({
+          title: 'กรุณาใส่ชื่อ FLEX',
+          input: 'text',
+          inputAttributes: {
+            autocapitalize: 'off'
+          },
+          showCancelButton: true,
+          confirmButtonText: 'Save',
+          showLoaderOnConfirm: true,
+          preConfirm: (templateName) => {
+            return $.post(scripturl, {
+              q: 'put',
+              isSquare: profile.isSquare,
+              name: templateName,
+              flex: JSON.stringify(flex),
+              uid: profile.userId,
+              liff_id: liff.id
+            })
+          },
+          allowOutsideClick: () => !Swal.isLoading()
+        }).then((output) => {
+          if (output.value.result == 'duplicate') {
+            return Swal.fire({
+              icon: 'warning',
+              title: 'Oops...',
+              text: 'ชื่อซ้ำ',
+              showConfirmButton: false,
+              timer: 1500
+            })
+          }
+          let item = output.value.data
+          let row = $('.listtemplate').clone()
+          $(row).removeClass('hide listtemplate')
+          $(row).attr('id', item[0])
+          $(row).find('.btn-head').text(item[1])
+          $(row).find('.show-preview').append(`<p style="display: none">${item[2]}</p>`);
+          $(row).find('.delete-list').attr('id', item[0])
+          $(row).find('.show-json').append(`<p style="display: none">${item[2]}</p>`);
+          $(row).find('.share-link').attr('data-clipboard-text', 'https://liff.line.me/' + liff.getContext().liffId + '?s=' + item[0])
+          $('#json').val(JSON.stringify(JSON.parse(item[2]), undefined, 4))
+          $('#flexlist').append(row)
+          setButtonEventListener()
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกเรียบร้อย',
+            showConfirmButton: false,
+            timer: 1500
+          })
+        })
+      }
+    })
+    function update(id) {
+      let flex
+      try {
+        flex = JSON.parse($('#flex1').find('textarea').val())
+      } catch (error) {
+        console.log(error)
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops...',
+          text: 'Invalid JSON'
+        })
+        return false
+      }
+      if (flex) {
+        Swal.fire({
+          icon: 'info',
+          title: 'กำลังอัพเดท JSON...',
+          text: 'กรุณารอสักครู่',
+          allowOutsideClick: false,
+        })
+        Swal.showLoading(Swal.getConfirmButton());
+        $.post(scripturl, {
+          q: 'update',
+          isSquare: profile.isSquare,
+          id: id,
+          flex: JSON.stringify(flex),
+          uid: liff.getDecodedIDToken().sub,
+          liff_id: liff.id
+        }, function (output) {
+          if (output.status == 200) {
+            let delbtn = $(`#${id}`)
+            $(delbtn).closest('ul').find('.show-preview p').html(JSON.stringify(flex));
+            $(delbtn).closest('ul').find('.show-json p').html(JSON.stringify(flex));
+            $('#json').val(JSON.stringify(flex, undefined, 4)).change()
+            setButtonEventListener()
+            Swal.fire({
+              icon: 'success',
+              title: 'อัพเดทเรียบร้อย',
+              showConfirmButton: false,
+              timer: 1500
+            })
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'อัพเดทไม่สำเร็จ',
+              text: output.error,
+              showConfirmButton: false,
+              timer: 1500
+            })
+          }
+        })
+      }
+    }
+    function getFlex() {
+      $('#flexlist').LoadingOverlay("show");
+      let uid = profile.userId;
+      
+      $.post(scripturl, {
+        q: 'get',
+        isSquare: profile.isSquare,
+        uid: uid
+      }).done(function (result) {
+        $('#flexlist').LoadingOverlay("hide");
+        if (result.status != 200) {
+          return true
+        }
+        flexlist = result.data
+        
+        if (flexlist.length > 0) {
+
+          $('#flexlist').html('');
+
+          flexlist.forEach(function (item, index) {
+            
+
+            let row = $('.listtemplate').clone()
+
+            $(row).removeClass('hide listtemplate')
+
+            $(row).find('.btn-head').text(item.name)
+
+            $(row).find('.show-preview').append(`<p style="display: none">${item.flex}</p>`);
+
+            $(row).find('.delete-list').attr('id', item.flex_id)
+
+            $(row).find('.show-json').append(`<p style="display: none">${item.flex}</p>`);
+            $(row).find('.share-link').attr('data-clipboard-text', 'https://liff.line.me/' + liff.id + '?s=' + item.flex_id)
+            $('#flexlist').append(row)
+
+          })
+
+        } else {
+
+          $('#flexlist').css('height', '100%')
+
+        }
+
+        setButtonEventListener()
+
+      })
+    }
+    function getJSON(noerror = false) {
+      let json = $('#json').val()
+
+      try {
+        json = JSON.parse($('#json').val())
+      } catch (error) {
+        if (!noerror) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'Invalid JSON'
+          })
+        }
+        return false
+      }
+      let flex
+      if (json.type != 'flex') {
+        let altText = $('#altText').val()
+        if (altText == '') altText = 'FLEX MESSAGE'
+        flex = {
+          type: 'flex',
+          altText: $('#altText').val(),
+          contents: json
+        }
+      } else {
+        flex = json
+      }
+      return flex
+    }
+
+    // function getAction(json) {
+    //     Object.keys(json).forEach(function (key) {
+    //         if (key == 'action') {
+    //             
+    //         } else if (typeof json[key] === 'object') {
+    //             getAction(json[key])
+    //         }
+    //     })
+    // }
+
+    async function sendShare(flex) {
+      const result = await liff.shareTargetPicker([flex]);
+      if (result) {
+        Swal.fire({
+          icon: 'success',
+          title: 'ส่งข้อความสำเร็จ',
+          showConfirmButton: false,
+          timer: 1500
+        })
+        if (flexid) {
+          liff.closeWindow()
+        }
+      } else {
+        const [majorVer, minorVer, patchVer] = (
+          liff.getLineVersion() || ''
+        ).split('.');
+        if (minorVer === undefined) {
+          console.log('ShareTargetPicker was canceled in external browser');
+          if (flexid) {
+            liff.closeWindow()
+          }
+          return;
+        }
+        if (
+          parseInt(majorVer) >= 10 &&
+          parseInt(minorVer) >= 10 &&
+          parseInt(patchVer) > 0
+        ) {
+          console.log('ShareTargetPicker was canceled in LINE app');
+          if (flexid) {
+            liff.closeWindow()
+          }
+        }
+      }
+    }
+    async function sendInChat(flex) {
+      liff.sendMessages([flex])
+        .then(() => {
+          Swal.fire({
+            icon: 'success',
+            title: 'ส่งข้อความสำเร็จ',
+            showConfirmButton: false,
+            timer: 1500
+          }).then(() => {
+            if (flexid) {
+              liff.closeWindow()
+            }
+          })
+        })
+        .catch((err) => {
+          console.log("error", err);
+          Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'ไม่สามารถส่งข้อความได้'
+          })
+        });
+    }
+    function setButtonEventListener() {
+      $('.btn-head').off('click').click(function () {
+        let json = $(this).parent().find('ul').find('.show-json p').text()
+        $('#json').val(JSON.stringify(JSON.parse(json), undefined, 4))
+        setTimeout(() => {
+          $('#json').trigger('input')
+        }, 200);
+        $('#altText').val($(this).text())
+        $('#flex-show').html('')
+        // flex2html('flex-show', JSON.parse(json))
+      })
+      $('.show-preview').off('click').click(function () {
+        $('#flex1').html('');
+        let json = JSON.parse($(this).find('p').text())
+        $('#json').val(JSON.stringify(json, undefined, 4))
+        setTimeout(() => {
+          $('#json').trigger('input')
+          setTimeout(() => {
+            $('#json').val('')
+          }, 200);
+        }, 200);
+        $('#json-update').hide()
+        $('#json-copy').hide()
+        $('.modal').modal('show');
+      })
+      $('.show-json').off('click').click(function () {
+        $('#json-update').show()
+        $('#json-copy').show()
+        $('#flex1').html(`<div><textarea id="json-code" class="p-2 form-control bg-white" rows="20">${JSON.stringify(JSON.parse($(this).find('p').text()), undefined, 4)
+          }</textarea></div>`);
+        $('#json-copy').off('click').click(function () {
+          copy()
+        })
+        let showjsonbtn = $(this)
+        $('#json-update').off('click').click(function () {
+
+          update(showjsonbtn.closest('ul').find('.delete-list').attr('id'))
+        })
+        $('.modal').modal('show');
+      })
+      $('.delete-list').off('click').click(function () {
+        let button = $(this)
+        Swal.fire({
+          title: 'คุณต้องการลบรายการนี้ใช่หรือไม่?',
+          text: "การลบรายการนี้จะไม่สามารถกู้คืนได้",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#3085d6',
+          cancelButtonColor: '#d33',
+          confirmButtonText: 'ลบรายการนี้',
+          cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+          if (result.value) {
+            Swal.fire({
+              title: 'กำลังลบรายการ',
+              text: 'กรุณารอสักครู่',
+              allowOutsideClick: false,
+            })
+            Swal.showLoading(Swal.getConfirmButton())
+            $.post(scripturl, {
+              q: 'delete',
+              id: $(this).attr('id')
+            }, function (result) {
+              if (result.result == 200) {
+                Swal.fire({
+                  icon: 'success',
+                  title: 'ลบรายการสำเร็จ',
+                  showConfirmButton: false,
+                  timer: 1500
+                })
+                $(button).closest('.col-md-4').remove()
+              } else {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'ลบรายการไม่สำเร็จ',
+                  showConfirmButton: false,
+                  timer: 1500
+                })
+              }
+            })
+          }
+        })
+      })
+
+      $('.share-link').off('click').click(function () {
+        let $temp = $('<input>')
+        $('body').append($temp)
+        navigator.clipboard.writeText($(this).attr('data-clipboard-text')).then(() => {
+          $temp.remove()
+          Toast.fire({
+            icon: 'success',
+            title: 'คัดลอกลิ้งค์แชร์เรียบร้อย'
+          })
+        }, () => {
+          $temp.remove()
+          Toast.fire({
+            icon: 'error',
+            title: 'คัดลอกล้มเหลว'
+          })
+        })
+      })
+
+      if (liff.isInClient() || liff.getContext().type == 'square_chat') {
+        $('.send-flex').off('click').click(function () {
+          let button = $(this)
+          let id = $(this).closest('.col-md-4').find('.delete-list').attr('id')
+          let flextext = $(this).closest('.col-md-4').find('.show-json').find('p').text()
+
+          let flex = JSON.parse(flextext)
+          sendInChat(flex)
+        })
+      } else {
+        $('.send-flex').hide()
+      }
+      $('.shared-flex').off('click').click(function () {
+        let button = $(this)
+        let id = $(this).closest('.col-md-4').find('.delete-list').attr('id')
+        
+        let flextext = $(this).closest('.col-md-4').find('.show-json').find('p').text()
+        
+
+        let flex = JSON.parse(flextext)
+        sendShare(flex)
+      })
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+
+</html>
