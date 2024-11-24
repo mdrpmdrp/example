@@ -521,11 +521,12 @@
                 </select>
               </div>
             </div>
+            <input type="hidden" id="work_id" name="work_id">
           </form>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-primary">บันทึกเท่านั้น</button>
-          <button type="button" class="btn btn-danger">บันทึกและแจ้งงานใหม่</button>
+          <button type="button" class="btn btn-primary" onclick="submitEdit(this,false)">บันทึก</button>
+          <button type="button" class="btn btn-danger" onclick="submitEdit(this,true)">บันทึกและแจ้งงานใหม่</button>
         </div>
       </div>
     </div>
@@ -811,7 +812,7 @@
       })
     })
 
-    function submitForm() {
+    function submitEdit(btn,isSendLine){
       let user = JSON.parse(localStorage.getItem('user'))
       if (!user || !user.uuid) {
         localStorage.removeItem('user')
@@ -821,8 +822,9 @@
         obj[item.name] = item.value
         return obj
       }, {})
-      data.action = 'saveData'
+      data.action = 'editData'
       data.uuid = user.uuid
+      data.isSendLine = isSendLine
       console.log(data);
       Swal.fire({
         icon: 'info',
@@ -840,7 +842,8 @@
             showConfirmButton: false,
             timer: 1500
           }).then(() => {
-            location.reload()
+            $('#modal').modal('hide')
+            $('#table').DataTable().ajax.reload()
           })
         } else {
           Swal.fire({
