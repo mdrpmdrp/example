@@ -381,12 +381,6 @@
         <div class="modal-body">
           <form id="mainform" class="needs-validation" novalidate>
             <div class="row justify-content-start align-items-start g-3 mt-2">
-              <div class="col-12">
-                <h3>
-                  <i class="bi bi-person-fill-check text-primary display-2"></i>
-                  บันทึกข้อมูลลูกค้า
-                </h3>
-              </div>
               <div class="col-md-4">
                 <label for="date"><i class="bi bi-calendar-fill text-primary"></i> วันที่</label>
                 <input type="date" id="date" name="date" class="form-control bg-info-subtle" readonly>
@@ -721,23 +715,14 @@
           let name = $('#filter-name')
           let status = $('#filter-status')
           let table = $('#table').DataTable()
-          table.columns().every(function () {
-            let that = this
-            $(branch).on('keyup change', function () {
-              if (that.search() !== this.value) {
-                that.search(this.value).draw()
-              }
-            })
-            $(name).on('keyup change', function () {
-              if (that.search() !== this.value) {
-                that.search(this.value).draw()
-              }
-            })
-            $(status).on('keyup change', function () {
-              if (that.search() !== this.value) {
-                that.search(this.value).draw()
-              }
-            })
+          branch.on('keyup', function () {
+            table.column(4).search(this.value).draw()
+          })
+          name.on('keyup', function () {
+            table.column(6).search(this.value).draw()
+          })
+          status.on('keyup', function () {
+            table.column(13).search(this.value).draw()
           })
         }
       })
@@ -745,10 +730,10 @@
 
     function showEditForm(btn) {
       let row
-      if ($(this).closest('tr').hasClass('child')) {
-        row = $(this).closest('tr').prev('tr')
+      if ($(btn).closest('tr').hasClass('child')) {
+        row = $(btn).closest('tr').prev('tr')
       } else {
-        row = $(this).closest('tr')
+        row = $(btn).closest('tr')
       }
       let data = $('#table').DataTable().row(row).data()
       console.log("🚀 ~ showEditForm ~ data", data)
@@ -764,6 +749,7 @@
     }
     function loadDropDown() {
       $.post(scriptURL, { action: 'getDropdown' }, function (data) {
+        console.log("🚀 ~ data:", data)
         ['source', 'product', 'status', 'customer_province'].forEach(item => {
           let select = $('[name="' + item + '"]')
           select.prop('disabled', false).parent().find('.spinner-border').hide()
