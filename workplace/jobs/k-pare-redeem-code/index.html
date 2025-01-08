@@ -9,7 +9,7 @@
   <!-- no cache -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>CF Profile</title>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
     integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
@@ -123,22 +123,25 @@
       <span><span class="userPoints">---</span> พอยท์</span>
     </div>
   </nav>
-  <div class="container-fluid mt-5" id="profileCard">
+  <div class="container-fluid mt-5 d-none" id="profileCard">
     <div class="row justify-content-center">
       <div class="col-12 col-md-6">
         <div class="card rounded-4 text-center">
           <div class="card-body">
-            <img src="https://img.icons8.com/plumpy/96/user.png" class="rounded-circle mb-3 user-image"
-              alt="User Image" width="150" height="150">
+            <img src="https://img.icons8.com/plumpy/96/user.png" class="rounded-circle mb-3 user-image" alt="User Image"
+              width="150" height="150">
             <h3 class="card-title">
               <button class="btn btn-orange btn-lg rounded-4 user-name" onclick="location.reload();">---------</button>
             </h3>
             <div class="d-flex flex-column justify-content-center">
               <span class="card-text">คุณมี <span class="userPoints">
-                <div class="spinner-border spinner-border-sm text-warning" role="status" id="spinner-point">
-                </div>
-              </span> พอยท์</span>
-             
+                  <div class="spinner-border spinner-border-sm text-warning" role="status" id="spinner-point">
+                  </div>
+                </span> พอยท์</span>
+              <small class="card-text text-muted">สามารถใช้ได้ <small class="available-point">---</small> พอยท์</small>
+
+              </small>
+
               <div class="row justify-content-center">
                 <div class="col-6">
                   <button class="btn btn-orange mt-3 rounded-4 w-100" data-bs-toggle="modal"
@@ -157,14 +160,15 @@
     </div>
   </div>
 
-  <div class="container-fluid mt-3 mb-5">
+  <div class="container-fluid mt-3 mb-5 d-none" id="activityCard">
     <div class="row justify-content-center">
       <div class="col-12 col-md-6">
         <div class="card rounded-4 text-center">
           <div class="card-body">
             <h2 class="card-title">
               <i class="bi bi-calendar-event" style="color: #fb8d35;"></i>
-              ร่วมกิจกรรมเพื่อรับพอยท์ <div class="spinner-border text-warning" role="status" id="spinner-activity" style="font-size: 1rem;">
+              ร่วมกิจกรรมเพื่อรับพอยท์ <div class="spinner-border text-warning" role="status" id="spinner-activity"
+                style="font-size: 1rem;">
               </div>
             </h2>
             <div id="activities">
@@ -222,7 +226,7 @@
               <label for="redeemCode" class="form-label fs-1 fw-bold">
                 <i class="bi bi-plus-circle-fill" style="color: #fb8d35;"></i>
                 Redeem Code</label>
-              <input type="text" class="form-control text-center" id="redeemCode"
+              <input type="text" class="form-control form-control-lg fw-bold text-center" id="redeemCode"
                 placeholder="กรอกรหัสจากกิจกรรม เพื่อรับคะแนน" required>
             </div>
             <button type="submit" class="btn btn-orange w-100 rounded-4">Redeem</button>
@@ -233,7 +237,9 @@
   </div>
 
   <script>
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbz1"';
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzv_0cG4LU2LD67JUyNModlaHTVg4ortm6-120Bbq76_7OVjKqQgTwm-sHc4SMLzMw/exec';
+    var gifts = [];
+    var activities = [];
     $(document).ready(function () {
       // const gifts = new Array(200).fill(null).map((_, i) => ({
       //   id: 'GIFT' + ('0000' + (i + 1)).slice(-4),
@@ -250,9 +256,9 @@
       //   date: new Date().toLocaleDateString(),
       //   point: Math.floor(Math.random() * 100)
       // }));
-      liff.init({liffId: '1655873446-MpmBPPzl'})
+      liff.init({ liffId: '1655873446-MpmBPPzl' })
       liff.ready.then(() => {
-        if(!liff.isLoggedIn()) {
+        if (!liff.isLoggedIn()) {
           liff.login({
             redirectUri: location.href
           });
@@ -260,29 +266,59 @@
         liff.getProfile().then(profile => {
           $('.user-name').text(profile.displayName);
           $('.user-image').attr('src', profile.pictureUrl);
+
         });
+        Swal.fire({
+          iconHtml: '<i class="bi bi-hourglass-split"></i>',
+          customClass: {
+            icon: 'text-warning fs-4 border-0',
+          },
+          title: 'กำลังโหลดข้อมูล...',
+          html: '<div class="spinner-border text-warning" role="status" id="spinner-point"></div>',
+          showConfirmButton: false,
+          allowOutsideClick: false,
+        })
         Promise.all([
-          $.get(scriptUrl, { action: 'getGifts' }),
-          $.get(scriptUrl, { action: 'getActivities' }),
-          $.get(scriptUrl, { action: 'getUserPoint', uid: liff.getDecodedIDToken().sub }, function (data) {
-            $('.userPoints').text(data);
-            localStorage.setItem('userPoints:'+liff.getDecodedIDToken().sub, data);
-          })
-        ]).then(([gifts, activities]) => {
-          renderPage(gifts, activities);
+          $.get(scriptUrl, { opt: 'getGifts' }),
+          $.get(scriptUrl, { opt: 'getActivities' }),
+          $.get(scriptUrl, { opt: 'getUserPoint', uid: liff.getDecodedIDToken().sub })
+        ]).then(([g, a, userpoint]) => {
+          gifts = g;
+          activities = a;
+          Swal.close();
+          if (userpoint.status === 'error') {
+            localStorage.removeItem('userPoints:' + liff.getDecodedIDToken().sub);
+            $('body').find('nav,div').remove();
+            return Swal.fire({
+              iconHtml: '<i class="bi bi-person-fill-x"></i>',
+              customClass: {
+                icon: 'text-danger fs-4 border-0',
+              },
+              title: 'เกิดข้อผิดพลาด',
+              html: userpoint.message,
+              allowOutsideClick: false,
+              showConfirmButton: false,
+            });
+          }
+          localStorage.setItem('user:' + liff.getDecodedIDToken().sub, JSON.stringify(userpoint.user));
+          $('#profileCard, #activityCard').removeClass('d-none');
+          
+          renderPage();
         });
       });
     });
 
-    function renderPage(gifts, activities) {
+    function renderPage() {
+      let user = JSON.parse(localStorage.getItem('user:' + liff.getDecodedIDToken().sub));
       const itemsPerPage = 10;
       let currentPage = 1;
-      const user_points = localStorage.getItem('userPoints:'+liff.getDecodedIDToken().sub);
+      const user_points = user.point;
+      const user_available_point = user.available_point;
       $('#spinner-point').remove();
       $('#spinner-activity').remove();
       $('#spinner-gift').remove();
       $('.userPoints').text(user_points.toLocaleString());
-
+      $('.available-point').text(user_available_point.toLocaleString());
       activities.forEach(activity => {
         const activityCard = `
           <div class="alert alert-light fade show text-start" role="alert">
@@ -292,15 +328,15 @@
               </div>
               <strong>${activity.description}</strong>
               <div class="d-flex justify-content-between align-items-end">
-                <small><i class="bi bi-calendar-event" style="color: #fb8d35;"></i> ${activity.date}</small>
-                <button type="button" class="btn btn-orange btn-sm">ร่วมกิจกรรม</button>
+                <small><i class="bi bi-calendar-event" style="color: #fb8d35;"></i> ${moment(activity.date).format('ll')}</small>
+                <a class="btn btn-orange btn-sm" href="${activity.url}" role="button" target="_blank">ร่วมกิจกรรม</a>
               </div>
             </div>
           </div>
         `;
         $('#activities').append(activityCard);
       });
-      const renderGifts = function(page) {
+      const renderGifts = function (page) {
         $('#gifts').fadeOut(300, function () {
           $('#gifts').empty();
           const start = (page - 1) * itemsPerPage;
@@ -315,8 +351,8 @@
                   <div class="card-body text-center">
                     <h5 class="card-title">${gift.title}</h5>
                     <p class="card-text" style="font-size: 0.7rem;">${gift.description}</p>
-                    <button data-title="${gift.title}" data-gift-id="${gift.id}" data-point="${gift.point}" class="btn btn-orange btn-sm ${gift.point > user_points ? 'disabled' : ''} activity-btn">
-                      ${gift.point > user_points ? '<i class="bi bi-lock-fill"></i> ยังไม่สามารถแลก' : '<i class="bi bi-gift-fill"></i> แลก ' + gift.point + ' พอยท์'}
+                    <button data-title="${gift.title}" data-gift-id="${gift.id}" data-point="${gift.point}" class="btn btn-orange btn-sm ${gift.point > user_available_point ? 'disabled' : ''} activity-btn">
+                      ${gift.point > user_available_point ? '<i class="bi bi-lock-fill"></i> ยังไม่สามารถแลก' : '<i class="bi bi-gift-fill"></i> '+gift.point + ' พอยท์'}
                     </button>
                   </div>
                 </div>
@@ -374,9 +410,8 @@
                   cart.addItem({ id: gift_id, title, point, amount, image });
                   Swal.fire({
                     icon: 'success',
-                    title: 'แลกของรางวัลสำเร็จ',
-                    text: `คุณได้แลก ${title} จำนวน ${amount} ชิ้น ใช้ ${totalPoints} พอยท์`,
-                    timer: 2000,
+                    title: 'เพิ่มในตะกร้าเรียบร้อย',
+                    timer: 1000,
                     timerProgressBar: true,
                   });
                   $('#cart-btn .badge').text(cart.getItems().length);
@@ -389,7 +424,7 @@
         });
       }
 
-      const renderPagination = function() {
+      const renderPagination = function () {
         $('#pagination').empty();
         const totalPages = Math.ceil(gifts.length / itemsPerPage);
         let width = $(window).width();
@@ -565,30 +600,47 @@
 
     function saveRedeemItems() {
       console.log(cart.getItems());
+      let user = JSON.parse(localStorage.getItem('user:' + liff.getDecodedIDToken().sub));
+      user.uid = liff.getDecodedIDToken().sub;
+      Swal.fire({
+        iconHtml: '<i class="bi bi-gift-fill"></i>',
+        customClass: {
+          icon: 'text-warning fs-4 border-0',
+        },
+        html: '<div class="spinner-border text-warning" role="status"></div>',
+        title: 'กำลังแลกของรางวัล...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+      });
       $.ajax({
         url: scriptUrl,
         type: 'POST',
         data: {
-          action: 'saveRedeemItems',
+          opt: 'saveRedeemItems',
+          user: JSON.stringify(user),
           items: JSON.stringify(cart.getItems())
         },
         success: function (response) {
           console.log(response);
-          if (response === 'success') {
+          if (response.status === 'success') {
             Swal.fire({
               icon: 'success',
               title: 'แลกของรางวัลสำเร็จ',
-              text: 'คุณได้แลกของรางวัลสำเร็จ',
               timer: 2000,
               timerProgressBar: true,
             });
             cart.clearCart();
-            $('#cart-btn .badge').text(cart.getItems().length);
-            location.reload();
+            $.get(scriptUrl, { opt: 'getUserPoint', uid: liff.getDecodedIDToken().sub }, function (userpoint) {
+              if (userpoint.status === 'success') {
+                $('.userPoints').text(userpoint.user.point);
+                $('.available-point').text(userpoint.user.available_point);
+                localStorage.setItem('user:' + liff.getDecodedIDToken().sub, JSON.stringify(userpoint.user));
+              }
+            });
           } else {
             Swal.fire({
               icon: 'error',
-              title: 'ไม่สามารถแลกของรางวัลได้',
+              title: response.message,
               text: 'กรุณาลองใหม่อีกครั้ง',
             });
           }
@@ -598,18 +650,39 @@
 
     $('#redeemForm').submit(function (e) {
       e.preventDefault();
+      let user = JSON.parse(localStorage.getItem('user:' + liff.getDecodedIDToken().sub));
       const redeemCode = $('#redeemCode').val();
+      console.log("🚀 ~ redeemCode:", redeemCode)
+      Swal.fire({
+        iconHtml: '<i class="bi bi-hourglass-split"></i>',
+        customClass: {
+          icon: 'text-warning fs-4 border-0',
+        },
+        html: '<div class="spinner-border text-warning" role="status"></div>',
+        title: 'กำลังแลกพอยท์...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+      });
       $.ajax({
         url: scriptUrl,
         type: 'POST',
         data: {
-          action: 'redeemCode',
-          code: redeemCode
+          opt: 'redeemCode',
+          code: redeemCode,
+          uid: liff.getDecodedIDToken().sub,
+          user: JSON.stringify(user)
         },
         success: function (response) {
           if (response.status === 'success') {
+           $('#redeemPointModal').modal('hide');
+           $('#redeemCode').val('');
             let add_point = response.add_point;
             let total_point = response.total_point;
+            $('.userPoints').text(total_point.toLocaleString());
+            let user = JSON.parse(localStorage.getItem('user:' + liff.getDecodedIDToken().sub));
+            user.point = total_point;
+            localStorage.setItem('user:' + liff.getDecodedIDToken().sub, JSON.stringify(user));
+            renderPage();
             Swal.fire({
               icon: 'success',
               title: 'แลกพอยท์สำเร็จ',
@@ -629,6 +702,7 @@
   </script>
   <script>
     $(document).ready(function () {
+      moment().locale('th');
       let lastScrollTop = 0;
       $(window).scroll(function () {
         let scrollTop = $(this).scrollTop();
@@ -703,6 +777,8 @@
     crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/locale/th.js"></script>
 </body>
 
 </html>
