@@ -63,7 +63,7 @@ function onOpen(e) {
         .addItem('Unlink Richmenu', 'unlinkrichMenu')
         .addSeparator()
         .addItem('👉 Generate Redeem Code', 'generateRedeemCode')
-        .addItem('🎁 Generate Gift Code', 'generageGiftCode')  
+        .addItem('🎁 Generate Gift Code', 'generageGiftCode')
         .addItem('🗓️ Generate Activity Code', 'generateActivityCode')
         .addSeparator()
         .addItem('✅ Approve Redeem', 'approveRedeem')
@@ -241,7 +241,7 @@ function saveRedeemItems(e) {
     });
     sheet.getRange(sheet.getLastRow() + 1, 1, data.length, data[0].length).setValues(data);
     lock.releaseLock();
-    return ContentService.createTextOutput(JSON.stringify({ status: 'success'})).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON);
 }
 
 function redeemCode(e) {
@@ -338,7 +338,7 @@ function generageGiftCode() {
             let char = Math.random() < 0.5 ? letter : num;
             code += char.charAt(Math.floor(Math.random() * char.length));
         }
-        return [code,'','','', 100];
+        return [code, '', '', '', 100];
     });
     range.offset(0, 0, values.length, values[0].length).setValues(values);
 }
@@ -355,7 +355,7 @@ function generateActivityCode() {
             let char = Math.random() < 0.5 ? letter : num;
             code += char.charAt(Math.floor(Math.random() * char.length));
         }
-        return [code,'','','', 100];
+        return [code, '', '', '', 100];
     });
     range.offset(0, 0, values.length, values[0].length).setValues(values);
 }
@@ -364,7 +364,7 @@ function approveRedeem() {
     let range = SpreadsheetApp.getActiveRange();
     let row = range.getRow();
     let col = range.getColumn();
-    if(col != 10) {
+    if (col != 10) {
         SpreadsheetApp.getUi().alert('Please select the status column');
         return;
     }
@@ -377,5 +377,212 @@ function approveRedeem() {
     let point = parseInt(data[8]);
     let userPoint = userSheet.getRange(user.getRow(), 17).getValue();
     userSheet.getRange(user.getRow(), 17).setValue(userPoint - point);
-    sheet.getRange(row,10).setValue('Success');
+    sheet.getRange(row, 10).setValue('Success');
 }
+
+const main_richmenu = {
+    "size": {
+        "width": 2500,
+        "height": 1686
+    },
+    "selected": true,
+    "name": "Main Menu 01-2025",
+    "chatBarText": "เมนู",
+    "areas": [
+        {
+            "bounds": {
+                "x": 103,
+                "y": 263,
+                "width": 1029,
+                "height": 382
+            },
+            "action": {
+                "type": "message",
+                "text": "เช็คดวง"
+            }
+        },
+        {
+            "bounds": {
+                "x": 1265,
+                "y": 199,
+                "width": 521,
+                "height": 540
+            },
+            "action": {
+                "type": "message",
+                "text": "กรุณาเลือกเรื่องที่ต้องการทราบ"
+            }
+        },
+        {
+            "bounds": {
+                "x": 1902,
+                "y": 184,
+                "width": 519,
+                "height": 551
+            },
+            "action": {
+                "type": "message",
+                "text": "กรุณาเลือกหัวข้อที่ต้องการ"
+            }
+        },
+        {
+            "bounds": {
+                "x": 77,
+                "y": 910,
+                "width": 534,
+                "height": 547
+            },
+            "action": {
+                "type": "uri",
+                "uri": "https://www.cfconsumerfinance.com"
+            }
+        },
+        {
+            "bounds": {
+                "x": 699,
+                "y": 915,
+                "width": 525,
+                "height": 544
+            },
+            "action": {
+                "type": "richmenuswitch",
+                "richMenuAliasId": "richmenu-main-012025",
+                "data": "richmenu-change-to-bot_assistant"
+            }
+        },
+        {
+            "bounds": {
+                "x": 1291,
+                "y": 910,
+                "width": 562,
+                "height": 549
+            },
+            "action": {
+                "type": "uri",
+                "uri": "https://google.com"
+            }
+        },
+        {
+            "bounds": {
+                "x": 1902,
+                "y": 908,
+                "width": 553,
+                "height": 554
+            },
+            "action": {
+                "type": "message",
+                "text": "ติดต่อสอบถาม"
+            }
+        }
+    ]
+}
+
+const bot_assistant_richmenu = {
+    "size": {
+        "width": 2500,
+        "height": 1686
+    },
+    "selected": true,
+    "name": "Bot Assistant Menu 01-2025",
+    "chatBarText": "เมนู",
+    "areas": [
+        {
+            "bounds": {
+                "x": 130,
+                "y": 111,
+                "width": 1428,
+                "height": 695
+            },
+            "action": {
+                "type": "message",
+                "text": "ออกบูธ"
+            }
+        },
+        {
+            "bounds": {
+                "x": 1714,
+                "y": 115,
+                "width": 692,
+                "height": 695
+            },
+            "action": {
+                "type": "richmenuswitch",
+                "richMenuAliasId": "richmenu-back-main-012025",
+                "data": "richmenu-change-to-main"
+            }
+        },
+        {
+            "bounds": {
+                "x": 113,
+                "y": 895,
+                "width": 2295,
+                "height": 718
+            },
+            "action": {
+                "type": "richmenuswitch",
+                "richMenuAliasId": "richmenu-sell_model-022025",
+                "data": "richmenu-change-to-sell_model"
+            }
+        }
+    ]
+}
+
+const sell_model_richmenu = {
+    "size": {
+      "width": 2500,
+      "height": 1686
+    },
+    "selected": true,
+    "name": "Bot Assistant Menu 01-2025",
+    "chatBarText": "เมนู",
+    "areas": [
+      {
+        "bounds": {
+          "x": 68,
+          "y": 51,
+          "width": 742,
+          "height": 757
+        },
+        "action": {
+          "type": "message",
+          "text": "Bot Assistant สินเชื่อบ้าน Home Loan"
+        }
+      },
+      {
+        "bounds": {
+          "x": 876,
+          "y": 51,
+          "width": 756,
+          "height": 755
+        },
+        "action": {
+          "type": "message",
+          "text": "Bot Assistant สินเชื่อ SME Freedom"
+        }
+      },
+      {
+        "bounds": {
+          "x": 1686,
+          "y": 58,
+          "width": 752,
+          "height": 754
+        },
+        "action": {
+          "type": "message",
+          "text": "Bot Assistant สินเชื่อ Presonal Loan"
+        }
+      },
+      {
+        "bounds": {
+          "x": 75,
+          "y": 904,
+          "width": 2357,
+          "height": 720
+        },
+        "action": {
+          "type": "richmenuswitch",
+            "richMenuAliasId": "richmenu-back-bot_assistant-012025",
+            "data": "richmenu-change-to-bot_assistant"
+      }
+    ]
+  }
