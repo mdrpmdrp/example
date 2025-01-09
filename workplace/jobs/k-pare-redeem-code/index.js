@@ -201,7 +201,7 @@ function getUserPoint(e) {
     let sheet = ss.getSheetByName('userLogin');
     let user = sheet.getRange('C2:C' + sheet.getLastRow()).createTextFinder(e.parameter.uid).matchEntireCell(true).findNext();
     if (user == null) {
-        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'ท่านยังไม่ได้ลงทะเบียน<br>กรุณาลงทะเบียนก่อนใช้งาน' })).setMimeType(ContentService.MimeType.JSON);
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'ท่านยังไม่ได้ลงทะเบียน<br>กรุณาลงทะเบียนก่อนใช้งาน<br><a href="https://liff.line.me/1655605297-2J9qrOqk" class="btn btn-primary">ลงทะเบียน</a>' })).setMimeType(ContentService.MimeType.JSON);
     }
     // uid is col C and point is col Q
     // let point = user.offset(0, 16).getValue();
