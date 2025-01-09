@@ -380,6 +380,7 @@ function approveRedeem() {
     sheet.getRange(row, 10).setValue('Success');
 }
 
+// richmenu-ca31dd017c716e9ff972ef23fea6e3b3
 const main_richmenu = {
     "size": {
         "width": 2500,
@@ -446,7 +447,7 @@ const main_richmenu = {
             },
             "action": {
                 "type": "richmenuswitch",
-                "richMenuAliasId": "richmenu-main-012025",
+                "richMenuAliasId": "richmenu-bot_assistant-012025",
                 "data": "richmenu-change-to-bot_assistant"
             }
         },
@@ -477,6 +478,7 @@ const main_richmenu = {
     ]
 }
 
+// richmenu-74b8fe7f949264cbfb4ef7cbb116513a
 const bot_assistant_richmenu = {
     "size": {
         "width": 2500,
@@ -507,7 +509,7 @@ const bot_assistant_richmenu = {
             },
             "action": {
                 "type": "richmenuswitch",
-                "richMenuAliasId": "richmenu-back-main-012025",
+                "richMenuAliasId": "richmenu-main-012025",
                 "data": "richmenu-change-to-main"
             }
         },
@@ -527,6 +529,7 @@ const bot_assistant_richmenu = {
     ]
 }
 
+// richmenu-6b5f060bfa410f567c96b3a57ec846c2
 const sell_model_richmenu = {
     "size": {
       "width": 2500,
@@ -580,8 +583,8 @@ const sell_model_richmenu = {
           "height": 720
         },
         "action": {
-          "type": "richmenuswitch",
-            "richMenuAliasId": "richmenu-back-bot_assistant-012025",
+            "type": "richmenuswitch",
+            "richMenuAliasId": "richmenu-bot_assistant-012025",
             "data": "richmenu-change-to-bot_assistant"
       }
     ]
