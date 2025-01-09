@@ -91,7 +91,7 @@
       box-shadow: 0 0 40px rgba(251, 141, 53, 0.5);
     }
 
-    .card .user-image {
+    .user-image {
       border: 5px solid #fb8d35;
       box-shadow: 0 0 100px rgba(251, 141, 53, 0.5);
       margin: 10px 0 30px 0 !important;
@@ -137,7 +137,7 @@
               <span class="card-text">คุณมี <span class="userPoints">
                   <div class="spinner-border spinner-border-sm text-warning" role="status" id="spinner-point">
                   </div>
-                </span> พอยท์</span>
+                </span> พอยท์ <button class="btn btn-link btn-sm " id="refresh-point-btn"><i class="bi bi-arrow-clockwise"></i></button></span>
               <small class="card-text text-muted">สามารถใช้ได้ <small class="available-point">---</small> พอยท์</small>
 
               </small>
@@ -226,7 +226,7 @@
               <label for="redeemCode" class="form-label fs-1 fw-bold">
                 <i class="bi bi-plus-circle-fill" style="color: #fb8d35;"></i>
                 Redeem Code</label>
-              <input type="text" class="form-control form-control-lg fw-bold text-center" id="redeemCode"
+              <input type="text" class="form-control form-control-lg text-center" id="redeemCode"
                 placeholder="กรอกรหัสจากกิจกรรม เพื่อรับคะแนน" required>
             </div>
             <button type="submit" class="btn btn-orange w-100 rounded-4">Redeem</button>
@@ -269,7 +269,7 @@
 
         });
         Swal.fire({
-          iconHtml: '<i class="bi bi-hourglass-split"></i>',
+          iconHtml: '<image src="' + liff.getDecodedIDToken().picture + '"  class="rounded-circle mb-3 user-image" alt="User Image" width="150" height="150">',
           customClass: {
             icon: 'text-warning fs-4 border-0',
           },
@@ -597,6 +597,25 @@
       }
     });
 
+    $('#refresh-point-btn').click(function () {
+      $('.userPoints').html('<div class="spinner-border spinner-border-sm text-warning" role="status"></div>');
+      $('.available-point').html('<div class="spinner-border spinner-border-sm text-warning" role="status"></div>');
+
+      $.get(scriptUrl, { opt: 'getUserPoint', uid: liff.getDecodedIDToken().sub }, function (userpoint) {
+        if (userpoint.status === 'success') {
+          $('.userPoints').text(userpoint.user.point.toLocaleString());
+          $('.available-point').text(userpoint.user.available_point.toLocaleString());
+          localStorage.setItem('user:' + liff.getDecodedIDToken().sub, JSON.stringify(userpoint.user));
+          renderPage();
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'เกิดข้อผิดพลาด',
+            text: userpoint.message,
+          });
+        }
+      });
+    });
 
     function saveRedeemItems() {
       console.log(cart.getItems());
@@ -630,13 +649,7 @@
               timerProgressBar: true,
             });
             cart.clearCart();
-            $.get(scriptUrl, { opt: 'getUserPoint', uid: liff.getDecodedIDToken().sub }, function (userpoint) {
-              if (userpoint.status === 'success') {
-                $('.userPoints').text(userpoint.user.point);
-                $('.available-point').text(userpoint.user.available_point);
-                localStorage.setItem('user:' + liff.getDecodedIDToken().sub, JSON.stringify(userpoint.user));
-              }
-            });
+            $('#refresh-point-btn').click();
           } else {
             Swal.fire({
               icon: 'error',
@@ -679,10 +692,7 @@
             let add_point = response.add_point;
             let total_point = response.total_point;
             $('.userPoints').text(total_point.toLocaleString());
-            let user = JSON.parse(localStorage.getItem('user:' + liff.getDecodedIDToken().sub));
-            user.point = total_point;
-            localStorage.setItem('user:' + liff.getDecodedIDToken().sub, JSON.stringify(user));
-            renderPage();
+           $('#refresh-point-btn').click();
             Swal.fire({
               icon: 'success',
               title: 'แลกพอยท์สำเร็จ',
