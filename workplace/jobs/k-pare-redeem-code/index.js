@@ -459,7 +459,7 @@ const main_richmenu = {
             },
             "action": {
                 "type": "uri",
-                "uri": "https://google.com"
+                "uri": "https://liff.line.me/2006755821-ZnoXRqgY"
             }
         },
         {
