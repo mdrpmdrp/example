@@ -80,7 +80,7 @@
 <body class="bg-light d-none">
     <div class="container mt-5">
         <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-6 col-lg-4" id="registerForm">
                 <div class="card rounded-4 shadow">
                     <div class="card-body">
                         <div class="text-center mb-3 fw-bold  d-flex flex-column align-items-center">
@@ -145,7 +145,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-6 col-lg-4 d-none" id="infoCard">
                 <div class="card rounded-4 shadow">
                     <div class="card-body">
                         <div class="text-center mb-3 fw-bold  d-flex flex-column align-items-center">
@@ -155,11 +155,11 @@
                             </span>
                             <span class="text-primary fs-5">ข้อมูลเจ้าของรถ</span>
                         </div>
-                        <div class="mb-3 text-center">
+                        <!-- <div class="mb-3 text-center">
                             <img src="https://img.icons8.com/plumpy/96/user.png"
                                 class="rounded-circle mb-3 user-image-red" alt="User Image" width="150" height="150"
                                 id="userImage" onclick="showFullImage(this)">
-                        </div>
+                        </div> -->
                         <div class="mb-3">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="plateNumber-info" placeholder="เลขทะเบียนรถ"
@@ -210,47 +210,288 @@
             </div>
         </div>
     </div>
-    <div class="modal fade" id="formModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-        <div class="modal-dialog">
+    <div class="modal fade" id="formModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+        aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="staticBackdropLabel">Modal title</h1>
+                <div class="modal-header text-bg-danger" data-bs-theme="dark">
+                    <div class="modal-title fs-5" id="staticBackdropLabel"><i
+                            class="bi bi-exclamation-triangle-fill text-warning"></i> แจ้งปัญหา/เรื่องร้องเรียน</div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    ...
+                    <form>
+                        <div class="mb-3">
+                            <label for="user-name" class="col-form-label">ชื่อผู้แจ้ง:</label>
+                            <input type="text" class="form-control" id="user-name" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="detail-text" class="col-form-label">รายละเอียดปัญหา/เรื่องร้องเรียน:</label>
+                            <textarea class="form-control" id="detail-text" rows="4"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="image-file" class="col-form-label">รูปภาพประกอบ:</label>
+                            <input class="form-control" type="file" id="image-file" accept="image/*">
+                            <div id="image-preview" class="mt-2  text-center">
+                                <img src="https://img.icons8.com/plumpy/96/image.png" class="rounded"
+                                    alt="Image Preview" style="max-height: 200px" id="image">
+                            </div>
+                        </div>
+                    </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary">Understood</button>
+                    <button type="button" class="btn btn-danger" id="submit-btn"><i class="bi bi-check-circle-fill"></i>
+                        ส่งเรื่อง</button>
                 </div>
             </div>
         </div>
     </div>
     <script>
+        var token, folder
+        const scriptUrl = 'https://script.google.com/macros/s/AKfycbyxvJhLDw2W0BTUkJvSfFTxQ5fcxi0PPh1uO1S6dwL0FQMk1pJz6MKz97ipej5YAzhy/exec'
         $(document).ready(function () {
             let params = new URLSearchParams(window.location.search)
             liff.init({ liffId: '1655873446-MpmBPPzl' })
-            if (!params.has('u')) {
-                $('body').removeClass('d-none')
-            } else {
-                showOwnerData(params.get('u'))
-                return
-            }
+
             liff.ready.then(() => {
                 if (!liff.isLoggedIn()) {
                     liff.login({
                         redirectUri: window.location.href
                     })
                 }
+                if (!params.has('u')) {
+                    $('body').removeClass('d-none')
+
+                } else {
+                    showOwnerData(params.get('u'))
+                    $('body').removeClass('d-none')
+                    $('#infoCard').removeClass('d-none')
+                    $('#registerForm').addClass('d-none')
+                    return
+                }
                 moment().locale('th')
                 $('#userImage').attr('src', liff.getDecodedIDToken().picture)
             })
+
+        })
+
+        $('#formModal').on('show.bs.modal', function (e) {
+            $('#user-name').val($('#formModal').attr('data-user-name'))
+            $('#detail-text').val('')
+            $('#image-file').val('')
+            $('#image-preview img').attr('src', 'https://img.icons8.com/plumpy/96/image.png').attr('has-image', 'false')
+        })
+        $('#image-file').change(function () {
+            if (this.files.length === 0) {
+                $('#image-preview img').attr('src', 'https://img.icons8.com/plumpy/96/image.png').attr('has-image', 'false')
+                return
+            }
+            let reader = new FileReader()
+            reader.onload = function (e) {
+                $('#image-preview img').attr('src', e.target.result).attr('has-image', 'true')
+            }
+            reader.readAsDataURL(this.files[0])
         })
 
         $('#showform-btn').click(function () {
             $('#formModal').modal('show')
         })
+
+        $('#submit-btn').click(async function () {
+            let detail, image
+            detail = $('#detail-text').val()
+            if ($('#image-preview img').attr('has-image')) {
+                image = await uploadFile()
+            }
+            if (detail && detail.trim() !== '') {
+                let data = {
+                    opt: 'report',
+                    uid: liff.getDecodedIDToken().sub,
+                    detail: detail,
+                    user_name: $('#formModal').attr('data-user-name'),
+                    plateNumber: $('#plateNumber-info').val(),
+                    houseNumber: $('#houseNumber-info').val(),
+                    ownerName: $('#ownerName-info').val(),
+                    ownerPhone: $('#ownerPhone-info').val()
+
+                }
+                if (image) {
+                    data.image = image.id
+                }
+                console.log(data);
+                Swal.fire({
+                    iconHtml: '<i class="bi bi-hourglass-split text-primary fs-1"></i>',
+                    customClass: {
+                        icon: 'border-0'
+                    },
+                    title: 'กำลังส่งเรื่อง',
+                    text: 'กรุณารอสักครู่',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading()
+                    }
+                })
+                let response = await new Promise((resolve, reject) => {
+                    $.ajax({
+                        url: scriptUrl,
+                        method: 'POST',
+                        data: data,
+                        success: function (response) {
+                            console.log("🚀 ~ response ~ response:", response)
+                            if (response.status === 'success') {
+                                resolve(response)
+                            } else {
+                                reject()
+                            }
+                        },
+                        error: function () {
+                            reject()
+                        }
+                    })
+                })
+                console.log(response);
+
+                if (response.status == 'success') {
+                    data.report_id = response.report_id
+                    data.opt = 'sendline'
+                    console.log(data);
+                    $.ajax({
+                        url: scriptUrl,
+                        method: 'POST',
+                        data: data,
+                        success: function (response) {
+                            if (response.status === 'success') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'ส่งเรื่องสำเร็จ',
+                                    text: 'ขอบคุณที่รายงานปัญหา/เรื่องร้องเรียน',
+                                    confirmButtonText: 'ปิด',
+                                    allowOutsideClick: false
+                                }).then(() => {
+                                    $('#formModal').modal('hide')
+                                })
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'ส่งเรื่องไม่สำเร็จ',
+                                    text: 'กรุณาลองใหม่อีกครั้ง',
+                                    confirmButtonText: 'ปิด',
+                                    allowOutsideClick: false
+                                })
+                            }
+                        },
+                        error: function () {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'ส่งเรื่องไม่สำเร็จ',
+                                text: 'กรุณาลองใหม่อีกครั้ง',
+                                confirmButtonText: 'ปิด',
+                                allowOutsideClick: false
+                            })
+                        }
+                    })
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ส่งเรื่องไม่สำเร็จ',
+                        text: 'กรุณาลองใหม่อีกครั้ง',
+                        confirmButtonText: 'ปิด',
+                        allowOutsideClick: false
+                    })
+                }
+
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'กรุณากรอกรายละเอียด',
+                    confirmButtonText: 'ปิด',
+                    allowOutsideClick: false
+                })
+            }
+        })
+
+        async function uploadFile() {
+            Swal.fire({
+                icon: 'info',
+                title: 'กำลังอัพโหลดไฟล์',
+                html: '<div class="container-fluid"><div class="row" id="progress"></div></div>',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                },
+            })
+            const f = document.getElementById("image-file");
+            if (f.files.length == 0) {
+                return false
+            }
+            let file = await new Promise((resolve, reject) => {
+                let length = f.files.length;
+                let count = 0;
+                [...f.files].forEach((file, i) => {
+                    let fr = new FileReader();
+                    fr.fileName = file.name;
+                    fr.fileSize = file.size;
+                    fr.fileType = file.type;
+                    fr.readAsArrayBuffer(file);
+                    fr.onload = e => {
+                        var id = "p" + ++i;
+                        var div = $("<div>", { class: 'col-12 text-truncate' });
+                        div.attr("id", id);
+                        $("#progress").append(div);
+                        $('#' + id).text('Initialising (' + fr.fileName + ')')
+                        const f = e.target;
+                        const resource = {
+                            fileName: f.fileName,
+                            fileSize: f.fileSize,
+                            fileType: f.fileType,
+                            fileBuffer: f.result,
+                            accessToken: token,
+                            folderId: folder,
+                            fields: "id",
+                        };
+                        const ru = new ResumableUploadToGoogleDrive();
+                        ru.Do(resource, function (res, err) {
+                            if (err) {
+                                console.log(err);
+                                return;
+                            }
+                            console.log(res);
+                            let msg = "";
+                            if (res.status == 'start' || res.status == 'getLocation' || res.status == 'initialize') {
+                                msg = '<i class="bi bi-cloud-arrow-up-fill"></i> กำลังเตรียมอัพโหลด ' + f.fileName;
+                            }
+                            else if (res.status == "Uploading") {
+                                msg =
+                                    '<i class="bi bi-hourglass-split text-info"></i> กำลังอัพโหลด ' +
+                                    Math.round(
+                                        (res.progressNumber.current / res.progressNumber.end) * 100
+                                    ) +
+                                    "% (" +
+                                    f.fileName +
+                                    ")";
+                            } else {
+                                msg = '<i class="bi bi-check-circle-fill text-success"></i> อัพโหลดสำเร็จ  (' + f.fileName + ")";
+                            }
+
+                            // If you want to put the uploaded file information to the active Spreadsheet,
+                            // please use the following function.
+                            if (res.status == "Done") {
+                                count++;
+                                if (count == length) {
+                                    resolve({
+                                        id: res.result.id,
+                                    });
+                                }
+                            }
+
+                            $('#' + id).html(msg)
+                        });
+                    };
+                });
+            });
+            return file;
+        }
 
         function showFullImage(ele) {
             let src = $(ele).attr('src')
@@ -268,19 +509,43 @@
             const houseNumber = $('#houseNumber').val()
             const ownerName = $('#ownerName').val()
             const ownerPhone = $('#ownerPhone').val()
+            const base = 'https://liff.line.me/' + liff.id
             if (plateNumber && houseNumber && ownerName && ownerPhone) {
+                Swal.fire({
+                    iconHtml: '<i class="bi bi-hourglass-split text-primary fs-1"></i>',
+                    customClass: {
+                        icon: 'border-0'
+                    },
+                    title: 'กำลังลงทะเบียน',
+                    text: 'กรุณารอสักครู่',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading()
+                    }
+                })
+                const error = () => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ลงทะเบียนไม่สำเร็จ',
+                        text: 'กรุณาลองใหม่อีกครั้ง',
+                        confirmButtonText: 'ปิด',
+                        allowOutsideClick: false
+                    })
+                }
                 $.ajax({
-                    url: 'https://script.google.com/macros/s/AKfycbz1J9J9',
+                    url: scriptUrl,
                     method: 'POST',
                     data: {
                         opt: 'register',
                         plateNumber: plateNumber,
                         houseNumber: houseNumber,
                         ownerName: ownerName,
-                        ownerPhone: ownerPhone
+                        ownerPhone: ownerPhone,
+                        base: base,
+                        uid: liff.getDecodedIDToken().sub
                     },
                     success: function (response) {
-                        if (response.result === 'success') {
+                        if (response.status === 'success') {
                             liff.sendMessages([{
                                 type: 'text',
                                 text: `ลงทะเบียนเจ้าของรถเรียบร้อยแล้ว\nเลขทะเบียนรถ: ${plateNumber}\nเลขที่บ้าน: ${houseNumber}\nชื่อเจ้าของรถ: ${ownerName}\nเบอร์โทรศัพท์: ${ownerPhone}`
@@ -295,23 +560,11 @@
                                 liff.closeWindow()
                             })
                         } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'ลงทะเบียนไม่สำเร็จ',
-                                text: 'กรุณาลองใหม่อีกครั้ง',
-                                confirmButtonText: 'ปิด',
-                                allowOutsideClick: false
-                            })
+                            error()
                         }
                     },
                     error: function () {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'ลงทะเบียนไม่สำเร็จ',
-                            text: 'กรุณาลองใหม่อีกครั้ง',
-                            confirmButtonText: 'ปิด',
-                            allowOutsideClick: false
-                        })
+                        error()
                     }
                 })
             } else {
@@ -325,26 +578,159 @@
         })
 
         function showOwnerData(uuid) {
-            $.ajax({
-                url: 'https://script.google.com/macros/s/AKfycbz1J9J9',
-                method: 'POST',
-                data: {
-                    opt: 'searchData',
-                    uuid
+            Swal.fire({
+                iconHtml: '<i class="bi bi-hourglass-split text-primary fs-1"></i>',
+                customClass: {
+                    icon: 'border-0'
                 },
-                success: function (response) {
-                    console.log(response);
-                },
-                error: function () {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'ไม่พบข้อมูล',
-                        text: 'กรุณาลองใหม่อีกครั้ง',
-                        confirmButtonText: 'ปิด',
-                        allowOutsideClick: false
-                    }).then(() => {
-                        liff.closeWindow()
+                title: 'กำลังโหลดข้อมูล',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                }
+            })
+            setTimeout(() => {
+                showOwnerData(uuid)
+            }, 1000 * 60 * 5)
+            Promise.all([
+                new Promise((resolve, reject) => {
+                    $.ajax({
+                        url: scriptUrl,
+                        method: 'POST',
+                        data: {
+                            opt: 'searchData',
+                            uuid,
+                            user_id: liff.getDecodedIDToken().sub
+                        },
+                        success: function (response) {
+                            if (response.status === 'success') {
+                                $('#plateNumber-info').val(response.data.plateNumber)
+                                $('#houseNumber-info').val(response.data.houseNumber)
+                                $('#ownerName-info').val(response.data.ownerName)
+                                $('#ownerPhone-info').val(response.data.ownerPhone)
+                                $('#formModal').attr({
+                                    'data-user-name': response.user,
+                                    'data-user-id': response.data.uid
+                                })
+                                resolve()
+                            }
+                            else if (response.status === 'error' && response.message === 'Unauthorized') {
+                                resolve(response.message)
+                            }
+                            else {
+                                reject()
+                            }
+
+                        },
+                        error: function () {
+                            reject()
+                        }
                     })
+                }),
+                new Promise((resolve, reject) => {
+                    $.ajax({
+                        url: scriptUrl,
+                        method: 'POST',
+                        data: {
+                            opt: 'getUploadKey',
+                            uuid
+                        },
+                        success: function (response) {
+                            if (response.status === 'success') {
+                                token = response.data.token
+                                folder = response.data.folder
+                                resolve()
+                            } else {
+                                reject()
+                            }
+                        },
+                        error: function () {
+                            reject()
+                        }
+                    })
+                })
+            ]).then((a) => {
+                if (a[0] === 'Unauthorized') {
+                    requestRegister()
+                    return
+                }
+                Swal.close()
+            }).catch(() => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'โหลดข้อมูลไม่สำเร็จ',
+                    text: 'กรุณาลองใหม่อีกครั้ง',
+                    confirmButtonText: 'ปิด',
+                    allowOutsideClick: false
+                })
+            })
+        }
+
+        function requestRegister() {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ไม่มีสิทธิ์เข้าถึงข้อมูล',
+                html: '<span class="text-danger fw-bold fs-4">ข้อมูลเฉพาะเจ้าหน้าที่เท่านั้น</span>' +
+                    '<br> กรุณาลงทะเบียนเพื่อเข้าถึงข้อมูล' +
+                    '<br><br> คุณมีรหัสเข้าใช้งานหรือไม่?',
+                showDenyButton: true,
+                confirmButtonText: 'มีรหัส กรอกรหัสเลย',
+                denyButtonText: 'ไม่มีรหัส',
+                allowOutsideClick: false,
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'กรุณากรอกรหัสยืนยันตัวตน',
+                        input: 'text',
+                        customClass: {
+                            input: 'text-center'
+                        },
+                        inputAttributes: {
+                            autocapitalize: 'off',
+                            autocorrect: 'off',
+                            autocapitalize: 'off',
+                        },
+                        showCancelButton: true,
+                        confirmButtonText: 'ยืนยัน',
+                        cancelButtonText: 'ยกเลิก',
+                        allowOutsideClick: false,
+                        showLoaderOnConfirm: true,
+                        preConfirm: (code) => {
+                            return $.ajax({
+                                url: scriptUrl,
+                                method: 'POST',
+                                data: {
+                                    opt: 'checkCode',
+                                    code,
+                                    uid: liff.getDecodedIDToken().sub
+                                },
+                                success: function (response) {
+                                    console.log("🚀 ~ requestRegister ~ response:", response)
+                                    if (response.status === 'success') {
+                                        return true
+                                    } else {
+                                        Swal.showValidationMessage(
+                                            `รหัสไม่ถูกต้อง`
+                                        )
+                                    }
+                                },
+                                error: function () {
+                                    Swal.showValidationMessage(
+                                        `รหัสไม่ถูกต้อง`
+                                    )
+                                }
+                            })
+                        },
+                        allowOutsideClick: () => !Swal.isLoading()
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            showOwnerData(new URLSearchParams(window.location.search).get('u'))
+                        }
+                    })
+                } else if (result.isDenied) {
+                    liff.closeWindow()
                 }
             })
         }
@@ -354,6 +740,8 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/locale/th.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js"></script>
     <!-- <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js">
     </script>
     <script> // VConsole will be exported to `window.VConsole` by default.
