@@ -77,10 +77,10 @@
 
 </head>
 
-<body class="bg-light d-none">
+<body class="bg-light">
     <div class="container mt-5">
         <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4" id="registerForm">
+            <div class="col-md-6 col-lg-4 d-none" id="registerForm">
                 <div class="card rounded-4 shadow">
                     <div class="card-body">
                         <div class="text-center mb-3 fw-bold  d-flex flex-column align-items-center">
@@ -221,9 +221,15 @@
                 </div>
                 <div class="modal-body">
                     <form>
+                        <div class="mb-3 text-center">
+                            <div class="h6">เลขทะเบียนรถ</div>
+                            <div class="h1">
+                                <span class="badge bg-white text-dark border border-dark border-2 shadow rounded-1 fw-normal" id="plateNumber-info2"></span>
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label for="user-name" class="col-form-label">ชื่อผู้แจ้ง:</label>
-                            <input type="text" class="form-control" id="user-name" readonly>
+                            <input type="text" class="form-control" id="user-name" readonly >
                         </div>
                         <div class="mb-3">
                             <label for="detail-text" class="col-form-label">รายละเอียดปัญหา/เรื่องร้องเรียน:</label>
@@ -248,30 +254,146 @@
         </div>
     </div>
     <script>
+        let clickCount = 0;
+        let lastClickTime = 0;
+        $(document).on('click', '.bi-exclamation-triangle-fill', function () {
+            let currentTime = new Date().getTime();
+            if (currentTime - lastClickTime <= 1000) {
+                clickCount++;
+            } else {
+                clickCount = 1; // Reset count if more than 1 second has passed
+            }
+            lastClickTime = currentTime;
+            if (clickCount === 5) {
+                localStorage.removeItem('report-anonymous')
+                location.reload()
+            }
+        });
+    </script>
+    <script>
         var token, folder
-        const scriptUrl = 'https://script.google.com/macros/s/AKfycbyxvJhLDw2W0BTUkJvSfFTxQ5fcxi0PPh1uO1S6dwL0FQMk1pJz6MKz97ipej5YAzhy/exec'
+        const scriptUrl = 'https://script.google.com/macros/s/AKfycbx37hSrxWBZUFkz3q-NVLwwrN3BoclKR3l8e2o2-ZDyvKRwYPBs4jd9nhBsI5WwTzjwUQ/exec'
+
         $(document).ready(function () {
             let params = new URLSearchParams(window.location.search)
+            // liff.init({ liffId: '2006763668-b44qpLQN' })
             liff.init({ liffId: '1655873446-MpmBPPzl' })
 
-            liff.ready.then(() => {
+            liff.ready.then(async () => {
                 if (!liff.isLoggedIn()) {
                     liff.login({
                         redirectUri: window.location.href
                     })
-                }
-                if (!params.has('u')) {
-                    $('body').removeClass('d-none')
-
-                } else {
-                    showOwnerData(params.get('u'))
-                    $('body').removeClass('d-none')
-                    $('#infoCard').removeClass('d-none')
-                    $('#registerForm').addClass('d-none')
                     return
                 }
                 moment().locale('th')
                 $('#userImage').attr('src', liff.getDecodedIDToken().picture)
+                Swal.fire({
+                    iconHtml: '<i class="bi bi-hourglass-split text-primary fs-1"></i>',
+                    customClass: {
+                        icon: 'border-0'
+                    },
+                    title: 'กำลังโหลดข้อมูล',
+                    text: 'กรุณารอสักครู่',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading()
+                    }
+                })
+                let isFriend = await liff.getFriendship()
+                if (!isFriend.friendFlag) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ยังไม่เพิ่มเพื่อน',
+                        html: 'กรุณาเพิ่มเพื่อนกับ Line Official Account ก่อนใช้งาน' +
+                            '<br><br><a id="addfriend-btn"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/th.png" alt="เพิ่มเพื่อน" height="36" border="0"></a>',
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        willOpen: () => {
+                            $('#registerForm, #infoCard').addClass('d-none')
+                            $('body').removeClass('d-none')
+                            $('#addfriend-btn').click(() => {
+                                location.href = 'https://line.me/R/ti/p/@629hhvtd'
+                            })
+
+                        }
+                    })
+                    return
+                }
+                if (!params.has('u')) {
+                    $('#infoCard').addClass('d-none')
+                    $('#registerForm').addClass('d-none')
+                    $('body').removeClass('d-none')
+                    return Swal.fire({
+                        iconHtml: '<i class="bi bi-exclamation-triangle-fill text-warning fs-1"></i>',
+                        customClass: {
+                            icon: 'border-0'
+                        },
+                        title: 'QR Code ไม่ถูกต้อง',
+                        text: 'กรุณาลองตรวจสอบ QR Code อีกครั้ง',
+                        showConfirmButton: false,
+                        allowOutsideClick: false
+                    })
+                } else {
+                    let qrdata = await new Promise((resolve, reject) => {
+                        $.ajax({
+                            url: scriptUrl,
+                            method: 'GET',
+                            data: {
+                                opt: 'checkqr',
+                                code: params.get('u'),
+                                uid: liff.getDecodedIDToken().sub
+                            },
+                            success: function (response) {
+                                console.log("🚀 ~ qrdata ~ response:", response);
+                                if (response.status === 'success') {
+                                    if (response.data.uid != '' && response.auth == 'Unauthorized') {
+                                        resolve('Unauthorized')
+                                    }
+                                    resolve(response.data)
+                                } else {
+                                    reject()
+                                }
+                            },
+                            error: function () {
+                                reject()
+                            }
+                        })
+                    }).catch(() => {
+                        Swal.close()
+                        $('#infoCard').addClass('d-none')
+                        $('#registerForm').addClass('d-none')
+                        $('body').removeClass('d-none')
+                        return Swal.fire({
+                            iconHtml: '<i class="bi bi-exclamation-triangle-fill text-warning fs-1"></i>',
+                            customClass: {
+                                icon: 'border-0'
+                            },
+                            title: 'QR Code ไม่ถูกต้อง',
+                            text: 'กรุณาลองตรวจสอบ QR Code อีกครั้ง',
+                            showConfirmButton: false,
+                            allowOutsideClick: false
+                        })
+                    })
+                    Swal.close()
+                    console.log("🚀 ~ qrdata ~ qrdata:", qrdata)
+                    if (qrdata === 'Unauthorized') {
+                        requestRegister()
+                        return
+                    }
+                    $('body').removeClass('d-none')
+                    localStorage.setItem('qrdata', JSON.stringify(qrdata))
+                    if (qrdata.uid != "") {
+                        showOwnerData()
+                        $('#infoCard').removeClass('d-none')
+                        $('#registerForm').addClass('d-none')
+                    } else {
+                        $('#registerForm').removeClass('d-none').attr('data-regist-id', params.get('u'))
+                        $('#infoCard').addClass('d-none')
+                    }
+                    return
+                }
+
             })
 
         })
@@ -281,6 +403,12 @@
             $('#detail-text').val('')
             $('#image-file').val('')
             $('#image-preview img').attr('src', 'https://img.icons8.com/plumpy/96/image.png').attr('has-image', 'false')
+            if ($('#formModal').attr('data-anonymous') === 'true') {
+                $('#user-name').val('ไม่ระบุชื่อ')
+                $('#formModal').find('.btn-close').remove()
+            }
+            let qrdata = JSON.parse(localStorage.getItem('qrdata'))
+            $('#plateNumber-info2').text(qrdata.plateNumber)
         })
         $('#image-file').change(function () {
             if (this.files.length === 0) {
@@ -308,13 +436,13 @@
                 let data = {
                     opt: 'report',
                     uid: liff.getDecodedIDToken().sub,
+                    uuid: new URLSearchParams(window.location.search).get('u'),
                     detail: detail,
-                    user_name: $('#formModal').attr('data-user-name'),
+                    user_name: $('#formModal').attr('data-annonymous') === 'true' ? 'ไม่ระบุชื่อ' : $('#formModal').attr('data-user-name'),
                     plateNumber: $('#plateNumber-info').val(),
                     houseNumber: $('#houseNumber-info').val(),
                     ownerName: $('#ownerName-info').val(),
                     ownerPhone: $('#ownerPhone-info').val()
-
                 }
                 if (image) {
                     data.image = image.id
@@ -353,6 +481,7 @@
                 console.log(response);
 
                 if (response.status == 'success') {
+                    data.uid = JSON.parse(localStorage.getItem('qrdata')).uid
                     data.report_id = response.report_id
                     data.opt = 'sendline'
                     console.log(data);
@@ -370,6 +499,11 @@
                                     allowOutsideClick: false
                                 }).then(() => {
                                     $('#formModal').modal('hide')
+                                    if (localStorage.getItem('report-anonymous')) {
+                                        setTimeout(() => {
+                                            $('#showform-btn').click()
+                                        }, 100)
+                                    }
                                 })
                             } else {
                                 Swal.fire({
@@ -421,6 +555,9 @@
                     Swal.showLoading()
                 },
             })
+            while (holding) {
+                await new Promise(resolve => setTimeout(resolve, 1000))
+            }
             const f = document.getElementById("image-file");
             if (f.files.length == 0) {
                 return false
@@ -509,7 +646,7 @@
             const houseNumber = $('#houseNumber').val()
             const ownerName = $('#ownerName').val()
             const ownerPhone = $('#ownerPhone').val()
-            const base = 'https://liff.line.me/' + liff.id
+            const uuid = new URLSearchParams(window.location.search).get('u')
             if (plateNumber && houseNumber && ownerName && ownerPhone) {
                 Swal.fire({
                     iconHtml: '<i class="bi bi-hourglass-split text-primary fs-1"></i>',
@@ -541,15 +678,17 @@
                         houseNumber: houseNumber,
                         ownerName: ownerName,
                         ownerPhone: ownerPhone,
-                        base: base,
+                        uuid: uuid,
                         uid: liff.getDecodedIDToken().sub
                     },
                     success: function (response) {
                         if (response.status === 'success') {
-                            liff.sendMessages([{
-                                type: 'text',
-                                text: `ลงทะเบียนเจ้าของรถเรียบร้อยแล้ว\nเลขทะเบียนรถ: ${plateNumber}\nเลขที่บ้าน: ${houseNumber}\nชื่อเจ้าของรถ: ${ownerName}\nเบอร์โทรศัพท์: ${ownerPhone}`
-                            }])
+                            if(liff.isInClient()) {
+                                liff.sendMessages([{
+                                    type: 'text',
+                                    text: `ลงทะเบียนเจ้าของรถเรียบร้อยแล้ว\nเลขทะเบียนรถ: ${plateNumber}\nเลขที่บ้าน: ${houseNumber}\nชื่อเจ้าของรถ: ${ownerName}\nเบอร์โทรศัพท์: ${ownerPhone}`
+                                }])
+                            }
                             Swal.fire({
                                 icon: 'success',
                                 title: 'ลงทะเบียนสำเร็จ',
@@ -577,7 +716,19 @@
             }
         })
 
-        function showOwnerData(uuid) {
+        async function showOwnerData() {
+            let qrdata = localStorage.getItem('qrdata')
+            if (qrdata === null) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่พบข้อมูล',
+                    text: 'กรุณาลองใหม่อีกครั้ง',
+                    confirmButtonText: 'ปิด',
+                    allowOutsideClick: false
+                })
+                return
+            }
+            qrdata = JSON.parse(qrdata)
             Swal.fire({
                 iconHtml: '<i class="bi bi-hourglass-split text-primary fs-1"></i>',
                 customClass: {
@@ -590,93 +741,33 @@
                     Swal.showLoading()
                 }
             })
-            setTimeout(() => {
-                showOwnerData(uuid)
-            }, 1000 * 60 * 5)
-            Promise.all([
-                new Promise((resolve, reject) => {
-                    $.ajax({
-                        url: scriptUrl,
-                        method: 'POST',
-                        data: {
-                            opt: 'searchData',
-                            uuid,
-                            user_id: liff.getDecodedIDToken().sub
-                        },
-                        success: function (response) {
-                            if (response.status === 'success') {
-                                $('#plateNumber-info').val(response.data.plateNumber)
-                                $('#houseNumber-info').val(response.data.houseNumber)
-                                $('#ownerName-info').val(response.data.ownerName)
-                                $('#ownerPhone-info').val(response.data.ownerPhone)
-                                $('#formModal').attr({
-                                    'data-user-name': response.user,
-                                    'data-user-id': response.data.uid
-                                })
-                                resolve()
-                            }
-                            else if (response.status === 'error' && response.message === 'Unauthorized') {
-                                resolve(response.message)
-                            }
-                            else {
-                                reject()
-                            }
-
-                        },
-                        error: function () {
-                            reject()
-                        }
-                    })
-                }),
-                new Promise((resolve, reject) => {
-                    $.ajax({
-                        url: scriptUrl,
-                        method: 'POST',
-                        data: {
-                            opt: 'getUploadKey',
-                            uuid
-                        },
-                        success: function (response) {
-                            if (response.status === 'success') {
-                                token = response.data.token
-                                folder = response.data.folder
-                                resolve()
-                            } else {
-                                reject()
-                            }
-                        },
-                        error: function () {
-                            reject()
-                        }
-                    })
-                })
-            ]).then((a) => {
-                if (a[0] === 'Unauthorized') {
-                    requestRegister()
-                    return
-                }
-                Swal.close()
-            }).catch(() => {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'โหลดข้อมูลไม่สำเร็จ',
-                    text: 'กรุณาลองใหม่อีกครั้ง',
-                    confirmButtonText: 'ปิด',
-                    allowOutsideClick: false
-                })
-            })
+            $('#plateNumber-info').val(qrdata.plateNumber)
+            $('#houseNumber-info').val(qrdata.houseNumber)
+            $('#ownerName-info').val(qrdata.ownerName)
+            $('#ownerPhone-info').val(qrdata.ownerPhone)
+            $('#formModal').attr('data-user-name', qrdata.ownerName)
+            loadToken()
+            Swal.close()
+            $('#infoCard').removeClass('d-none')
+            $('#registerForm').addClass('d-none')
         }
 
         function requestRegister() {
+            if (localStorage.getItem('report-anonymous') === 'true') {
+                Swal.close()
+                $('#infoCard, #registerForm').addClass('d-none')
+                $('#formModal').attr('data-anonymous', 'true')
+                $('#showform-btn').click()
+                return
+            }
             Swal.fire({
                 icon: 'warning',
                 title: 'ไม่มีสิทธิ์เข้าถึงข้อมูล',
                 html: '<span class="text-danger fw-bold fs-4">ข้อมูลเฉพาะเจ้าหน้าที่เท่านั้น</span>' +
-                    '<br> กรุณาลงทะเบียนเพื่อเข้าถึงข้อมูล' +
-                    '<br><br> คุณมีรหัสเข้าใช้งานหรือไม่?',
+                    '<br><br> หากท่านไม่ใช่เจ้าหน้าที่ กรุณากดปุ่มไม่ใช่เจ้าหน้าที่ เพื่อส่งเรื่องร้องเรียนหรือปัญหา',
                 showDenyButton: true,
-                confirmButtonText: 'มีรหัส กรอกรหัสเลย',
-                denyButtonText: 'ไม่มีรหัส',
+                confirmButtonText: 'เจ้าหน้าที่',
+                denyButtonText: 'ไม่ใช่เจ้าหน้าที่',
                 allowOutsideClick: false,
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -726,11 +817,54 @@
                         allowOutsideClick: () => !Swal.isLoading()
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            showOwnerData(new URLSearchParams(window.location.search).get('u'))
+                            showOwnerData()
+                        } else {
+                            requestRegister()
                         }
                     })
                 } else if (result.isDenied) {
-                    liff.closeWindow()
+                    $('#infoCard, #registerForm').addClass('d-none')
+                    $('#formModal')
+                        .attr('data-anonymous', 'true')
+                        .find('.btn-close').remove()
+                    $('#showform-btn').click()
+                    localStorage.setItem('report-anonymous', 'true')
+                }
+            })
+
+        }
+        function checkFriendShip() {
+            return new Promise((resolve, reject) => {
+                liff.getFriendship().then((data) => {
+                    resolve(data)
+                }).catch(() => {
+                    reject()
+                })
+            })
+        }
+
+        let holding = true
+        async function loadToken() {
+            $.ajax({
+                url: scriptUrl,
+                method: 'POST',
+                data: {
+                    opt: 'getUploadKey'
+                },
+                success: async function (response) {
+                    console.log("🚀 ~ awaitnewPromise ~ response:", response)
+                    if (response.status === 'success') {
+                        token = response.data.token
+                        folder = response.data.folder
+                        holding = false
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 1000))
+                        loadToken()
+                    }
+                },
+                error:async  function () {
+                    await new Promise(resolve => setTimeout(resolve, 1000))
+                    loadToken()
                 }
             })
         }

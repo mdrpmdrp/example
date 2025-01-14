@@ -1,5 +1,12 @@
-const LINE_TOKEN = '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU='
-const FOLDER = '1FZnweakVXeIVN1NjGm63joM081vpnkaB'
+const LINE_TOKEN = '2hM47bPSHc9pbY0ud7qH/crUyykf4+hp4yiQS4XP45pSEfuv634xxV4vGRCZPHEajuDzZFBG2A1H/8QORqkciWxkgEq8tyxBDXoOOn/1ANXJpjVzckzDn33t5bwgSpIAW5uFJody+KVoASikraDK1QdB04t89/1O/w1cDnyilFU='
+const FOLDER = '1aTuyDDkytk686Uxe5HkIVucwqCL7-Tj5'
+function onOpen(e) {
+
+    SpreadsheetApp.getUi()
+        .createMenu('Admin Menu')
+        .addItem('👉 Generate Code', 'generateCode')
+        .addToUi();
+}
 function doPost(e) {
     Logger = BetterLog.useSpreadsheet();
     try {
@@ -29,6 +36,15 @@ function doPost(e) {
     }
 }
 
+function doGet(e) {
+    let opt = e.parameter.opt;
+    switch (opt) {
+        case 'checkqr':
+            return checkQRCode(e);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Invalid option' })).setMimeType(ContentService.MimeType.JSON);
+}
+
 function register(e) {
     let lock = LockService.getScriptLock();
     if (!lock.tryLock(10000)) {
@@ -37,7 +53,9 @@ function register(e) {
     let { plateNumber, houseNumber, ownerName, ownerPhone } = e.parameter;
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Sheet1');
-    let uuid = generateUUID();
+    let uuid = e.parameter.uuid;
+    let index = sheet.getDataRange().getValues().findIndex(row => row[6] === uuid);
+
     let newRow = [
         new Date(),
         plateNumber,
@@ -46,11 +64,10 @@ function register(e) {
         ownerPhone,
         e.parameter.uid,
         uuid,
-        e.parameter.base + '?u=' + uuid
     ]
-    let range = sheet.getRange(sheet.getLastRow() + 1, 1, 1, newRow.length);
+    let range = sheet.getRange(index+ 1, 1, 1, newRow.length);
     range
-        .setNumberFormats([['dd/MM/yyyy HH:mm:ss', '@', '@', '@', '@', '@', '@', ""]])
+        .setNumberFormats([['dd/MM/yyyy HH:mm:ss', '@', '@', '@', '@', '@', '@']])
         .setValues([newRow]);
     return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Data saved', data: newRow })).setMimeType(ContentService.MimeType.JSON);
 }
@@ -65,9 +82,6 @@ function saveData(e) {
 function searchData(e) {
     let user_id = e.parameter.user_id;
     let auth = checkAuth(user_id);
-    if(!auth){
-        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Unauthorized' })).setMimeType(ContentService.MimeType.JSON);
-    }
     let uuid = e.parameter.uuid;
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Sheet1');
@@ -83,14 +97,19 @@ function searchData(e) {
             uid: result[5],
             url: result[7]
         }
-        return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: result, user: auth[0] })).setMimeType(ContentService.MimeType.JSON);
-    }else{
+        let res = { status: 'success', data: result, user: auth ? auth[0] : "" }
+        if (!auth) {
+            res.message = 'Unauthorized'
+        }
+
+        return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
+    } else {
         return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Data not found' })).setMimeType(ContentService.MimeType.JSON);
     }
 
 }
 
-function checkCode(e){
+function checkCode(e) {
     let uid = e.parameter.uid;
     let code = e.parameter.code;
     let ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -100,30 +119,39 @@ function checkCode(e){
     if (index > -1) {
         sheet.getRange(index + 1, 3).setValue(uid);
         return ContentService.createTextOutput(JSON.stringify({ status: 'success', user: data[index][0] })).setMimeType(ContentService.MimeType.JSON);
-    }else{
+    } else {
         return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Code not found' })).setMimeType(ContentService.MimeType.JSON);
     }
 
 }
 
-function checkAuth(user_id){
+function checkQRCode(e) {
+    let auth = checkAuth(e.parameter.uid);
+    if(!auth) auth = 'Unauthorized'
+    let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('Sheet1');
+    let data = sheet.getDataRange().getValues();
+    let result = data.findIndex(row => row[6] === e.parameter.code);
+    if (result < 0) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Code not found', auth })).setMimeType(ContentService.MimeType.JSON);
+    }
+    res = {
+        plateNumber: data[result][1],
+        houseNumber: data[result][2],
+        ownerName: data[result][3],
+        ownerPhone: data[result][4],
+        uid: data[result][5],
+        url: data[result][7]
+    }
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: res, auth })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function checkAuth(user_id) {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Auth');
     let data = sheet.getDataRange().getValues();
     let result = data.find(row => row[2] === user_id);
     return result
-}
-
-function generateUUID() {
-    let alpahbet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let numbers = '0123456789';
-    let length = 8;
-    let uuid = '';
-    for (let i = 0; i < length; i++) {
-        let char = i % 2 === 0 ? alpahbet : numbers;
-        uuid += char.charAt(Math.floor(Math.random() * char.length));
-    }
-    return uuid;
 }
 
 function getUploadKey(e) {
@@ -132,12 +160,12 @@ function getUploadKey(e) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: { token, folder } })).setMimeType(ContentService.MimeType.JSON);
 }
 
-function report(e){
-    let {uid,detail,user_name,image, plateNumber, houseNumber, ownerName, ownerPhone} = e.parameter;
-    if(image) image = 'https://lh3.googleusercontent.com/d/' + image;
+function report(e) {
+    let {uuid, uid, detail, user_name, image, plateNumber, houseNumber, ownerName, ownerPhone } = e.parameter;
+    if (image) image = 'https://lh3.googleusercontent.com/d/' + image;
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('ข้อมูลร้องเรียน');
-    let uuid = generateUUID();
+    uuid = e.parameter.uuid;
     let newRow = [
         new Date(),
         uuid,
@@ -154,11 +182,11 @@ function report(e){
     range
         .setNumberFormats([['dd/MM/yyyy HH:mm:ss', '@', '@', '@', '@', '@', '@', '@', '@', '@']])
         .setValues([newRow]);
-    return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Data saved', report_id: uuid})).setMimeType(ContentService.MimeType.JSON);   
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Data saved', report_id: uuid })).setMimeType(ContentService.MimeType.JSON);
 }
 
-function sendToLine(e){
-    let {uid, report_id, image} = e.parameter;
+function sendToLine(e) {
+    let { uid, report_id, image } = e.parameter;
     let token = 'Bearer ' + LINE_TOKEN;
     let url = 'https://api.line.me/v2/bot/message/push';
     let headers = {
@@ -166,32 +194,35 @@ function sendToLine(e){
         'Content-Type': 'application/json'
     }
     let message = 'มีรายงานข้อมูลร้องเรียนใหม่ รหัส #' + report_id +
-    '\n\nรายละเอียด: ' + e.parameter.detail +
-    '\nเลขทะเบียน: ' + e.parameter.plateNumber +
-    '\nเลขที่บ้าน: ' + e.parameter.houseNumber +
-    '\nชื่อเจ้าของ: ' + e.parameter.ownerName
-    
+        '\n\nรายละเอียด: ' + e.parameter.detail +
+        '\nเลขทะเบียน: ' + e.parameter.plateNumber +
+        '\nเลขที่บ้าน: ' + e.parameter.houseNumber +
+        '\nชื่อเจ้าของ: ' + e.parameter.ownerName
+
+    let messages = [
+        {
+            type: 'text',
+            text: message,
+            sender: {
+                name: 'ระบบแจ้งปัญหา',
+                iconUrl: 'https://img.icons8.com/arcade/50/bot.png'
+            }
+        }
+    ]
+    if (image && image != '' && image != null && image != 'null') {
+        messages.push({
+            type: 'image',
+            originalContentUrl: 'https://lh3.googleusercontent.com/d/' + image,
+            previewImageUrl: 'https://lh3.googleusercontent.com/d/' + image,
+            sender: {
+                name: 'ระบบแจ้งปัญหา',
+                iconUrl: 'https://img.icons8.com/arcade/50/bot.png'
+            }
+        })
+    }
     let data = {
         to: uid,
-        messages: [
-            {
-                type: 'text',
-                text: message,
-                sender: {
-                    name: 'ระบบแจ้งปัญหา',
-                    iconUrl: 'https://img.icons8.com/arcade/50/bot.png'
-                }
-            },
-            {
-                type: 'image',
-                originalContentUrl: 'https://lh3.googleusercontent.com/d/' + image,
-                previewImageUrl: 'https://lh3.googleusercontent.com/d/' + image,
-                sender: {
-                    name: 'ระบบแจ้งปัญหา',
-                    iconUrl: 'https://img.icons8.com/arcade/50/bot.png'
-                }
-            }
-        ],
+        messages: messages,
 
     }
     let options = {
@@ -200,5 +231,22 @@ function sendToLine(e){
         'payload': JSON.stringify(data)
     }
     let response = UrlFetchApp.fetch(url, options);
-    return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Message sent'})).setMimeType(ContentService.MimeType.JSON);   
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Message sent' })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function generateCode() {
+    let letter = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    let num = '0123456789';
+    let length = 6;
+    let range = SpreadsheetApp.getActiveRange();
+    let values = range.getValues();
+    values = values.map(row => {
+        let code = '';
+        for (let i = 0; i < length; i++) {
+            let char = Math.random() < 0.5 ? letter : num;
+            code += char.charAt(Math.floor(Math.random() * char.length));
+        }
+        return [code, 'https://liff.line.me/2006763668-b44qpLQN?u=' + code]
+    });
+    range.offset(0, 0, values.length, values[0].length).setValues(values);
 }
