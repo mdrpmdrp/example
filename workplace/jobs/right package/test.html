@@ -466,7 +466,7 @@
                 <div class="modal-content" style="border-radius: 35px;">
                     <div class="modal-body p-0">
                         <div class="position-relative w-100">
-                            <div class="position-absolute" style="bottom: -30px; right: 0">
+                            <div class="position-absolute" style="bottom: -30px; right: 15">
                                 <i class="fa-solid fa-circle-xmark fa-xl" style="color: #db1f1f;" role="button"
                                     data-bs-dismiss="modal"></i>
                             </div>
@@ -542,30 +542,46 @@
         <script>
             const questions = [];
             const fetchQuestionsFromAPI = (sheet) => {
-                return fetch('https://sheets.googleapis.com/v4/spreadsheets/' + idsheet + '/values/' + sheet + '?alt=json&key=' + apiKey)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
+                // return fetch('https://sheets.googleapis.com/v4/spreadsheets/' + idsheet + '/values/' + sheet + '?alt=json&key=' + apiKey)
+                //     .then(response => {
+                //         if (!response.ok) {
+                //             throw new Error('Network response was not ok');
+                //         }
+                //         return response.json();
+                //     })
+                //     .then(data => {
+                //         const rawData = data.values;
+                //         questions.length = 0;
+                //         rawData.forEach((row, index) => {
+                //             if (index >= 2) {
+                //                 let question = "คำถามที่ " + (index - 1) + " " + row[1];
+                //                 let type = row[3];
+                //                 let options = row[2].split(', ').map(option => option.trim());
+                //                 questions.push({ question: question, options: options, type: type });
+                //             }
+                //         });
+                //         return questions;
+                //     })
+                //     .catch(error => {
+                //         toastAlert(0, 'เกิดข้อผิดพลาดในการดึงข้อมูล');
+                //         console.error('Error fetching data:', error);
+                //     });
+                return $.post(scriptURL, {
+                    opt: 'data', sheet
+                }, function (data) {
+                    console.log("🚀 ~ data:", data.data);
+                    const rawData = data.data;
+                    questions.length = 0;
+                    rawData.forEach((row, index) => {
+                        if (index >= 2) {
+                            let question = "คำถามที่ " + (index - 1) + " " + row[1];
+                            let type = row[3];
+                            let options = row[2].split(', ').map(option => option.trim());
+                            questions.push({ question: question, options: options, type: type });
                         }
-                        return response.json();
-                    })
-                    .then(data => {
-                        const rawData = data.values;
-                        questions.length = 0;
-                        rawData.forEach((row, index) => {
-                            if (index >= 2) {
-                                let question = "คำถามที่ " + (index - 1) + " " + row[1];
-                                let type = row[3];
-                                let options = row[2].split(', ').map(option => option.trim());
-                                questions.push({ question: question, options: options, type: type });
-                            }
-                        });
-                        return questions;
-                    })
-                    .catch(error => {
-                        toastAlert(0, 'เกิดข้อผิดพลาดในการดึงข้อมูล');
-                        console.error('Error fetching data:', error);
                     });
+                    return questions;
+                });
             };
             const userAnswers = [];
             let currentStep = 0;
@@ -723,7 +739,7 @@
                     opt: 'data', sheet
                 }, function (data) {
                     console.log("🚀 ~ data:", data.data);
-                    allData = data //.filter((row) => row[8] === "TRUE");
+                    allData = data.data //.filter((row) => row[8] === "TRUE");
                     return allData;
                 });
             };
@@ -747,7 +763,7 @@
                     opt: 'data', sheet
                 }, function (data) {
                     console.log("🚀 ~ data:", data);
-                    allCategory = data;
+                    allCategory = data.data
                     return allCategory;
                 });
             };
@@ -785,7 +801,7 @@
                                 insertPackagefilter();
                             }
                         });
-                    }, 10000);
+                    }, 10000000);
                     $('#questionnaireModal').modal('show');
                 });
             };
@@ -838,7 +854,7 @@
                 const dataContainer = document.getElementById('insertPackage');
                 dataContainer.innerHTML = "";
                 if (!allData) return;
-                packageDataAll = allData;
+                packageDataAll = allData
                 let filter;
                 if ($('#head-list-package').text().trim() === "แพ็คเกตทั้งหมด") {
                     filter = "แสดงทั้งหมด";
@@ -848,6 +864,7 @@
                 const filteredData = filter === "แสดงทั้งหมด"
                     ? packageDataAll
                     : packageDataAll.filter((row) => row[3] === filter);
+                console.log("🚀 ~ insertPackageData ~ filteredData:", filteredData)
                 $('#count-list-package').text(filteredData.length);
                 if (filteredData.length === 0) {
                     const noDataText = document.createElement("p");
