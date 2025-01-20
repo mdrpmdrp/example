@@ -663,9 +663,9 @@ ${pname} (${pid})
 
 หมวดหมู่: ${cname} (${cid})
 
-ราคาปกติ: ${normal_price} บาท / ${unit}
+ราคาปกติ: ${isNaN(normal_price) ? normal_price : (parseFloat(normal_price).toLocaleString() + ' บาท/ ' + unit)}
 
-ราคาพิเศษ: ${discount_price} บาท / ${unit}
+ราคาพิเศษ: ${parseFloat(discount_price).toLocaleString()} บาท/ ${unit}
 
 รายละเอียด:
 ${url}`;
@@ -681,7 +681,7 @@ ${url}`;
                     text: message
                 }
             ]
-            toastAlert(1, 'กำลังส่งข้อมูลให้เจ้าหน้าที่');
+            toastAlert(3, 'กำลังส่งข้อมูลให้เจ้าหน้าที่', 100000);
             Promise.all([
                 new Promise((resolve, reject) => {
                     if (liff.isInClient()) {
@@ -710,6 +710,7 @@ ${url}`;
                     }
                 }),
                 new Promise((resolve, reject) => {
+                    messages[1].text = 'ลูกค้า' + liff.getDecodedIDToken().name + ' ' + messages[1].text;
                     $.post(scriptURL, {
                         opt: 'sendLineToAdmin',
                         messages: JSON.stringify(messages),
