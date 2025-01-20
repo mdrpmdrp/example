@@ -454,11 +454,45 @@
                 </div>
                 <div class="modal-body">
                     <div id="packagesContent"></div>
-                    <button id="sendPackagesBtn" onclick="sendPackages()">Send Packages</button>
+                    <button id="sendPackagesBtn" onclick="sendPackages()">สอบถามรายละเอียด</button>
                 </div>
             </div>
         </div>
     </div>
+    <script>
+        $(document).ready(function () {
+            // liff.init({liffId: '1655873446-MpmBPPzl' })
+            liff.ready.then(async () => {
+                if (liff.isLoggedIn()) {
+                    let isFriend = await liff.getFriendship()
+                    if (!isFriend.friendFlag) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'ยังไม่เพิ่มเพื่อน',
+                            html: 'กรุณาเพิ่มเพื่อนกับ Line Official Account ก่อนใช้งาน' +
+                                '<br><br><a id="addfriend-btn"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/th.png" alt="เพิ่มเพื่อน" height="36" border="0"></a>',
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            willOpen: () => {
+                                $('#registerForm, #infoCard').addClass('d-none')
+                                $('body').removeClass('d-none')
+                                $('#addfriend-btn').click(() => {
+                                    location.href = '#'
+                                })
+
+                            }
+                        })
+                        return
+                    }
+                    setUpAPIKeyAndFetchData();
+                } else {
+                    liff.login({
+                        redirectUri: window.location.href
+                    });
+                }
+            });
+        });
+    </script>
     <script>
 
         let questions = [];
@@ -641,30 +675,60 @@ ${url}`;
                 previewImageUrl: poster
             }
             let messages = [
+                image,
                 {
                     type: "text",
                     text: message
-                },
-                image
+                }
             ]
-            if(liff.isInClient()){
-                liff.sendMessages(messages).then(() => {
-                    toastAlert(1, 'ส่งข้อมูลแพ็กเกจเรียบร้อยแล้ว');
-                }).catch((error) => {
-                    console.error('Error sending message:', error);
-                });
-            } else {
-                $.post(scriptURL, {
-                    opt: 'sendLineMessage',
-                    messages: JSON.stringify(messages),
-                    uid: liff.getDecodedIDToken().sub
-                }, function (data) {
-                    console.log("🚀 ~ sendPackages ~ data:", data);
-                    toastAlert(1, 'ส่งข้อมูลแพ็กเกจเรียบร้อยแล้ว');
-                }).fail(function (error) {
-                    console.error('Error sending message:', error);
-                });
-            }
+            toastAlert(1, 'กำลังส่งข้อมูลให้เจ้าหน้าที่');
+            Promise.all([
+                new Promise((resolve, reject) => {
+                    if (liff.isInClient()) {
+                        liff.sendMessages(messages).then(() => {
+                            // toastAlert(1, 'ส่งข้อมูลแพ็กเกจใหเแอดมินเรียบร้อยแล้ว กรุณารอการติดต่อกลับจากเจ้าหน้าที่');
+                            resolve();
+                        }).catch((error) => {
+                            // console.error('Error sending message:', error);
+                            // toastAlert(0, 'เกิดข้อผิดพลาดในการส่งข้อมูล');
+                            reject();
+                        });
+                    } else {
+                        $.post(scriptURL, {
+                            opt: 'sendLineMessage',
+                            messages: JSON.stringify(messages),
+                            uid: liff.getDecodedIDToken().sub
+                        }, function (data) {
+                            // console.log("🚀 ~ sendPackages ~ data:", data);
+                            // toastAlert(1, 'ส่งข้อมูลแพ็กเกจใหเแอดมินเรียบร้อยแล้ว กรุณารอการติดต่อกลับจากเจ้าหน้าที่');
+                            resolve();
+                        }).fail(function (error) {
+                            // console.error('Error sending message:', error);
+                            // toastAlert(0, 'เกิดข้อผิดพลาดในการส่งข้อมูล');
+                            reject();
+                        });
+                    }
+                }),
+                new Promise((resolve, reject) => {
+                    $.post(scriptURL, {
+                        opt: 'sendLineToAdmin',
+                        messages: JSON.stringify(messages),
+                    }, function (data) {
+                        console.log("🚀 ~ sendPackages ~ data:", data);
+                        resolve();
+                    }).fail(function (error) {
+                        console.error('Error saving packages:', error);
+                        reject();
+                    });
+                })
+            ])
+            .then(() => {
+                toastAlert(1, 'ส่งข้อมูลแพ็กเกจเรียบร้อยแล้ว กรุณารอการติดต่อกลับจากเจ้าหน้าที่');
+            })
+            .catch(() => {
+                toastAlert(0, 'เกิดข้อผิดพลาดในการส่งข้อมูล');
+            })
+
         };
     </script>
     <script>
@@ -721,7 +785,7 @@ ${url}`;
         const isEqual = (data1, data2) => {
             return JSON.stringify(data1) === JSON.stringify(data2);
         };
-        
+
         document.addEventListener('DOMContentLoaded', () => {
             const burgerMenu = document.querySelector('.burger-menu');
             const navLinks = document.querySelector('.menu-list');
@@ -1058,25 +1122,10 @@ ${url}`;
             $('#packagesModal').modal('show');
         }
     </script>
-    <script>
-        $(document).ready(function () {
-            // liff.init({liffId: '1655873446-MpmBPPzl' })
-            liff.ready.then(() => {
-                if(liff.isLoggedIn()) {
-                    setUpAPIKeyAndFetchData();
-                } else {
-                    liff.login({
-                        redirectUri: window.location.href
-                    });
-                }
-            });
-        });
-    </script>
-   
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
-    
+
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 </body>
