@@ -467,6 +467,7 @@
     <script>
         $(document).ready(function () {
             liff.init({ liffId: '1655873446-MpmBPPzl' })
+            // setUpAPIKeyAndFetchData();
             liff.ready.then(async () => {
                 if (liff.isLoggedIn()) {
                     let isFriend = await liff.getFriendship()
@@ -513,7 +514,7 @@
                 console.error('Error fetching data:', error);
             });
         };
-        const userAnswers = [];
+        let userAnswers = [];
         let currentStep = 0;
         function renderQuestion(step) {
             console.log("🚀 ~ renderQuestion ~ questions:", questions)
@@ -581,6 +582,8 @@
         }
         function selectPackages(userAnswers, allData) {
             const mainAnswers = userAnswers[0];
+            const genderAnswers = userAnswers[1];
+            const ageAnswers = userAnswers[2];
             const scoredPackages = [];
             allData.forEach(row => {
                 console.log("🚀 ~ selectPackages ~ row:", row)
@@ -588,7 +591,7 @@
                 let isMainMatched = false;
                 mainAnswers.forEach(mainAnswer => {
                     row.forEach(tag => {
-                        if (tag.toString().includes(mainAnswer)) {
+                        if (tag.toString().includes(mainAnswer) && matchGender(genderAnswers, row) && matchAge(ageAnswers, row)) {
                             isMainMatched = true;
                             score++;
                         }
@@ -596,7 +599,7 @@
                 });
                 console.log("🚀 ~ selectPackages ~ score", score)
                 if (isMainMatched) {
-                    userAnswers.slice(1).forEach((answerSet, i) => {
+                    userAnswers.slice(3).forEach((answerSet, i) => {
                         if (i === 4) {
                             let price = parseFloat(row[5].toString().replace(/,/g, ''));
                             let select_price = answerSet[0]
@@ -635,18 +638,33 @@
                             });
                         });
                     });
-                    switch (row[5]) {
-
-                    }
                     scoredPackages.push({ row, score });
+
                 }
             });
 
             console.log("🚀 ~ selectPackages ~ scoredPackages", scoredPackages);
 
-            scoredPackages.sort((a, b) => b.score - a.score);
+            scoredPackages
+                .filter(a => a.score > 0)
+                .sort((a, b) => b.score - a.score);
             return scoredPackages;
         };
+
+        function matchGender(genderAnswers, row) {
+            let sel_gender = genderAnswers[0].split(/และ|หรือ/).map(g => g.trim());
+            if (sel_gender.length == 1) {
+                return sel_gender == row[9];
+            } else {
+                return sel_gender.some(g => row[9].includes(g));
+            }
+        }
+
+        function matchAge(ageAnswers, row) {
+            let sel_age = ageAnswers[0]
+            return row[10] == sel_age;
+        }
+
         function prevStep() {
             if (currentStep > 0) {
                 currentStep--;
@@ -661,6 +679,14 @@
         };
         function sendPackages() {
             let current_carousel = $('#packagesContent').find('.carousel-item.active');
+            if (current_carousel.length == 0) {
+                $('#packagesModal').modal('hide');
+                currentStep = 0;
+                userAnswers =[]
+                $('#questionnaireModal').modal('show');
+                renderQuestion(currentStep);
+                return
+            }
             const { cid, cname, pid, pname, normal_price, discount_price, unit, poster, url } = current_carousel.data();
             let message = `สนใจแพ็กเกจ:
 ${pname} (${pid})
@@ -735,6 +761,14 @@ ${url}`;
             ])
                 .then(() => {
                     toastAlert(1, 'ส่งข้อมูลแพ็กเกจเรียบร้อยแล้ว กรุณารอการติดต่อกลับจากเจ้าหน้าที่');
+                    let alreadySent = sessionStorage.getItem('alreadySentPackages');
+                    if (!alreadySent) {
+                        sessionStorage.setItem('alreadySentPackages', JSON.stringify([pid]));
+                    } else {
+                        let sentPackages = JSON.parse(alreadySent);
+                        sentPackages.push(pid);
+                        sessionStorage.setItem('alreadySentPackages', JSON.stringify(sentPackages));
+                    }
                 })
                 .catch(() => {
                     toastAlert(0, 'เกิดข้อผิดพลาดในการส่งข้อมูล');
@@ -1073,6 +1107,12 @@ ${url}`;
             packagesContent.innerHTML = "";
             let carouselIndicators = "";
             let carouselItems = "";
+            if (recommendedPackages.length === 0) {
+                $(packagesContent).html('<p class="text-center">ยังไม่พบแพ็กเกจที่เหมาะกับคุณ</p> <p class="text-center">กรุณาลองเลือกคำตอบใหม่อีกครั้ง</p>');
+                $('#packagesModal').modal('show');
+                $('#sendPackagesBtn').text('ลองเลือกคำตอบใหม่').removeClass('btn-primary').addClass('btn-danger');
+                return;
+            }
             recommendedPackages.forEach((pkg, index) => {
                 const row = pkg.row;
                 let Duration = [];
@@ -1100,6 +1140,7 @@ ${url}`;
                     <div class="col-md-8">
                         <div class="card-body">
                             <h5 class="card-title">${row[3]}</h5>
+                            <p class="card-text"><strong>Gender:</strong> ${row[9]}</p>
                             <p class="card-text"><strong>Category:</strong> ${row[1]}</p>
                             <p class="card-text"><strong>Price:</strong> ${isNaN(row[4]) ? row[4] : (parseInt(row[4]).toLocaleString() + ' บาท')}</p>   
                             <p class="card-text"><strong>Discount:</strong> ${parseInt(row[5]).toLocaleString()} บาท</p>
@@ -1131,6 +1172,24 @@ ${url}`;
 `;
             packagesContent.innerHTML = carouselHTML;
             $('#packagesModal').modal('show');
+            setTimeout(() => {
+                $('#packagesCarousel').carousel({
+                    interval: 5000
+                });
+                $('#packagesCarousel').on('slid.bs.carousel', function (e) {
+                    const thisItem = $(e.relatedTarget);
+                    sessionStorage.setItem('currentItem', JSON.stringify(thisItem.data()));
+                    let alreadySentPackages = sessionStorage.getItem('alreadySentPackages');
+                    if (alreadySentPackages) {
+                        let sentPackages = JSON.parse(alreadySentPackages);
+                        if (sentPackages.includes(thisItem.data('pid'))) {
+                            $('#sendPackagesBtn').prop('disabled', true).text('ส่งข้อมูลแพ็กเกจเรียบร้อยแล้ว กรุณารอการติดต่อกลับจากเจ้าหน้าที่').removeClass('btn-primary').addClass('btn-secondary');
+                        } else {
+                            $('#sendPackagesBtn').prop('disabled', false).text('สอบถามรายละเอียด').removeClass('btn-secondary').addClass('btn-primary');
+                        }
+                    }
+                });
+            }, 1000);
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
