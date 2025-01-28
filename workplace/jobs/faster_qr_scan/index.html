@@ -40,6 +40,38 @@
             width: 0px;
             height: 1px;
         }
+
+        .colored-toast.swal2-icon-success {
+            background-color: #64e964 !important;
+        }
+
+        .colored-toast.swal2-icon-error {
+            background-color: #f27474 !important;
+        }
+
+        .colored-toast.swal2-icon-warning {
+            background-color: #f8bb86 !important;
+        }
+
+        .colored-toast.swal2-icon-info {
+            background-color: #3fc3ee !important;
+        }
+
+        .colored-toast.swal2-icon-question {
+            background-color: #87adbd !important;
+        }
+
+        .colored-toast .swal2-title {
+            color: white;
+        }
+
+        .colored-toast .swal2-close {
+            color: white;
+        }
+
+        .colored-toast .swal2-html-container {
+            color: white;
+        }
     </style>
 
 </head>
@@ -49,6 +81,13 @@
     <div class="toast-container position-absolute top-0 end-0 p-3">
         <!-- toast wrapper -->
     </div>
+    <div aria-live="polite" aria-atomic="true" class="position-relative">
+        <!-- Position it: -->
+        <!-- - `.toast-container` for spacing between toasts -->
+        <!-- - `top-0` & `end-0` to position the toasts in the upper right corner -->
+        <!-- - `.p-3` to prevent the toasts from sticking to the edge of the container  -->
+        <div class="toast-container top-0 end-0 p-3"></div>
+    </div>
     <audio id="beepsound" controls>
         <source src="sound/scanner-beeps-barcode.mp3" type="audio/mpeg">
         Your browser does not support the audio tag.
@@ -57,14 +96,47 @@
         $(document).ready(function () {
             scancode()
         });
+        let toast = (title, text, icon, timer) => {
+            const toast = Swal.mixin({
+            // toast: true,
+            icon: icon,
+            iconColor: 'white',
+            backdrop: (icon === 'success') ? 'rgba(0,255,0,0.5)' : 'rgba(255,0,0,0.5)',
+            padding: '2rem',
+            customClass: {
+                title: 'fs-4 text-center',
+                popup: 'colored-toast d-flex justify-content-center align-items-center',
+                confirmButton: 'btn btn-primary w-100',
+            },
+            position: 'bottom',
+            confirmButtonText: 'แสกนต่อ',
+            // timer: timer,
+            // timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+            })
+
+            toast.fire({
+                title: title,
+            }).then((result) => {
+                html5QrCode.resume()
+            })
+
+            setTimeout(() => {
+                html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback);
+            }, 2000);
+        }
+        var html5QrCode;
         function scancode() {
             var beepsound = document.getElementById("beepsound");
 
-            const html5QrCode = new Html5Qrcode("reader");
+            html5QrCode = new Html5Qrcode("reader");
             const config = {
                 fps: 10,
                 qrbox: 350,
-                aspectRatio: 1.777778,
+                aspectRatio: window.innerHeight / window.innerWidth,
                 disableFlip: false,
                 focusMode: "continuous",
                 advanced: [{ zoom: 2.0 }],
@@ -80,33 +152,16 @@
                     beepsound.muted = true;
                 };
                 result = decodedText
-                console.log("🚀 ~ result", result)
-                $('.toast-container').append(`
-                    <div class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                        <div class="toast-header">
-                            <strong class="me-auto">QR Code</strong>
-                            <small>just now</small>
-                            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-                        </div>
-                        <div class="toast-body">
-                            ${result}
-                        </div>
-                    </div>
-                `)
-                var toastElList = [].slice.call(document.querySelectorAll('.toast'))
-                var toastList = toastElList.map(function (toastEl) {
-                    return new bootstrap.Toast(toastEl)
-                });
-                toastList.forEach(toast => toast.show());
-                // $.LoadingOverlay("hide");
+                // pause
+                html5QrCode.pause()
+                let verify_endpoint = 'https://v6inspection.dlt.go.th/inspectioncarlink/'
+                if(result.indexOf(verify_endpoint) === 0){
+                    toast('Verify!', 'กำลังดำเนินการ', 'success', 10000)
+                }else{
+                    toast('ไม่ถูกต้อง!', 'กรุณาสแกน QR Code ใหม่อีกครั้ง', 'error', 10000)
+                }
             };
             html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback);
-            setInterval(function () {
-                // html5QrCode.applyVideoConstraints({
-                //     focusMode: "continuous",
-                //     advanced: [{ zoom: 2.0 }],
-                // });
-            }, 2000);
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
