@@ -72,6 +72,10 @@
         .colored-toast .swal2-html-container {
             color: white;
         }
+
+        audio{
+            display: none;
+        }
     </style>
 
 </head>
@@ -88,9 +92,11 @@
         <!-- - `.p-3` to prevent the toasts from sticking to the edge of the container  -->
         <div class="toast-container top-0 end-0 p-3"></div>
     </div>
-    <audio id="beepsound" controls>
-        <source src="sound/scanner-beeps-barcode.mp3" type="audio/mpeg">
-        Your browser does not support the audio tag.
+    <audio id="correct-sound" controls>
+        <source src="./sound/correct.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="error-sound" controls>
+        <source src="./sound/error.mp3" type="audio/mpeg">
     </audio>
     <script>
         $(document).ready(function () {
@@ -130,8 +136,6 @@
         }
         var html5QrCode;
         function scancode() {
-            var beepsound = document.getElementById("beepsound");
-
             html5QrCode = new Html5Qrcode("reader");
             const config = {
                 fps: 10,
@@ -147,17 +151,15 @@
             const qrCodeSuccessCallback = (decodedText, decodedResult) => {
                 console.log("🚀 ~ decodedResult", decodedResult)
                 // $.LoadingOverlay("show");
-                beepsound.play();
-                beepsound.onended = function () {
-                    beepsound.muted = true;
-                };
                 result = decodedText
                 // pause
                 html5QrCode.pause()
                 let verify_endpoint = 'https://v6inspection.dlt.go.th/inspectioncarlink/'
                 if(result.indexOf(verify_endpoint) === 0){
+                    document.getElementById('correct-sound').play()
                     toast('Verify!', 'กำลังดำเนินการ', 'success', 10000)
                 }else{
+                    document.getElementById('error-sound').play()
                     toast('ไม่ถูกต้อง!', 'กรุณาสแกน QR Code ใหม่อีกครั้ง', 'error', 10000)
                 }
             };

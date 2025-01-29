@@ -581,74 +581,80 @@
             });
         }
         function selectPackages(userAnswers, allData) {
-            const mainAnswers = userAnswers[0];
-            const genderAnswers = userAnswers[1];
-            const ageAnswers = userAnswers[2];
-            const scoredPackages = [];
-            allData.forEach(row => {
-                console.log("🚀 ~ selectPackages ~ row:", row)
-                let score = 0;
-                let isMainMatched = false;
-                mainAnswers.forEach(mainAnswer => {
-                    row.forEach(tag => {
-                        if (tag.toString().includes(mainAnswer) && matchGender(genderAnswers, row) && matchAge(ageAnswers, row)) {
-                            isMainMatched = true;
-                            score++;
-                        }
-                    });
-                });
-                console.log("🚀 ~ selectPackages ~ score", score)
-                if (isMainMatched) {
-                    userAnswers.slice(3).forEach((answerSet, i) => {
-                        if (i === 4) {
-                            let price = parseFloat(row[5].toString().replace(/,/g, ''));
-                            let select_price = answerSet[0]
-                            if (select_price.includes('ไม่เกิน')) {
-                                if (price < parseInt(select_price.replace('ไม่เกิน', '').replace('บาท', '').replace(/,/g, '').trim())) {
-                                    score++;
-                                }
-                            } else if (select_price.includes('-')) {
-                                let min = parseInt(select_price.split('-')[0].replace('บาท', '').replace(/,/g, '').trim());
-                                let max = parseInt(select_price.split('-')[1].replace('บาท', '').replace(/,/g, '').trim());
-                                if (price >= min && price <= max) {
-                                    score++;
-                                }
-                            } else if (select_price.includes('มากกว่า') || select_price.includes('ชึ้นไป')) {
-                                if (price >= parseInt(select_price.replace('มากกว่า', '').replace('ชึ้นไป', '').replace('บาท', '').replace(/,/g, '').trim())) {
-                                    score++;
-                                }
-                            } else {
-                                if (price == parseInt(select_price.replace('บาท', '').replace(/,/g, '').trim())) {
-                                    score++;
-                                }
-                            }
-                        }
-                        answerSet.forEach(answer => {
-                            row.forEach(tag => {
-                                if (tag.toString().includes('และ')) {
-                                    const tags = tag.toString().split('และ');
-                                    tags.forEach(tag => {
-                                        if (tag.toString().includes(answer)) {
-                                            score++;
-                                        }
-                                    });
-                                } else if (tag.toString().includes(answer)) {
-                                    score++;
-                                }
-                            });
-                        });
-                    });
-                    scoredPackages.push({ row, score });
+            let selectedData = [...allData];
+            
 
-                }
-            });
 
-            console.log("🚀 ~ selectPackages ~ scoredPackages", scoredPackages);
 
-            scoredPackages
-                .filter(a => a.score > 0)
-                .sort((a, b) => b.score - a.score);
-            return scoredPackages;
+
+            // const mainAnswers = userAnswers[0];
+            // const genderAnswers = userAnswers[1];
+            // const ageAnswers = userAnswers[2];
+            // const scoredPackages = [];
+            // allData.forEach(row => {
+            //     console.log("🚀 ~ selectPackages ~ row:", row)
+            //     let score = 0;
+            //     let isMainMatched = false;
+            //     mainAnswers.forEach(mainAnswer => {
+            //         row.forEach(tag => {
+            //             if (tag.toString().includes(mainAnswer) && matchGender(genderAnswers, row) && matchAge(ageAnswers, row)) {
+            //                 isMainMatched = true;
+            //                 score++;
+            //             }
+            //         });
+            //     });
+            //     console.log("🚀 ~ selectPackages ~ score", score)
+            //     if (isMainMatched) {
+            //         userAnswers.slice(3).forEach((answerSet, i) => {
+            //             if (i === 4) {
+            //                 let price = parseFloat(row[5].toString().replace(/,/g, ''));
+            //                 let select_price = answerSet[0]
+            //                 if (select_price.includes('ไม่เกิน')) {
+            //                     if (price < parseInt(select_price.replace('ไม่เกิน', '').replace('บาท', '').replace(/,/g, '').trim())) {
+            //                         score++;
+            //                     }
+            //                 } else if (select_price.includes('-')) {
+            //                     let min = parseInt(select_price.split('-')[0].replace('บาท', '').replace(/,/g, '').trim());
+            //                     let max = parseInt(select_price.split('-')[1].replace('บาท', '').replace(/,/g, '').trim());
+            //                     if (price >= min && price <= max) {
+            //                         score++;
+            //                     }
+            //                 } else if (select_price.includes('มากกว่า') || select_price.includes('ชึ้นไป')) {
+            //                     if (price >= parseInt(select_price.replace('มากกว่า', '').replace('ชึ้นไป', '').replace('บาท', '').replace(/,/g, '').trim())) {
+            //                         score++;
+            //                     }
+            //                 } else {
+            //                     if (price == parseInt(select_price.replace('บาท', '').replace(/,/g, '').trim())) {
+            //                         score++;
+            //                     }
+            //                 }
+            //             }
+            //             answerSet.forEach(answer => {
+            //                 row.forEach(tag => {
+            //                     if (tag.toString().includes('และ')) {
+            //                         const tags = tag.toString().split('และ');
+            //                         tags.forEach(tag => {
+            //                             if (tag.toString().includes(answer)) {
+            //                                 score++;
+            //                             }
+            //                         });
+            //                     } else if (tag.toString().includes(answer)) {
+            //                         score++;
+            //                     }
+            //                 });
+            //             });
+            //         });
+            //         scoredPackages.push({ row, score });
+
+            //     }
+            // });
+
+            // console.log("🚀 ~ selectPackages ~ scoredPackages", scoredPackages);
+
+            // scoredPackages
+            //     .filter(a => a.score > 0)
+            //     .sort((a, b) => b.score - a.score);
+            // return scoredPackages;
         };
 
         function matchGender(genderAnswers, row) {
