@@ -572,18 +572,24 @@
                 filter_packages_final = filter_packages2;
                 opts = [...new Set(filter_packages2.map(package => package[12]))];
             }
-            opts.forEach((option, index) => {
-                const optionLabel = $("<label></label>").addClass("form-check-label").attr("role", "button");
-                const optionInput = $("<input>").attr({
-                    type: questions[step].type,
-                    name: `question${step}`,
-                    class: "form-check-input",
-                    value: option
+            if(opts.length < 1){
+                questionDiv.append('ยังไม่มีแพคเกจที่ตรงกับคุณ');
+                $("#nextBtn").hide()
+            }else{
+                opts.forEach((option, index) => {
+                    const optionLabel = $("<label></label>").addClass("form-check-label").attr("role", "button");
+                    const optionInput = $("<input>").attr({
+                        type: questions[step].type,
+                        name: `question${step}`,
+                        class: "form-check-input",
+                        value: option
+                    });
+                    optionLabel.append(optionInput).append(option);
+                    const optionDiv = $("<div></div>").addClass("form-check my-2").append(optionLabel);
+                    questionDiv.append(optionDiv);
                 });
-                optionLabel.append(optionInput).append(option);
-                const optionDiv = $("<div></div>").addClass("form-check my-2").append(optionLabel);
-                questionDiv.append(optionDiv);
-            });
+                $("#nextBtn").show()
+            }
             $("#prevBtn").toggle(step !== 0);
             $("#nextBtn").text(step === questions.length - 1 ? "ส่งคำตอบ" : "ถัดไป");
             updateProgressBar(step);
