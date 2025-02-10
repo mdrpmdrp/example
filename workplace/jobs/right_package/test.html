@@ -458,7 +458,12 @@
                 </div>
                 <div class="modal-body">
                     <div id="packagesContent"></div>
-                    <button id="sendPackagesBtn" onclick="sendPackages()">สอบถามรายละเอียด</button>
+                    <div class="row justify-content-center">
+                        <div class="col-md-4">
+                            <button id="sendPackagesBtn" class="w-100 rounded-3"
+                                onclick="sendPackages()">สอบถามรายละเอียด</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -467,7 +472,7 @@
     <script>
         $(document).ready(function () {
             liff.init({ liffId: '1655873446-MpmBPPzl' })
-            // setUpAPIKeyAndFetchData();
+            setUpAPIKeyAndFetchData();
             liff.ready.then(async () => {
                 if (liff.isLoggedIn()) {
                     let isFriend = await liff.getFriendship()
@@ -497,13 +502,18 @@
                     });
                 }
             });
+            $('#questionnaireModal').on('hidden.bs.modal', function (e) {
+                currentStep = 0;
+                userAnswers = [];
+                renderQuestion(currentStep, false);
+            });
         });
     </script>
     <script>
         let questions = [];
         const fetchQuestionsFromAPI = (sheet) => {
 
-            return $.post(scriptURL, {
+            return $.getJSON(scriptURL, {
                 opt: 'questions', sheet
             }, function (data) {
                 console.log("🚀 ~ data:", data);
@@ -515,14 +525,54 @@
             });
         };
         let userAnswers = [];
+        let filter_packages_final = [];
         let currentStep = 0;
-        function renderQuestion(step) {
-            console.log("🚀 ~ renderQuestion ~ questions:", questions)
+        function renderQuestion(step, will_show = true) {
             const questionDiv = $("#insertQuestion");
             questionDiv.empty();
             const questionText = $("<h5></h5>").text(questions[step].question);
             questionDiv.append(questionText);
-            questions[step].options.forEach((option, index) => {
+            let opts = questions[step].options;
+            if (step == 2) {
+                let filter_packages = [...allData].filter(package => {
+                    return package[9].split(',').map(x => x.trim()).includes(userAnswers[0][0]) && package[10] === userAnswers[1][0];
+                });
+                if(filter_packages.length == 1){
+                    userAnswers[2] = filter_packages[0][11].split(',').map(x => x.trim());
+                    userAnswers[3] = filter_packages[0][12].split(',').map(x => x.trim());
+                    console.log("🚀 ~ renderQuestion ~ userAnswersaaaa:", userAnswers)
+                    filter_packages_final = filter_packages;
+                    showPackages();
+                    return;
+                }
+                opts = [...new Set(filter_packages.map(package => package[11].split(',').map(x => x.trim())).flat())];
+               
+            } else if (step == 3) {
+                console.log(allData);
+                console.log("🚀 ~ renderQuestion ~ userAnswers", userAnswers);
+                let filter_packages = [...allData].filter(package => {
+                    return package[9].split(',').map(x => x.trim()).includes(userAnswers[0][0]) && package[10] === userAnswers[1][0];
+                });
+                console.log("🚀 ~ renderQuestion ~ filter_packages:", filter_packages)
+                let filter_packages2 = filter_packages.filter(package => {
+                    return package[11].split(',').map(x => x.trim()).some(tag => {
+                        console.log("🚀 ~ returnpackage[11].split ~ tag:", tag)
+
+                        return userAnswers[2].includes(tag);
+                    });
+                })
+                if(filter_packages2.length == 1){
+                    userAnswers[3] = filter_packages2[0][12].split(',').map(x => x.trim());
+                    console.log("🚀 ~ renderQuestion ~ userAnswersbbbb:", userAnswers)
+                    filter_packages_final = filter_packages2;
+                    showPackages();
+                    return;
+                }
+                console.log("🚀 ~ renderQuestion ~ filter_packages2:", filter_packages2)
+                filter_packages_final = filter_packages2;
+                opts = [...new Set(filter_packages2.map(package => package[12]))];
+            }
+            opts.forEach((option, index) => {
                 const optionLabel = $("<label></label>").addClass("form-check-label").attr("role", "button");
                 const optionInput = $("<input>").attr({
                     type: questions[step].type,
@@ -542,7 +592,9 @@
                     $(`input[name="question${step}"][value="${selectedOption}"]`).prop("checked", true);
                 });
             }
-            $('#questionnaireModal').modal('show');
+            if (will_show) {
+                $('#questionnaireModal').modal('show');
+            }
 
         }
         function nextStep() {
@@ -559,12 +611,22 @@
                 renderQuestion(currentStep);
             } else {
                 saveAnswers();
-                // toastAlert(1, "แบบสอบถามของคุณได้ส่งแล้ว!");
-                showPackagesModal(selectPackages(userAnswers, allData))
-                console.log(selectPackages(userAnswers, allData))
-                $('#questionnaireModal').modal('hide');
+                showPackages();
             }
         }
+
+        function showPackages() {
+            // toastAlert(1, "แบบสอบถามของคุณได้ส่งแล้ว!");
+            let filter_packages = filter_packages_final.filter(package => {
+                return package[12].split(',').map(x => x.trim()).some(tag => {
+                    return userAnswers[3].includes(tag);
+                });
+            });
+            console.log("🚀 ~ nextStep ~ filter_packages:", filter_packages)
+            showPackagesModal(filter_packages)
+            $('#questionnaireModal').modal('hide');
+        }
+
         function saveAnswers() {
             const answers = {}
             userAnswers.forEach((answerSet, i) => {
@@ -582,79 +644,74 @@
         }
         function selectPackages(userAnswers, allData) {
             let selectedData = [...allData];
-            
+            const mainAnswers = userAnswers[0];
+            const genderAnswers = userAnswers[1];
+            const ageAnswers = userAnswers[2];
+            const scoredPackages = [];
+            allData.forEach(row => {
+                console.log("🚀 ~ selectPackages ~ row:", row)
+                let score = 0;
+                let isMainMatched = false;
+                mainAnswers.forEach(mainAnswer => {
+                    row.forEach(tag => {
+                        if (tag.toString().includes(mainAnswer) && matchGender(genderAnswers, row) && matchAge(ageAnswers, row)) {
+                            isMainMatched = true;
+                            score++;
+                        }
+                    });
+                });
+                console.log("🚀 ~ selectPackages ~ score", score)
+                if (isMainMatched) {
+                    userAnswers.slice(3).forEach((answerSet, i) => {
+                        if (i === 4) {
+                            let price = parseFloat(row[5].toString().replace(/,/g, ''));
+                            let select_price = answerSet[0]
+                            if (select_price.includes('ไม่เกิน')) {
+                                if (price < parseInt(select_price.replace('ไม่เกิน', '').replace('บาท', '').replace(/,/g, '').trim())) {
+                                    score++;
+                                }
+                            } else if (select_price.includes('-')) {
+                                let min = parseInt(select_price.split('-')[0].replace('บาท', '').replace(/,/g, '').trim());
+                                let max = parseInt(select_price.split('-')[1].replace('บาท', '').replace(/,/g, '').trim());
+                                if (price >= min && price <= max) {
+                                    score++;
+                                }
+                            } else if (select_price.includes('มากกว่า') || select_price.includes('ชึ้นไป')) {
+                                if (price >= parseInt(select_price.replace('มากกว่า', '').replace('ชึ้นไป', '').replace('บาท', '').replace(/,/g, '').trim())) {
+                                    score++;
+                                }
+                            } else {
+                                if (price == parseInt(select_price.replace('บาท', '').replace(/,/g, '').trim())) {
+                                    score++;
+                                }
+                            }
+                        }
+                        answerSet.forEach(answer => {
+                            row.forEach(tag => {
+                                if (tag.toString().includes('และ')) {
+                                    const tags = tag.toString().split('และ');
+                                    tags.forEach(tag => {
+                                        if (tag.toString().includes(answer)) {
+                                            score++;
+                                        }
+                                    });
+                                } else if (tag.toString().includes(answer)) {
+                                    score++;
+                                }
+                            });
+                        });
+                    });
+                    scoredPackages.push({ row, score });
 
+                }
+            });
 
+            console.log("🚀 ~ selectPackages ~ scoredPackages", scoredPackages);
 
-
-            // const mainAnswers = userAnswers[0];
-            // const genderAnswers = userAnswers[1];
-            // const ageAnswers = userAnswers[2];
-            // const scoredPackages = [];
-            // allData.forEach(row => {
-            //     console.log("🚀 ~ selectPackages ~ row:", row)
-            //     let score = 0;
-            //     let isMainMatched = false;
-            //     mainAnswers.forEach(mainAnswer => {
-            //         row.forEach(tag => {
-            //             if (tag.toString().includes(mainAnswer) && matchGender(genderAnswers, row) && matchAge(ageAnswers, row)) {
-            //                 isMainMatched = true;
-            //                 score++;
-            //             }
-            //         });
-            //     });
-            //     console.log("🚀 ~ selectPackages ~ score", score)
-            //     if (isMainMatched) {
-            //         userAnswers.slice(3).forEach((answerSet, i) => {
-            //             if (i === 4) {
-            //                 let price = parseFloat(row[5].toString().replace(/,/g, ''));
-            //                 let select_price = answerSet[0]
-            //                 if (select_price.includes('ไม่เกิน')) {
-            //                     if (price < parseInt(select_price.replace('ไม่เกิน', '').replace('บาท', '').replace(/,/g, '').trim())) {
-            //                         score++;
-            //                     }
-            //                 } else if (select_price.includes('-')) {
-            //                     let min = parseInt(select_price.split('-')[0].replace('บาท', '').replace(/,/g, '').trim());
-            //                     let max = parseInt(select_price.split('-')[1].replace('บาท', '').replace(/,/g, '').trim());
-            //                     if (price >= min && price <= max) {
-            //                         score++;
-            //                     }
-            //                 } else if (select_price.includes('มากกว่า') || select_price.includes('ชึ้นไป')) {
-            //                     if (price >= parseInt(select_price.replace('มากกว่า', '').replace('ชึ้นไป', '').replace('บาท', '').replace(/,/g, '').trim())) {
-            //                         score++;
-            //                     }
-            //                 } else {
-            //                     if (price == parseInt(select_price.replace('บาท', '').replace(/,/g, '').trim())) {
-            //                         score++;
-            //                     }
-            //                 }
-            //             }
-            //             answerSet.forEach(answer => {
-            //                 row.forEach(tag => {
-            //                     if (tag.toString().includes('และ')) {
-            //                         const tags = tag.toString().split('และ');
-            //                         tags.forEach(tag => {
-            //                             if (tag.toString().includes(answer)) {
-            //                                 score++;
-            //                             }
-            //                         });
-            //                     } else if (tag.toString().includes(answer)) {
-            //                         score++;
-            //                     }
-            //                 });
-            //             });
-            //         });
-            //         scoredPackages.push({ row, score });
-
-            //     }
-            // });
-
-            // console.log("🚀 ~ selectPackages ~ scoredPackages", scoredPackages);
-
-            // scoredPackages
-            //     .filter(a => a.score > 0)
-            //     .sort((a, b) => b.score - a.score);
-            // return scoredPackages;
+            scoredPackages
+                .filter(a => a.score > 0)
+                .sort((a, b) => b.score - a.score);
+            return scoredPackages;
         };
 
         function matchGender(genderAnswers, row) {
@@ -688,7 +745,7 @@
             if (current_carousel.length == 0) {
                 $('#packagesModal').modal('hide');
                 currentStep = 0;
-                userAnswers =[]
+                userAnswers = []
                 $('#questionnaireModal').modal('show');
                 renderQuestion(currentStep);
                 return
@@ -792,19 +849,18 @@ ${url}`;
         let currentPage = 1;
         const itemsPerPage = 8;
         const fetchDataFromAPI = (sheet) => {
-            return $.post(scriptURL, {
+            return $.getJSON(scriptURL, {
                 opt: 'data', sheet
-            }, function (data) {
-                console.log("🚀 ~ data:", data.data);
-                allData = data.data.filter((row) => row[0] != '');
-                return allData;
             }).fail(function (error) {
                 toastAlert(0, 'เกิดข้อผิดพลาดในการดึงข้อมูล');
                 console.error('Error fetching data:', error);
+            }).done(function (data) {
+                allData = data.data.filter((row) => row[0] != '');
+                return allData;
             });
         };
         const fetchSelectFromAPI = (sheet) => {
-            return $.post(scriptURL, {
+            return $.getJSON(scriptURL, {
                 opt: 'data', sheet
             }, function (data) {
                 console.log("🚀 ~ data:", data);
@@ -818,6 +874,7 @@ ${url}`;
         const scriptURL = 'https://script.google.com/macros/s/AKfycbyPuEYaxymY63BUD_svH74Vm3q3_B-9PL_PeJPlDH1MAGrR64NVzJxGyZ1q3YazdeA/exec'
         const setUpAPIKeyAndFetchData = () => {
             fetchQuestionsFromAPI('Questions').then(function () {
+
                 renderQuestion(currentStep);
             });
             fetchDataFromAPI('Packages').then((newData) => {
@@ -1119,8 +1176,7 @@ ${url}`;
                 $('#sendPackagesBtn').text('ลองเลือกคำตอบใหม่').removeClass('btn-primary').addClass('btn-danger');
                 return;
             }
-            recommendedPackages.forEach((pkg, index) => {
-                const row = pkg.row;
+            recommendedPackages.forEach((row, index) => {
                 let Duration = [];
                 let item7Text = row[7];
                 let item7Array = item7Text.split(", ");
@@ -1166,14 +1222,15 @@ ${url}`;
         <div class="carousel-inner">
             ${carouselItems}
         </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#packagesCarousel" data-bs-slide="prev">
+        ${carouselItems.length > 1 ? `<button class="carousel-control-prev" type="button" data-bs-target="#packagesCarousel" data-bs-slide="prev">
             <span class="carousel-control-prev-icon" aria-hidden="true"></span>
             <span class="visually-hidden">Previous</span>
         </button>
         <button class="carousel-control-next" type="button" data-bs-target="#packagesCarousel" data-bs-slide="next">
             <span class="carousel-control-next-icon" aria-hidden="true"></span>
             <span class="visually-hidden">Next</span>
-        </button>
+        </button>` : ''}
+        
     </div>
 `;
             packagesContent.innerHTML = carouselHTML;
@@ -1196,6 +1253,8 @@ ${url}`;
                     }
                 });
             }, 1000);
+            userAnswers = [];
+            currentStep = 0;
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
