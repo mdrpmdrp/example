@@ -471,7 +471,8 @@
     <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
     <script>
         $(document).ready(function () {
-            liff.init({ liffId: '1655873446-MpmBPPzl' })
+            // liff.init({ liffId: '1655873446-MpmBPPzl' })
+            setUpAPIKeyAndFetchData();
             liff.ready.then(async () => {
                 if (liff.isLoggedIn()) {
                     let isFriend = await liff.getFriendship()
@@ -489,7 +490,6 @@
                                 $('#addfriend-btn').click(() => {
                                     location.href = 'https://lin.ee/NxCf8qd'
                                 })
-
                             }
                         })
                         return
@@ -511,11 +511,9 @@
     <script>
         let questions = [];
         const fetchQuestionsFromAPI = (sheet) => {
-
             return $.getJSON(scriptURL, {
                 opt: 'questions', sheet
             }, function (data) {
-                console.log("🚀 ~ data:", data);
                 questions = data.questions;
                 return questions;
             }).fail(function (error) {
@@ -533,48 +531,37 @@
             questionDiv.append(questionText);
             let opts = questions[step].options;
             if (step == 2) {
-                let filter_packages = [...allData].filter(package => {
-                    return package[9].split(',').map(x => x.trim()).includes(userAnswers[0][0]) && package[10].split(',').map(x => x.trim()).includes(userAnswers[1][0]);
-                });
-                if(filter_packages.length == 1){
+                let filter_packages = allData.filter(package =>
+                    package[9].split(',').map(x => x.trim()).includes(userAnswers[0][0]) &&
+                    package[10].split(',').map(x => x.trim()).some(x => userAnswers[1].includes(x))
+                );
+                if (filter_packages.length == 1) {
                     userAnswers[2] = filter_packages[0][11].split(',').map(x => x.trim());
                     userAnswers[3] = filter_packages[0][12].split(',').map(x => x.trim());
-                    console.log("🚀 ~ renderQuestion ~ userAnswersaaaa:", userAnswers)
                     filter_packages_final = filter_packages;
                     showPackages();
                     return;
                 }
                 opts = [...new Set(filter_packages.map(package => package[11].split(',').map(x => x.trim())).flat())];
-               
             } else if (step == 3) {
-                console.log(allData);
-                console.log("🚀 ~ renderQuestion ~ userAnswers", userAnswers);
-                let filter_packages = [...allData].filter(package => {
-                    return package[9].split(',').map(x => x.trim()).includes(userAnswers[0][0]) && package[10] === userAnswers[1][0];
-                });
-                console.log("🚀 ~ renderQuestion ~ filter_packages:", filter_packages)
-                let filter_packages2 = filter_packages.filter(package => {
-                    return package[11].split(',').map(x => x.trim()).some(tag => {
-                        console.log("🚀 ~ returnpackage[11].split ~ tag:", tag)
-
-                        return userAnswers[2].includes(tag);
-                    });
-                })
-                if(filter_packages2.length == 1){
-                    userAnswers[3] = filter_packages2[0][12].split(',').map(x => x.trim());
-                    console.log("🚀 ~ renderQuestion ~ userAnswersbbbb:", userAnswers)
+                let filter_packages = allData.filter(package =>
+                    package[9].split(',').map(x => x.trim()).includes(userAnswers[0][0]) &&
+                    package[10].split(',').map(x => x.trim()).some(x => userAnswers[1].includes(x)) &&
+                    package[11].split(',').map(x => x.trim()).some(tag => userAnswers[2].includes(tag))
+                );
+                if (filter_packages.length == 1) {
+                    userAnswers[3] = filter_packages[0][12].split(',').map(x => x.trim());
                     filter_packages_final = filter_packages2;
                     showPackages();
                     return;
                 }
-                console.log("🚀 ~ renderQuestion ~ filter_packages2:", filter_packages2)
-                filter_packages_final = filter_packages2;
-                opts = [...new Set(filter_packages2.map(package => package[12]))];
+                filter_packages_final = filter_packages;
+                opts = [...new Set(filter_packages.map(package => package[12]))];
             }
-            if(opts.length < 1){
+            if (opts.length < 1) {
                 questionDiv.append('ยังไม่มีแพคเกจที่ตรงกับคุณ');
                 $("#nextBtn").hide()
-            }else{
+            } else {
                 opts.forEach((option, index) => {
                     const optionLabel = $("<label></label>").addClass("form-check-label").attr("role", "button");
                     const optionInput = $("<input>").attr({
@@ -600,7 +587,6 @@
             if (will_show) {
                 $('#questionnaireModal').modal('show');
             }
-
         }
         function nextStep() {
             const selectedOptions = Array.from(document.querySelectorAll(`input[name="question${currentStep}"]:checked`))
@@ -610,7 +596,6 @@
                 return;
             }
             userAnswers[currentStep] = [...new Set(selectedOptions)];
-            console.log("🚀 ~ nextStep ~ userAnswers:", userAnswers)
             if (currentStep < questions.length - 1) {
                 currentStep++;
                 renderQuestion(currentStep);
@@ -619,7 +604,6 @@
                 showPackages();
             }
         }
-
         function showPackages() {
             // toastAlert(1, "แบบสอบถามของคุณได้ส่งแล้ว!");
             let filter_packages = filter_packages_final.filter(package => {
@@ -627,22 +611,18 @@
                     return userAnswers[3].includes(tag);
                 });
             });
-            console.log("🚀 ~ nextStep ~ filter_packages:", filter_packages)
             showPackagesModal(filter_packages)
             $('#questionnaireModal').modal('hide');
         }
-
         function saveAnswers() {
             const answers = {}
             userAnswers.forEach((answerSet, i) => {
                 answers[questions[i].question] = answerSet;
             });
-            console.log("🚀 ~ saveAnswers ~ answers:", answers)
             $.post(scriptURL, {
                 opt: 'saveAnswers',
                 answers: JSON.stringify(answers)
             }, function (data) {
-                console.log("🚀 ~ saveAnswers ~ data:", data);
             }).fail(function (error) {
                 console.error('Error saving answers:', error);
             });
@@ -654,7 +634,6 @@
             const ageAnswers = userAnswers[2];
             const scoredPackages = [];
             allData.forEach(row => {
-                console.log("🚀 ~ selectPackages ~ row:", row)
                 let score = 0;
                 let isMainMatched = false;
                 mainAnswers.forEach(mainAnswer => {
@@ -665,7 +644,6 @@
                         }
                     });
                 });
-                console.log("🚀 ~ selectPackages ~ score", score)
                 if (isMainMatched) {
                     userAnswers.slice(3).forEach((answerSet, i) => {
                         if (i === 4) {
@@ -707,18 +685,13 @@
                         });
                     });
                     scoredPackages.push({ row, score });
-
                 }
             });
-
-            console.log("🚀 ~ selectPackages ~ scoredPackages", scoredPackages);
-
             scoredPackages
                 .filter(a => a.score > 0)
                 .sort((a, b) => b.score - a.score);
             return scoredPackages;
         };
-
         function matchGender(genderAnswers, row) {
             let sel_gender = genderAnswers[0].split(/และ|หรือ/).map(g => g.trim());
             if (sel_gender.length == 1) {
@@ -727,12 +700,10 @@
                 return sel_gender.some(g => row[9].includes(g));
             }
         }
-
         function matchAge(ageAnswers, row) {
             let sel_age = ageAnswers[0]
             return row[10] == sel_age;
         }
-
         function prevStep() {
             if (currentStep > 0) {
                 currentStep--;
@@ -758,13 +729,9 @@
             const { cid, cname, pid, pname, normal_price, discount_price, unit, poster, url } = current_carousel.data();
             let message = `สนใจแพ็กเกจ:
 ${pname} (${pid})
-
 หมวดหมู่: ${cname} (${cid})
-
 ราคาปกติ: ${isNaN(normal_price) ? normal_price : (parseFloat(normal_price).toLocaleString() + ' บาท/ ' + unit)}
-
 ราคาพิเศษ: ${parseFloat(discount_price).toLocaleString()} บาท/ ${unit}
-
 รายละเอียด:
 ${url}`;
             let image = {
@@ -797,7 +764,7 @@ ${url}`;
                             messages: JSON.stringify(messages),
                             uid: liff.getDecodedIDToken().sub
                         }, function (data) {
-                            // console.log("🚀 ~ sendPackages ~ data:", data);
+                            // 
                             // toastAlert(1, 'ส่งข้อมูลแพ็กเกจใหเแอดมินเรียบร้อยแล้ว กรุณารอการติดต่อกลับจากเจ้าหน้าที่');
                             resolve();
                         }).fail(function (error) {
@@ -819,7 +786,6 @@ ${url}`;
                         opt: 'sendLineToAdmin',
                         messages: JSON.stringify(messages2),
                     }, function (data) {
-                        console.log("🚀 ~ sendPackages ~ data:", data);
                         resolve();
                     }).fail(function (error) {
                         console.error('Error saving packages:', error);
@@ -841,7 +807,6 @@ ${url}`;
                 .catch(() => {
                     toastAlert(0, 'เกิดข้อผิดพลาดในการส่งข้อมูล');
                 })
-
         };
     </script>
     <script>
@@ -868,7 +833,6 @@ ${url}`;
             return $.getJSON(scriptURL, {
                 opt: 'data', sheet
             }, function (data) {
-                console.log("🚀 ~ data:", data);
                 allCategory = data.data.filter((row) => row[0] != '');
                 return allCategory;
             }).fail(function (error) {
@@ -879,7 +843,6 @@ ${url}`;
         const scriptURL = 'https://script.google.com/macros/s/AKfycbyPuEYaxymY63BUD_svH74Vm3q3_B-9PL_PeJPlDH1MAGrR64NVzJxGyZ1q3YazdeA/exec'
         const setUpAPIKeyAndFetchData = () => {
             fetchQuestionsFromAPI('Questions').then(function () {
-
                 renderQuestion(currentStep);
             });
             fetchDataFromAPI('Packages').then((newData) => {
@@ -898,7 +861,6 @@ ${url}`;
         const isEqual = (data1, data2) => {
             return JSON.stringify(data1) === JSON.stringify(data2);
         };
-
         document.addEventListener('DOMContentLoaded', () => {
             const burgerMenu = document.querySelector('.burger-menu');
             const navLinks = document.querySelector('.menu-list');
@@ -953,11 +915,9 @@ ${url}`;
             } else {
                 filter = $('#head-list-package').text().trim();
             }
-            console.log("🚀 ~ insertPackageData ~ filter:", filter);
             const filteredData = filter === "แสดงทั้งหมด"
                 ? packageDataAll
                 : packageDataAll.filter((row) => row[1] === filter);
-            console.log("🚀 ~ insertPackageData ~ filteredData:", filteredData)
             $('#count-list-package').text(filteredData.length + ' แพ็กเกจ');
             if (filteredData.length === 0) {
                 const noDataText = document.createElement("p");
@@ -1080,8 +1040,6 @@ ${url}`;
                 nextButton.removeClass("active");
             }
             let ul = $("<ul class='mb-0'></ul>");
-
-
             for (let i = 1; i <= totalPages; i++) {
                 let page = $("<a></a>")
                     .attr('href', '#')
@@ -1102,7 +1060,6 @@ ${url}`;
                 .append($('<li></li>').addClass('page-prev').append(prevButton))
                 .append($('<li></li>').addClass('page-next').append(nextButton));
             pagination.append(ul);
-
         };
         const scrollToTop = () => {
             window.scrollTo({
@@ -1211,8 +1168,7 @@ ${url}`;
                             <p class="card-text"><strong>Category:</strong> ${row[1]}</p>
                             <p class="card-text"><strong>Price:</strong> ${isNaN(row[4]) ? row[4] : (parseInt(row[4]).toLocaleString() + ' บาท')}</p>   
                             <p class="card-text"><strong>Discount:</strong> ${parseInt(row[5]).toLocaleString()} บาท</p>\
-                            ${row[8] == ''? '' : ` <p class="card-text w-100 text-center"><strong><a href="${row[8]}" target="_blank" class="text-decoration-none">รายละเอียดเพิ่มเติม</a></strong></p>`}
-                           
+                            ${row[8] == '' ? '' : ` <p class="card-text w-100 text-center"><strong><a href="${row[8]}" target="_blank" class="text-decoration-none">รายละเอียดเพิ่มเติม</a></strong></p>`}
                         </div>
                     </div>
                 </div>
@@ -1236,7 +1192,6 @@ ${url}`;
             <span class="carousel-control-next-icon" aria-hidden="true"></span>
             <span class="visually-hidden">Next</span>
         </button>` : ''}
-        
     </div>
 `;
             packagesContent.innerHTML = carouselHTML;
@@ -1266,10 +1221,8 @@ ${url}`;
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
-
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 </body>
 
 </html>
