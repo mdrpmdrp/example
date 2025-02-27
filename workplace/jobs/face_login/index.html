@@ -162,9 +162,9 @@
                 };
                 faceapi.matchDimensions(video, displaySize);
 
+                setInterval(async () => {
                 const canvas = faceapi.createCanvasFromMedia(video);
                 const context = canvas.getContext('2d', { willReadFrequently: true });
-                setInterval(async () => {
                     const labels = ["123456"]; // Add your own label
                     const descriptions = [];
                     const detections = await faceapi
@@ -172,6 +172,7 @@
                         .withFaceLandmarks()
                         .withFaceDescriptor();
                     console.log("🚀 !! detections:", detections)
+                    if(!detections) return;
                     const resizedDetections = faceapi.resizeResults(detections, displaySize);
                     // document.getElementById('camera').append(canvas);
                     faceapi.draw.drawDetections(canvas, resizedDetections);
@@ -179,7 +180,7 @@
                     descriptions.push(detections.descriptor);
                     localStorage.setItem('faceDescription', JSON.stringify(descriptions[0]));
                     console.log(new faceapi.LabeledFaceDescriptors(labels[0], descriptions));
-                    matchFace(new faceapi.LabeledFaceDescriptors(labels[0], descriptions));
+                    matchFace();
 
                 }, 100);
             }, 200);
@@ -187,6 +188,16 @@
 
 
         async function matchFace(labeledFaceDescriptors) {
+            if(!labeledFaceDescriptors) {
+                const storedDescription = localStorage.getItem('faceDescription');
+                if (storedDescription) {
+                    const parsedDescription = JSON.parse(storedDescription);
+                    labeledFaceDescriptors = new faceapi.LabeledFaceDescriptors("123456", [new Float32Array(parsedDescription)]);
+                    console.log("Loaded face description from localStorage:", labeledFaceDescriptors);
+                }else{
+                    return;
+                }
+            }
             const video = document.getElementById('video');
             const displaySize = {
                 width: $('#video').width(),
@@ -205,14 +216,13 @@
                 .withFaceDescriptor();
             console.log("🚀 !! detections:", detections)
             const resizedDetections = faceapi.resizeResults(detections, displaySize);
-            document.getElementById('camera').append(canvas);
             faceapi.draw.drawDetections(canvas, resizedDetections);
             // faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
             descriptions.push(detections.descriptor);
             console.log(new faceapi.LabeledFaceDescriptors(labels[0], descriptions));
             const faceMatcher = new faceapi.FaceMatcher(new faceapi.LabeledFaceDescriptors(labels[0], descriptions));
             const results = resizedDetections.map(d => faceMatcher.findBestMatch(d.descriptor));
-            console.log("🚀 !! results:", results)
+            
         }
     </script>
 
