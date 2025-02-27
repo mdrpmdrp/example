@@ -84,7 +84,8 @@
                         <div id="camera" style="width: 100%; aspect-ratio: 3/4;"
                             class="bg-body-secondary rounded-3 d-flex justify-content-center align-items-center mb-3">
                             <i class="bi bi-camera-video text-muted" style="font-size: 3rem;"></i>
-                            <video id="video" autoplay class="d-none rounded-4" style="width: 100%;aspect-ratio: 3/4;"></video>
+                            <video id="video" autoplay class="d-none rounded-4"
+                                style="width: 100%;aspect-ratio: 3/4;"></video>
                         </div>
                         <a href="register.html" class="register-link">Don't have an account? Register</a>
                     </form>
@@ -145,7 +146,7 @@
                 });
         }
 
-        $('#video').on('loadeddata',async function () {
+        $('#video').on('loadeddata', async function () {
             setTimeout(async () => {
                 const video = document.getElementById('video');
                 const displaySize = {
@@ -154,13 +155,21 @@
                 };
                 faceapi.matchDimensions(video, displaySize);
 
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                const canvas = faceapi.createCanvasFromMedia(video);
                 // setInterval(async () => {
-                    const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
-                    const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                    const canvas = faceapi.createCanvasFromMedia(video);
-                    document.getElementById('camera').append(canvas);
-                    faceapi.draw.drawDetections(canvas, resizedDetections);
-                    faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+                const labels = ["ใบหน้าสำหรับค้นหา"]; // Add your own label
+                const descriptions = [];
+                const detections = await faceapi
+                    .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+                console.log("🚀 !! detections:", detections)
+                document.getElementById('camera').append(canvas);
+                faceapi.draw.drawDetections(canvas, resizedDetections);
+                faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+                descriptions.push(detections.descriptor);
+                console.log(new faceapi.LabeledFaceDescriptors(labels[0], descriptions));
                 // }, 100);
             }, 200);
         });
