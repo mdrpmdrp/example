@@ -213,13 +213,18 @@
                 .withFaceLandmarks()
                 .withFaceDescriptor();
             console.log("🚀 !! detections:", detections)
-            const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
-            const results = faceMatcher.findBestMatch(detections.descriptor);
-            console.log("🚀 ~ //setInterval ~ results:", results)
-            let resizeResults = faceapi.resizeResults(detections, displaySize);
-            faceapi.draw.drawDetections(canvas, resizeResults, { label: results.toString() });
+            let resizedDetections = faceapi.resizeResults(detections, displaySize);
+            let results = resizedDetections.map(d => faceMatcher.findBestMatch(d.descriptor));
+            results = results.filter((result) => result.results.length > 0)
+            results = results.filter((result) => result.results.map((r) => r.label).includes(parsedDescription.label))
+            results.forEach((bestMatch, i) => {
+                const box = detections[i].detection.box
+                const text = bestMatch.toString()
+                const drawBox = new faceapi.draw.DrawBox(box, { label: text })
+                drawBox.draw(canvas)
+            })
             $('#camera').html(canvas);
-            if (results.label === "unknown") {
+            if (results._label === "unknown") {
                 Swal.fire({
                     icon: 'error',
                     title: 'Face not recognized',
