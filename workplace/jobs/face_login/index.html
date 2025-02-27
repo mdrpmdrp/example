@@ -214,15 +214,15 @@
                 .withFaceDescriptor();
             console.log("🚀 !! detections:", detections)
             let resizedDetections = faceapi.resizeResults(detections, displaySize);
-            let results = resizedDetections.map(d => faceMatcher.findBestMatch(d.descriptor));
+            let faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
+            let results = faceMatcher.findBestMatch(resizedDetections.descriptor);
             results = results.filter((result) => result.results.length > 0)
             results = results.filter((result) => result.results.map((r) => r.label).includes(parsedDescription.label))
-            results.forEach((bestMatch, i) => {
-                const box = detections[i].detection.box
-                const text = bestMatch.toString()
-                const drawBox = new faceapi.draw.DrawBox(box, { label: text })
-                drawBox.draw(canvas)
-            })
+            console.log("🚀 !! results:", results)
+            const box = detections[i].detection.box
+            const text = results.toString()
+            const drawBox = new faceapi.draw.DrawBox(box, { label: text })
+            drawBox.draw(canvas)
             $('#camera').html(canvas);
             if (results._label === "unknown") {
                 Swal.fire({
