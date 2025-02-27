@@ -207,7 +207,6 @@
             const canvas = faceapi.createCanvasFromMedia(video);
             const context = canvas.getContext('2d', { willReadFrequently: true });
             // setInterval(async () => {
-            const labels = ["123456"]; // Add your own label
             const detections = await faceapi
                 .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions())
                 .withFaceLandmarks()
@@ -216,8 +215,7 @@
             const resizedDetections = faceapi.resizeResults(detections, displaySize);
             faceapi.draw.drawDetections(canvas, resizedDetections);
             // faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-            console.log(new faceapi.LabeledFaceDescriptors(labels[0], descriptions));
-            const faceMatcher = new faceapi.FaceMatcher(new faceapi.LabeledFaceDescriptors(labels[0], descriptions));
+            const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.8);
             const results = resizedDetections.map(d => faceMatcher.findBestMatch(d.descriptor));
             results.forEach((result, i) => {
                 const box = resizedDetections[i].detection.box;
