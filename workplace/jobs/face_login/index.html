@@ -205,6 +205,7 @@
             faceapi.matchDimensions(video, displaySize);
 
             const canvas = faceapi.createCanvasFromMedia(video);
+
             const context = canvas.getContext('2d', { willReadFrequently: true });
             // setInterval(async () => {
             const detections = await faceapi
@@ -216,9 +217,21 @@
             const results = faceMatcher.findBestMatch(detections.descriptor);
             console.log("🚀 ~ //setInterval ~ results:", results)
             let resizeResults = faceapi.resizeResults(detections, displaySize);
-            faceapi.draw.drawDetections(video, resizeResults, { label: results.toString() });
-
-        }
+            faceapi.draw.drawDetections(canvas, resizeResults, { label: results.toString() });
+            $('#camera').html(canvas);
+            if (results.label === "unknown") {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Face not recognized',
+                    text: 'Please try again',
+                });
+            } else {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Face recognized',
+                    text: 'Welcome back!',
+                });
+            }
     </script>
 
 
