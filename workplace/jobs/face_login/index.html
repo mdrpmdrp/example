@@ -150,7 +150,7 @@
             const storedDescription = localStorage.getItem('faceDescription');
             if (storedDescription) {
                 const parsedDescription = JSON.parse(storedDescription);
-                const labeledFaceDescriptors = new faceapi.LabeledFaceDescriptors("123456", [new Float32Array(parsedDescription)]);
+                const labeledFaceDescriptors = new faceapi.LabeledFaceDescriptors(parsedDescription.label, [new Float32Array(parsedDescription.descriptions)]);
                 console.log("Loaded face description from localStorage:", labeledFaceDescriptors);
                 matchFace(labeledFaceDescriptors);
             }
@@ -178,8 +178,7 @@
                     faceapi.draw.drawDetections(canvas, resizedDetections);
                     // faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
                     descriptions.push(detections.descriptor);
-                    localStorage.setItem('faceDescription', JSON.stringify(descriptions[0]));
-                    console.log(new faceapi.LabeledFaceDescriptors(labels[0], descriptions));
+                    localStorage.setItem('faceDescription', JSON.stringify({ label: labels[0], descriptions: Array.from(detections.descriptor) }));
                     matchFace();
 
                 }, 100);
@@ -192,7 +191,7 @@
                 const storedDescription = localStorage.getItem('faceDescription');
                 if (storedDescription) {
                     const parsedDescription = JSON.parse(storedDescription);
-                    labeledFaceDescriptors = new faceapi.LabeledFaceDescriptors("123456", [new Float32Array(parsedDescription)]);
+                    labeledFaceDescriptors = new faceapi.LabeledFaceDescriptors(parsedDescription.label, [new Float32Array(parsedDescription.descriptions)]);
                     console.log("Loaded face description from localStorage:", labeledFaceDescriptors);
                 }else{
                     return;
@@ -209,7 +208,6 @@
             const context = canvas.getContext('2d', { willReadFrequently: true });
             // setInterval(async () => {
             const labels = ["123456"]; // Add your own label
-            const descriptions = [];
             const detections = await faceapi
                 .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions())
                 .withFaceLandmarks()
@@ -218,10 +216,14 @@
             const resizedDetections = faceapi.resizeResults(detections, displaySize);
             faceapi.draw.drawDetections(canvas, resizedDetections);
             // faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-            descriptions.push(detections.descriptor);
             console.log(new faceapi.LabeledFaceDescriptors(labels[0], descriptions));
             const faceMatcher = new faceapi.FaceMatcher(new faceapi.LabeledFaceDescriptors(labels[0], descriptions));
             const results = resizedDetections.map(d => faceMatcher.findBestMatch(d.descriptor));
+            results.forEach((result, i) => {
+                const box = resizedDetections[i].detection.box;
+                const drawBox = new faceapi.draw.DrawBox(box, { label: result.toString() });
+                drawBox.draw(canvas);
+            });
             
         }
     </script>
