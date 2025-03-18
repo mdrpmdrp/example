@@ -26,7 +26,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
-    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/material_red.css">
+    <!-- <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/material_red.css"> -->
 
     <style>
         * {
@@ -39,8 +39,7 @@
             width: 100%;
             height: 80vh;
             font-family: 'Prompt', sans-serif;
-            /* background-color: #cfecfa; */
-            /* background-color: #D3D3D3; */
+            color: #0A1829
         }
 
         table.dataTable.table-striped>tbody>tr.odd.selected>* {
@@ -71,17 +70,40 @@
         .container {
             max-width: 600px;
         }
+
+        .btn-select {
+            background-color: #62c3e8;
+            color: '#0A1829';
+            transition: all 0.3s ease-in-out;
+        }
+
+        .btn-select:hover {
+            background-color: #07111D;
+            color: #A1C1E8;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .form-control:focus {
+            box-shadow: 0 0 0 0.2rem rgba(112, 124, 192, 0.3);
+        }
+
+        .form-select:focus {
+            box-shadow: 0 0 0 0.2rem rgba(112, 124, 192, 0.3);
+        }
     </style>
     <title>ระบบลงทะเบียนอบรม</title>
 </head>
 
-<body>
-    <div class="container p-4">
+<body class="container-fluid">
+    <header>
         <div class="row">
             <div class="col-12 text-center">
-                <img src="https://img5.pic.in.th/file/secure-sv1/50d66255-4b76-4a9a-82b2-ecd9e0e1ef3b-removebg-preview.png" alt="" class="img-fluid" style="max-height: 250px;">
+                <img src="https://img5.pic.in.th/file/secure-sv1/50d66255-4b76-4a9a-82b2-ecd9e0e1ef3b-removebg-preview.png"
+                    alt="" class="img-fluid" style="max-height: 250px;">
             </div>
         </div>
+    </header>
+    <div class="container p-2" id="main">
         <form id="mainform" class="needs-validation" novalidate>
             <div class="row g-3 mb-3 justify-content-center">
                 <div class="col-12">
@@ -168,8 +190,6 @@
                     </div>
                 </div>
                 <div class="col-12">
-                    <!-- จังหวัดที่จะนำรถไปใช้ / 
-    Province where the car is used  -->
                     <label for="province">
                         <i class="fa-solid fa-map-location-dot"></i>
                         จังหวัดที่จะนำรถไปใช้ / Province where the car is used
@@ -180,8 +200,6 @@
                     </div>
                 </div>
                 <div class="col-12">
-                    <!-- คุณพบโฆษณาเราจากสื่อใด/
-    Where did you find our ads? -->
                     <label for="advertisement">
                         <i class="fa-solid fa-newspaper"></i>
                         คุณพบโฆษณาเราจากสื่อใด / Where did you find our ads?
@@ -219,6 +237,57 @@
             </div>
         </form>
     </div>
+    <div class="container px-2 pb-4">
+        <div class="row">
+            <div class="col-12 text-center">
+                <div class="text-center h4">รถที่ว่างในช่วงเวลาที่คุณเลือก</div>
+                <span class="text-center h6">Car available in your selected time</span>
+            </div>
+            <div class="col-12 mt-3">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control rounded-3 shadow-none" id="pickup-datetime" readonly
+                        placeholder="รับรถ / Pick up">
+                    <label for="pickup-datetime">รับรถ / Pick up</label>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control rounded-3 shadow-none" id="return-datetime" readonly
+                        placeholder="คืนรถ / Return date">
+                    <label for="return-datetime">คืนรถ / Return date</label>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="d-grid">
+                    <button id="resetFilter" class="btn  btn-sm btn-outline-secondary rounded-3 mb-3">
+                        <i class="fa-solid fa-rotate"></i>
+                        รีเซ็ตตัวกรอง / Reset Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="carResults" class="row mb-4 g-3">
+            <!-- Car cards will be shown here dynamically -->
+        </div>
+
+        <!-- Car card template -->
+        <template id="carCardTemplate">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <img src="" class="card-img-top px-3" alt="Car Image">
+                    <div class="card-body m-0 p-0 text-center">
+                        <button class="btn btn-select rounded-3 btn-sm text-decoration-none mb-3"
+                            onclick="sendData(this)">
+                            <!-- <i class="fa-solid fa-car"></i> -->
+                            ขอราคารถคันนี้&nbsp;
+                            <i class="fa-solid fa-tag fa-flip"></i>
+                            <!-- <i class="fa-solid fa-car-side"></i>&nbsp; -->
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
     <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
     <script>
         // VConsole will be exported to `window.VConsole` by default.
@@ -249,6 +318,7 @@
                 }
             })
             init()
+            renderCarCards(car_data)
         })
 
         function init() {
@@ -260,12 +330,65 @@
                 obj[item.name] = item.value
                 return obj
             }, {})
+            data.pickup_datetime = moment(data.pickup_date + ' ' + data.pickup_time, 'DD/MM/YYYY HH:mm').format('YYYY-MM-DDTHH:mm:ss')
+            data.return_datetime = moment(data.return_date + ' ' + data.return_time, 'DD/MM/YYYY HH:mm').format('YYYY-MM-DDTHH:mm:ss')
+            console.log(data);
             $.post(scriptURL, {
                 opt: 'filter',
                 data: data
             }, function (res) {
                 console.log(res)
             })
+        }
+        let car_data = 	[{"brand":"Toyota","model":"yaris ative","license_plate":"4 ขฮ 2330","color":"ขาว","branch":"","image":"https://drive.google.com/file/d/16uD6OTukNt9Wgo0rHJqSgD_72sCV8kpF/view?usp=drive_link"},{"brand":"Toyota","model":"Veloz","license_plate":"4 ขฬ 8957","color":"เทาดำ","branch":"","image":"https://drive.google.com/file/d/1pVoPWKbtM-Ydsxfzcc8SzJvcpJbaeQ-S/view?usp=drive_link"},{"brand":"Toyota","model":"Veloz","license_plate":"5 ขย 6091","color":"เทาดำ","branch":"","image":"https://drive.google.com/file/d/1pVoPWKbtM-Ydsxfzcc8SzJvcpJbaeQ-S/view?usp=drive_link"},{"brand":"MG","model":"4 Electric","license_plate":"5 ขร 3224","color":"ดำ","branch":"","image":"https://drive.google.com/file/d/1kr-3ZZH70g8JUIfdYdX7mtN1rwqWiloW/view?usp=drive_link"}]
+
+        function renderCarCards(data, pickup_datetime, return_datetime) {
+            pickup_datetime = pickup_datetime || moment().format('DD/MM/YYYY HH:mm')
+            return_datetime = return_datetime || moment().add(5, 'days').format('DD/MM/YYYY HH:mm')
+            data = data || car_data
+            const carResults = $('#carResults')
+            carResults.empty()
+            $('#pickup-datetime').val(pickup_datetime + ' น.')
+            $('#return-datetime').val(return_datetime + ' น.')
+            const template = $('#carCardTemplate').html()
+            data.forEach(car => {
+                const card = $(template)
+                let imageUrl = 'https://lh3.googleusercontent.com/d/' + car.image.split('/d/')[1].split('/')[0]
+                card.find('.card-img-top').attr('src', imageUrl)
+                card.find('.card-img-top').attr('alt', car.brand + ' ' + car.model)
+                card.find('.btn-select').attr({
+                    'data-brand': car.brand,
+                    'data-model': car.model,
+                    'data-license_plate': car.license_plate,
+                    'data-color': car.color,
+                    'data-branch': car.branch,
+                    'data-image': imageUrl
+                })
+                carResults.append(card)
+            })
+            $('#main').hide()
+            $('#resetFilter').off('click').click(function () {
+                $('#carResults').empty().parent().slideUp(200, function () {
+                    $('#main').slideDown(200)
+                })
+                $('#mainform')[0].reset();
+                $('#mainform').removeClass('was-validated');
+                $('#pickup-datetime').val('');
+                $('#return-datetime').val('');
+            });
+        }
+
+        function sendData(button) {
+            const {
+                brand,
+                model,
+                license_plate,
+                color,
+                branch,
+                image
+            } = button.dataset;
+            console.log(brand, model, license_plate, color, branch, image);
+            // Add your logic to handle the button click event here
         }
     </script>
     <script>
