@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="Cache-control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"
+        integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/material_red.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 80vh;
+            font-family: 'Prompt', sans-serif;
+            /* background-color: #cfecfa; */
+            /* background-color: #D3D3D3; */
+        }
+
+        table.dataTable.table-striped>tbody>tr.odd.selected>* {
+            box-shadow: inset 9px 20px 20px 9999px rgba(112, 124, 192, 0.95);
+            box-shadow: inset 0 0 0 9999px rgba(112, 124, 192, 0.95);
+        }
+
+        table.dataTable.table-striped>tbody>tr.even.selected>* {
+            box-shadow: inset 9px 20px 20px 9999px rgba(112, 124, 192, 0.95);
+            box-shadow: inset 0 0 0 9999px rgba(112, 124, 192, 0.95);
+        }
+
+        /* change  .bi-printer to .bi-printer-fill when hover */
+        .bi-printer-fill:hover {
+            color: #0d6efd;
+
+        }
+
+        .container {
+            max-width: 600px;
+        }
+
+        table tr th,
+        table tr td {
+            vertical-align: middle;
+        }
+
+        .container {
+            max-width: 600px;
+        }
+    </style>
+    <title>ระบบลงทะเบียนอบรม</title>
+</head>
+
+<body>
+    <div class="container p-4">
+        <div class="row">
+            <div class="col-12 text-center">
+                <img src="https://img5.pic.in.th/file/secure-sv1/50d66255-4b76-4a9a-82b2-ecd9e0e1ef3b-removebg-preview.png" alt="" class="img-fluid" style="max-height: 250px;">
+            </div>
+        </div>
+        <form id="mainform" class="needs-validation" novalidate>
+            <div class="row g-3 mb-3 justify-content-center">
+                <div class="col-12">
+                    <!-- รับรถวันที่ / Pick up day -->
+                    <label for="pickup_date">
+                        <i class="fa-solid fa-calendar-week"></i>
+                        วันรับรถ / Pick up date
+                    </label>
+                    <input type="text" class="form-control rounded-3" id="pickup_date" name="pickup_date" required>
+                    <div class="invalid-feedback">
+                        กรุณาเลือกวันรับรถ
+                    </div>
+                </div>
+                <div class="col">
+                    <!-- รับรถเวลา / Pick up time -->
+                    <label for="pickup_time">
+                        <i class="fa-solid fa-clock"></i>
+                        เวลารับรถ / Pick up time
+                    </label>
+                    <input type="text" class="form-control rounded-3" id="pickup_time" name="pickup_time" required>
+                    <div class="invalid-feedback">
+                        กรุณาเลือกเวลารับรถ
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label for="pickup_branch">
+                        <i class="fa-solid fa-location-dot"></i>
+                        สาขารับรถ/ Branch pick up
+                    </label>
+                    <select class="form-select rounded-3" id="pickup_branch" name="pickup_branch" required>
+                        <option value="">เลือกสาขา / Select branch</option>
+                        <option value="สาขา ปตท.พีเอ็ม ประเวศ / Ptt PM Pravate">สาขา ปตท.พีเอ็ม ประเวศ / Ptt PM Pravate
+                        </option>
+                        <option value="สาขา เดอะมอลล์โคราช / The Mall Korat">สาขา เดอะมอลล์โคราช / The Mall Korat
+                        </option>
+                        <option value="สาขาโลตัส บางแค / Lotus Bang Kae">สาขาโลตัส บางแค / Lotus Bang Kae</option>
+                        <option value="สาขา Big C ปากช่อง / Big C Pak Chong">สาขา Big C ปากช่อง / Big C Pak Chong
+                        </option>
+                        <option value="สาขา โลตัส ศาลายา / Lotus Salaya">สาขา โลตัส ศาลายา / Lotus Salaya</option>
+                    </select>
+                    <div class="invalid-feedback">
+                        กรุณาเลือกสาขารับรถ
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <label for="return_date">
+                        <i class="fa-solid fa-calendar-week"></i>
+                        วันคืนรถ / Return date
+                    </label>
+                    <input type="text" class="form-control rounded-3" id="return_date" name="return_date" required>
+                    <div class="invalid-feedback">
+                        กรุณาเลือกวันคืนรถ
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label for="return_time">
+                        <i class="fa-solid fa-clock"></i>
+                        เวลาคืนรถ / Return time
+                    </label>
+                    <input type="text" class="form-control rounded-3" id="return_time" name="return_time" required>
+                    <div class="invalid-feedback">
+                        กรุณาเลือกเวลาคืนรถ
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label for="return_branch">
+                        <i class="fa-solid fa-location-dot"></i>
+                        สาขาคืนรถ / Branch return
+                    </label>
+                    <select class="form-select rounded-3" id="return_branch" name="return_branch" required>
+                        <option value="">เลือกสาขา / Select branch</option>
+                        <option value="สาขา ปตท.พีเอ็ม ประเวศ / Ptt PM Pravate">สาขา ปตท.พีเอ็ม ประเวศ / Ptt PM Pravate
+                        </option>
+                        <option value="สาขา เดอะมอลล์โคราช / The Mall Korat">สาขา เดอะมอลล์โคราช / The Mall Korat
+                        </option>
+                        <option value="สาขาโลตัส บางแค / Lotus Bang Kae">สาขาโลตัส บางแค / Lotus Bang Kae</option>
+                        <option value="สาขา Big C ปากช่อง / Big C Pak Chong">สาขา Big C ปากช่อง / Big C Pak Chong
+                        </option>
+                        <option value="สาขา โลตัส ศาลายา / Lotus Salaya">สาขา โลตัส ศาลายา / Lotus Salaya</option>
+                    </select>
+                    <div class="invalid-feedback">
+                        กรุณาเลือกสาขาคืนรถ
+                    </div>
+                </div>
+                <div class="col-12">
+                    <!-- จังหวัดที่จะนำรถไปใช้ / 
+    Province where the car is used  -->
+                    <label for="province">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                        จังหวัดที่จะนำรถไปใช้ / Province where the car is used
+                    </label>
+                    <input type="text" class="form-control rounded-3" id="province" name="province" required>
+                    <div class="invalid-feedback">
+                        กรุณากรอกจังหวัดที่จะนำรถไปใช้
+                    </div>
+                </div>
+                <div class="col-12">
+                    <!-- คุณพบโฆษณาเราจากสื่อใด/
+    Where did you find our ads? -->
+                    <label for="advertisement">
+                        <i class="fa-solid fa-newspaper"></i>
+                        คุณพบโฆษณาเราจากสื่อใด / Where did you find our ads?
+                    </label>
+                    <select class="form-select rounded-3" id="advertisement" name="advertisement" required>
+                        <option value="">เลือกสื่อ / Select media</option>
+                        <option value="Google">Google</option>
+                        <option value="Facebook">Facebook</option>
+                        <option value="Line VOOM">Line VOOM</option>
+                        <option value="เพื่อนแนะนำ">เพื่อนแนะนำ</option>
+                        <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                    <div class="invalid-feedback">
+                        กรุณาเลือกสื่อที่คุณพบโฆษณาเรา
+                    </div>
+                </div>
+                <div class="col-12 d-none">
+                    <!-- ระบุ -->
+                    <label for="advertisement_detail">
+                        <i class="fa-solid fa-newspaper"></i>
+                        ระบุสื่อที่คุณพบโฆษณาเรา
+                    </label>
+                    <input type="text" class="form-control rounded-3" id="advertisement_detail"
+                        name="advertisement_detail">
+                    <div class="invalid-feedback">
+                        กรุณาระบุสื่อที่คุณพบโฆษณาเรา
+                    </div>
+                </div>
+                <div class="col-12 text-center mt-4">
+                    <button class="btn btn-primary rounded-3 w-75" id="submit">
+                        <i class="fa-solid fa-car"></i>
+                        ตรวจสอบรถว่าง
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+    <script>
+        // VConsole will be exported to `window.VConsole` by default.
+        // var vConsole = new window.VConsole();
+    </script>
+    <script>
+        const scriptURL = ''
+        $(document).ready(() => {
+            $('#pickup_date, #return_date').flatpickr({
+                locale: 'th',
+                dateFormat: 'd/m/Y',
+                minDate: 'today',
+                allowInput: true,
+                // maxDate: new Date().fp_incr(30), // 30 days from now
+            })
+            $('#pickup_time, #return_time').flatpickr({
+                enableTime: true,
+                noCalendar: true,
+                dateFormat: "H:i",
+                time_24hr: true,
+                allowInput: true,
+            });
+            $('#advertisement').change(function () {
+                if ($(this).val() == 'อื่นๆ') {
+                    $('#advertisement_detail').prop('required', true).parent().removeClass('d-none')
+                } else {
+                    $('#advertisement_detail').val('').prop('required', false).parent().addClass('d-none')
+                }
+            })
+            init()
+        })
+
+        function init() {
+
+        }
+
+        function submit() {
+            let data = $('#mainform').serializeArray().reduce((obj, item) => {
+                obj[item.name] = item.value
+                return obj
+            }, {})
+            $.post(scriptURL, {
+                opt: 'filter',
+                data: data
+            }, function (res) {
+                console.log(res)
+            })
+        }
+    </script>
+    <script>
+        (function () {
+            'use strict'
+            const form = document.querySelector('.needs-validation')
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault()
+                if (form.checkValidity() === false) {
+                    event.stopPropagation()
+                    form.classList.add('was-validated')
+                    return $(form).find(':invalid').first().focus()
+                }
+                submit()
+            })
+        })()
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/flatpickr.min.js"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+</body>
+
+</html>
