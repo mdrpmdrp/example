@@ -107,6 +107,14 @@
         <form id="mainform" class="needs-validation" novalidate>
             <div class="row g-3 mb-3 justify-content-center">
                 <div class="col-12">
+                    <!-- ชื่อไลน์ -->
+                    <label for="name">
+                        <i class="fa-brands fa-line"></i>
+                        ชื่อไลน์ / LineName
+                    </label>
+                    <input type="text" class="form-control rounded-3" id="line_name" name="line_name" required>
+                </div>
+                <div class="col-12">
                     <!-- รับรถวันที่ / Pick up day -->
                     <label for="pickup_date">
                         <i class="fa-solid fa-calendar-week"></i>
@@ -237,7 +245,7 @@
             </div>
         </form>
     </div>
-    <div class="container px-2 pb-4">
+    <div class="container px-2 pb-4" id="carResultsContainer" style="display: none;">
         <div class="row">
             <div class="col-12 text-center">
                 <div class="text-center h4">รถที่ว่างในช่วงเวลาที่คุณเลือก</div>
@@ -318,34 +326,62 @@
                 }
             })
             init()
-            renderCarCards(car_data)
+
         })
 
         function init() {
+            liff.init({ liffId: '1655873446-MpmBPPzl' })
+            liff.ready.then(() => {
+                if (!liff.isLoggedIn()) {
+                    liff.login()
+                } else {
+                    liff.getProfile().then(profile => {
+                        $('#line_name').val(profile.displayName)
+                        $('#line_name').attr('readonly', true)
+                    }).catch(err => {
+                        console.error(err)
+                    })
 
+                }
+            }).catch(err => {
+                console.error(err)
+            })
         }
 
         function submit() {
             let data = $('#mainform').serializeArray().reduce((obj, item) => {
                 obj[item.name] = item.value
                 return obj
-            }, {})
+            }, { uid: liff.getDecodedIDToken().sub })
             data.pickup_datetime = moment(data.pickup_date + ' ' + data.pickup_time, 'DD/MM/YYYY HH:mm').format('YYYY-MM-DDTHH:mm:ss')
             data.return_datetime = moment(data.return_date + ' ' + data.return_time, 'DD/MM/YYYY HH:mm').format('YYYY-MM-DDTHH:mm:ss')
+            Swal.fire({
+                iconHtml: '<i class="fa-solid fa-car-side fa-bounce" style="color: #07111D"></i>',
+                title: 'กำลังตรวจสอบรถว่าง',
+                html: 'กรุณารอสักครู่...',
+                allowOutsideClick: false,
+                customClass: {
+                    icon: 'border-0',
+                    popup: 'rounded-4',
+                },
+                didOpen: () => {
+                    Swal.showLoading()
+                }
+            })
+
             console.log(data);
             $.post(scriptURL, {
                 opt: 'filter',
                 data: data
             }, function (res) {
+                if (res.success) {
+                    renderCarCards(res.data, data.pickup_datetime, data.return_datetime)
+                }
                 console.log(res)
             })
         }
-        let car_data = 	[{"brand":"Toyota","model":"yaris ative","license_plate":"4 ขฮ 2330","color":"ขาว","branch":"","image":"https://drive.google.com/file/d/16uD6OTukNt9Wgo0rHJqSgD_72sCV8kpF/view?usp=drive_link"},{"brand":"Toyota","model":"Veloz","license_plate":"4 ขฬ 8957","color":"เทาดำ","branch":"","image":"https://drive.google.com/file/d/1pVoPWKbtM-Ydsxfzcc8SzJvcpJbaeQ-S/view?usp=drive_link"},{"brand":"Toyota","model":"Veloz","license_plate":"5 ขย 6091","color":"เทาดำ","branch":"","image":"https://drive.google.com/file/d/1pVoPWKbtM-Ydsxfzcc8SzJvcpJbaeQ-S/view?usp=drive_link"},{"brand":"MG","model":"4 Electric","license_plate":"5 ขร 3224","color":"ดำ","branch":"","image":"https://drive.google.com/file/d/1kr-3ZZH70g8JUIfdYdX7mtN1rwqWiloW/view?usp=drive_link"}]
 
         function renderCarCards(data, pickup_datetime, return_datetime) {
-            pickup_datetime = pickup_datetime || moment().format('DD/MM/YYYY HH:mm')
-            return_datetime = return_datetime || moment().add(5, 'days').format('DD/MM/YYYY HH:mm')
-            data = data || car_data
             const carResults = $('#carResults')
             carResults.empty()
             $('#pickup-datetime').val(pickup_datetime + ' น.')
@@ -354,7 +390,7 @@
             data.forEach(car => {
                 const card = $(template)
                 let imageUrl = 'https://lh3.googleusercontent.com/d/' + car.image.split('/d/')[1].split('/')[0]
-                card.find('.card-img-top').attr('src', imageUrl)
+                card.find('.card-img-top').attr('src', imageUrl).attr('loading', 'lazy')
                 card.find('.card-img-top').attr('alt', car.brand + ' ' + car.model)
                 card.find('.btn-select').attr({
                     'data-brand': car.brand,
@@ -366,9 +402,11 @@
                 })
                 carResults.append(card)
             })
-            $('#main').hide()
+            $('#main').slideUp(200, function () {
+                $('#carResultsContainer').slideDown(200)
+            })
             $('#resetFilter').off('click').click(function () {
-                $('#carResults').empty().parent().slideUp(200, function () {
+                $('#carResultsContainer').slideUp(200, function () {
                     $('#main').slideDown(200)
                 })
                 $('#mainform')[0].reset();
@@ -387,8 +425,47 @@
                 branch,
                 image
             } = button.dataset;
-            console.log(brand, model, license_plate, color, branch, image);
-            // Add your logic to handle the button click event here
+            let pickup_datetime = moment($('#pickup-datetime').val(), 'LLLL').format('DD-MM-YYYY HH:mm')
+            let return_datetime = moment($('#return-datetime').val(), 'LLLL').format('DD-MM-YYYY HH:mm')
+            let branch_pickup = $('#pickup_branch').val()
+            let branch_return = $('#return_branch').val()
+            let province = $('#province').val()
+            let advertisement = $('#advertisement').val()
+            let advertisement_detail = $('#advertisement_detail').val()
+            let message = `🏷️ ขอราคารถ
+ 
+🚘 ข้อมูลรถ
+ยี่ห้อ: ${brand}
+รุ่น: ${model}
+สี: ${color}
+-----------------------
+
+📅 ข้อมูลการเช่า
+วันรับรถ: ${pickup_datetime}
+สาขารับรถ: 
+${branch_pickup}
+
+วันคืนรถ: ${return_datetime}
+สาขาคืนรถ: 
+${branch_return}
+-----------------------
+
+📍 ข้อมูลการใช้รถ
+จังหวัดที่จะนำรถไปใช้: ${province}
+พบโฆษณาจาก: ${advertisement == 'อื่นๆ' ? (advertisement_detail && advertisement_detail != '' ? advertisement_detail : '-') : advertisement}`
+            liff.sendMessages([{
+                type: 'text',
+                text: message
+            }, {
+                type: 'image',
+                originalContentUrl: image,
+                previewImageUrl: image
+            }]).then(() => {
+                console.log('message sent');
+                // liff.closeWindow()
+            }).catch((err) => {
+                console.error(err);
+            });
         }
     </script>
     <script>
@@ -416,6 +493,7 @@
         src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
     <script src="https://npmcdn.com/flatpickr/dist/flatpickr.min.js"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+    <script src=" https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </body>
 
 </html>
