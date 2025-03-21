@@ -309,6 +309,20 @@
                 dateFormat: 'd/m/Y',
                 minDate: 'today',
                 allowInput: true,
+                onChange: function (selectedDates, dateStr, instance) {
+                    const today = moment().format('DD/MM/YYYY');
+                    if (dateStr == today) {
+                        // Calculate the next round hour
+                        const now = moment();
+                        const nextHour = moment().add(1, 'hour')
+                        $('#pickup_time').flatpickr().set('defaultHour', nextHour.format('H'));
+                    } else {
+                        $('#pickup_time').flatpickr().set('defaultHour', 12);
+                    }
+
+                    $('#return_date').flatpickr().set('minDate', moment(dateStr, 'DD/MM/YYYY').add(1, 'days').format('DD/MM/YYYY'))
+                    $('#return_date').flatpickr().set('defaultDate', moment(dateStr, 'DD/MM/YYYY').add(1, 'days').format('DD/MM/YYYY'))
+                }
                 // maxDate: new Date().fp_incr(30), // 30 days from now
             });
             $('#return_date').flatpickr({
@@ -328,18 +342,8 @@
                 dateFormat: "H:i",
                 time_24hr: true,
                 allowInput: true,
-                onOpen: function (selectedDates, dateStr, instance) {
-                    const pickupDate = $('#pickup_date').val();
-                    const today = moment().format('DD/MM/YYYY');
-                    if (pickupDate == today) {
-                        // Calculate the next round hour
-                        const now = moment();
-                        const nextHour = moment().add(1, 'hour').startOf('hour');
-                        instance.set('minTime', nextHour.format('HH:00'));
-                    } else if (pickupDate) {
-                        instance.set('minTime', '12:00');
-                    }
-                }
+                defaultHour: 12,
+                defaultMinute: 0,
             });
             $('#return_time').flatpickr({
                 enableTime: true,
@@ -347,6 +351,8 @@
                 dateFormat: "H:i",
                 time_24hr: true,
                 allowInput: true,
+                defaultHour: 12,
+                defaultMinute: 0,
             });
             $('#advertisement').change(function () {
                 if ($(this).val() == 'อื่นๆ') {
