@@ -332,9 +332,22 @@
         function init() {
             liff.init({ liffId: '1655873446-MpmBPPzl' })
             liff.ready.then(() => {
+                if (!liff.isInClient()) {
+                    return Swal.fire({
+                        icon: 'warning',
+                        title: 'กรุณาเปิดในแอป LINE',
+                        text: 'กรุณาเปิดในแอป LINE เท่านั้น',
+                        customClass: {
+                            popup: 'rounded-4',
+                        },
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                    })
+                }
                 if (!liff.isLoggedIn()) {
                     liff.login()
                 } else {
+
                     liff.getProfile().then(profile => {
                         $('#line_name').val(profile.displayName)
                         $('#line_name').attr('readonly', true)
@@ -372,6 +385,17 @@
             console.log(data);
             $.post(scriptURL, data, function (res) {
                 if (res.success) {
+                    if (res.data.length == 0) {
+                        return Swal.fire({
+                            icon: 'warning',
+                            title: 'ไม่พบรถว่างในช่วงเวลาที่คุณเลือก',
+                            text: 'กรุณาลองเลือกช่วงเวลาใหม่อีกครั้ง',
+                            confirmButtonText: 'ตกลง',
+                            customClass: {
+                                popup: 'rounded-4',
+                            }
+                        })
+                    }
                     renderCarCards(res.data, data.pickup_datetime, data.return_datetime)
                 }
                 console.log(res)
