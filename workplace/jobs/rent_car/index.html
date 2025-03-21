@@ -304,7 +304,7 @@
     <script>
         const scriptURL = 'https://script.google.com/macros/s/AKfycbzOz0J3XboXz7_vZIS8i-Zke8Srw7k-mHvNR3XBmyTwh2zs3oLQtz-LRcu4y17Pbs0/exec'
         $(document).ready(() => {
-            $('#pickup_date').flatpickr({
+            let pck_d = $('#pickup_date').flatpickr({
                 locale: 'th',
                 dateFormat: 'd/m/Y',
                 minDate: 'today',
@@ -312,40 +312,39 @@
                 onChange: function (selectedDates, dateStr, instance) {
                     const today = moment().format('DD/MM/YYYY');
                     if (dateStr == today) {
-                        // Calculate the next round hour
                         const now = moment();
-                        const nextHour = moment().add(1, 'hour')
-                        $('#pickup_time').flatpickr().set('defaultHour', nextHour.format('H'));
+                        if( $('#pickup_time').val() == '' || moment( $('#pickup_time').val(), 'H:i').isBefore(now)){
+                            const nextHour = moment().add(1, 'hour')
+                             pck_t.setDate(nextHour.format('H:00'))
+                             rtn_t.setDate(nextHour.format('H:00'))
+                             pck_t.set('minDate', nextHour.format('H:i'))
+                        }
                     } else {
-                        $('#pickup_time').flatpickr().set('defaultHour', 12);
+                        pck_t.setDate('12:00')
                     }
 
-                    $('#return_date').flatpickr().set('minDate', moment(dateStr, 'DD/MM/YYYY').add(1, 'days').format('DD/MM/YYYY'))
-                    $('#return_date').flatpickr().set('defaultDate', moment(dateStr, 'DD/MM/YYYY').add(1, 'days').format('DD/MM/YYYY'))
+                    rtn_d.setDate(moment(dateStr, 'DD/MM/YYYY').add(1, 'days').format('DD/MM/YYYY'))
+
+                    rtn_d.set('minDate', moment(dateStr, 'DD/MM/YYYY').add(1, 'days').format('DD/MM/YYYY'))
                 }
                 // maxDate: new Date().fp_incr(30), // 30 days from now
             });
-            $('#return_date').flatpickr({
+            let rtn_d = $('#return_date').flatpickr({
                 locale: 'th',
                 dateFormat: 'd/m/Y',
                 allowInput: true,
-                onOpen: function (selectedDates, dateStr, instance) {
-                    const pickupDate = $('#pickup_date').val();
-                    if (pickupDate) {
-                        instance.set('minDate', moment(pickupDate, 'DD/MM/YYYY').add(1, 'days').format('DD/MM/YYYY'));
-                    }
-                }
+                minDate: moment().add(1, 'days').format('DD/MM/YYYY'),
             });
-            $('#pickup_time').flatpickr({
+            let pck_t = $('#pickup_time').flatpickr({
                 enableTime: true,
                 noCalendar: true,
                 dateFormat: "H:i",
                 time_24hr: true,
                 allowInput: true,
-                defaultHour: 12,
+                defaultHour: 16,
                 defaultMinute: 0,
             });
-            $('#return_time').flatpickr({
+            let rtn_t = $('#return_time').flatpickr({
                 enableTime: true,
                 noCalendar: true,
                 dateFormat: "H:i",
