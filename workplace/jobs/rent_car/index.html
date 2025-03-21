@@ -302,7 +302,7 @@
         // var vConsole = new window.VConsole();
     </script>
     <script>
-        const scriptURL = ''
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbzOz0J3XboXz7_vZIS8i-Zke8Srw7k-mHvNR3XBmyTwh2zs3oLQtz-LRcu4y17Pbs0/exec'
         $(document).ready(() => {
             $('#pickup_date, #return_date').flatpickr({
                 locale: 'th',
@@ -352,7 +352,7 @@
             let data = $('#mainform').serializeArray().reduce((obj, item) => {
                 obj[item.name] = item.value
                 return obj
-            }, { uid: liff.getDecodedIDToken().sub })
+            }, { uid: liff.getDecodedIDToken().sub, opt: 'filter' })
             data.pickup_datetime = moment(data.pickup_date + ' ' + data.pickup_time, 'DD/MM/YYYY HH:mm').format('YYYY-MM-DDTHH:mm:ss')
             data.return_datetime = moment(data.return_date + ' ' + data.return_time, 'DD/MM/YYYY HH:mm').format('YYYY-MM-DDTHH:mm:ss')
             Swal.fire({
@@ -370,22 +370,22 @@
             })
 
             console.log(data);
-            $.post(scriptURL, {
-                opt: 'filter',
-                data: data
-            }, function (res) {
+            $.post(scriptURL, data, function (res) {
                 if (res.success) {
                     renderCarCards(res.data, data.pickup_datetime, data.return_datetime)
                 }
                 console.log(res)
             })
+            // let d = [{ "brand": "Toyota", "model": "yaris ative", "license_plate": "4 ขฮ 2330", "color": "ขาว", "branch": "", "image": "https://drive.google.com/file/d/16uD6OTukNt9Wgo0rHJqSgD_72sCV8kpF/view?usp=drive_link" }, { "brand": "Toyota", "model": "Veloz", "license_plate": "4 ขฬ 8957", "color": "เทาดำ", "branch": "", "image": "https://drive.google.com/file/d/1pVoPWKbtM-Ydsxfzcc8SzJvcpJbaeQ-S/view?usp=drive_link" }, { "brand": "Toyota", "model": "Veloz", "license_plate": "5 ขย 6091", "color": "เทาดำ", "branch": "", "image": "https://drive.google.com/file/d/1pVoPWKbtM-Ydsxfzcc8SzJvcpJbaeQ-S/view?usp=drive_link" }, { "brand": "MG", "model": "4 Electric", "license_plate": "5 ขร 3224", "color": "ดำ", "branch": "", "image": "https://drive.google.com/file/d/1kr-3ZZH70g8JUIfdYdX7mtN1rwqWiloW/view?usp=drive_link" }]
+            // renderCarCards(d, data.pickup_datetime, data.return_datetime)
         }
 
         function renderCarCards(data, pickup_datetime, return_datetime) {
+            Swal.close()
             const carResults = $('#carResults')
             carResults.empty()
-            $('#pickup-datetime').val(pickup_datetime + ' น.')
-            $('#return-datetime').val(return_datetime + ' น.')
+            $('#pickup-datetime').val(moment(pickup_datetime, 'YYYY-MM-DDTHH:mm:ss').format('LLLL') + ' น.')
+            $('#return-datetime').val(moment(return_datetime, 'YYYY-MM-DDTHH:mm:ss').format('LLLL') + ' น.')
             const template = $('#carCardTemplate').html()
             data.forEach(car => {
                 const card = $(template)
@@ -413,10 +413,11 @@
                 $('#mainform').removeClass('was-validated');
                 $('#pickup-datetime').val('');
                 $('#return-datetime').val('');
+                $('#line_name').val(liff.getDecodedIDToken().name)
             });
         }
 
-        function sendData(button) {
+        async function sendData(button) {
             const {
                 brand,
                 model,
@@ -427,45 +428,109 @@
             } = button.dataset;
             let pickup_datetime = moment($('#pickup-datetime').val(), 'LLLL').format('DD-MM-YYYY HH:mm')
             let return_datetime = moment($('#return-datetime').val(), 'LLLL').format('DD-MM-YYYY HH:mm')
-            let branch_pickup = $('#pickup_branch').val()
-            let branch_return = $('#return_branch').val()
+            let pickup_branch = $('#pickup_branch').val()
+            let return_branch = $('#return_branch').val()
             let province = $('#province').val()
             let advertisement = $('#advertisement').val()
             let advertisement_detail = $('#advertisement_detail').val()
-            let message = `🏷️ ขอราคารถ
+            let duration = getDuration(pickup_datetime, return_datetime)
+            let data = {
+                brand,
+                model,
+                license_plate,
+                color,
+                branch,
+                image,
+                pickup_date: $('#pickup_date').val(),
+                pickup_time: $('#pickup_time').val(),
+                return_date: $('#return_date').val(),
+                return_time: $('#return_time').val(),
+                duration_days: duration.days,
+                duration_hours: duration.hours,
+                duration_minutes: duration.minutes,
+                pickup_branch,
+                return_branch,
+                province,
+                advertisement,
+                advertisement_detail,
+                line_name: $('#line_name').val(),
+                uid: liff.getDecodedIDToken().sub,
+            }
+            saveToSheet(data)
+            await sendToLine(data)
+            liff.closeWindow()
+        }
+
+        function getDuration(pickup_datetime, return_datetime) {
+            const pickupDateTime = moment(pickup_datetime, 'DD/MM/YYYY HH:mm');
+            const returnDateTime = moment(return_datetime, 'DD/MM/YYYY HH:mm');
+            // Calculate the duration between two dates
+            const duration = moment.duration(returnDateTime.diff(pickupDateTime));
+            const days = Math.floor(duration.asDays());
+            const hours = duration.hours();
+            const minutes = duration.minutes();
+
+            // Return the duration as an object
+            return {
+                days: days,
+                hours: hours,
+                minutes: minutes,
+                text: `${days > 0 ? days + ' วัน ' : ''}${hours > 0 || days > 0 ? hours + ' ชั่วโมง ' : ''}${minutes} นาที`.trim()
+            };
+        }
+
+        function saveToSheet(data) {
+            data.opt = 'save'
+            console.log(data);
+            $.post(scriptURL, data, function (res) {
+                if (res.success) {
+                    console.log('Data saved to sheet')
+                    resolve()
+                } else {
+                    console.error('Error saving data to sheet')
+                    reject()
+                }
+            })
+        }
+
+        function sendToLine(data) {
+            return new Promise((resolve, reject) => {
+                let message = `🏷️ ขอราคารถ
  
-🚘 ข้อมูลรถ
-ยี่ห้อ: ${brand}
-รุ่น: ${model}
-สี: ${color}
------------------------
+ 🚘 ข้อมูลรถ
+ ยี่ห้อ: ${data.brand}
+ รุ่น: ${data.model}
+ สี: ${data.color}
+ -----------------------
+ 
+ 📅 ข้อมูลการเช่า
+ วันรับรถ: ${data.pickup_datetime}
+ สาขารับรถ: 
+ ${data.pickup_branch}
+ 
+ วันคืนรถ: ${data.return_datetime}
+ สาขาคืนรถ: 
+ ${data.return_branch}
+ -----------------------
+ 
+ 📍 ข้อมูลการใช้รถ
+ จังหวัดที่จะนำรถไปใช้: ${data.province}
+ พบโฆษณาจาก: ${data.advertisement == 'อื่นๆ' ? (data.advertisement_detail && data.advertisement_detail != '' ? data.advertisement_detail : '-') : data.advertisement}`
+                liff.sendMessages([{
+                    type: 'text',
+                    text: message
+                }, {
+                    type: 'image',
+                    originalContentUrl: data.image,
+                    previewImageUrl: data.image
+                }]).then(() => {
+                    console.log('message sent');
+                    resolve()
+                }).catch((err) => {
+                    console.error(err);
+                });
+            })
 
-📅 ข้อมูลการเช่า
-วันรับรถ: ${pickup_datetime}
-สาขารับรถ: 
-${branch_pickup}
-
-วันคืนรถ: ${return_datetime}
-สาขาคืนรถ: 
-${branch_return}
------------------------
-
-📍 ข้อมูลการใช้รถ
-จังหวัดที่จะนำรถไปใช้: ${province}
-พบโฆษณาจาก: ${advertisement == 'อื่นๆ' ? (advertisement_detail && advertisement_detail != '' ? advertisement_detail : '-') : advertisement}`
-            liff.sendMessages([{
-                type: 'text',
-                text: message
-            }, {
-                type: 'image',
-                originalContentUrl: image,
-                previewImageUrl: image
-            }]).then(() => {
-                console.log('message sent');
-                // liff.closeWindow()
-            }).catch((err) => {
-                console.error(err);
-            });
         }
     </script>
     <script>
@@ -491,8 +556,8 @@ ${branch_return}
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
     <script
         src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
-    <script src="https://npmcdn.com/flatpickr/dist/flatpickr.min.js"></script>
-    <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
     <script src=" https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </body>
 
