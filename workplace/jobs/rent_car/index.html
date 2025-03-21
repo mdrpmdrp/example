@@ -304,14 +304,45 @@
     <script>
         const scriptURL = 'https://script.google.com/macros/s/AKfycbzOz0J3XboXz7_vZIS8i-Zke8Srw7k-mHvNR3XBmyTwh2zs3oLQtz-LRcu4y17Pbs0/exec'
         $(document).ready(() => {
-            $('#pickup_date, #return_date').flatpickr({
+            $('#pickup_date').flatpickr({
                 locale: 'th',
                 dateFormat: 'd/m/Y',
                 minDate: 'today',
                 allowInput: true,
                 // maxDate: new Date().fp_incr(30), // 30 days from now
-            })
-            $('#pickup_time, #return_time').flatpickr({
+            });
+            $('##return_date').flatpickr({
+                locale: 'th',
+                dateFormat: 'd/m/Y',
+                minDate: 'today',
+                allowInput: true,
+                onOpen: function (selectedDates, dateStr, instance) {
+                    const pickupDate = $('#pickup_date').val();
+                    if (pickupDate) {
+                        instance.set('minDate', moment(pickupDate, 'DD/MM/YYYY').add(1, 'days').format('DD/MM/YYYY'));
+                    }
+                }
+            });
+            $('#pickup_time').flatpickr({
+                enableTime: true,
+                noCalendar: true,
+                dateFormat: "H:i",
+                time_24hr: true,
+                allowInput: true,
+                onOpen: function (selectedDates, dateStr, instance) {
+                    const pickupDate = $('#pickup_date').val();
+                    const today = moment().format('DD/MM/YYYY');
+                    if (pickupDate == today) {
+                        // Calculate the next round hour
+                        const now = moment();
+                        const nextHour = moment().add(1, 'hour').startOf('hour');
+                        instance.set('minTime', nextHour.format('HH:00'));
+                    } else if (pickupDate) {
+                        instance.set('minTime', '12:00');
+                    }
+                }
+            });
+            $('#return_time').flatpickr({
                 enableTime: true,
                 noCalendar: true,
                 dateFormat: "H:i",
