@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- no cache -->
+  <meta http-equiv="Cache-Control" content="no-c</div>ache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <!-- no cache -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบจองคิว</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+    integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Mitr', sans-serif;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    .container {
+      max-width: 800px;
+    }
+
+    .time-slot {
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .time-slot:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .time-slot.selected {
+      background-color: #0d6efd;
+      color: white;
+    }
+
+    .calendar-day {
+      cursor: pointer;
+    }
+
+    .calendar-day.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .calendar-day.weekend {
+      background-color: #e2f3ff;
+    }
+
+    .calendar-day.selected {
+      background-color: #0d6efd;
+      color: white;
+    }
+
+    .header {
+      background-color: #f8f9fa;
+      padding: 20px 0;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+
+</head>
+
+<body>
+  <div class="header">
+    <div class="container">
+      <h1 class="text-center">ระบบจองคิว</h1>
+      <p class="text-center text-muted">จองได้เฉพาะวันเสาร์-อาทิตย์</p>
+    </div>
+  </div>
+
+  <div class="container my-5">
+    <div class="row">
+      <div class="col-md-7">
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">เลือกวันที่</h5>
+            <div>
+              <button id="prev-month" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+              <button id="next-month" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <h6 id="current-month" class="text-center mb-4"></h6>
+            <div class="calendar">
+              <div class="row text-center">
+                <div class="col">อา</div>
+                <div class="col">จ</div>
+                <div class="col">อ</div>
+                <div class="col">พ</div>
+                <div class="col">พฤ</div>
+                <div class="col">ศ</div>
+                <div class="col">ส</div>
+              </div>
+              <div id="calendar-days" class="mt-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-5">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">รายละเอียดการจอง</h5>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="selected-date" class="form-label">วันที่เลือก</label>
+              <input type="text" class="form-control" id="selected-date" readonly>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label">เลือกเวลา (จำกัด 50 ที่นั่งต่อรอบ)</label>
+              <div class="row g-2">
+                <div class="col-6">
+                  <div class="card time-slot p-2 text-center" data-time="9:00">
+                    <div><i class="bi bi-clock"></i> 9:00 น.</div>
+                    <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="card time-slot p-2 text-center" data-time="10:00">
+                    <div><i class="bi bi-clock"></i> 10:00 น.</div>
+                    <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="card time-slot p-2 text-center" data-time="11:00">
+                    <div><i class="bi bi-clock"></i> 11:00 น.</div>
+                    <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="card time-slot p-2 text-center" data-time="13:00">
+                    <div><i class="bi bi-clock"></i> 13:00 น.</div>
+                    <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="card time-slot p-2 text-center" data-time="14:00">
+                    <div><i class="bi bi-clock"></i> 14:00 น.</div>
+                    <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="name" class="form-label">ชื่อ-นามสกุล</label>
+              <input type="text" class="form-control" id="name" placeholder="กรุณากรอกชื่อ-นามสกุล">
+            </div>
+
+            <div class="mb-3">
+              <label for="phone" class="form-label">เบอร์โทรศัพท์</label>
+              <input type="tel" class="form-control" id="phone" placeholder="กรุณากรอกเบอร์โทรศัพท์">
+            </div>
+
+            <button id="submit-booking" class="btn btn-primary w-100" disabled>
+              ยืนยันการจอง
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    $(document).ready(function () {
+      let currentDate = new Date();
+      let selectedDate = null;
+      let selectedTime = null;
+
+      // Initialize calendar
+      renderCalendar(currentDate);
+
+      // Previous month button
+      $('#prev-month').click(function () {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderCalendar(currentDate);
+      });
+
+      // Next month button
+      $('#next-month').click(function () {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderCalendar(currentDate);
+      });
+
+      // Select time slot
+      $(document).on('click', '.time-slot', function () {
+        $('.time-slot').removeClass('selected');
+        $(this).addClass('selected');
+        selectedTime = $(this).data('time');
+        validateForm();
+      });
+
+      // Form validation
+      $('#name, #phone').on('input', validateForm);
+
+      // Submit booking
+      $('#submit-booking').click(function () {
+        if (!validateForm()) return;
+
+        const name = $('#name').val();
+        const phone = $('#phone').val();
+        const formattedDate = formatDateThai(selectedDate);
+
+        Swal.fire({
+          title: 'ยืนยันการจอง',
+          html: `
+            <div class="text-start">
+              <p><strong>ชื่อ-นามสกุล:</strong> ${name}</p>
+              <p><strong>เบอร์โทรศัพท์:</strong> ${phone}</p>
+              <p><strong>วันที่:</strong> ${formattedDate}</p>
+              <p><strong>เวลา:</strong> ${selectedTime} น.</p>
+            </div>
+          `,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: 'ยืนยัน',
+          cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            Swal.fire(
+              'จองสำเร็จ!',
+              'ระบบได้บันทึกการจองของคุณแล้ว',
+              'success'
+            );
+
+            // Reset form
+            selectedDate = null;
+            selectedTime = null;
+            $('.calendar-day').removeClass('selected');
+            $('.time-slot').removeClass('selected');
+            $('#selected-date').val('');
+            $('#name').val('');
+            $('#phone').val('');
+            $('#submit-booking').prop('disabled', true);
+          }
+        });
+      });
+
+      function renderCalendar(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+
+        // Set month and year header
+        const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+          'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        $('#current-month').text(`${monthNames[month]} ${year + 543}`);
+
+        // Get first day of month and total days
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let html = '';
+
+        // Create calendar rows
+        let dayCount = 1;
+        for (let i = 0; i < 6; i++) {
+          html += '<div class="row g-1 mb-1">';
+
+          for (let j = 0; j < 7; j++) {
+            if (i === 0 && j < firstDay) {
+              // Empty cells before first day
+              html += '<div class="col"><div class="p-2"></div></div>';
+            } else if (dayCount > daysInMonth) {
+              // Empty cells after last day
+              html += '<div class="col"><div class="p-2"></div></div>';
+            } else {
+              // Actual days
+              const date = new Date(year, month, dayCount);
+              const isWeekend = date.getDay() === 0 || date.getDay() === 6; // 0 = Sunday, 6 = Saturday
+              const isPast = date < new Date().setHours(0, 0, 0, 0);
+
+              let classes = 'calendar-day p-2 rounded text-center';
+              if (isWeekend) classes += ' weekend';
+              if (!isWeekend || isPast) classes += ' disabled';
+
+              html += `<div class="col"><div class="${classes}" data-date="${date.toISOString()}" data-weekend="${isWeekend}" data-past="${isPast}">${dayCount}</div></div>`;
+
+              dayCount++;
+            }
+          }
+
+          html += '</div>';
+          if (dayCount > daysInMonth) break;
+        }
+
+        $('#calendar-days').html(html);
+
+        // Add click event for calendar days
+        $('.calendar-day').click(function () {
+          const isDisabled = $(this).hasClass('disabled');
+          if (isDisabled) return;
+
+          $('.calendar-day').removeClass('selected');
+          $(this).addClass('selected');
+
+          selectedDate = new Date($(this).data('date'));
+          $('#selected-date').val(formatDateThai(selectedDate));
+
+          validateForm();
+        });
+      }
+
+      function formatDateThai(date) {
+        if (!date) return '';
+
+        const weekdays = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+        const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+
+        const weekday = weekdays[date.getDay()];
+        const day = date.getDate();
+        const month = months[date.getMonth()];
+        const year = date.getFullYear() + 543; // Convert to Buddhist Era
+
+        return `วัน${weekday}ที่ ${day} ${month} ${year}`;
+      }
+
+      function validateForm() {
+        const name = $('#name').val().trim();
+        const phone = $('#phone').val().trim();
+        const isValid = selectedDate && selectedTime && name && phone && phone.length >= 9;
+
+        $('#submit-booking').prop('disabled', !isValid);
+        return isValid;
+      }
+    });
+  </script>
+  <script>
+    function checkAvailableSeats() {
+      let date = $('#selected-date').val();
+      if (!date || date === '') {
+        return;
+      }
+      $.getJSON(scriptURL + '?opt=check&date=' + date, function (data) {
+        if (data.success) {
+          $('.time-slot').each(function () {
+            let time = $(this).data('time');
+            let availableSeats = data.data[time] || 50; // Default to 50 if not found
+            $(this).find('.seats-available').text(availableSeats);
+          });
+        } else {
+          console.error('Error fetching available seats:', data.message);
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>
