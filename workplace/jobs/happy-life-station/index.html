@@ -97,19 +97,19 @@
                         </label>
                         <select class="form-select rounded-3" id="platform" name="platform" required>
                             <option value="">เลือกช่องทางการสั่งซื้อ</option>
-                            <option value="shopee" data-regex="[0-9A-Z]{14}">
+                            <option value="shopee" data-regex="[0-9A-Z]{14}" data-length="14">
                                 Shopee
                             </option>
-                            <option value="lazada" data-regex="[0-9]{15}">
+                            <option value="lazada" data-regex="[0-9]{15}" data-length="15">
                                 Lazada
                             </option>
                             <option value="facebook">
                                 Facebook
                             </option>
-                            <option value="Tiktok" data-regex="[0-9]{18}">
+                            <option value="Tiktok" data-regex="[0-9]{18}" data-length="18">
                                 Tiktok
                             </option>
-                            <option value="line" data-regex="[0-9]{16}">
+                            <option value="line" data-regex="[0-9]{16}" data-length="16">
                                 Line My Shop
                             </option>
                             <option value="website">
@@ -281,19 +281,29 @@
             console.log($(this).val());
             let platform = $(this).val();
             if (platform === 'สั่งตรงกับแอดมิน') {
-                $('#address')
-                    .prop('required', true)
-                    .parent().removeClass('d-none');
+                $('#address').prop('required', true).parent().removeClass('d-none');
+                $('#orderNumber').removeAttr('required').val('').parent().addClass('d-none');
             } else {
                 $('#address')
                     .prop('required', false)
                     .val('')
                     .parent().addClass('d-none');
+                if(platform === 'facebook') {
+                    $('#orderNumber').removeAttr('required').val('').parent().addClass('d-none');
+                } else {
+                    $('#orderNumber').prop('required', true).parent().removeClass('d-none');
+                }
             }
 
             if($(this).find(':selected').data('regex')) {
                 console.log($(this).find(':selected').data('regex'));
                 $('#orderNumber').attr('pattern', $(this).find(':selected').data('regex'));
+                let length = $(this).find(':selected').data('length');
+                $('#orderNumber').off('input').on('input', function () {
+                    if(this.value.length > length) {
+                        this.value = this.value.slice(0, length);
+                    }
+                });
             } else {
                 $('#orderNumber').removeAttr('pattern');
             }
