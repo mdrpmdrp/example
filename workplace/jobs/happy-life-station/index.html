@@ -115,8 +115,8 @@
                             <option value="website">
                                 Website
                             </option>
-                            <option value="สั่งตรงกับแอดมิน">
-                                สั่งตรงกับแอดมิน
+                            <option value="สั่งตรงกับแอดมิน (Line)">
+                                สั่งตรงกับแอดมิน (Line)
                             </option>
                         </select>
                     </div>
@@ -142,7 +142,7 @@
                         <label for="phone">
                             <i class="bi bi-telephone-fill text-red"></i>
                             เบอร์โทรศัพท์ <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control rounded-3" id="phone" name="phone" required placeholder="กรอกเฉพาะตัวเลข" minlength="10" maxlength="10" inputmode="numeric">
+                        <input type="text" class="form-control rounded-3" id="phone" name="phone" required placeholder="กรอกเฉพาะตัวเลข" minlength="10" maxlength="10">
                         <div class="invalid-feedback">
                             กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง
                         </div>
@@ -150,7 +150,7 @@
                     <div class="col-12 d-none">
                         <label for="address">
                             <i class="bi bi-house-fill text-red"></i>
-                            ที่อยู่สำหรับจัดส่ง <span class="text-danger">*</span></label>
+                            ชื่อผู้รับ เบอร์โทร และที่อยู่จัดส่ง <span class="text-danger">*</span></label>
                         <textarea class="form-control rounded-3" id="address" name="address" rows="3"></textarea>
                         <div class="invalid-feedback">
                             กรุณากรอกที่อยู่สำหรับจัดส่ง
@@ -275,12 +275,17 @@
 
         $('#phone').on('input', function () {
             this.value = this.value.replace(/[^0-9]/g, '');
+            if(this.value.length < 10 && $('form').hasClass('was-validated')) {
+                this.setCustomValidity('กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง');
+            }else{
+                this.setCustomValidity('');
+            }
         });
 
         $('#platform').change(function () {
             console.log($(this).val());
             let platform = $(this).val();
-            if (platform === 'สั่งตรงกับแอดมิน') {
+            if (platform === 'สั่งตรงกับแอดมิน (Line)') {
                 $('#address').prop('required', true).parent().removeClass('d-none');
                 $('#orderNumber').removeAttr('required').val('').parent().addClass('d-none');
             } else {
@@ -625,12 +630,13 @@
             Array.prototype.slice.call(forms)
                 .forEach(function (form) {
                     form.addEventListener('submit', function (event) {
-                        event.preventDefault()
                         if (!form.checkValidity()) {
+                            event.preventDefault()
                             event.stopPropagation()
                             form.classList.add('was-validated')
                             $(form).find(':invalid').first().focus();
                         } else {
+                            event.preventDefault()
                             submit()
                         }
                     }, false)
