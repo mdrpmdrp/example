@@ -28,8 +28,12 @@
       box-sizing: border-box;
     }
 
+    body {
+      background-color: #e7f5ff;;
+    }
+
     .container {
-      max-width: 800px;
+      max-width: 1000px;
     }
 
     .time-slot {
@@ -47,6 +51,11 @@
       color: white;
     }
 
+    .time-slot.disabled{
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     .calendar-day {
       cursor: pointer;
     }
@@ -57,7 +66,11 @@
     }
 
     .calendar-day.weekend {
-      background-color: #e2f3ff;
+      background-color: #72C0EE;
+      color: #03070C;
+    }
+    .calendar-day.weekend-disabled {
+      background-color: #f8d7da;
     }
 
     .calendar-day.selected {
@@ -76,10 +89,17 @@
 </head>
 
 <body>
+  <nav class="navbar navbar-dark bg-primary">
+    <div class="container">
+      <a class="navbar-brand" href="#">
+        <i class="bi bi-calendar-check-fill text-white"></i> ระบบจองคิว
+      </a>
+    </div>
+  </nav>
   <div class="header">
     <div class="container">
-      <h1 class="text-center">ระบบจองคิว</h1>
-      <p class="text-center text-muted">จองได้เฉพาะวันเสาร์-อาทิตย์</p>
+      <h1 class="text-center text-primary">ระบบจองคิว</h1>
+      <p class="text-center text-primary">จองได้เฉพาะวันเสาร์-อาทิตย์</p>
     </div>
   </div>
 
@@ -110,7 +130,15 @@
                 <div class="col">ศ</div>
                 <div class="col">ส</div>
               </div>
-              <div id="calendar-days" class="mt-2"></div>
+              <div id="calendar-days" class="mt-2">
+                <!-- Calendar Days Loader -->
+                <div id="calendar-loader" class="text-center p-4">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <p class="mt-2">กำลังโหลดข้อมูล...</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -129,8 +157,8 @@
 
             <div class="mb-4">
               <label class="form-label">เลือกเวลา (จำกัด 50 ที่นั่งต่อรอบ)</label>
-              <div class="row g-2">
-                <div class="col-6">
+              <div class="row g-2" id="time-slots">
+                <!-- <div class="col-6">
                   <div class="card time-slot p-2 text-center" data-time="9:00">
                     <div><i class="bi bi-clock"></i> 9:00 น.</div>
                     <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
@@ -159,7 +187,7 @@
                     <div><i class="bi bi-clock"></i> 14:00 น.</div>
                     <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
                   </div>
-                </div>
+                </div> -->
               </div>
             </div>
 
@@ -188,13 +216,21 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script>
+    const script_url = 'https://script.google.com/macros/s/AKfycbxVbWOn4QJOoqn9Ox6KN_PF2wXl0ebqWi2xfJq70eFYgtInS2u4RZzuSeYnedhyPYwYig/exec';
     $(document).ready(function () {
       let currentDate = new Date();
       let selectedDate = null;
       let selectedTime = null;
 
       // Initialize calendar
-      renderCalendar(currentDate);
+      // renderCalendar(currentDate);
+      $.getJSON(script_url + '?q=rsvdata', function (data) {
+        if (data.success) {
+          renderCalendar(currentDate, data.data);
+        } else {
+          console.error('Error fetching reserve data:', data.message);
+        }
+      });
 
       // Previous month button
       $('#prev-month').click(function () {
@@ -262,10 +298,9 @@
         });
       });
 
-      function renderCalendar(date) {
+      function renderCalendar(date,reserve_data) {
         const year = date.getFullYear();
         const month = date.getMonth();
-
         // Set month and year header
         const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
           'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -274,6 +309,23 @@
         // Get first day of month and total days
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // Format dates for comparison
+        const currentDateFormatted = new Date().setHours(0, 0, 0, 0);
+        const startOfMonth = new Date(year, month, 1).toISOString().split('T')[0];
+        const endOfMonth = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+        // Filter reserve data for current month
+        const availableDatesThisMonth = reserve_data.filter(item => {
+          return item.date >= startOfMonth && item.date <= endOfMonth && item.available;
+        });
+
+        // Create a map of available dates for quick lookup
+        const availableDatesMap = {};
+        availableDatesThisMonth.forEach(item => {
+          availableDatesMap[item.date] = item;
+        });
+        console.log(availableDatesMap);
 
         let html = '';
 
@@ -292,14 +344,23 @@
             } else {
               // Actual days
               const date = new Date(year, month, dayCount);
+              const dateStr = date.toLocaleDateString('en-CA'); // Format date as YYYY-MM-DD
               const isWeekend = date.getDay() === 0 || date.getDay() === 6; // 0 = Sunday, 6 = Saturday
-              const isPast = date < new Date().setHours(0, 0, 0, 0);
+              const isPast = date < currentDateFormatted;
+              const isAvailable = dateStr in availableDatesMap;
 
               let classes = 'calendar-day p-2 rounded text-center';
-              if (isWeekend) classes += ' weekend';
-              if (!isWeekend || isPast) classes += ' disabled';
+              
+              if (isWeekend && !isPast && isAvailable) {
+                classes += ' weekend';
+              } else if (isWeekend && (isPast || !isAvailable)) {
+                classes += ' weekend-disabled disabled';
+              } else {
+                classes += ' disabled';
+              }
 
-              html += `<div class="col"><div class="${classes}" data-date="${date.toISOString()}" data-weekend="${isWeekend}" data-past="${isPast}">${dayCount}</div></div>`;
+              html += `<div class="col"><div class="${classes}" data-date="${date.toISOString()}" 
+                data-weekend="${isWeekend}" data-past="${isPast}" data-available="${isAvailable}">${dayCount}</div></div>`;
 
               dayCount++;
             }
@@ -312,7 +373,7 @@
         $('#calendar-days').html(html);
 
         // Add click event for calendar days
-        $('.calendar-day').click(function () {
+        $('.calendar-day').click(function() {
           const isDisabled = $(this).hasClass('disabled');
           if (isDisabled) return;
 
@@ -321,9 +382,93 @@
 
           selectedDate = new Date($(this).data('date'));
           $('#selected-date').val(formatDateThai(selectedDate));
-
-          validateForm();
+          
+          // Update available seats based on the selected date
+          const dateStr = selectedDate.toLocaleDateString('en-CA'); // Format date as YYYY-MM-DD
+          const dateData = availableDatesMap[dateStr];
+          console.log(dateData);
+          if (dateData && dateData.rounded) {
+            // $('.time-slot').each(function() {
+            //   const timeSlot = $(this);
+            //   const time = timeSlot.data('time');
+            //   const timeData = dateData.rounded.find(item => item.time === time + ':00');
+              
+            //   if (timeData) {
+            //     timeSlot.find('.seats-available').text(timeData.available);
+            //     if (parseInt(timeData.available) <= 0) {
+            //       timeSlot.addClass('disabled');
+            //     } else {
+            //       timeSlot.removeClass('disabled');
+            //     }
+            //   }
+            // });
+            $('#time-slots').html(dateData.rounded.map(rounded => {
+              return `<div class="col-6">
+                  <div class="card time-slot p-2 text-center ${parseInt(rounded.available) <= 0 ? 'disabled' : ''}" 
+                   data-time="${rounded.time}" data-date="${dateStr}">
+                    <div><i class="bi bi-clock"></i> ${rounded.time} น.</div>
+                    <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">${rounded.available}</span> ที่นั่ง</small>
+                  </div>
+                </div>`
+            }).join(""))
+          }
+          
+          // validateForm();
         });
+
+        // // Get first day of month and total days
+        // const firstDay = new Date(year, month, 1).getDay();
+        // const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // let html = '';
+
+        // // Create calendar rows
+        // let dayCount = 1;
+        // for (let i = 0; i < 6; i++) {
+        //   html += '<div class="row g-1 mb-1">';
+
+        //   for (let j = 0; j < 7; j++) {
+        //     if (i === 0 && j < firstDay) {
+        //       // Empty cells before first day
+        //       html += '<div class="col"><div class="p-2"></div></div>';
+        //     } else if (dayCount > daysInMonth) {
+        //       // Empty cells after last day
+        //       html += '<div class="col"><div class="p-2"></div></div>';
+        //     } else {
+        //       // Actual days
+        //       const date = new Date(year, month, dayCount);
+        //       const isWeekend = date.getDay() === 0 || date.getDay() === 6; // 0 = Sunday, 6 = Saturday
+        //       const isPast = date < new Date().setHours(0, 0, 0, 0);
+
+        //       let classes = 'calendar-day p-2 rounded text-center';
+        //       if (isWeekend) classes += ' weekend';
+        //       if (!isWeekend || isPast) classes += ' disabled';
+
+        //       html += `<div class="col"><div class="${classes}" data-date="${date.toISOString()}" data-weekend="${isWeekend}" data-past="${isPast}">${dayCount}</div></div>`;
+
+        //       dayCount++;
+        //     }
+        //   }
+
+        //   html += '</div>';
+        //   if (dayCount > daysInMonth) break;
+        // }
+
+        // $('#calendar-days').html(html);
+
+        // // Add click event for calendar days
+        // $('.calendar-day').click(function () {
+        //   const isDisabled = $(this).hasClass('disabled');
+        //   if (isDisabled) return;
+
+        //   $('.calendar-day').removeClass('selected');
+        //   $(this).addClass('selected');
+
+        //   selectedDate = new Date($(this).data('date'));
+        //   $('#selected-date').val(formatDateThai(selectedDate));
+
+        //   validateForm();
+        // });
       }
 
       function formatDateThai(date) {
