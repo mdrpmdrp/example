@@ -29,7 +29,8 @@
     }
 
     body {
-      background-color: #e7f5ff;;
+      background-color: #e7f5ff;
+      ;
     }
 
     .container {
@@ -51,7 +52,7 @@
       color: white;
     }
 
-    .time-slot.disabled{
+    .time-slot.disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
@@ -69,6 +70,7 @@
       background-color: #72C0EE;
       color: #03070C;
     }
+
     .calendar-day.weekend-disabled {
       background-color: #f8d7da;
     }
@@ -110,6 +112,9 @@
           <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">เลือกวันที่</h5>
             <div>
+              <button id="reload-calendar" class="btn btn-sm btn-outline-primary me-1" onclick="reloadCalendar()">
+                <i class="bi bi-arrow-clockwise"></i> รีเฟรช
+              </button>
               <button id="prev-month" class="btn btn-sm btn-outline-secondary">
                 <i class="bi bi-chevron-left"></i>
               </button>
@@ -132,12 +137,7 @@
               </div>
               <div id="calendar-days" class="mt-2">
                 <!-- Calendar Days Loader -->
-                <div id="calendar-loader" class="text-center p-4">
-                  <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                  </div>
-                  <p class="mt-2">กำลังโหลดข้อมูล...</p>
-                </div>
+
               </div>
             </div>
           </div>
@@ -158,36 +158,6 @@
             <div class="mb-4">
               <label class="form-label">เลือกเวลา (จำกัด 50 ที่นั่งต่อรอบ)</label>
               <div class="row g-2" id="time-slots">
-                <!-- <div class="col-6">
-                  <div class="card time-slot p-2 text-center" data-time="9:00">
-                    <div><i class="bi bi-clock"></i> 9:00 น.</div>
-                    <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="card time-slot p-2 text-center" data-time="10:00">
-                    <div><i class="bi bi-clock"></i> 10:00 น.</div>
-                    <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="card time-slot p-2 text-center" data-time="11:00">
-                    <div><i class="bi bi-clock"></i> 11:00 น.</div>
-                    <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="card time-slot p-2 text-center" data-time="13:00">
-                    <div><i class="bi bi-clock"></i> 13:00 น.</div>
-                    <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="card time-slot p-2 text-center" data-time="14:00">
-                    <div><i class="bi bi-clock"></i> 14:00 น.</div>
-                    <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">50</span> ที่นั่ง</small>
-                  </div>
-                </div> -->
               </div>
             </div>
 
@@ -209,7 +179,13 @@
       </div>
     </div>
   </div>
-
+  <template id="calendar-loader-template">
+    <div id="calendar-loader" class="text-center">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  </template>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
     crossorigin="anonymous"></script>
@@ -217,13 +193,14 @@
 
   <script>
     const script_url = 'https://script.google.com/macros/s/AKfycbxVbWOn4QJOoqn9Ox6KN_PF2wXl0ebqWi2xfJq70eFYgtInS2u4RZzuSeYnedhyPYwYig/exec';
+    let currentDate = new Date();
+    let selectedDate = null;
+    let selectedTime = null;
     $(document).ready(function () {
-      let currentDate = new Date();
-      let selectedDate = null;
-      let selectedTime = null;
 
       // Initialize calendar
       // renderCalendar(currentDate);
+      $('#calendar-days').html($('#calendar-loader-template').html());
       $.getJSON(script_url + '?q=rsvdata', function (data) {
         if (data.success) {
           renderCalendar(currentDate, data.data);
@@ -231,41 +208,40 @@
           console.error('Error fetching reserve data:', data.message);
         }
       });
+    });
+    $('#prev-month').click(function () {
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      renderCalendar(currentDate);
+    });
 
-      // Previous month button
-      $('#prev-month').click(function () {
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        renderCalendar(currentDate);
-      });
+    // Next month button
+    $('#next-month').click(function () {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      renderCalendar(currentDate);
+    });
 
-      // Next month button
-      $('#next-month').click(function () {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        renderCalendar(currentDate);
-      });
+    // Select time slot
+    $(document).on('click', '.time-slot', function () {
+      $('.time-slot').removeClass('selected');
+      $(this).addClass('selected');
+      selectedTime = $(this).data('time');
+      validateForm();
+    });
 
-      // Select time slot
-      $(document).on('click', '.time-slot', function () {
-        $('.time-slot').removeClass('selected');
-        $(this).addClass('selected');
-        selectedTime = $(this).data('time');
-        validateForm();
-      });
+    // Form validation
+    $('#name, #phone').on('input', validateForm);
 
-      // Form validation
-      $('#name, #phone').on('input', validateForm);
+    // Submit booking
+    $('#submit-booking').click(function () {
+      if (!validateForm()) return;
 
-      // Submit booking
-      $('#submit-booking').click(function () {
-        if (!validateForm()) return;
+      const name = $('#name').val();
+      const phone = $('#phone').val();
+      const formattedDate = formatDateThai(selectedDate);
 
-        const name = $('#name').val();
-        const phone = $('#phone').val();
-        const formattedDate = formatDateThai(selectedDate);
-
-        Swal.fire({
-          title: 'ยืนยันการจอง',
-          html: `
+      Swal.fire({
+        title: 'ยืนยันการจอง',
+        html: `
             <div class="text-start">
               <p><strong>ชื่อ-นามสกุล:</strong> ${name}</p>
               <p><strong>เบอร์โทรศัพท์:</strong> ${phone}</p>
@@ -273,247 +249,288 @@
               <p><strong>เวลา:</strong> ${selectedTime} น.</p>
             </div>
           `,
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonText: 'ยืนยัน',
-          cancelButtonText: 'ยกเลิก'
-        }).then((result) => {
-          if (result.isConfirmed) {
-            Swal.fire(
-              'จองสำเร็จ!',
-              'ระบบได้บันทึกการจองของคุณแล้ว',
-              'success'
-            );
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'ยกเลิก'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Swal.fire({
+            icon: 'info',
+            title: 'กำลังบันทึกการจอง...',
+            didOpen: () => {
+              Swal.showLoading()
+            },
+            allowOutsideClick: false
+          })
+          console.log('Booking data:', {
+            name: name,
+            phone: phone,
+            date: selectedDate.toLocaleDateString('en-CA'),
+            time: selectedTime
+          });
+          $.post(script_url, {
+            opt: 'add',
+            name: name,
+            phone: phone,
+            date: selectedDate.toLocaleDateString('en-CA'),
+            time: selectedTime
+          }, function (response) {
+            if (response.success) {
+              console.log('Booking successful:', response.data);
+              Swal.fire({
+                icon: 'success',
+                title: 'บันทึกการจองสำเร็จ!',
+                text: `วันที่ ${formattedDate} เวลา ${selectedTime} น.`,
+                showCancelButton: false,
+                confirmButtonText: 'ตกลง'
+              }).then(() => {
+                reloadCalendar();
+                resetFrom();
+              })
+            } else {
+              console.error('Error booking:', response.message);
+              reloadCalendar();
+              Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด!',
+                text: response.message,
+                showCancelButton: false,
+                confirmButtonText: 'ตกลง'
+              });
+            }
+          }, 'json');
+        }
+      });
+    });
 
-            // Reset form
-            selectedDate = null;
-            selectedTime = null;
-            $('.calendar-day').removeClass('selected');
-            $('.time-slot').removeClass('selected');
-            $('#selected-date').val('');
-            $('#name').val('');
-            $('#phone').val('');
-            $('#submit-booking').prop('disabled', true);
-          }
-        });
+    function resetFrom() {
+      selectedDate = null;
+      selectedTime = null;
+      $('#name').val('');
+      $('#phone').val('');
+      $('#selected-date').val('');
+      $('.time-slot').removeClass('selected');
+      $('.calendar-day').removeClass('selected');
+      $('#submit-booking').prop('disabled', true);
+     
+    }
+
+    function renderCalendar(date, reserve_data) {
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      // Set month and year header
+      const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+      $('#current-month').text(`${monthNames[month]} ${year + 543}`);
+
+      // Get first day of month and total days
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      // Format dates for comparison
+      const currentDateFormatted = new Date().setHours(0, 0, 0, 0);
+      const startOfMonth = new Date(year, month, 1).toISOString().split('T')[0];
+      const endOfMonth = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+      // Filter reserve data for current month
+      const availableDatesThisMonth = reserve_data.filter(item => {
+        return item.date >= startOfMonth && item.date <= endOfMonth && item.available;
       });
 
-      function renderCalendar(date,reserve_data) {
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        // Set month and year header
-        const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-          'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        $('#current-month').text(`${monthNames[month]} ${year + 543}`);
+      // Create a map of available dates for quick lookup
+      const availableDatesMap = {};
+      availableDatesThisMonth.forEach(item => {
+        availableDatesMap[item.date] = item;
+      });
+      console.log(availableDatesMap);
 
-        // Get first day of month and total days
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
+      let html = '';
 
-        // Format dates for comparison
-        const currentDateFormatted = new Date().setHours(0, 0, 0, 0);
-        const startOfMonth = new Date(year, month, 1).toISOString().split('T')[0];
-        const endOfMonth = new Date(year, month + 1, 0).toISOString().split('T')[0];
+      // Create calendar rows
+      let dayCount = 1;
+      for (let i = 0; i < 6; i++) {
+        html += '<div class="row g-1 mb-1">';
 
-        // Filter reserve data for current month
-        const availableDatesThisMonth = reserve_data.filter(item => {
-          return item.date >= startOfMonth && item.date <= endOfMonth && item.available;
-        });
+        for (let j = 0; j < 7; j++) {
+          if (i === 0 && j < firstDay) {
+            // Empty cells before first day
+            html += '<div class="col"><div class="p-2"></div></div>';
+          } else if (dayCount > daysInMonth) {
+            // Empty cells after last day
+            html += '<div class="col"><div class="p-2"></div></div>';
+          } else {
+            // Actual days
+            const date = new Date(year, month, dayCount);
+            const dateStr = date.toLocaleDateString('en-CA'); // Format date as YYYY-MM-DD
+            const isWeekend = date.getDay() === 0 || date.getDay() === 6; // 0 = Sunday, 6 = Saturday
+            const isPast = date < currentDateFormatted;
+            const isAvailable = dateStr in availableDatesMap;
 
-        // Create a map of available dates for quick lookup
-        const availableDatesMap = {};
-        availableDatesThisMonth.forEach(item => {
-          availableDatesMap[item.date] = item;
-        });
-        console.log(availableDatesMap);
+            let classes = 'calendar-day p-2 rounded text-center';
 
-        let html = '';
-
-        // Create calendar rows
-        let dayCount = 1;
-        for (let i = 0; i < 6; i++) {
-          html += '<div class="row g-1 mb-1">';
-
-          for (let j = 0; j < 7; j++) {
-            if (i === 0 && j < firstDay) {
-              // Empty cells before first day
-              html += '<div class="col"><div class="p-2"></div></div>';
-            } else if (dayCount > daysInMonth) {
-              // Empty cells after last day
-              html += '<div class="col"><div class="p-2"></div></div>';
+            if (isWeekend && !isPast && isAvailable) {
+              classes += ' weekend';
+            } else if (isWeekend && (isPast || !isAvailable)) {
+              classes += ' weekend-disabled disabled';
             } else {
-              // Actual days
-              const date = new Date(year, month, dayCount);
-              const dateStr = date.toLocaleDateString('en-CA'); // Format date as YYYY-MM-DD
-              const isWeekend = date.getDay() === 0 || date.getDay() === 6; // 0 = Sunday, 6 = Saturday
-              const isPast = date < currentDateFormatted;
-              const isAvailable = dateStr in availableDatesMap;
+              classes += ' disabled';
+            }
 
-              let classes = 'calendar-day p-2 rounded text-center';
-              
-              if (isWeekend && !isPast && isAvailable) {
-                classes += ' weekend';
-              } else if (isWeekend && (isPast || !isAvailable)) {
-                classes += ' weekend-disabled disabled';
-              } else {
-                classes += ' disabled';
-              }
-
-              html += `<div class="col"><div class="${classes}" data-date="${date.toISOString()}" 
+            html += `<div class="col"><div class="${classes}" data-date="${date.toISOString()}" 
                 data-weekend="${isWeekend}" data-past="${isPast}" data-available="${isAvailable}">${dayCount}</div></div>`;
 
-              dayCount++;
-            }
+            dayCount++;
           }
-
-          html += '</div>';
-          if (dayCount > daysInMonth) break;
         }
 
-        $('#calendar-days').html(html);
+        html += '</div>';
+        if (dayCount > daysInMonth) break;
+      }
 
-        // Add click event for calendar days
-        $('.calendar-day').click(function() {
-          const isDisabled = $(this).hasClass('disabled');
-          if (isDisabled) return;
+      $('#calendar-days').html(html);
 
-          $('.calendar-day').removeClass('selected');
-          $(this).addClass('selected');
+      // Add click event for calendar days
+      $('.calendar-day').click(function () {
+        const isDisabled = $(this).hasClass('disabled');
+        if (isDisabled) return;
 
-          selectedDate = new Date($(this).data('date'));
-          $('#selected-date').val(formatDateThai(selectedDate));
-          
-          // Update available seats based on the selected date
-          const dateStr = selectedDate.toLocaleDateString('en-CA'); // Format date as YYYY-MM-DD
-          const dateData = availableDatesMap[dateStr];
-          console.log(dateData);
-          if (dateData && dateData.rounded) {
-            // $('.time-slot').each(function() {
-            //   const timeSlot = $(this);
-            //   const time = timeSlot.data('time');
-            //   const timeData = dateData.rounded.find(item => item.time === time + ':00');
-              
-            //   if (timeData) {
-            //     timeSlot.find('.seats-available').text(timeData.available);
-            //     if (parseInt(timeData.available) <= 0) {
-            //       timeSlot.addClass('disabled');
-            //     } else {
-            //       timeSlot.removeClass('disabled');
-            //     }
-            //   }
-            // });
-            $('#time-slots').html(dateData.rounded.map(rounded => {
-              return `<div class="col-6">
+        $('.calendar-day').removeClass('selected');
+        $(this).addClass('selected');
+
+        selectedDate = new Date($(this).data('date'));
+        $('#selected-date').val(formatDateThai(selectedDate));
+
+        // Update available seats based on the selected date
+        const dateStr = selectedDate.toLocaleDateString('en-CA'); // Format date as YYYY-MM-DD
+        const dateData = availableDatesMap[dateStr];
+        console.log(dateData);
+        if (dateData && dateData.rounded) {
+          // $('.time-slot').each(function() {
+          //   const timeSlot = $(this);
+          //   const time = timeSlot.data('time');
+          //   const timeData = dateData.rounded.find(item => item.time === time + ':00');
+
+          //   if (timeData) {
+          //     timeSlot.find('.seats-available').text(timeData.available);
+          //     if (parseInt(timeData.available) <= 0) {
+          //       timeSlot.addClass('disabled');
+          //     } else {
+          //       timeSlot.removeClass('disabled');
+          //     }
+          //   }
+          // });
+          $('#time-slots').html(dateData.rounded.map(rounded => {
+            return `<div class="col-6">
                   <div class="card time-slot p-2 text-center ${parseInt(rounded.available) <= 0 ? 'disabled' : ''}" 
                    data-time="${rounded.time}" data-date="${dateStr}">
                     <div><i class="bi bi-clock"></i> ${rounded.time} น.</div>
                     <small style="font-size: 0.7rem;">เหลือ <span class="seats-available">${rounded.available}</span> ที่นั่ง</small>
                   </div>
                 </div>`
-            }).join(""))
-          }
-          
-          // validateForm();
-        });
+          }).join(""))
+        }
 
-        // // Get first day of month and total days
-        // const firstDay = new Date(year, month, 1).getDay();
-        // const daysInMonth = new Date(year, month + 1, 0).getDate();
+        // validateForm();
+      });
 
-        // let html = '';
+      // // Get first day of month and total days
+      // const firstDay = new Date(year, month, 1).getDay();
+      // const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-        // // Create calendar rows
-        // let dayCount = 1;
-        // for (let i = 0; i < 6; i++) {
-        //   html += '<div class="row g-1 mb-1">';
+      // let html = '';
 
-        //   for (let j = 0; j < 7; j++) {
-        //     if (i === 0 && j < firstDay) {
-        //       // Empty cells before first day
-        //       html += '<div class="col"><div class="p-2"></div></div>';
-        //     } else if (dayCount > daysInMonth) {
-        //       // Empty cells after last day
-        //       html += '<div class="col"><div class="p-2"></div></div>';
-        //     } else {
-        //       // Actual days
-        //       const date = new Date(year, month, dayCount);
-        //       const isWeekend = date.getDay() === 0 || date.getDay() === 6; // 0 = Sunday, 6 = Saturday
-        //       const isPast = date < new Date().setHours(0, 0, 0, 0);
+      // // Create calendar rows
+      // let dayCount = 1;
+      // for (let i = 0; i < 6; i++) {
+      //   html += '<div class="row g-1 mb-1">';
 
-        //       let classes = 'calendar-day p-2 rounded text-center';
-        //       if (isWeekend) classes += ' weekend';
-        //       if (!isWeekend || isPast) classes += ' disabled';
+      //   for (let j = 0; j < 7; j++) {
+      //     if (i === 0 && j < firstDay) {
+      //       // Empty cells before first day
+      //       html += '<div class="col"><div class="p-2"></div></div>';
+      //     } else if (dayCount > daysInMonth) {
+      //       // Empty cells after last day
+      //       html += '<div class="col"><div class="p-2"></div></div>';
+      //     } else {
+      //       // Actual days
+      //       const date = new Date(year, month, dayCount);
+      //       const isWeekend = date.getDay() === 0 || date.getDay() === 6; // 0 = Sunday, 6 = Saturday
+      //       const isPast = date < new Date().setHours(0, 0, 0, 0);
 
-        //       html += `<div class="col"><div class="${classes}" data-date="${date.toISOString()}" data-weekend="${isWeekend}" data-past="${isPast}">${dayCount}</div></div>`;
+      //       let classes = 'calendar-day p-2 rounded text-center';
+      //       if (isWeekend) classes += ' weekend';
+      //       if (!isWeekend || isPast) classes += ' disabled';
 
-        //       dayCount++;
-        //     }
-        //   }
+      //       html += `<div class="col"><div class="${classes}" data-date="${date.toISOString()}" data-weekend="${isWeekend}" data-past="${isPast}">${dayCount}</div></div>`;
 
-        //   html += '</div>';
-        //   if (dayCount > daysInMonth) break;
-        // }
+      //       dayCount++;
+      //     }
+      //   }
 
-        // $('#calendar-days').html(html);
+      //   html += '</div>';
+      //   if (dayCount > daysInMonth) break;
+      // }
 
-        // // Add click event for calendar days
-        // $('.calendar-day').click(function () {
-        //   const isDisabled = $(this).hasClass('disabled');
-        //   if (isDisabled) return;
+      // $('#calendar-days').html(html);
 
-        //   $('.calendar-day').removeClass('selected');
-        //   $(this).addClass('selected');
+      // // Add click event for calendar days
+      // $('.calendar-day').click(function () {
+      //   const isDisabled = $(this).hasClass('disabled');
+      //   if (isDisabled) return;
 
-        //   selectedDate = new Date($(this).data('date'));
-        //   $('#selected-date').val(formatDateThai(selectedDate));
+      //   $('.calendar-day').removeClass('selected');
+      //   $(this).addClass('selected');
 
-        //   validateForm();
-        // });
-      }
+      //   selectedDate = new Date($(this).data('date'));
+      //   $('#selected-date').val(formatDateThai(selectedDate));
 
-      function formatDateThai(date) {
-        if (!date) return '';
+      //   validateForm();
+      // });
+    }
 
-        const weekdays = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
-        const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    function formatDateThai(date) {
+      if (!date) return '';
 
-        const weekday = weekdays[date.getDay()];
-        const day = date.getDate();
-        const month = months[date.getMonth()];
-        const year = date.getFullYear() + 543; // Convert to Buddhist Era
+      const weekdays = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+      const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-        return `วัน${weekday}ที่ ${day} ${month} ${year}`;
-      }
+      const weekday = weekdays[date.getDay()];
+      const day = date.getDate();
+      const month = months[date.getMonth()];
+      const year = date.getFullYear() + 543; // Convert to Buddhist Era
 
-      function validateForm() {
-        const name = $('#name').val().trim();
-        const phone = $('#phone').val().trim();
-        const isValid = selectedDate && selectedTime && name && phone && phone.length >= 9;
+      return `วัน${weekday}ที่ ${day} ${month} ${year}`;
+    }
 
-        $('#submit-booking').prop('disabled', !isValid);
-        return isValid;
-      }
-    });
-  </script>
-  <script>
-    function checkAvailableSeats() {
-      let date = $('#selected-date').val();
-      if (!date || date === '') {
-        return;
-      }
-      $.getJSON(scriptURL + '?opt=check&date=' + date, function (data) {
+    function validateForm() {
+      const name = $('#name').val().trim();
+      const phone = $('#phone').val().trim();
+      const isValid = selectedDate && selectedTime && name && phone && phone.length >= 9;
+
+      $('#submit-booking').prop('disabled', !isValid);
+      return isValid;
+    }
+
+
+
+    function reloadCalendar() {
+      $('#calendar-days').html($('#calendar-loader-template').html());
+      $('#selected-date').val('');
+      selectedDate = null;
+      selectedTime = null;
+      $('#time-slots').html('');
+      $.getJSON(script_url + '?q=rsvdata', function (data) {
+        console.log("🚀 ~ data:", data)
         if (data.success) {
-          $('.time-slot').each(function () {
-            let time = $(this).data('time');
-            let availableSeats = data.data[time] || 50; // Default to 50 if not found
-            $(this).find('.seats-available').text(availableSeats);
-          });
+          renderCalendar(currentDate, data.data);
         } else {
-          console.error('Error fetching available seats:', data.message);
+          console.error('Error fetching reserve data:', data.message);
         }
       });
     }
   </script>
+
 </body>
 
 </html>
