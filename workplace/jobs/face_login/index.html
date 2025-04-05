@@ -34,7 +34,6 @@
             align-items: center;
             height: 100vh;
             width: 100%;
-            background-color: #f8f9fa;
         }
 
         .login-container {
@@ -75,6 +74,12 @@
 
             display: none;
         }
+
+        #detection-alert {
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 1.2rem;
+        }
     </style>
 
 </head>
@@ -89,6 +94,9 @@
                         Login
                     </h2>
                     <form>
+                        <div id="detection-alert" style="display: none;" class="text-center w-100">
+
+                        </div>
                         <div id="camera" style="width: 100%;"
                             class="bg-body-secondary rounded-4 d-flex justify-content-center align-items-center mb-3">
                             <i class="bi bi-camera-video text-muted" style="font-size: 3rem;"></i>
@@ -206,10 +214,13 @@
             $('#video').removeClass('d-none');
             onPlay();
             let video = $('#video')[0];
+            if (playInterval) {
+                clearInterval(playInterval); // Clear the previous interval if it exists
+            }
             playInterval = setInterval(async () => {
                 if (!video || (!video.paused && !video.ended)) {
-                    onPlay();
-                }else{
+                    await onPlay();
+                } else {
                     clearInterval(playInterval); // Clear the interval if video is paused or ended
                 }
             });
@@ -234,66 +245,87 @@
 
 
             if (!detections) return;
-
-            // Check if detection has valid coordinates before proceeding
             if (!detections.detection || !detections.detection.box) return;
 
-            const resizedDetections = faceapi.resizeResults(detections, displaySize);
-            canvas.style.display = 'block';
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            // Draw green rectangle around face
-            context.strokeStyle = '#2ecc71';
-            context.lineWidth = 3;
-            const box = resizedDetections.detection.box;
-            context.strokeRect(box.x, box.y, box.width, box.height);
+            await new Promise(resolve => {
+                // Check if detection has valid coordinates before proceeding
 
-            context.beginPath();
-            context.rect(box.x, box.y, box.width, box.height);
-            context.fillStyle = 'rgba(46, 204, 113, 0.3)'; // Semi-transparent green
-            context.fill();
-            // Optional: Add text label above the face
-            context.beginPath();
-            context.rect(box.x - 3, box.y - 30, box.width + 6, 30);
-            context.fillStyle = '#2ecc71'; // Semi-transparent white
-            context.fill();
-            context.font = '16px Mitr';
-            context.fillStyle = '#000000';
-            context.fillText('Face Detected', box.x, box.y - 10); // Centered text
+                // Check if the detected face is too small
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                const minFaceSize = 100; // Minimum face size in pixels
+                let canvas_bg = '#2ecc71'; // Default background color
+                let canvas_text = 'ประมวลผลใบหน้า..'; // Default text
+                let canvas_tranparent = 'rgba(46, 204, 113, 0.3)'; // Default transparent color
+                if (resizedDetections.detection.box.width < minFaceSize || resizedDetections.detection.box.height < minFaceSize) {
+                    canvas_bg = '#dc3545'; // Change to red if face is too small
+                    canvas_text = 'ใบหน้าห่างเกินไป'; // Change text to "Face too small"
+                    canvas_tranparent = 'rgba(220, 53, 69, 0.3)'; // Change transparent color to red
+                    $('#detection-alert').html('<i class="bi bi-exclamation-triangle-fill text-danger"></i> <span class="text-danger">กรุณาเข้าใกล้กล้องมากขึ้น</span>').show();
+                } else {
+                    $('#detection-alert').hide(); // Hide alert if face is detected properly
+                }
+                canvas.style.display = 'block';
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                // Draw green rectangle around face
+                context.strokeStyle = canvas_bg; // Set stroke color to green
+                context.lineWidth = 3;
+                const box = resizedDetections.detection.box;
+                context.strokeRect(box.x, box.y, box.width, box.height);
 
+                context.beginPath();
+                context.rect(box.x, box.y, box.width, box.height);
+                context.lineWidth = 3;
+                context.fillStyle = canvas_tranparent; // Set fill color to green with transparency
+                context.fill();
+                // Optional: Add text label above the face
+                context.beginPath();
+                context.rect(box.x - 3, box.y - 30, box.width + 6, 30);
+                context.fillStyle = canvas_bg;
+                context.fill();
+                context.font = '16px Mitr';
+                context.fillStyle = '#000000';
+                context.fillText(canvas_text, box.x, box.y - 10); // Centered text
+                if (resizedDetections.detection.box.width < minFaceSize || resizedDetections.detection.box.height < minFaceSize) {
+                    resolve(false); // Resolve the promise with false if face is too small
+                    return;
+                }
 
-            // Alternative: still use faceapi but with custom options
-            // const drawOptions = { boxColor: '#2ecc71', lineWidth: 3 };
-            // faceapi.draw.drawDetections(canvas, resizedDetections, drawOptions);
-            arr_descriptions.push(detections.descriptor);
-            console.log(arr_descriptions.length);
-            if (arr_descriptions.length === 20) {
-                // pause the video stream and reset UI
-                video.pause();
+                // Alternative: still use faceapi but with custom options
+                // const drawOptions = { boxColor: '#2ecc71', lineWidth: 3 };
+                // faceapi.draw.drawDetections(canvas, resizedDetections, drawOptions);
 
-                // $('#video').addClass('d-none');
-                // $('#camera').removeClass('d-none');
-                // $('#overlay').css('display', 'none');
+                arr_descriptions.push(detections.descriptor);
+                console.log(arr_descriptions.length);
+                if (arr_descriptions.length === 20) {
+                    // pause the video stream and reset UI
+                    video.pause();
 
-                Swal.fire({
-                    title: 'กำลังตรวจสอบใบหน้า',
-                    text: 'กรุณารอสักครู่...',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    },
-                    customClass: {
-                        popup: "rounded-4",
-                    }
-                });
-                playInterval = null; // Clear the interval to stop continuous detection
-                // Calculate the average descriptor from the collected face descriptors
-                let desc = averageDescriptor(arr_descriptions);
-                authenFace(Array.from(desc));
+                    // $('#video').addClass('d-none');
+                    // $('#camera').removeClass('d-none');
+                    // $('#overlay').css('display', 'none');
 
-            }
-            // localStorage.setItem('faceDescription', JSON.stringify({ label: labels[0], descriptions: Array.from(detections.descriptor) }));
-            // matchFace();
-            // play video
+                    Swal.fire({
+                        title: 'กำลังตรวจสอบใบหน้า',
+                        text: 'กรุณารอสักครู่...',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                        customClass: {
+                            popup: "rounded-4",
+                        }
+                    });
+                    playInterval = null; // Clear the interval to stop continuous detection
+                    // Calculate the average descriptor from the collected face descriptors
+                    let desc = averageDescriptor(arr_descriptions);
+                    clearInterval(playInterval); // Clear the interval to stop continuous detection
+                    arr_descriptions.length = 0; // Clear the descriptions array
+                    resolve(authenFace(Array.from(desc)));
+                    return
+
+                }
+                resolve(true); // Resolve the promise after the detection is complete
+            });
         }
 
         function averageDescriptor(descriptors) {
@@ -346,7 +378,6 @@
                                         'align-items': 'center',
                                         'min-height': '100vh',
                                         'width': '100%',
-                                        'background-color': '#f8f9fa',
                                     })
                         });
                     } else {
