@@ -2,14 +2,13 @@
 <html lang="en">
 
 <head>
-    <!-- no cache -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <!-- no cache -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Face Register</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
         integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
@@ -21,6 +20,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@200;300;400;500;600;700&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         * {
             font-family: 'Mitr', sans-serif;
@@ -28,21 +30,365 @@
             padding: 0;
             box-sizing: border-box;
         }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100%;
+            background-color: #f8f9fa;
+        }
+
+        .login-container {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .login-container h2 {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-control {
+            border-radius: 4px;
+        }
+
+        /* .btn-primary {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 4px;
+        } */
+
+        .register-link {
+            display: block;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        #overlay {
+            position: absolute;
+
+            display: none;
+        }
     </style>
 
 </head>
 
-<body>
-    
+<body class="bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 d-flex justify-content-center">
+                <div class="login-container rounded-4">
+                    <h2 class="text-center">
+                        <span class="text-primary"><i class="fa-solid fa-user-plus"></i> Face</span>
+                        Register
+                    </h2>
+                    <form>
+                        <div class="d-flex mb-3">
+                            <div class="col me-2">
+                                <input type="text" id="name" class="form-control rounded-3" placeholder="ชื่อ-นามสกุล"
+                                    required>
+                            </div>
+                        </div>
+                        <div id="camera" style="width: 100%;"
+                            class="bg-body-secondary rounded-4 d-none justify-content-center align-items-center mb-3">
+                            <i class="bi bi-camera-video text-muted" style="font-size: 3rem;"></i>
+                            <video id="video" autoplay class="d-none rounded-4" style="width: 100%;"></video>
+                            <canvas id="overlay"></canvas>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="toggle-camera" class="btn btn-primary rounded-3 w-100">
+                                <i class="bi bi-camera-fill me-2"></i>เริ่มการสแกนใบหน้า
+                            </button>
+                        </div>
+                        <div class="d-flex mt-4 justify-content-center">
+                            <!-- Don't have an account?&nbsp;<a href="register.html">Register</a> -->
+                            หากคุณมีบัญชีอยู่แล้ว?&nbsp;<a href="รืกำป.html">เข้าสู่ระบบ</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div id="selfie-wrapper" class="row justify-content-center mt-3">
+        </div>
+
+    </div>
+    <script>
+        const script_url = 'https://script.google.com/macros/s/AKfycbxlDnwTslbj8FwKHtuDkiI8AJQpCSwhKe4SrKATqnRKh8HyVcUPoUSD4pgAOINNO2qk/exec'
+        function isWebGLSupported() {
+            try {
+                const canvas = document.createElement('canvas');
+                return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+            } catch (e) {
+                return false;
+            }
+        }
+
+        $('#toggle-camera').on('click', function () {
+            if ($(this).attr('data-action') == 'stop') {
+                $('#video').addClass('d-none');
+                $('#camera').removeClass('d-flex').addClass('d-none');
+                $('#overlay').css('display', 'none');
+                $('#name').parent().removeClass('d-none');
+                $(this).html('<i class="bi bi-camera-video me-2"></i>เริ่มการสแกนใบหน้า').attr('data-action', 'start').removeClass('btn-danger').addClass('btn-primary');
+                return;
+            }
+            if ($('#name').val() == "") {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'คำเตือน',
+                    text: 'กรุณากรอกชื่อ-นามสกุลก่อนเริ่มการสแกนใบหน้า',
+                    customClass: {
+                        popup: 'rounded-4',
+                    },
+                    confirmButtonText: 'ตกลง',
+                });
+                return;
+            }
+            openWebcamForSelfie();
+            $('#camera').removeClass('d-none').addClass('d-flex');
+            $('#video').removeClass('d-none');
+            $('#overlay').css('display', 'block');
+            $('#name').parent().addClass('d-none');
+            $('#toggle-camera').html('<i class="bi bi-camera-video me-2"></i>หยุดสแกนใบหน้า').attr('data-action', 'stop').removeClass('btn-primary').addClass('btn-danger');
+
+        });
+
+
+        $(document).ready(function () {
+            // Check if device is mobile or PC
+            function isMobileDevice() {
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            }
+
+            // Display a message about device type
+            const deviceType = isMobileDevice() ? 'mobile' : 'desktop';
+            console.log(`Device detected: ${deviceType}`);
+
+            // You can also adjust UI elements based on device type
+            if (isMobileDevice()) {
+                $('#camera, #video').css({
+                    'aspect-ratio': '3/4',
+                });
+
+            } else {
+                $('#camera, #video').css({
+                    'aspect-ratio': '4/3',
+                });
+            }
+
+            if (isWebGLSupported()) {
+                Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri('./models'),
+                    faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
+                    faceapi.nets.faceRecognitionNet.loadFromUri('./models'),
+                    faceapi.nets.ssdMobilenetv1.loadFromUri('./models')
+                    // faceapi.nets.mtcnn.loadFromUri('./models')
+                ]).then(() => {
+                    console.log(`Models loaded: ${faceapi.tf.engine().state.numTensors} tensors`);
+                    Swal.close();
+                    console.log(faceapi.nets);
+                    console.log('load model success');
+                    $('i.bi-camera-video').addClass('d-none');
+                    $('#video').removeClass('d-none');
+                    // openWebcamForSelfie();
+                }).catch((err) => console.log(err));
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่รองรับ WebGL',
+                    html: 'อุปกรณ์ของคุณไม่รองรับ WebGL ซึ่งจำเป็นสำหรับแอปพลิเคชันนี้ กรุณาเปิดใช้งาน WebGL หรือใช้แฟลก <code>--enable-unsafe-swiftshader</code> สำหรับเนื้อหาที่เชื่อถือได้',
+                    customClass: {
+                        popup: 'rounded-4',
+                    },
+                    allowOutsideClick: false,
+                });
+            }
+        });
+
+
+        async function openWebcamForSelfie() {
+            navigator.mediaDevices
+                .getUserMedia({
+                    video: {
+                        facingMode: "user",
+                        width: $('#video').width(),
+                        height: $('#video').height(),
+                        frameRate: {
+                            ideal: 30,
+                            min: 10
+                        }
+                    },
+                    audio: false,
+                })
+                .then((stream) => {
+                    video.srcObject = stream;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+        }
+
+        $('#video').on('play', async function () {
+            onPlay();
+            setInterval(async () => {
+                if (!video.paused && !video.ended) {
+                    onPlay();
+                }
+            });
+        });
+
+        const descriptions = [];
+        async function onPlay() {
+            const video = document.querySelector('#video');
+            const displaySize = $('#video')[0].getBoundingClientRect();
+            const canvas = $('#overlay')[0]
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            faceapi.matchDimensions(canvas, displaySize);
+            // const labels = ["123456"]; // Add your own label
+            // const detections = await faceapi
+            //     .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({
+            //         inputSize: 128,
+            //         scoreThreshold: 0.5
+            //     }))
+            const options = new faceapi.TinyFaceDetectorOptions();
+            const detections = await faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor()
+
+
+            if (!detections) return;
+
+            // Check if detection has valid coordinates before proceeding
+            if (!detections.detection || !detections.detection.box) return;
+
+            const resizedDetections = faceapi.resizeResults(detections, displaySize);
+            canvas.style.display = 'block';
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            // Draw green rectangle around face
+            context.strokeStyle = '#2ecc71';
+            context.lineWidth = 3;
+            const box = resizedDetections.detection.box;
+            context.strokeRect(box.x, box.y, box.width, box.height);
+
+            context.beginPath();
+            context.rect(box.x, box.y, box.width, box.height);
+            context.fillStyle = 'rgba(46, 204, 113, 0.3)'; // Semi-transparent green
+            context.fill();
+
+            // Optional: Add text label above the face
+            context.beginPath();
+            context.rect(box.x - 3, box.y - 30, box.width + 6, 30);
+            context.fillStyle = '#2ecc71'; // Semi-transparent white
+            context.fill();
+            context.font = '16px Mitr';
+            context.fillStyle = '#000000';
+            context.fillText('Face Detected', box.x, box.y - 10); // Centered text
+
+            descriptions.push(detections.descriptor);
+            console.log(descriptions.length);
+            if (descriptions.length === 40) {
+                video.pause()
+                Swal.fire({
+                    icon: 'info',
+                    title: 'กำลังประมวลผลข้อมูลใบหน้า',
+                    text: 'กรุณารอสักครู่...',
+                    allowOutsideClick: false,
+                    customClass: {
+                        popup: 'rounded-4',
+                    },
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                let label = $('#name').val();
+                let desc = averageDescriptor(descriptions);
+                let faceDescription = { label: label, descriptions: Array.from(desc) };
+                saveFaceDescription(faceDescription);
+
+            }
+            // localStorage.setItem('faceDescription', JSON.stringify({ label: labels[0], descriptions: Array.from(detections.descriptor) }));
+            // matchFace();
+
+        }
+
+        function averageDescriptor(descriptors) {
+            const avg = new Float32Array(128);
+            descriptors.forEach(desc => {
+                for (let i = 0; i < 128; i++) {
+                    avg[i] += desc[i];
+                }
+            });
+            for (let i = 0; i < 128; i++) {
+                avg[i] /= descriptors.length;
+            }
+            return avg;
+        }
+
+        function saveFaceDescription(faceDescription) {
+            console.log("🚀 ~ saveFaceDescription ~ faceDescription:", faceDescription)
+            $.ajax({
+                url: script_url,
+                method: 'POST',
+                data: {
+                    opt: 'saveFaceDescription',
+                    label: faceDescription.label,
+                    descriptions: JSON.stringify(faceDescription.descriptions),
+                },
+                success: function (data) {
+                    console.log(data);
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'ลงทะเบียนสำเร็จ',
+                            text: 'ใบหน้าของคุณได้ถูกบันทึกเรียบร้อยแล้ว',
+                            text: data.message,
+                            confirmButtonText: 'ไปที่หน้าเข้าสู่ระบบ',
+                            allowOutsideClick: false,
+                            customClass: {
+                                popup: 'rounded-4',
+                            },
+                        }).then(() => {
+                            window.location.href = 'index.html';
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message,
+                            customClass: {
+                                popup: 'rounded-4',
+                            },
+                        });
+                    }
+                },
+                error: function (error) {
+                    console.error(error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: 'ไม่สามารถบันทึกข้อมูลใบหน้าได้ กรุณาลองใหม่อีกครั้ง',
+                        customClass: {
+                            popup: 'rounded-4',
+                        },
+                    });
+                }
+            });
+        }
+
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js">
-    </script>
-    <script> // VConsole will be exported to `window.VConsole` by default.
-        var vConsole = new window.VConsole();
-    </script> -->
 </body>
 
 </html>
