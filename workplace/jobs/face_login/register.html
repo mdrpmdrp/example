@@ -77,8 +77,7 @@
 
         #overlay {
             position: absolute;
-           
-            border-radius: 5px;
+
             display: none;
         }
 
@@ -265,14 +264,15 @@
 
         const arr_descriptions = [];
         async function onPlay() {
+            const canvas = $('#overlay')[0]
+            if ($(canvas).not(':visible')) {
+                $(canvas).show()
+            }
             const video = document.querySelector('#video');
             const displaySize = {
                 width: $('#video').width(),
                 height: $('#video').height()
             }
-            const canvas = $('#overlay')[0]
-            const context = canvas.getContext('2d', { willReadFrequently: true });
-            faceapi.matchDimensions(canvas, displaySize);
             // const labels = ["123456"]; // Add your own label
             // const detections = await faceapi
             //     .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({
@@ -288,16 +288,16 @@
             const detections = await faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor()
 
 
+            const context = canvas.getContext('2d', { willReadFrequently: true });
             if (!detections || !detections.detection) {
-                // If no face is detected, clear the canvas and return
                 context.clearRect(0, 0, canvas.width, canvas.height);
                 $('#detection-alert').html('<i class="bi bi-exclamation-triangle-fill text-danger"></i> <span class="text-danger">ไม่พบใบหน้า</span>').show();
                 return;
             }
+            faceapi.matchDimensions(canvas, displaySize);
 
             // Check if detection has valid coordinates before proceeding
-            if (!detections.detection || !detections.detection.box) return;
-            return await new Promise(async resolve => {
+            await new Promise(async resolve => {
                 // Check if detection has valid coordinates before proceeding
 
                 // Check if the detected face is too small
@@ -314,21 +314,56 @@
                 } else {
                     $('#detection-alert').html('<i class="bi bi-check-circle-fill text-success"></i> <span class="text-success">กรุณาอยู่นิ่งๆ</span>').show();
                 }
-                console.log(resizedDetections.detection.box.width, resizedDetections.detection.box.height);
                 // Make sure canvas is visible
-                if($(canvas).not(':visible')) $(canvas).show();
+                if ($(canvas).not(':visible')) $(canvas).show();
 
                 // Clear previous drawings
                 context.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Draw green rectangle around face
+                // Draw rectangle around face that fits the screen better
                 context.strokeStyle = canvas_bg;
                 context.lineWidth = 3;
-                const box = resizedDetections.detection.box;
-                context.strokeRect(box.x, box.y, box.width, box.height);
+                
+                // Get the original box
+                const box = { ...resizedDetections.detection.box };
+                
+                // Apply face landmarks centering with proper scaling
+                if (resizedDetections.landmarks) {
+                    try {
+                        const landmarks = resizedDetections.landmarks.positions;
+                        
+                        // Find face boundaries from landmarks to create a better fitting box
+                        let minX = Number.MAX_VALUE;
+                        let minY = Number.MAX_VALUE;
+                        let maxX = 0;
+                        let maxY = 0;
+                        
+                        // Get face boundaries from landmarks
+                        landmarks.forEach(point => {
+                            minX = Math.min(minX, point.x);
+                            minY = Math.min(minY, point.y);
+                            maxX = Math.max(maxX, point.x);
+                            maxY = Math.max(maxY, point.y);
+                        });
+                        
+                        // Add some padding to the box (10% on each side)
+                        const paddingX = (maxX - minX) * 0.1;
+                        const paddingY = (maxY - minY) * 0.1;
+                        
+                        // Update box dimensions to fit the face better
+                        box.x = minX - paddingX;
+                        box.y = minY - paddingY;
+                        box.width = (maxX - minX) + (paddingX * 2);
+                        box.height = (maxY - minY) + (paddingY * 2);
+                    } catch (error) {
+                        console.error("Error adjusting face box:", error);
+                        // Fall back to original box if error occurs
+                    }
+                }
 
                 // Fill the rectangle with transparent color
-                context.beginPath();
+                context.rect(box.x, box.y, box.width, box.height);
+                context.stroke();
                 context.rect(box.x, box.y, box.width, box.height);
                 context.lineWidth = 3;
                 context.fillStyle = canvas_tranparent;

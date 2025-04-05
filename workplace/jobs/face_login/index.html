@@ -224,44 +224,40 @@
                     clearInterval(playInterval); // Clear the interval if video is paused or ended
                 }
             });
-
+            
         });
-
+        
         const arr_descriptions = [];
         async function onPlay() {
+            const canvas = $('#overlay')[0]
+            if ($(canvas).not(':visible')) {
+                $(canvas).show()
+            }
             const video = document.querySelector('#video');
             const displaySize = {
                 width: $('#video').width(),
                 height: $('#video').height()
             }
-            const canvas = $('#overlay')[0]
-            const context = canvas.getContext('2d', { willReadFrequently: true });
-            faceapi.matchDimensions(canvas, displaySize);
-            // const labels = ["123456"]; // Add your own label
-            // const detections = await faceapi
-            //     .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({
-            //         inputSize: 128,
-            //         scoreThreshold: 0.5
-            //     }))
             const options = new faceapi.TinyFaceDetectorOptions({
                 inputSize: 128,
                 scoreThreshold: 0.5
             });
             const detections = await faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor()
-
-
+            
+            
             if (!detections) return;
             if (!detections.detection || !detections.detection.box) return;
-
+            
             await new Promise(async resolve => {
                 // Check if detection has valid coordinates before proceeding
-
+                
                 // Check if the detected face is too small
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
                 const minFaceSize = 100; // Minimum face size in pixels
                 let canvas_bg = '#2ecc71'; // Default background color
                 let canvas_text = 'ประมวลผลใบหน้า..'; // Default text
                 let canvas_tranparent = 'rgba(46, 204, 113, 0.3)'; // Default transparent color
-                if (detections.detection.box.width < minFaceSize || detections.detection.box.height < minFaceSize) {
+                if (resizedDetections.detection.box.width < minFaceSize || resizedDetections.detection.box.height < minFaceSize) {
                     canvas_bg = '#dc3545'; // Change to red if face is too small
                     canvas_text = 'ใบหน้าห่างเกินไป'; // Change text to "Face too small"
                     canvas_tranparent = 'rgba(220, 53, 69, 0.3)'; // Change transparent color to red
@@ -269,21 +265,57 @@
                 } else {
                     $('#detection-alert').hide(); // Hide alert if face is detected properly
                 }
-                const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                // Make sure canvas is visible
-                if ($(canvas).not(':visible')) $(canvas).show();
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+                await faceapi.matchDimensions(canvas, displaySize);
 
                 // Clear previous drawings
                 context.clearRect(0, 0, canvas.width, canvas.height);
+                context.beginPath();
 
-                // Draw green rectangle around face
+                // Draw rectangle around face that fits the screen better
                 context.strokeStyle = canvas_bg;
                 context.lineWidth = 3;
-                const box = resizedDetections.detection.box;
-                context.strokeRect(box.x, box.y, box.width, box.height);
+                
+                // Get the original box
+                const box = { ...resizedDetections.detection.box };
+                
+                // Apply face landmarks centering with proper scaling
+                if (resizedDetections.landmarks) {
+                    try {
+                        const landmarks = resizedDetections.landmarks.positions;
+                        
+                        // Find face boundaries from landmarks to create a better fitting box
+                        let minX = Number.MAX_VALUE;
+                        let minY = Number.MAX_VALUE;
+                        let maxX = 0;
+                        let maxY = 0;
+                        
+                        // Get face boundaries from landmarks
+                        landmarks.forEach(point => {
+                            minX = Math.min(minX, point.x);
+                            minY = Math.min(minY, point.y);
+                            maxX = Math.max(maxX, point.x);
+                            maxY = Math.max(maxY, point.y);
+                        });
+                        
+                        // Add some padding to the box (10% on each side)
+                        const paddingX = (maxX - minX) * 0.1;
+                        const paddingY = (maxY - minY) * 0.1;
+                        
+                        // Update box dimensions to fit the face better
+                        box.x = minX - paddingX;
+                        box.y = minY - paddingY;
+                        box.width = (maxX - minX) + (paddingX * 2);
+                        box.height = (maxY - minY) + (paddingY * 2);
+                    } catch (error) {
+                        console.error("Error adjusting face box:", error);
+                        // Fall back to original box if error occurs
+                    }
+                }
 
                 // Fill the rectangle with transparent color
-                context.beginPath();
+                context.rect(box.x, box.y, box.width, box.height);
+                context.stroke();
                 context.rect(box.x, box.y, box.width, box.height);
                 context.lineWidth = 3;
                 context.fillStyle = canvas_tranparent;
@@ -302,7 +334,7 @@
 
                 // Wait until canvas drawing is complete
                 await new Promise(requestAnimationFrame);
-                if (detections.detection.box.width < minFaceSize || detections.detection.box.height < minFaceSize) {
+                if (resizedDetections.detection.box.width < minFaceSize || resizedDetections.detection.box.height < minFaceSize) {
                     resolve(false); // Resolve the promise with false if face is too small
                     return;
                 }
@@ -359,7 +391,6 @@
             return avg;
         }
         function authenFace(descriptions) {
-            console.log("🚀 ~ authenFace ~ descriptions:", descriptions)
             $.ajax({
                 url: script_url,
                 method: 'POST',
@@ -435,3 +466,4 @@
 </body>
 
 </html>
+``` 
