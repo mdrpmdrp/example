@@ -193,8 +193,8 @@
                 .getUserMedia({
                     video: {
                         facingMode: "user",
-                        width: isMobileDevice()? $('#video').height() : $('#video').width(),
-                        height: isMobileDevice()? $('#video').width() : $('#video').height(),
+                        width: isMobileDevice() ? $('#video').height() : $('#video').width(),
+                        height: isMobileDevice() ? $('#video').width() : $('#video').height(),
                         frameRate: {
                             ideal: 30,
                             min: 10
@@ -230,7 +230,10 @@
         const arr_descriptions = [];
         async function onPlay() {
             const video = document.querySelector('#video');
-            const displaySize = $('#video')[0].getBoundingClientRect();
+            const displaySize = {
+                width: $('#video').width(),
+                height: $('#video').height()
+            }
             const canvas = $('#overlay')[0]
             const context = canvas.getContext('2d', { willReadFrequently: true });
             faceapi.matchDimensions(canvas, displaySize);
@@ -240,21 +243,21 @@
             //         inputSize: 128,
             //         scoreThreshold: 0.5
             //     }))
-            const options = new faceapi.TinyFaceDetectorOptions(  {
-                    inputSize: 128,
-                    scoreThreshold: 0.5
-                });
+            const options = new faceapi.TinyFaceDetectorOptions({
+                inputSize: 128,
+                scoreThreshold: 0.5
+            });
             const detections = await faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor()
 
 
             if (!detections) return;
             if (!detections.detection || !detections.detection.box) return;
 
-            await new Promise(resolve => {
+            await new Promise(async resolve => {
                 // Check if detection has valid coordinates before proceeding
 
                 // Check if the detected face is too small
-                const minFaceSize = 50; // Minimum face size in pixels
+                const minFaceSize = 100; // Minimum face size in pixels
                 let canvas_bg = '#2ecc71'; // Default background color
                 let canvas_text = 'ประมวลผลใบหน้า..'; // Default text
                 let canvas_tranparent = 'rgba(46, 204, 113, 0.3)'; // Default transparent color
@@ -267,37 +270,48 @@
                     $('#detection-alert').hide(); // Hide alert if face is detected properly
                 }
                 const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                canvas.style.display = 'block';
+                // Make sure canvas is visible
+                if ($(canvas).not(':visible')) $(canvas).show();
+
+                // Clear previous drawings
                 context.clearRect(0, 0, canvas.width, canvas.height);
+
                 // Draw green rectangle around face
-                context.strokeStyle = canvas_bg; // Set stroke color to green
+                context.strokeStyle = canvas_bg;
                 context.lineWidth = 3;
                 const box = resizedDetections.detection.box;
                 context.strokeRect(box.x, box.y, box.width, box.height);
-                
+
+                // Fill the rectangle with transparent color
                 context.beginPath();
                 context.rect(box.x, box.y, box.width, box.height);
                 context.lineWidth = 3;
-                context.fillStyle = canvas_tranparent; // Set fill color to green with transparency
+                context.fillStyle = canvas_tranparent;
                 context.fill();
-                // Optional: Add text label above the face
+
+                // Add text label above the face
                 context.beginPath();
                 context.rect(box.x - 3, box.y - 30, box.width + 6, 30);
                 context.fillStyle = canvas_bg;
                 context.fill();
                 context.font = '16px Mitr';
                 context.fillStyle = '#000000';
-                context.fillText(canvas_text, box.x, box.y - 10); // Centered text
+                context.fillText(canvas_text, box.x, box.y - 10);
+                context.closePath();
+
+
+                // Wait until canvas drawing is complete
+                await new Promise(requestAnimationFrame);
                 if (detections.detection.box.width < minFaceSize || detections.detection.box.height < minFaceSize) {
                     resolve(false); // Resolve the promise with false if face is too small
                     return;
                 }
-                
-                
+
+
                 // Alternative: still use faceapi but with custom options
                 // const drawOptions = { boxColor: '#2ecc71', lineWidth: 3 };
                 // faceapi.draw.drawDetections(canvas, resizedDetections, drawOptions);
-                
+
                 arr_descriptions.push(detections.descriptor);
                 console.log(arr_descriptions.length);
                 if (arr_descriptions.length === 20) {

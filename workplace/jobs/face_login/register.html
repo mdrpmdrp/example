@@ -77,7 +77,8 @@
 
         #overlay {
             position: absolute;
-
+           
+            border-radius: 5px;
             display: none;
         }
 
@@ -176,7 +177,7 @@
             $('#camera').removeClass('d-none').addClass('d-flex');
             $('i.bi-camera-video').addClass('d-none');
             $('#video').removeClass('d-none');
-            $('#overlay').css('display', 'block');
+            $('#overlay').show();
             $('#name').parent().addClass('d-none');
             $('#toggle-camera').html('<i class="bi bi-camera-video me-2"></i>หยุดสแกนใบหน้า').attr('data-action', 'stop').removeClass('btn-primary').addClass('btn-danger');
             openWebcamForSelfie();
@@ -251,7 +252,6 @@
 
         let playInterval = null;
         $('#video').on('play', async function () {
-            onPlay();
             let video = $('#video')[0];
             if (playInterval) {
                 clearInterval(playInterval);
@@ -266,7 +266,10 @@
         const arr_descriptions = [];
         async function onPlay() {
             const video = document.querySelector('#video');
-            const displaySize = $('#video')[0].getBoundingClientRect();
+            const displaySize = {
+                width: $('#video').width(),
+                height: $('#video').height()
+            }
             const canvas = $('#overlay')[0]
             const context = canvas.getContext('2d', { willReadFrequently: true });
             faceapi.matchDimensions(canvas, displaySize);
@@ -294,15 +297,16 @@
 
             // Check if detection has valid coordinates before proceeding
             if (!detections.detection || !detections.detection.box) return;
-            await new Promise(resolve => {
+            return await new Promise(async resolve => {
                 // Check if detection has valid coordinates before proceeding
 
                 // Check if the detected face is too small
-                const minFaceSize = 250; // Minimum face size in pixels
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                const minFaceSize = 200; // Minimum face size in pixels
                 let canvas_bg = '#2ecc71'; // Default background color
                 let canvas_text = 'กำลังเก็บข้อมูลใบหน้า...' + arr_descriptions.length + '%'; // Default text
                 let canvas_tranparent = 'rgba(46, 204, 113, 0.3)'; // Default transparent color
-                if (detections.detection.box.width < minFaceSize || detections.detection.box.height < minFaceSize) {
+                if (resizedDetections.detection.box.width < minFaceSize || resizedDetections.detection.box.height < minFaceSize) {
                     canvas_bg = '#dc3545'; // Change to red if face is too small
                     canvas_text = 'ใบหน้าห่างเกินไป'; // Change text to "Face too small"
                     canvas_tranparent = 'rgba(220, 53, 69, 0.3)'; // Change transparent color to red
@@ -310,29 +314,39 @@
                 } else {
                     $('#detection-alert').html('<i class="bi bi-check-circle-fill text-success"></i> <span class="text-success">กรุณาอยู่นิ่งๆ</span>').show();
                 }
-                const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                canvas.style.display = 'block';
+                console.log(resizedDetections.detection.box.width, resizedDetections.detection.box.height);
+                // Make sure canvas is visible
+                if($(canvas).not(':visible')) $(canvas).show();
+
+                // Clear previous drawings
                 context.clearRect(0, 0, canvas.width, canvas.height);
+
                 // Draw green rectangle around face
-                context.strokeStyle = canvas_bg; // Set stroke color to green
+                context.strokeStyle = canvas_bg;
                 context.lineWidth = 3;
                 const box = resizedDetections.detection.box;
                 context.strokeRect(box.x, box.y, box.width, box.height);
 
+                // Fill the rectangle with transparent color
                 context.beginPath();
                 context.rect(box.x, box.y, box.width, box.height);
                 context.lineWidth = 3;
-                context.fillStyle = canvas_tranparent; // Set fill color to green with transparency
+                context.fillStyle = canvas_tranparent;
                 context.fill();
-                // Optional: Add text label above the face
+
+                // Add text label above the face
                 context.beginPath();
                 context.rect(box.x - 3, box.y - 30, box.width + 6, 30);
                 context.fillStyle = canvas_bg;
                 context.fill();
                 context.font = '16px Mitr';
                 context.fillStyle = '#000000';
-                context.fillText(canvas_text, box.x, box.y - 10); // Centered text
-                if (detections.detection.box.width < minFaceSize || detections.detection.box.height < minFaceSize) {
+                context.fillText(canvas_text, box.x, box.y - 10);
+                context.closePath();
+
+                // Wait until canvas drawing is complete
+                await new Promise(requestAnimationFrame);
+                if (resizedDetections.detection.box.width < minFaceSize || resizedDetections.detection.box.height < minFaceSize) {
                     resolve(false); // Resolve the promise with false if face is too small
                     return;
                 }
