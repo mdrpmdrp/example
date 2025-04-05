@@ -43,7 +43,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 800px;
-            margin-top: 2rem;
+            margin-top: 1rem;
         }
 
         .login-container h2 {
@@ -133,34 +133,25 @@
         }
 
         $('#toggle-camera').on('click', function () {
-            $('#camera').removeClass('d-none').addClass('d-flex');
             $('i.bi-camera-video').addClass('d-none');
+            $('#camera').removeClass('d-none').addClass('d-flex');
             $('#video').removeClass('d-none');
             $('#overlay').css('display', 'block');
             openWebcamForSelfie();
         });
 
+        // Check if device is mobile or PC
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
         $(document).ready(function () {
-            // Check if device is mobile or PC
-            function isMobileDevice() {
-                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            }
 
             // Display a message about device type
             const deviceType = isMobileDevice() ? 'mobile' : 'desktop';
             console.log(`Device detected: ${deviceType}`);
 
-            // You can also adjust UI elements based on device type
-            if (isMobileDevice()) {
-                $('#camera, #video').css({
-                    'aspect-ratio': '9/16',
-                });
-
-            } else {
-                $('#camera, #video').css({
-                    'aspect-ratio': '4/3',
-                });
-            }
+            const aspectRatio = isMobileDevice() ? '9/16' : '16/9';
+            $('#video, #camera').css('aspect-ratio', aspectRatio);
 
             if (isWebGLSupported()) {
                 Promise.all([
@@ -197,8 +188,8 @@
                 .getUserMedia({
                     video: {
                         facingMode: "user",
-                        width: $('#video').width(),
-                        height: $('#video').height(),
+                        width: isMobileDevice()? $('#video').height() : $('#video').width(),
+                        height: isMobileDevice()? $('#video').width() : $('#video').height(),
                         frameRate: {
                             ideal: 30,
                             min: 10
@@ -217,7 +208,6 @@
         $('#video').on('play', async function () {
             $('i.bi-camera-video').addClass('d-none');
             $('#video').removeClass('d-none');
-            onPlay();
             let video = $('#video')[0];
             if (playInterval) {
                 clearInterval(playInterval); // Clear the previous interval if it exists
@@ -245,7 +235,10 @@
             //         inputSize: 128,
             //         scoreThreshold: 0.5
             //     }))
-            const options = new faceapi.TinyFaceDetectorOptions();
+            const options = new faceapi.TinyFaceDetectorOptions(  {
+                    inputSize: 128,
+                    scoreThreshold: 0.5
+                });
             const detections = await faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor()
 
 
@@ -375,16 +368,10 @@
                                 video.srcObject = null;
                                 playInterval = null; // Clear the interval to stop continuous detection
                             }
-                            $('body')
-                                .html('<h1><i class="bi bi-check-circle-fill text-success"></i> ' +
-                                    'ยืนยันตัวตนสำเร็จ</h1><br>' +
-                                    '<h1 class="text-center">ยินดีต้อนรับ ' + response.label + '</h1>').css({
-                                        'display': 'flex',
-                                        'justify-content': 'center',
-                                        'align-items': 'center',
-                                        'min-height': '100vh',
-                                        'width': '100%',
-                                    })
+                            $('body div.container-fluid')
+                                .html('<p class="text-center h1"><i class="bi bi-check-circle-fill text-success"></i> ' +
+                                    'ยืนยันตัวตนสำเร็จ</p><br>' +
+                                    '<p class="text-center h1">ยินดีต้อนรับ ' + response.label + '</p>')
                         });
                     } else {
                         Swal.fire({
