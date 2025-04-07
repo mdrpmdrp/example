@@ -218,6 +218,19 @@
             </div>
             <div class="row mb-3 justify-content-center border rounded-3 p-3 shadow-sm bg-light">
                 <div class="col-12">
+                    <!-- รุ่นรถ -->
+                    <label for="car_model">
+                        <i class="fa-solid fa-car"></i>
+                        รุ่นรถ / Car model
+                    </label>
+                    <input type="text" class="form-control rounded-3" id="car_model" name="car_model" required>
+                    <div class="invalid-feedback">
+                        กรุณากรอกรุ่นรถ
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-3 justify-content-center border rounded-3 p-3 shadow-sm bg-light">
+                <div class="col-12">
                     <!-- เลือกธนาคาร -->
                     <label for="bank_name">
                         <i class="fa-solid fa-building-columns"></i>
@@ -271,6 +284,20 @@
             </div>
             <div class="row mb-3 justify-content-center border rounded-3 p-3 shadow-sm bg-light">
                 <div class="col-12">
+                    <label for="image">
+                        <i class="fa-solid fa-file-image"></i>
+                        แนบรูปหน้าปัดรถ / Attach image of car dashboard
+                    </label>
+                    <input type="file" class="form-control rounded-3" id="image" name="image" accept="image/*" required
+                        onchange="previewImage(event)">
+                </div>
+                <div class="col-12 text-center">
+                    <img src="" alt="" id="preview" class="img-fluid mt-3 d-none rounded-2" style="max-height: 250px;"
+                        onclick="showFullImage(this)">
+                </div>
+            </div>
+            <div class="row mb-3 justify-content-center border rounded-3 p-3 shadow-sm bg-light">
+                <div class="col-12">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" value="confirmed" id="confirm_checkbox"
                             name="confirm_checkbox" required>
@@ -305,13 +332,13 @@
 
             // Function to ensure Select2 width is properly set
             function refreshSelect2() {
-                setTimeout(function() {
+                setTimeout(function () {
                     $('.select2-container').css('width', '100%');
                 }, 100);
             }
 
             // Call the refresh function on window resize
-            $(window).resize(function() {
+            $(window).resize(function () {
                 refreshSelect2();
             });
 
@@ -339,6 +366,36 @@
             init();
             // hideLoading();
         });
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    $('#preview').attr('src', e.target.result).removeClass('d-none');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                $('#preview').addClass('d-none');
+            }
+        }
+
+        function showFullImage(img) {
+            const fullImage = new Image();
+            fullImage.src = img.src;
+            fullImage.style.maxWidth = '100%';
+            fullImage.style.maxHeight = '100%';
+            Swal.fire({
+                html: fullImage,
+                width: 'auto',
+                height: 'auto',
+                showCloseButton: true,
+                showConfirmButton: false,
+                customClass: {
+                    popup: 'rounded-4',
+                }
+            });
+        }
 
         // Format bank options in dropdown
         function formatBankOption(bank) {
@@ -406,7 +463,6 @@
         }
 
         function submit() {
-            showLoading('./waiting.png', true);
 
             let data = $('#mainform').serializeArray().reduce((obj, item) => {
                 obj[item.name] = item.value
@@ -428,51 +484,66 @@
                 data.bank_name = data.other_bank;
             }
 
-            if(data.confirm_checkbox == 'confirmed'){
+            if (data.confirm_checkbox == 'confirmed') {
                 data.confirm_checkbox = $('label[for="confirm_checkbox"]').text().trim();
-            }else{
+            } else {
                 data.confirm_checkbox = '';
             }
             delete data.other_bank;
-            let pormises = [
-                saveToSheet(data),
-                sendToLine(data)
-            ]
-            Promise.all(pormises).then(() => {
-                hideLoading();
-                console.log("Data submitted successfully");
-                Swal.fire({
-                    title: 'ส่งข้อมูลสำเร็จ',
-                    html: '<div class="text-center"><img src="./thank.png" alt="Success" class="img-fluid mb-3" style="max-height: 250px;"></div>',
-                    confirmButtonText: 'ตกลง',
-                    customClass: {
-                        popup: 'rounded-4',
-                    }
-                }).then(() => {
-                    // Close LIFF window or redirect
-                    if (liff.isInClient()) {
-                        liff.closeWindow();
-                    } else {
-                        // Redirect to a thank you page or reset form
-                        $('#mainform')[0].reset();
-                        // Reset Select2 dropdown
-                        $('#bank_name').val('').trigger('change');
-                    }
+
+
+            uploadFiles().then((files) => {
+                console.log("🚀 ~ uploadFiles ~ files:", files)
+                Swal.close()
+                showLoading('./waiting.png', true);
+                if (files) {
+                    data.file = 'https://lh3.googleusercontent.com/d/' + files[0]
+                }
+                console.log("🚀 ~ submit ~ data:", data)
+                Promise.all([
+                    saveToSheet(data),
+                    sendToLine(data)
+                ]).then(() => {
+                    hideLoading();
+                    console.log("Data submitted successfully");
+                    Swal.fire({
+                        title: 'ส่งข้อมูลสำเร็จ',
+                        html: '<div class="text-center"><img src="./thank.png" alt="Success" class="img-fluid mb-3" style="max-height: 250px;"></div>',
+                        confirmButtonText: 'ตกลง',
+                        customClass: {
+                            popup: 'rounded-4',
+                        }
+                    }).then(() => {
+                        // Close LIFF window or redirect
+                        if (liff.isInClient()) {
+                            liff.closeWindow();
+                        } else {
+                            // Redirect to a thank you page or reset form
+                            $('#mainform')[0].reset();
+                            // Reset Select2 dropdown
+                            $('#bank_name').val('').trigger('change');
+                            $('#preview').addClass('d-none');
+                        }
+                    });
+                }).catch((err) => {
+                    hideLoading();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: 'กรุณาลองใหม่อีกครั้ง',
+                        confirmButtonText: 'ตกลง',
+                        customClass: {
+                            popup: 'rounded-4',
+                        }
+                    });
+                    console.error("Error submitting data", err);
                 });
+                console.log("Submitting data:", data);
             }).catch((err) => {
-                hideLoading();
-                Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาด',
-                    text: 'กรุณาลองใหม่อีกครั้ง',
-                    confirmButtonText: 'ตกลง',
-                    customClass: {
-                        popup: 'rounded-4',
-                    }
-                });
-                console.error("Error submitting data", err);
+                console.error("Error uploading files", err);
             });
-            console.log("Submitting data:", data);
+
+
 
 
         }
@@ -485,12 +556,13 @@
                 $('#loadingOverlay').find('img').addClass('loading')
             } else {
                 $('#loadingOverlay').find('img').removeClass('loading')
+                setTimeout(() => {
+                    hideLoading();
+                }, 4000);
             }
             $('#loadingOverlay').fadeIn(300).css('display', 'flex');
             $('body').addClass('loading');
-            setTimeout(() => {
-                hideLoading();
-            }, 4000);
+
         }
 
         function hideLoading() {
@@ -500,9 +572,8 @@
 
         async function saveToSheet(data) {
             console.log("🚀 ~ saveToSheet ~ data:", data)
-            return await new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) => {
                 $.post(scriptURL, data, function (res) {
-                    hideLoading();
                     if (res.success) {
                         $('#mainform')[0].reset();
                         resolve(res);
@@ -519,7 +590,6 @@
                         reject(res);
                     }
                 }).fail(function () {
-                    hideLoading();
                     Swal.fire({
                         icon: 'error',
                         title: 'เกิดข้อผิดพลาด',
@@ -538,12 +608,24 @@
         function sendToLine(data) {
             return new Promise((resolve, reject) => {
                 // Create a Flex Message
+                let image_ratio = $('#preview').width() + ':' + $('#preview').height();
                 let flexMessage = {
                     type: "flex",
                     altText: "ข้อมูลการคืนเงินประกันการเช่ารถ",
                     contents: {
                         type: "bubble",
                         size: "giga",
+                        hero: {
+                            type: "image",
+                            url: data.file || "https://img5.pic.in.th/file/secure-sv1/50d66255-4b76-4a9a-82b2-ecd9e0e1ef3b-removebg-preview.png",
+                            size: "full",
+                            aspectRatio: '1:1',
+                            aspectMode: "fit",
+                            action: {
+                                type: "uri",
+                                uri: data.file || "https://img5.pic.in.th/file/secure-sv1/50d66255-4b76-4a9a-82b2-ecd9e0e1ef3b-removebg-preview.png"
+                            }
+                        },
                         header: {
                             type: "box",
                             layout: "vertical",
@@ -783,7 +865,7 @@
                                     type: "text",
                                     text: "ขอยืนยันว่า \"ผู้ใช้\" ตรวจสอบขอมูลส่วนบุคคลแล้ว และขอยืนยันว่าถูกต้อง",
                                     size: "sm",
-                                    color: "#FF0000",
+                                    color: "#aaaaaa",
                                     align: "center",
                                     adjustMode: "shrink-to-fit",
                                 }
@@ -818,9 +900,6 @@
             })
 
         }
-
-
-
         // Form validation
         (function () {
             'use strict'
@@ -836,6 +915,112 @@
             })
         })()
     </script>
+    <script>
+        async function uploadFiles() {
+            Swal.fire({
+                iconHtml: '<i class="bi bi-cloud-arrow-up-fill text-primary"></i>',
+                title: 'กำลังอัพโหลดไฟล์',
+                customClass: {
+                    icon: 'border-0',
+                    title: 'text-danger',
+                    content: 'text-dark',
+                    popup: 'rounded-4'
+                },
+                allowOutsideClick: false,
+                html: '<div class="container-fluid"><div class="row" id="progress"></div></div>',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                },
+            })
+            const { token, folder_id } = await getDownloadToken();
+            const f = document.getElementById("image");
+            if (f.files.length == 0) {
+                return false
+            }
+            let file = await new Promise((resolve, reject) => {
+                let length = f.files.length;
+                let count = 0;
+                let uploadfiles = [];
+                [...f.files].forEach((file, i) => {
+                    let fr = new FileReader();
+                    fr.fileName = file.name;
+                    fr.fileSize = file.size;
+                    fr.fileType = file.type;
+                    fr.readAsArrayBuffer(file);
+                    fr.onload = e => {
+                        var id = "p" + ++i;
+                        var div = $("<div>", { class: 'col-12 text-truncate' });
+                        div.attr("id", id);
+                        $("#progress").append(div);
+                        $('#' + id).text('Initialising (' + fr.fileName + ')')
+                        const f = e.target;
+                        const resource = {
+                            fileName: f.fileName,
+                            fileSize: f.fileSize,
+                            fileType: f.fileType,
+                            fileBuffer: f.result,
+                            accessToken: token,
+                            folderId: folder_id,
+                            fields: "id",
+                        };
+                        const ru = new ResumableUploadToGoogleDrive();
+                        ru.Do(resource, function (res, err) {
+                            if (err) {
+                                console.log(err);
+                                return;
+                            }
+                            console.log(res);
+                            let msg = "";
+                            if (res.status == 'start' || res.status == 'getLocation' || res.status == 'initialize') {
+                                msg = '<i class="bi bi-cloud-arrow-up-fill"></i> กำลังเตรียมอัพโหลด ' + f.fileName;
+                            }
+                            else if (res.status == "Uploading") {
+                                msg =
+                                    '<i class="bi bi-hourglass-split text-start text-primary"></i> กำลังอัพโหลด ' +
+                                    Math.round(
+                                        (res.progressNumber.current / res.progressNumber.end) * 100
+                                    ) +
+                                    "% (" +
+                                    f.fileName +
+                                    ")";
+                            } else {
+                                msg = '<i class="bi bi-check-circle-fill text-start text-success"></i> อัพโหลดสำเร็จ  (' + f.fileName + ")";
+                            }
+
+                            // If you want to put the uploaded file information to the active Spreadsheet,
+                            // please use the following function.
+                            if (res.status == "Done") {
+                                uploadfiles.push(res.result.id);
+                                if (uploadfiles.length == length) {
+                                    resolve(uploadfiles);
+                                }
+                            }
+
+                            $('#' + id).html(msg)
+                        });
+                    };
+                });
+            });
+            return file;
+        }
+
+        function getDownloadToken() {
+            return new Promise((resolve, reject) => {
+                $.ajax({
+                    url: scriptURL + '?opt=token',
+                    type: 'GET',
+                    success: function (data) {
+                        console.log("🚀 ~ returnnewPromise ~ data:", data)
+                        resolve(data);
+                    },
+                    error: function (error) {
+                        reject(error);
+                    }
+                });
+            });
+        }
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
@@ -845,6 +1030,9 @@
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
     <script src=" https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.full.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js"></script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </body>
 
 </html>
