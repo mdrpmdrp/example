@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <!-- no cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!-- no cache -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบตรวจสอบสินค้า Beef Good</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Noto Sans Thai', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .text-beef {
+            color: #8B4513;
+        }
+
+        .btn-beef {
+            background-color: #8B4513;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <nav class="navbar bg-black navbar-light m-0 py-1">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <img src="./beef-good-logo-with-bg.jpg" alt="Beef Good Logo" height="40"
+                    class="d-inline-block align-text-top me-2 rounded-circle">
+                <span class="text-beef fw-bold">Beef Good</span>
+            </a>
+            <button class="btn btn-sm btn-outline-secondary border-0" id="historyBtn" type="button">
+                <i class="bi bi-clock-history"></i>
+            </button>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <div class="text-center mt-3 h4 text-beef fw-bold">ระบบตรวจสอบสินค้า</div>
+                <p class="text-center text-secondary">ใช้เครื่องสแกนหรือป้อนรหัสบาร์โค้ดด้านล่าง</p>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="input-group">
+                    <input type="text" class="form-control barcode-input shadow-none" id="barcodeInput"
+                        placeholder="สแกนหรือป้อนรหัสบาร์โค้ด" autofocus>
+                    <button class="btn btn-dark border-0" type="button" id="addItemBtn">
+                        <i class="bi bi-plus-circle"></i> เพิ่มรายการ
+                    </button>
+
+                </div>
+
+            </div>
+        </div>
+        <div class="row mt-2 justify-content-center">
+            <div class="col-12 text-center" id="inventoryHeader" style="display: none;">
+                <div class="card my-3 bg-beef-subtle shadow-sm">
+                    <div class="card-body py-3">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <h6 class="fw-bold text-beef mb-1">จำนวนชิ้น</h6>
+                                <p class="fs-5 mb-0" id="itemCount">0</p>
+                            </div>
+                            <div class="col-4">
+                                <h6 class="fw-bold text-beef mb-1">น้ำหนักรวม</h6>
+                                <p class="fs-5 mb-0" id="totalWeight">0.00 กก.</p>
+                            </div>
+                            <div class="col-4">
+                                <h6 class="fw-bold text-beef mb-1">ราคารวม</h6>
+                                <p class="fs-5 mb-0" id="totalPrice">0 บาท</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12" id="actionButtons" style="display: none;">
+                <button class="btn btn-dark rounded-3 w-100 mt-2" type="button" id="saveBtn">
+                    <i class="bi bi-floppy-fill"></i> บันทึก
+                </button>
+            </div>
+            <div class="col-12 mt-2 text-center" id="inventoryContainer">
+                <div class="inventory-empty" id="emptyState">
+                    <i class="bi bi-upc-scan scan-icon display-1"></i>
+                    <p class="mb-0">สแกนบาร์โค้ดสินค้าเพื่อเพิ่มข้อมูล</p>
+                    <small class="text-muted">ระบบจะบันทึกข้อมูลการสแกนอัตโนมัติ</small>
+                </div>
+                <!-- Inventory items will be added here dynamically -->
+            </div>
+        </div>
+
+        <!-- History Modal -->
+        <div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-beef-subtle">
+                        <h5 class="modal-title text-beef" id="historyModalLabel">ประวัติการสแกน</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="history-list" id="historyList">
+                            <!-- History items will be added here dynamically -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ปิด</button>
+                        <button type="button" class="btn btn-danger" id="clearHistoryBtn">ล้างประวัติ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Template -->
+    <template id="item-template">
+        <div class="inventory-item p-2 rounded-3 bg-danger-subtle mb-2" data-barcode="">
+            <div class="item-card">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h5 class="card-title mb-0 item-name fw-bold">ชื่อสินค้า</h5>
+                        <div class="d-flex align-items-center">
+                            <h5 class="card-title mb-0 item-id">รหัสสินค้า</h5>
+                            <button class="btn btn-sm btn-danger delete-btn ms-2 me-2 py-0 px-1" title="ลบรายการ">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row g-1">
+                        <div class="col-6 text-start">
+                            <p class="text-black-50 mb-0 ">น้ำหนัก</p>
+                            <p class="mb-0 item-weight ">0.00 กก.</p>
+                        </div>
+                        <div class="col-6 txt-start">
+                            <p class="text-black-50 mb-0 ">ราคาขาย</p>
+                            <p class="mb-0 item-price ">0.00 บาท</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white p-1 rounded-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted item-scan-time fs-smaller">สแกนเมื่อ: เดี๋ยวนี้</small>
+                        <button class="btn btn-sm bg-beef-subtle text-beef details-btn py-0 px-2">
+                            รายละเอียด <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        // Sample data for demonstration - in real implementation, this would come from your backend
+        let scanHistory = JSON.parse(localStorage.getItem('beefScanHistory')) || [];
+        const historyLimit = 500; // Limit history items
+        const demo_data = <?!= getBarcodeDatas() ?>; // Fetch data from Google Sheets
+        $(document).ready(function () {
+            moment.locale('th'); // Set Thai locale for moment.js
+            const barcodeInput = $('#barcodeInput');
+            const historyBtn = $('#historyBtn');
+            const clearHistoryBtn = $('#clearHistoryBtn');
+            const addItemBtn = $('#addItemBtn');
+            const saveBtn = $('#saveBtn');
+            const historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
+            scanHistory = scanHistory.filter(item => item.barcode);
+            localStorage.setItem('beefScanHistory', JSON.stringify(scanHistory));
+            scanHistory.forEach(item => {
+                searchInventory(item.barcode, true);
+            });
+            // Set focus to barcode input
+            // barcodeInput.focus();
+
+            // Search for barcode when Enter is pressed or search button is clicked
+            barcodeInput.on('keydown', function (e) {
+                const barcode = $(this).val().trim();
+                if (e.key === 'Enter' || barcode.length === 18) {
+                    if (barcode) {
+                        searchInventory(barcode);
+                        $(this).val('').focus();
+                    }
+                }
+            });
+
+
+            addItemBtn.on('click', function () {
+                const barcode = barcodeInput.val().trim();
+                if (barcode) {
+                    searchInventory(barcode);
+                    barcodeInput.val('').focus();
+                }
+            });
+
+            // Open history modal
+            historyBtn.on('click', function () {
+                renderHistory();
+                historyModal.show();
+            });
+
+            saveBtn.on('click', function () {
+                let history = JSON.parse(localStorage.getItem('beefScanHistory')) || [];
+                console.log("🚀 ~ saveBtn.on ~ history:", history);
+                Swal.fire({
+                    title: 'กำลังบันทึกข้อมูล',
+                    text: 'กรุณารอสักครู่...',
+                    icon: 'warning',
+                    confirmButtonColor: '#8B4513',
+                    customClass: {
+                        popup: 'rounded-4'
+                    },
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                })
+                google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
+                    console.log("🚀 ~ google.script.run.withFailureHandler ~ res:", res)
+                    if (res.success) {
+                        Swal.fire({
+                            title: 'บันทึกข้อมูลสำเร็จ',
+                            text: 'ข้อมูลได้ถูกบันทึกลง Google Sheets เรียบร้อยแล้ว',
+                            icon: 'success',
+                            confirmButtonColor: '#8B4513',
+                            customClass: {
+                                popup: 'rounded-4'
+                            },
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                        localStorage.removeItem('beefScanHistory');
+                        scanHistory = [];
+                        renderHistory();
+                    } else {
+                        Swal.fire({
+                            title: 'บันทึกข้อมูลไม่สำเร็จ',
+                            text: 'กรุณาลองใหม่อีกครั้ง',
+                            icon: 'error',
+                            confirmButtonColor: '#8B4513',
+                            customClass: {
+                                popup: 'rounded-4'
+                            }
+                        });
+                    }
+                })
+                    .saveDataToSheet(history);
+            });
+
+            // Handle delete button click on inventory items
+            $(document).on('click', '.delete-btn', function (e) {
+                e.stopPropagation(); // Prevent event bubbling
+                const itemElement = $(this).closest('.inventory-item');
+                const itemName = itemElement.find('.item-name').text();
+
+                Swal.fire({
+                    title: 'ยืนยันการลบ',
+                    text: `คุณต้องการลบ "${itemName}" ออกจากรายการหรือไม่?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'ลบรายการ',
+                    cancelButtonText: 'ยกเลิก',
+                    customClass: {
+                        popup: 'rounded-4'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Remove the item
+                        itemElement.fadeOut(300, function () {
+                            $(this).remove();
+                            // Update totals
+                            updateTotals();
+                            // Show empty state if no items left
+                            if ($('.inventory-item').length === 0) {
+                                $('#emptyState').show();
+                            }
+                        });
+
+                        // Show notification
+                        showNotification('success', 'ลบรายการสำเร็จ', `ลบ "${itemName}" ออกจากรายการแล้ว`);
+                    }
+                });
+            });
+
+            // Clear history
+            clearHistoryBtn.on('click', function () {
+                Swal.fire({
+                    title: 'ยืนยันการลบ',
+                    text: 'คุณต้องการลบประวัติการสแกนทั้งหมดหรือไม่?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#8B4513',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'ลบประวัติ',
+                    cancelButtonText: 'ยกเลิก',
+                    customClass: {
+                        popup: 'rounded-4'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        scanHistory = [];
+                        localStorage.setItem('beefScanHistory', JSON.stringify(scanHistory));
+                        renderHistory();
+                        Swal.fire({
+                            title: 'ลบประวัติแล้ว',
+                            icon: 'success',
+                            customClass: {
+                                popup: 'rounded-4'
+                            },
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    }
+                });
+            });
+
+            // Handle click on history item
+            // $(document).on('click', '.history-item', function () {
+            //     const barcode = $(this).data('barcode');
+            //     historyModal.hide();
+            //     searchInventory(barcode);
+            //     barcodeInput.val('').focus();
+            // });
+
+            // Auto focus on barcode input when page is clicked
+            $(document).on('click', function (e) {
+                // Don't focus if clicking on a button, input or inside the history modal
+                if (!$(e.target).is('button, input') &&
+                    !$(e.target).closest('.modal').length) {
+                    barcodeInput.focus();
+                }
+            });
+
+            // Keep input in focus even after showing alerts
+            $(document).on('shown.bs.modal hidden.bs.modal', function () {
+                setTimeout(() => barcodeInput.focus(), 100);
+            });
+        });
+
+        // Search inventory by barcode
+        function searchInventory(barcode, isInitial = false) {
+            let data = demo_data
+            // Check if barcode has the correct length (18 digits)
+            if (barcode.length !== 18 || !/^\d{18}$/.test(barcode)) {
+                showNotification('error', 'รูปแบบบาร์โค้ดไม่ถูกต้อง', 'บาร์โค้ดต้องเป็นตัวเลข 18 หลักเท่านั้น');
+                return;
+            }
+            if (barcode == '000000000000000000') {
+                // save data
+                localStorage.setItem('beefScanHistory', JSON.stringify(scanHistory));
+                console.log("🚀 ~ searchInventory ~ scanHistory:", scanHistory);
+                return;
+            }
+
+            // Extract information from barcode
+            const productId = barcode.substring(2, 8);
+            console.log("🚀 ~ searchInventory ~ productId:", productId)
+            const weightRaw = barcode.substring(8, 13);
+            const priceRaw = barcode.substring(13, 18);
+
+            // Convert weight (with 3 decimal places)
+            const weight = parseFloat(weightRaw) / 1000;
+
+            // Convert price (no decimal places)
+            const price = parseInt(priceRaw);
+            console.log(data[Number(productId).toString()]);
+            const productName = data[Number(productId).toString()].productName || 'ไม่พบข้อมูลสินค้า';
+
+            // Create item data directly from barcode
+            const item = {
+                name: productName,
+                productId: productId,
+                productionDate: moment().format('YYYY-MM-DD HH:mm:ss'),
+                weight: weight,
+                price: price,
+                barcode: barcode
+            };
+
+            // Hide empty state if visible
+            $('#emptyState').hide();
+
+            // Add to history
+
+            // Create and show the item card
+
+            // Show notification
+            if (!isInitial) {
+                addToHistory(item);
+                showNotification('success', 'อ่านบาร์โค้ดสำเร็จ', `รหัสสินค้า: ${productId}, น้ำหนัก: ${weight} กก., ราคา: ${price} บาท`);
+            }
+            renderInventoryItem(barcode, item, productId);
+        }
+
+        // Render inventory item card
+        function renderInventoryItem(barcode, item) {
+            $('#emptyState').hide(); // Hide empty state if visible
+            $('#inventoryHeader, #actionButtons').show(); // Show header and action buttons
+            // Clone the template
+            const template = document.getElementById('item-template');
+            const itemElement = document.importNode(template.content, true);
+
+            // Set item data
+            $(itemElement).find('.item-name').text(item.name);
+            $(itemElement).find('.item-id').text(item.productId);
+
+            // Set only weight
+            $(itemElement).find('.item-weight').text(item.weight + ' กก.');
+
+            $(itemElement).find('.item-price').text(item.price + ' บาท');
+
+            // Set only production date
+            const productionDate = new Date(item.productionDate);
+            $(itemElement).find('.item-production-date').text();
+
+            // Hide expiry badge since we're not displaying it
+            $(itemElement).find('.expiry-badge').hide();
+
+            // Set scan time
+            $(itemElement).find('.item-scan-time').text('สแกนเมื่อ: ' + (moment().format('DD/MM/YYYY HH:mm')));
+
+            // Update details button click to show simplified details
+            $(itemElement).find('.details-btn').on('click', function () {
+                showSimplifiedItemDetails(barcode, item);
+            });
+
+            // Add to container
+            const container = $('#inventoryContainer');
+            container.prepend(itemElement);
+
+            // Animate
+            setTimeout(() => {
+                container.find('.inventory-item').first().addClass('show');
+            }, 10);
+        }
+
+        // Add to scan history
+        function addToHistory(item) {
+            scanHistory.unshift(item);
+            localStorage.setItem('beefScanHistory', JSON.stringify(scanHistory));
+        }
+
+        // Render history list
+        function renderHistory() {
+            const historyList = $('#historyList');
+            historyList.empty();
+
+            if (scanHistory.length === 0) {
+                historyList.html('<div class="text-center py-4 text-muted">ไม่มีประวัติการสแกน</div>');
+                return;
+            }
+
+            scanHistory.forEach(item => {
+                const timestamp = new Date(item.timestamp);
+                const historyItem = $(`
+                    <div class="history-item" data-barcode="${item.barcode}">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>${item.name}</strong>
+                                <div class="text-muted small">${item.weight} กก. ${item.price} บาท</div>
+                            </div>
+                            <small class="text-muted">${moment(item.productionDate).format('HH:mm')}</small>
+                        </div>
+                    </div>
+                `);
+                historyList.append(historyItem);
+            });
+        }
+
+        // Show item details modal
+        function showItemDetails(barcode, item) {
+            Swal.fire({
+                title: item.name,
+                html: `
+                    <div class="text-start px-2">
+                        <div class="mb-3 d-flex justify-content-between">
+                            <div>
+                                <span class="badge bg-light text-dark border">รหัส: ${barcode}</span>
+                            </div>
+                            <div>
+                                <span class="badge bg-success">น้ำหนัก: ${item.weight} กก.</span>
+                            </div>
+                        </div>
+                        <table class="table">
+                            <tr>
+                                <td><strong>ประเภท:</strong></td>
+                                <td>${item.type}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>เกรด:</strong></td>
+                                <td>${item.grade}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>วันที่ผลิต:</strong></td>
+                                <td>${formatDate(new Date(item.productionDate))}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>วันหมดอายุ:</strong></td>
+                                <td>${formatDate(new Date(item.expiryDate))}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>แหล่งที่มา:</strong></td>
+                                <td>${item.source}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ราคา:</strong></td>
+                                <td>${item.price} บาท</td>
+                            </tr>
+                        </table>
+                    </div>
+                `,
+                showConfirmButton: true,
+                confirmButtonText: 'ปิด',
+                confirmButtonColor: '#8B4513',
+                customClass: {
+                    popup: 'rounded-4'
+                }
+            });
+        }
+
+        // Show simplified item details modal - shows only product ID, weight, price, and production date
+        function showSimplifiedItemDetails(barcode, item) {
+            Swal.fire({
+                title: item.name,
+                html: `
+                    <div class="text-start px-2">
+                        <div class="mb-3 d-flex justify-content-between">
+                            <div>
+                                <span class="badge bg-light text-dark border">รหัส: ${barcode}</span>
+                            </div>
+                            <div>
+                                <span class="badge bg-success">น้ำหนัก: ${item.weight} กก.</span>
+                            </div>
+                        </div>
+                        <table class="table">
+                            <tr>
+                                <td><strong>รหัสสินค้า:</strong></td>
+                                <td>${barcode.substring(2, 8)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>น้ำหนัก:</strong></td>
+                                <td>${item.weight} กก.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ราคาขาย:</strong></td>
+                                <td>${item.price} บาท</td>
+                            </tr>
+                            <tr>
+                                <td><strong>วันที่ผลิต:</strong></td>
+                                <td>${moment(item.productionDate).format('DD/MM/YYYY HH:mm')}</td>
+                            </tr>
+                        </table>
+                    </div>
+                `,
+                showConfirmButton: true,
+                confirmButtonText: 'ปิด',
+                confirmButtonColor: '#8B4513',
+                customClass: {
+                    popup: 'rounded-4'
+                }
+            });
+        }
+
+        // Show notification
+        function showNotification(type, title, message) {
+            const toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                customClass: {
+                    popup: 'rounded-4'
+                }
+            });
+
+            toast.fire({
+                icon: type,
+                title: title,
+                text: message
+            });
+        }
+
+        // Format date as DD/MM/YYYY
+        function formatDate(date) {
+            return date.toLocaleDateString('th-TH', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+
+        // Format time as HH:MM
+        function formatTime(date) {
+            return date.toLocaleTimeString('th-TH', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+        }
+
+        // Update totals when items are added
+        function updateTotals() {
+            let itemCount = $('.inventory-item').length;
+            let totalWeight = 0;
+            let totalPrice = 0;
+
+            $('.inventory-item').each(function () {
+                const weightText = $(this).find('.item-weight').text();
+                const priceText = $(this).find('.item-price').text();
+
+                const weight = parseFloat(weightText.replace(' กก.', ''));
+                const price = parseInt(priceText.replace(' บาท', ''));
+
+                totalWeight += weight;
+                totalPrice += price;
+            });
+
+            $('#itemCount').text(itemCount);
+            $('#totalWeight').text(totalWeight.toFixed(2) + ' กก.');
+            $('#totalPrice').text(totalPrice + ' บาท');
+        }
+
+        // Override renderInventoryItem to call updateTotals
+        const originalRenderInventoryItem = renderInventoryItem;
+        renderInventoryItem = function (barcode, item) {
+            originalRenderInventoryItem(barcode, item);
+            updateTotals();
+        };
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+</body>
+
+</html>
