@@ -20,6 +20,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
     <style>
         * {
             font-family: 'Noto Sans Thai', sans-serif;
@@ -39,96 +42,140 @@
 </head>
 
 <body class="bg-light">
-    <nav class="navbar bg-black navbar-light m-0 py-1">
-        <div class="container-fluid">
+    <nav class="navbar bg-black navbar-dark m-0 py-1 navbar-expand-md shadow-sm ">
+        <div class="container-fluid" data-bs-theme="dark">
             <a class="navbar-brand d-flex align-items-center" href="#">
-                <img src="./beef-good-logo-with-bg.jpg" alt="Beef Good Logo" height="40"
-                    class="d-inline-block align-text-top me-2 rounded-circle">
+                <img src="https://img5.pic.in.th/file/secure-sv1/beef-good-logo.png" alt="Beef Good Logo" height="40"
+                    class="d-inline-block align-text-top me-2 rounded-circle bg-white">
                 <span class="text-beef fw-bold">Beef Good</span>
             </a>
-            <button class="btn btn-sm btn-outline-secondary border-0" id="historyBtn" type="button">
-                <i class="bi bi-clock-history"></i>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
             </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-target="#invent-tab-pane">
+                            <i class="bi bi-plus-circle-fill"></i>&nbsp;นำเข้าสินค้า</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-target="#print-tab-pane">
+                            <i class="bi bi-printer-fill"></i>&nbsp;พิมพ์ใบรายการ</button>
+                    </li>
+                </ul>
+            </div>
         </div>
     </nav>
-    <div class="container">
-        <div class="row">
-            <div class="col-12">
-                <div class="text-center mt-3 h4 text-beef fw-bold">ระบบตรวจสอบสินค้า</div>
-                <p class="text-center text-secondary">ใช้เครื่องสแกนหรือป้อนรหัสบาร์โค้ดด้านล่าง</p>
-            </div>
-        </div>
-
-        <div class="row mt-3">
-            <div class="col-12">
-                <div class="input-group">
-                    <input type="text" class="form-control barcode-input shadow-none" id="barcodeInput"
-                        placeholder="สแกนหรือป้อนรหัสบาร์โค้ด" autofocus>
-                    <button class="btn btn-dark border-0" type="button" id="addItemBtn">
-                        <i class="bi bi-plus-circle"></i> เพิ่มรายการ
-                    </button>
-
+    <div class="tab-content" id="myTabContent">
+        <div class="tab-pane fade show active" id="invent-tab-pane" role="tabpanel" aria-labelledby="invent-tab"
+            tabindex="0">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="text-center mt-3 h4 text-beef fw-bold">ระบบนำเข้าสินค้า</div>
+                        <p class="text-center text-secondary">ใช้เครื่องสแกนหรือป้อนรหัสบาร์โค้ดด้านล่าง</p>
+                    </div>
                 </div>
 
-            </div>
-        </div>
-        <div class="row mt-2 justify-content-center">
-            <div class="col-12 text-center" id="inventoryHeader" style="display: none;">
-                <div class="card my-3 bg-beef-subtle shadow-sm">
-                    <div class="card-body py-3">
-                        <div class="row text-center">
-                            <div class="col-4">
-                                <h6 class="fw-bold text-beef mb-1">จำนวนชิ้น</h6>
-                                <p class="fs-5 mb-0" id="itemCount">0</p>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="input-group">
+                            <input type="text" class="form-control barcode-input shadow-none" id="barcodeInput"
+                                placeholder="สแกนหรือป้อนรหัสบาร์โค้ด" autofocus>
+                            <button class="btn btn-dark border-0" type="button" id="addItemBtn">
+                                <i class="bi bi-plus-circle"></i> เพิ่มรายการ
+                            </button>
+
+                        </div>
+
+                    </div>
+                </div>
+                <div class="row mt-2 justify-content-center">
+                    <div class="col-12 text-center" id="inventoryHeader" style="display: none;">
+                        <div class="card my-3 bg-beef-subtle shadow-sm">
+                            <div class="card-body py-3">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <h6 class="fw-bold text-beef mb-1">จำนวนชิ้น</h6>
+                                        <p class="fs-5 mb-0" id="itemCount">0</p>
+                                    </div>
+                                    <div class="col-4">
+                                        <h6 class="fw-bold text-beef mb-1">น้ำหนักรวม</h6>
+                                        <p class="fs-5 mb-0" id="totalWeight">0.00 กก.</p>
+                                    </div>
+                                    <div class="col-4">
+                                        <h6 class="fw-bold text-beef mb-1">ราคารวม</h6>
+                                        <p class="fs-5 mb-0" id="totalPrice">0 บาท</p>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-4">
-                                <h6 class="fw-bold text-beef mb-1">น้ำหนักรวม</h6>
-                                <p class="fs-5 mb-0" id="totalWeight">0.00 กก.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4" id="actionButtons" style="display: none;">
+                        <button class="btn btn-dark rounded-3 w-100 mt-2" type="button" id="saveBtn">
+                            <i class="bi bi-floppy-fill"></i> บันทึก
+                        </button>
+                    </div>
+                    <div class="col-12 mt-2 text-center" id="inventoryContainer">
+                        <div class="inventory-empty" id="emptyState">
+                            <i class="bi bi-upc-scan scan-icon display-1"></i>
+                            <p class="mb-0">สแกนบาร์โค้ดสินค้าเพื่อเพิ่มข้อมูล</p>
+                            <small class="text-muted">ระบบจะบันทึกข้อมูลการสแกนอัตโนมัติ</small>
+                        </div>
+                        <!-- Inventory items will be added here dynamically -->
+                    </div>
+                </div>
+
+                <!-- History Modal -->
+                <div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header bg-beef-subtle">
+                                <h5 class="modal-title text-beef" id="historyModalLabel">ประวัติการสแกน</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
                             </div>
-                            <div class="col-4">
-                                <h6 class="fw-bold text-beef mb-1">ราคารวม</h6>
-                                <p class="fs-5 mb-0" id="totalPrice">0 บาท</p>
+                            <div class="modal-body">
+                                <div class="history-list" id="historyList">
+                                    <!-- History items will be added here dynamically -->
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary"
+                                    data-bs-dismiss="modal">ปิด</button>
+                                <button type="button" class="btn btn-danger" id="clearHistoryBtn">ล้างประวัติ</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-12" id="actionButtons" style="display: none;">
-                <button class="btn btn-dark rounded-3 w-100 mt-2" type="button" id="saveBtn">
-                    <i class="bi bi-floppy-fill"></i> บันทึก
-                </button>
-            </div>
-            <div class="col-12 mt-2 text-center" id="inventoryContainer">
-                <div class="inventory-empty" id="emptyState">
-                    <i class="bi bi-upc-scan scan-icon display-1"></i>
-                    <p class="mb-0">สแกนบาร์โค้ดสินค้าเพื่อเพิ่มข้อมูล</p>
-                    <small class="text-muted">ระบบจะบันทึกข้อมูลการสแกนอัตโนมัติ</small>
-                </div>
-                <!-- Inventory items will be added here dynamically -->
-            </div>
         </div>
-
-        <!-- History Modal -->
-        <div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header bg-beef-subtle">
-                        <h5 class="modal-title text-beef" id="historyModalLabel">ประวัติการสแกน</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="history-list" id="historyList">
-                            <!-- History items will be added here dynamically -->
+        <div class="tab-pane fade" id="print-tab-pane" role="tabpanel" aria-labelledby="print-tab" tabindex="0">
+            <div class="container">
+                <div class="row mt-3">
+                    <div class="col-12 text-center">
+                        <h4 class="text-beef fw-bold">พิมพ์ใบรายการ</h4>
+                        <p class="text-secondary">ยังไม่มีรายการในวันนี้ หากต้องการพิมพ์ย้อนหลังกรุณาเลือกวันที่</p>
+                        <div id="dateFilter">
+                            <input type="text" class="form-control" id="dateInput" placeholder="เลือกวันที่" name="dateInput">
+                            <button class="btn btn-dark mt-2" id="searchBtn">
+                                <i class="bi bi-search"></i>
+                                ค้นหารายการ
+                            </button>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ปิด</button>
-                        <button type="button" class="btn btn-danger" id="clearHistoryBtn">ล้างประวัติ</button>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12 text-center" id="printReport" style="display: none">
+                        <button class="btn btn-dark" id="printBtn"><i class="bi bi-printer-fill"></i> พิมพ์</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- Item Template -->
     <template id="item-template">
@@ -171,9 +218,10 @@
         // Sample data for demonstration - in real implementation, this would come from your backend
         let scanHistory = JSON.parse(localStorage.getItem('beefScanHistory')) || [];
         const historyLimit = 500; // Limit history items
-        const demo_data = <?!= getBarcodeDatas() ?>; // Fetch data from Google Sheets
+        // const demo_data = <?!= getBarcodeDatas() ?>; // Fetch data from Google Sheets
         $(document).ready(function () {
             moment.locale('th'); // Set Thai locale for moment.js
+            $('#')
             const barcodeInput = $('#barcodeInput');
             const historyBtn = $('#historyBtn');
             const clearHistoryBtn = $('#clearHistoryBtn');
@@ -182,9 +230,9 @@
             const historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
             scanHistory = scanHistory.filter(item => item.barcode);
             localStorage.setItem('beefScanHistory', JSON.stringify(scanHistory));
-            scanHistory.forEach(item => {
-                searchInventory(item.barcode, true);
-            });
+            // scanHistory.forEach(item => {
+            //     searchInventory(item.barcode, true);
+            // });
             // Set focus to barcode input
             // barcodeInput.focus();
 
@@ -245,7 +293,8 @@
                         });
                         localStorage.removeItem('beefScanHistory');
                         scanHistory = [];
-                        renderHistory();
+                        $('.inventory-item').remove(); // Clear inventory items
+                        $('#emptyState').show(); // Show empty state
                     } else {
                         Swal.fire({
                             title: 'บันทึกข้อมูลไม่สำเร็จ',
@@ -259,6 +308,20 @@
                     }
                 })
                     .saveDataToSheet(history);
+            });
+            $('.nav-link').click(function () {
+                console.log('clicked');
+                $('.nav-link').removeClass('active');
+                $('.tab-pane').removeClass('show active');
+                $(this).addClass('active');
+                const target = $(this).data('bs-target');
+                $(target).addClass('show active');
+                historyModal.hide();
+                if (target === '#invent-tab-pane') {
+                    barcodeInput.focus();
+                } else {
+                    getPrintData();
+                }
             });
 
             // Handle delete button click on inventory items
@@ -641,6 +704,28 @@
             originalRenderInventoryItem(barcode, item);
             updateTotals();
         };
+
+        function getPrintData() {
+            google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler()(res => {
+                console.log("🚀 ~ getPrintData ~ res:", res)
+                if (res.success) {
+                    const printData = res.data;
+                    // Process and display the print data as needed
+                    console.log(printData);
+                } else {
+                    Swal.fire({
+                        title: 'ไม่สามารถดึงข้อมูลได้',
+                        text: 'กรุณาลองใหม่อีกครั้ง',
+                        icon: 'error',
+                        confirmButtonColor: '#8B4513',
+                        customClass: {
+                            popup: 'rounded-4'
+                        }
+                    });
+                }
+            })
+                .getPrintData();
+        }
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
@@ -649,6 +734,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
 </body>
 
 </html>
