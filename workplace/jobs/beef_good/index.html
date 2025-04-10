@@ -23,6 +23,12 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/material_red.css">
+    <link href="https://cdn.datatables.net/v/bs5/dt-2.2.2/date-1.5.5/r-3.0.4/datatables.min.css" rel="stylesheet"
+        integrity="sha384-1J1LAHaYmA8AXBKEwhykiJmyo7zmhJIUlWIRZPHuX+qDRljv5UcH4RQsMGAT5d4i" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         * {
             font-family: 'Noto Sans Thai', sans-serif;
@@ -38,11 +44,20 @@
         .btn-beef {
             background-color: #8B4513;
         }
+
+        .select,
+        #locale {
+            width: 100%;
+        }
+
+        .like {
+            margin-right: 10px;
+        }
     </style>
 </head>
 
 <body class="bg-light">
-    <nav class="navbar bg-black navbar-dark m-0 py-1 navbar-expand-md shadow-sm ">
+    <nav class="navbar bg-black navbar-dark m-0 py-1 navbar-expand-md shadow-sm no-print">
         <div class="container-fluid" data-bs-theme="dark">
             <a class="navbar-brand d-flex align-items-center" href="#">
                 <img src="https://img5.pic.in.th/file/secure-sv1/beef-good-logo.png" alt="Beef Good Logo" height="40"
@@ -67,7 +82,7 @@
             </div>
         </div>
     </nav>
-    <div class="tab-content" id="myTabContent">
+    <div class="tab-content no-print" id="myTabContent">
         <div class="tab-pane fade show active" id="invent-tab-pane" role="tabpanel" aria-labelledby="invent-tab"
             tabindex="0">
             <div class="container">
@@ -154,22 +169,28 @@
         </div>
         <div class="tab-pane fade" id="print-tab-pane" role="tabpanel" aria-labelledby="print-tab" tabindex="0">
             <div class="container">
-                <div class="row mt-3">
+                <div class="row mt-3 justify-content-center">
                     <div class="col-12 text-center">
                         <h4 class="text-beef fw-bold">พิมพ์ใบรายการ</h4>
-                        <p class="text-secondary">ยังไม่มีรายการในวันนี้ หากต้องการพิมพ์ย้อนหลังกรุณาเลือกวันที่</p>
-                        <div id="dateFilter">
-                            <input type="text" class="form-control" id="dateInput" placeholder="เลือกวันที่" name="dateInput">
-                            <button class="btn btn-dark mt-2" id="searchBtn">
-                                <i class="bi bi-search"></i>
-                                ค้นหารายการ
-                            </button>
-                        </div>
+                    </div>
+                    <div class="col-md-6 text-center" id="dateFilter">
+                        <label for="dateInput" class="form-label">เลือกวันที่
+                            หรือเว้นว่างหากต้องการแสดงข้อมูลทั้งหมด</label>
+                        <input type="text" class="form-control text-center" id="dateInput"
+                            placeholder="เลือกวันที่ หรือเว้นว่างหากต้องการแสดงข้อมูลทั้งหมด" name="dateInput">
+                        <button class="btn btn-dark mt-2" id="searchBtn">
+                            <i class="bi bi-search"></i>
+                            ค้นหารายการ
+                        </button>
                     </div>
                 </div>
                 <div class="row mt-3">
                     <div class="col-12 text-center" id="printReport" style="display: none">
                         <button class="btn btn-dark" id="printBtn"><i class="bi bi-printer-fill"></i> พิมพ์</button>
+                    </div>
+                    <div class="col-12 table-responsive mt-3">
+                        <table id="table" class="table table-striped table-bordered table-hover" style="width: 100%">
+                        </table>
                     </div>
                 </div>
             </div>
@@ -193,17 +214,17 @@
                     </div>
                     <div class="row g-1">
                         <div class="col-6 text-start">
-                            <p class="text-black-50 mb-0 ">น้ำหนัก</p>
-                            <p class="mb-0 item-weight ">0.00 กก.</p>
+                            <p class="mb-0 "><span class="text-black-50">น้ำหนัก </span><span class="item-weight">0.00
+                                    กก.</span></p>
                         </div>
                         <div class="col-6 txt-start">
-                            <p class="text-black-50 mb-0 ">ราคาขาย</p>
-                            <p class="mb-0 item-price ">0.00 บาท</p>
+                            <p class="mb-0 "><span class="text-black-50">ราคาขาย </span><span class="item-price">0.00
+                                    บาท</span></p>
                         </div>
                     </div>
                 </div>
                 <div class="card-footer bg-white p-1 rounded-3">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center px-1">
                         <small class="text-muted item-scan-time fs-smaller">สแกนเมื่อ: เดี๋ยวนี้</small>
                         <button class="btn btn-sm bg-beef-subtle text-beef details-btn py-0 px-2">
                             รายละเอียด <i class="bi bi-arrow-right"></i>
@@ -213,15 +234,134 @@
             </div>
         </div>
     </template>
+    <!-- Table Details Modal -->
+    <div class="modal fade no-print" id="tableDetailsModal" tabindex="-1" aria-labelledby="tableDetailsModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-beef-subtle">
+                    <h5 class="modal-title text-beef" id="tableDetailsModalLabel">รายละเอียดรายการ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <div class="input-group input-group mb-1">
+                                <span class="input-group-text fw-bold text-bg-danger">วันที่:</span>
+                                <span class="form-control" id="detailDate"></span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <!-- <p class="mb-1"><strong>เลขที่บิล:</strong> <span id="detailBillId"></span></p> -->
+                            <div class="input-group input-group mb-1">
+                                <span class="input-group-text fw-bold text-bg-danger">เลขที่บิล:</span>
+                                <span class="form-control" id="detailBillId"></span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <!-- <p class="mb-1"><strong>น้ำหนักรวม:</strong> <span id="detailTotalWeight"></span> กก.</p> -->
+                            <div class="input-group input-group mb-1">
+                                <span class="input-group-text fw-bold text-bg-danger">น้ำหนักรวม:</span>
+                                <span class="form-control" id="detailTotalWeight"></span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <!-- <p class="mb-1"><strong>ราคารวม:</strong> <span id="detailTotalPrice"></span> บาท</p> -->
+                            <div class="input-group input-group mb-1">
+                                <span class="input-group-text fw-bold text-bg-danger">ราคารวม:</span>
+                                <span class="form-control" id="detailTotalPrice"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered" id="detailsTable">
+                            <thead class="table-dark">
+                                <tr class="text-center">
+                                    <th class="text-center">#</th>
+                                    <th class="text-center">ชื่อสินค้า</th>
+                                    <th class="text-center">ประเภท</th>
+                                    <th class="text-center">เกรด</th>
+                                    <th class="text-center">น้ำหนัก</th>
+                                    <th class="text-center">จำนวน</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailsTableBody" class="text-center"></tbody>
+                            <!-- Details will be populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ปิด</button>
+                    <button type="button" class="btn btn-dark" id="printDetailsBtn">
+                        <i class="bi bi-printer-fill"></i> พิมพ์รายละเอียด
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid" id="print-area" style="display: none;">
+        <div class="row">
+            <div class="col-12 text-center mt-3">
+                <h4 class="text-beef fw-bold">ใบรายการสินค้า</h4>
+                <p class="text-secondary">วันที่: <span id="printDate"></span></p>
+            </div>
+            <div class="col-12 mt-3" id="printTableContainer">
+                <!-- Print table will be generated here -->
+            </div>
+        </div>
 
+    </div>
     <script>
         // Sample data for demonstration - in real implementation, this would come from your backend
         let scanHistory = JSON.parse(localStorage.getItem('beefScanHistory')) || [];
         const historyLimit = 500; // Limit history items
-        // const demo_data = <?!= getBarcodeDatas() ?>; // Fetch data from Google Sheets
+        const dt_lang = {
+            processing: '<div class="text-beef">กำลังโหลดข้อมูล...</div>',
+            searchPlaceholder: "ค้นหา",
+            search: "ค้นหา:",
+            lengthMenu: "แสดง _MENU_ รายการ",
+            info: "แสดงรายการ _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+            infoEmpty: "แสดงรายการ 0 ถึง 0 จาก 0 รายการ",
+            infoFiltered: "(กรองจากทั้งหมด _MAX_ รายการ)",
+            loadingRecords: "กำลังโหลดข้อมูล...",
+            zeroRecords: "ไม่พบรายการที่ค้นหา",
+            emptyTable: "ยังไม่มีรายการในวันนี้ หากต้องการสั่งพิมพ์ย้อนหลังกรุณาเลือกวันอื่นที่มีรายการ",
+            paginate: {
+                first: "หน้าแรก",
+                previous: "ก่อนหน้า",
+                next: "ถัดไป",
+                last: "หน้าสุดท้าย"
+            },
+            aria: {
+                sortAscending: ": เรียงจากน้อยไปมาก",
+                sortDescending: ": เรียงจากมากไปน้อย"
+            }
+        }
+        const demo_data = <?!= getBarcodeDatas() ?>; // Fetch data from Google Sheets
         $(document).ready(function () {
             moment.locale('th'); // Set Thai locale for moment.js
-            $('#')
+            $('#dateInput').flatpickr({
+                locale: 'th',
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: "j F Y",
+                defaultDate: moment().format('YYYY-MM-DD'),
+                onChange: function (selectedDates, dateStr, instance) {
+                    $('#table').DataTable().ajax.reload(null, false);
+                }
+            });
+            $('#tableDetailsModal').on('shown.bs.modal', function () {
+                $('#detailsTable').DataTable({
+                    language: dt_lang,
+                    paging: false,
+                }).draw(false)
+                let inputgroupwidth = Math.max(...$('.input-group-text').toArray().map(e => $(e).width()));
+                console.log("🚀 ~ inputgroupwidth:", inputgroupwidth)
+                $('.input-group-text').css('min-width', inputgroupwidth + 'pt');
+            }).on('hidden.bs.modal', function () {
+                $('#detailsTable').DataTable().destroy();
+            });
             const barcodeInput = $('#barcodeInput');
             const historyBtn = $('#historyBtn');
             const clearHistoryBtn = $('#clearHistoryBtn');
@@ -230,9 +370,9 @@
             const historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
             scanHistory = scanHistory.filter(item => item.barcode);
             localStorage.setItem('beefScanHistory', JSON.stringify(scanHistory));
-            // scanHistory.forEach(item => {
-            //     searchInventory(item.barcode, true);
-            // });
+            scanHistory.forEach(item => {
+                searchInventory(item.barcode, true);
+            });
             // Set focus to barcode input
             // barcodeInput.focus();
 
@@ -280,6 +420,7 @@
                 google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
                     console.log("🚀 ~ google.script.run.withFailureHandler ~ res:", res)
                     if (res.success) {
+                        $('#inventoryHeader, #actionButtons').hide();
                         Swal.fire({
                             title: 'บันทึกข้อมูลสำเร็จ',
                             text: 'ข้อมูลได้ถูกบันทึกลง Google Sheets เรียบร้อยแล้ว',
@@ -320,8 +461,17 @@
                 if (target === '#invent-tab-pane') {
                     barcodeInput.focus();
                 } else {
-                    getPrintData();
+                    $('#dateInput').focus();
+                    $('#table').DataTable().ajax.reload(null, false);
                 }
+            });
+
+            setTimeout(() => {
+                getPrintData($('#dateInput').val());
+            }, 1000);
+
+            $('#searchBtn').click(function () {
+                $('#table').DataTable().ajax.reload(null, false);
             });
 
             // Handle delete button click on inventory items
@@ -443,11 +593,16 @@
             // Convert price (no decimal places)
             const price = parseInt(priceRaw);
             console.log(data[Number(productId).toString()]);
-            const productName = data[Number(productId).toString()].productName || 'ไม่พบข้อมูลสินค้า';
+            // const fullProductName = data[Number(productId).toString()].fullProductName || 'ไม่พบข้อมูลสินค้า';
+            // const productName = data[Number(productId).toString()].productName || 'ไม่พบข้อมูลสินค้า';
+            const product = data[Number(productId).toString()];
 
             // Create item data directly from barcode
             const item = {
-                name: productName,
+                fullname: product.fullProductName || 'ไม่พบข้อมูลสินค้า',
+                name: product.productName || '',
+                type: product.type || '',
+                grade: product.grade || '',
                 productId: productId,
                 productionDate: moment().format('YYYY-MM-DD HH:mm:ss'),
                 weight: weight,
@@ -472,6 +627,7 @@
 
         // Render inventory item card
         function renderInventoryItem(barcode, item) {
+            console.log("🚀 ~ renderInventoryItem ~ item:", item)
             $('#emptyState').hide(); // Hide empty state if visible
             $('#inventoryHeader, #actionButtons').show(); // Show header and action buttons
             // Clone the template
@@ -479,7 +635,7 @@
             const itemElement = document.importNode(template.content, true);
 
             // Set item data
-            $(itemElement).find('.item-name').text(item.name);
+            $(itemElement).find('.item-name').text(item.fullname);
             $(itemElement).find('.item-id').text(item.productId);
 
             // Set only weight
@@ -534,7 +690,7 @@
                     <div class="history-item" data-barcode="${item.barcode}">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <strong>${item.name}</strong>
+                                <strong>${item.fullname}</strong>
                                 <div class="text-muted small">${item.weight} กก. ${item.price} บาท</div>
                             </div>
                             <small class="text-muted">${moment(item.productionDate).format('HH:mm')}</small>
@@ -548,7 +704,7 @@
         // Show item details modal
         function showItemDetails(barcode, item) {
             Swal.fire({
-                title: item.name,
+                title: item.fullname,
                 html: `
                     <div class="text-start px-2">
                         <div class="mb-3 d-flex justify-content-between">
@@ -560,6 +716,10 @@
                             </div>
                         </div>
                         <table class="table">
+                            <tr>
+                                <td><strong>ชื่อสินค้า:</strong></td>
+                                <td>${item.fullname}</td>
+                            </tr>
                             <tr>
                                 <td><strong>ประเภท:</strong></td>
                                 <td>${item.type}</td>
@@ -599,7 +759,7 @@
         // Show simplified item details modal - shows only product ID, weight, price, and production date
         function showSimplifiedItemDetails(barcode, item) {
             Swal.fire({
-                title: item.name,
+                title: item.fullname,
                 html: `
                     <div class="text-start px-2">
                         <div class="mb-3 d-flex justify-content-between">
@@ -706,25 +866,253 @@
         };
 
         function getPrintData() {
-            google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler()(res => {
-                console.log("🚀 ~ getPrintData ~ res:", res)
-                if (res.success) {
-                    const printData = res.data;
-                    // Process and display the print data as needed
-                    console.log(printData);
+            let table = $('#table').DataTable({
+                scrollX: true,
+                severSide: false,
+                processing: true,
+                ajax: function (data, callback, settings) {
+                    const date = $('#dateInput').val();
+                    console.log("🚀 ~ date:", date)
+                    google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
+                        if (res.success) {
+                            const printData = JSON.parse(res.data);
+                            callback({
+                                data: printData,
+                                recordsTotal: printData.length,
+                                recordsFiltered: printData.length
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'ไม่สามารถดึงข้อมูลได้',
+                                text: 'กรุณาลองใหม่อีกครั้ง',
+                                icon: 'error',
+                                confirmButtonColor: '#8B4513',
+                                customClass: {
+                                    popup: 'rounded-4'
+                                }
+                            });
+                        }
+                    }).getPrintData(date);
+                },
+                language: dt_lang,
+                order: [[0, 'desc']],
+                columns: [
+                    { title: 'เลขที่บิล', data: 'billId' },
+                    { title: 'จำนวนรายการ', data: null, render: function (data, type, row) { return row.data.length; } },
+                    {
+                        title: 'น้ำหนักรวม (กก.)', data: 'totalWeight', render: function (data, type, row) {
+                            return data.toLocaleString({
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            }) + ' กก.';
+                        }
+                    },
+                    {
+                        title: 'ราคารวม (บาท)', data: 'totalPrice', render: function (data, type, row) {
+                            return data.toLocaleString({
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            }) + ' บาท';
+                        }
+                    },
+                    {
+                        title: 'วันที่บันทึก', data: 'productionDate',
+                        render: function (data, type, row) {
+                            if (data === '') return data
+                            if (type == 'filter' || type == 'sort') {
+                                return moment(data).toDate().getTime();
+                            }
+                            return moment(data).format('HH:mm');
+                        }
+                    },
+                    {
+                        title: 'รายละเอียด',
+                        data: null,
+                        render: function (data, type, row) {
+                            return '<button class="btn btn-sm text-bg-danger details-btn py-0 px-2" data-barcode="' + row.barcode + '">รายละเอียด <i class="bi bi-arrow-right"></i></button>'
+                        }
+                    },
+                    {
+                        title: 'สั่งพิมพ์',
+                        data: null,
+                        render: function (data, type, row) {
+                            return '<button class="btn btn-sm print-btn py-0 px-2" data-barcode="' + row.barcode + '"><i class="bi bi-printer-fill text-beef"></i></button>'
+                        }
+                    }
+                ],
+                columnDefs: [
+                    {
+                        targets: '_all',
+                        className: 'text-center dt-header-center dt-nowrap',
+                    },
+                    {
+                        targets: 4,
+                        orderable: false,
+                        searchable: false,
+                    }
+                ],
+            });
+            $('#table').on('click', '.details-btn', function () {
+                let row = table.row($(this).closest('tr')).data();
+                console.log("Row data:", row);
+
+                // Populate modal with bill details
+                $('#detailDate').text(moment(row.productionDate).format('DD/MM/YYYY'));
+                $('#detailBillId').text(row.billId);
+                $('#detailTotalWeight').text(row.totalWeight.toLocaleString() + ' กก.');
+                $('#detailTotalPrice').text(row.totalPrice.toLocaleString() + ' บาท');
+
+                // Clear previous details
+                $('#detailsTableBody').empty();
+
+                // Add items to details table
+                if (row.data && row.data.length > 0) {
+                    row.data
+                        .sort((a, b) => {
+                            return moment(b[6]).toDate().getTime() - moment(a[6]).toDate().getTime();
+                        })
+                    row.groupId = Object.groupBy(row.data, x => x[2])
+                    Object.keys(row.groupId)
+                        .sort((a, b) => {
+                            return a.localeCompare(b, 'th', { numeric: true });
+                        })
+                        .forEach((key, index) => {
+                            let item = row.groupId[key][0]
+                            $('#detailsTableBody').append(`
+                            <tr class="text-center text-nowrap">
+                                <td class="text-center">${index + 1}</td>
+                                <td class="text-center">${item[3]}</td>
+                                <td class="text-center">${item[4]}</td>
+                                <td class="text-end">${item[5]}</td>
+                                <td class="text-end">${row.groupId[key].reduce((acc, curr) => acc + parseFloat(curr[6]), 0).toLocaleString({
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            })} กก.</td>
+                                <td class="text-center">${row.groupId[key].length}</td>
+                            </tr>
+                        `);
+                        });
                 } else {
+                    $('#detailsTableBody').append(`
+                        <tr>
+                            <td colspan="5" class="text-center">ไม่พบรายการสินค้า</td>
+                        </tr>
+                    `);
+                }
+
+                // Show the modal
+                $('#tableDetailsModal').modal('show');
+
+                // Setup print button
+                $('#printDetailsBtn').off('click').on('click', function () {
+                    printBillDetails(row);
+                });
+            });
+
+            $('#table').on('click', '.print-btn', function () {
+                const row = table.row($(this).closest('tr')).data();
+                console.log("Row data:", row);
+                if(row.data?.length == 0) {
                     Swal.fire({
-                        title: 'ไม่สามารถดึงข้อมูลได้',
-                        text: 'กรุณาลองใหม่อีกครั้ง',
-                        icon: 'error',
+                        title: 'ไม่สามารถพิมพ์ได้',
+                        text: 'ไม่มีรายการสินค้าในบิลนี้',
+                        icon: 'warning',
                         confirmButtonColor: '#8B4513',
                         customClass: {
                             popup: 'rounded-4'
                         }
                     });
+                    return;
                 }
-            })
-                .getPrintData();
+                row.data = row.data.sort((a, b) => {
+                    return moment(b[6]).toDate().getTime() - moment(a[6]).toDate().getTime();
+                })
+                row.groupId = Object.groupBy(row.data, x => x[2])
+                printBillDetails(row);
+            });
+        }
+
+        function printBillDetails(row) {
+            console.log("🚀 ~ printBillDetails ~ row:", row)
+            let print_html = `
+            <div class="row my-3">
+                <div class="col-12 text-end mb-3">
+                    <p><b>เลขที่บิล</b>:  ${row.billId}</p>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-4 text-start">
+                    <p class="text-nowrap"><b>วันที่</b>:  ${moment(row.productionDate).format('DD/MM/YYYY')}</p>
+                </div>
+                <div class="col-4 text-start">
+                    <p class="text-nowrap"><b>น้ำหนักรวม</b>:  ${row.totalWeight.toLocaleString()} กก.</p>
+                </div>
+                <div class="col-4 text-start">
+                    <p class="text-nowrap"><b>จำนวน</b>:  ${row.data.length} รายการ</p>
+                </div>
+                <div class="col-12">
+                    <label class="text-nowrap"><b>รายละเอียด</b></label>
+                    <textarea class="form-control" rows="2" readonly></textarea>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <table class="table table-bordered" id="detailsTablePrint">  
+                    <tbody id="detailsTableBodyPrint">
+                        <tr class="text-center text-nowrap">
+                            <th class="text-center">#</th>
+                            <th class="text-center">ชื่อสินค้า</th>
+                            <th class="text-center">ประเภท</th>
+                            <th class="text-center">เกรด</th>
+                            <th class="text-center">น้ำหนัก (กก.)</th>
+                            <th class="text-center">จำนวน</th>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>`;
+            $('#print-area').html(print_html);
+            if (row.data && row.data.length > 0) {
+                Object.keys(row.groupId)
+                    .sort((a, b) => {
+                        return a.localeCompare(b, 'th', { numeric: true });
+                    })
+                    .forEach((key, index) => {
+                        let item = row.groupId[key][0]
+                        $('#detailsTableBodyPrint').append(`
+                            <tr class="text-center text-nowrap">
+                                <td class="text-center">${index + 1}</td>
+                                <td class="text-center">${item[3]}</td>
+                                <td class="text-center">${item[4]}</td>
+                                <td class="text-end">${item[5]}</td>
+                                <td class="text-end">${row.groupId[key].reduce((acc, curr) => acc + parseFloat(curr[6]), 0).toLocaleString({
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        })} กก.</td>
+                                <td class="text-center">${row.groupId[key].length}</td>
+                            </tr>
+                        `);
+                    });
+            } else {
+                $('#detailsTableBodyPrint').append(`
+                    <tr>
+                        <td colspan="5" class="text-center">ไม่พบรายการสินค้า</td>
+                    </tr>
+                `);
+            }
+            // Print the content of the print area
+            const printWindow = window.open('', '', 'width=800,height=600');
+            printWindow.document.write('<html><head><title>Print Bill Details</title>');
+            printWindow.document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">');
+            printWindow.document.write('<style>body{font-family: "Mitr", sans-serif;}</style>');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write('<div class="container">');
+            printWindow.document.write($('#print-area').html());
+            printWindow.document.write('</div>');
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.onload = function () {
+                printWindow.print();
+                printWindow.close();
+            };
         }
     </script>
 
@@ -736,6 +1124,9 @@
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
+    <script src="https://cdn.datatables.net/v/bs5/dt-2.2.2/date-1.5.5/r-3.0.4/datatables.min.js"
+        integrity="sha384-rLmuC6QiRpU3tKULE0+0yoUC4bOdfliJtgfKQnEIX1VqsucsKqaDl7qb0fCvbkxy"
+        crossorigin="anonymous"></script>
 </body>
 
 </html>

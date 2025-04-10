@@ -127,8 +127,7 @@
 </head>
 
 <body class="container-fluid">
-    <div id="loadingOverlay"
-        class="position-fixed top-0 start-0 w-100 h-100"
+    <div id="loadingOverlay" class="position-fixed top-0 start-0 w-100 h-100"
         style="z-index: 9999; display: none; background-color: rgba(255,255,255, 0.5); flex-direction: column; justify-content: center; align-items: center;">
         <div class="text-center d-flex flex-column justify-content-center align-items-center">
             <img src="./detail_request.png" alt="Loading" class="img-fluid mb-3"
@@ -198,6 +197,7 @@
                         <option value="สาขา Big C ปากช่อง / Big C Pak Chong">สาขา Big C ปากช่อง / Big C Pak Chong
                         </option>
                         <option value="สาขา โลตัส ศาลายา / Lotus Salaya">สาขา โลตัส ศาลายา / Lotus Salaya</option>
+                        <option value="สถานที่อื่นๆ / Other location">สถานที่อื่นๆ / Other location</option>
                     </select>
                     <div class="invalid-feedback">
                         กรุณาเลือกสาขารับรถ
@@ -241,6 +241,7 @@
                         <option value="สาขา Big C ปากช่อง / Big C Pak Chong">สาขา Big C ปากช่อง / Big C Pak Chong
                         </option>
                         <option value="สาขา โลตัส ศาลายา / Lotus Salaya">สาขา โลตัส ศาลายา / Lotus Salaya</option>
+                        <option value="สถานที่อื่นๆ / Other location">สถานที่อื่นๆ / Other location</option>
                     </select>
                     <div class="invalid-feedback">
                         กรุณาเลือกสาขาคืนรถ
@@ -504,7 +505,7 @@
         })
 
         function init() {
-            // liff.init({ liffId: '1655873446-MpmBPPzl' })
+            liff.init({ liffId: '1655873446-MpmBPPzl' })
             liff.ready.then(() => {
                 // if (!liff.isInClient()) {
                 //     return Swal.fire({
@@ -543,8 +544,18 @@
                 console.error(err)
             })
         }
+        $('#pickup_branch, #return_branch').change(function () {
+            if ($(this).val() == 'สถานที่อื่นๆ / Other location') {
+                let placeholder = $(this).attr('id') == 'pickup_branch' ? 'ระบุสถานที่รับรถ / Specify pick up location' : 'ระบุสถานที่คืนรถ / Specify return location'
+                $(this).parent().append('<input type="text" class="form-control rounded-3 mt-2" id="' + $(this).attr('id') + '_other" name="' + $(this).attr('id') + '_other" placeholder="' + placeholder + '" required>')
+                $(this).parent().append('<div class="invalid-feedback">กรุณาระบุสถานที่</div>')
+                $(this).prop('required', false).parent().find('input').prop('required', true)
+            } else {
+                $('#' + $(this).attr('id') + '_other').remove()
+            }
+        })
 
-        function submit() {
+        async function submit() {
             showLoading('./waiting.png')
             let data = $('#mainform').serializeArray().reduce((obj, item) => {
                 obj[item.name] = item.value
@@ -552,6 +563,48 @@
             }, { uid: liff.getDecodedIDToken().sub, opt: 'filter' })
             data.pickup_datetime = moment(data.pickup_date + ' ' + data.pickup_time, 'DD/MM/YYYY HH:mm').format('YYYY-MM-DDTHH:mm:ss')
             data.return_datetime = moment(data.return_date + ' ' + data.return_time, 'DD/MM/YYYY HH:mm').format('YYYY-MM-DDTHH:mm:ss')
+
+            if (data.advertisement == 'อื่นๆ') {
+                data.advertisement = $('#advertisement_detail').val()
+            } else {
+                data.advertisement = $('#advertisement').val()
+            }
+            if (data.pickup_branch == 'สถานที่อื่นๆ / Other location' || data.return_branch == 'สถานที่อื่นๆ / Other location') {
+                data.pickup_branch = data.pickup_branch == 'สถานที่อื่นๆ / Other location' ? $('#pickup_branch_other').val() : data.pickup_branch
+                data.return_branch = data.return_branch == 'สถานที่อื่นๆ / Other location' ? $('#return_branch_other').val() : data.return_branch
+                data.pickup_datetime = $('#pickup_date' ).val().replace(/\//g, '-') + ' ' + $('#pickup_time').val()
+                data.return_datetime = $('#return_date').val().replace(/\//g, '-') + ' ' + $('#return_time').val()
+                data.duration = getDuration(data.pickup_datetime, data.return_datetime)
+                data.duration_days = data.duration.days
+                data.duration_hours = data.duration.hours
+                data.duration_minutes = data.duration.minutes
+                data.line_name = $('#line_name').val()
+                data.uid = liff.getDecodedIDToken().sub
+                delete data.duration
+                await Promise.all([
+                    saveToSheet(data),
+                    sendToLine(data, true)
+                ])
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ส่งข้อมูลเรียบร้อยแล้ว',
+                    text: 'เราจะติดต่อกลับไปในเร็วๆนี้',
+                    confirmButtonText: 'ตกลง',
+                    customClass: {
+                        popup: 'rounded-4',
+                    }
+                })
+                $('#mainform')[0].reset();
+                $('#mainform').removeClass('was-validated');
+                $('#pickup-datetime').val('');
+                $('#return-datetime').val('');
+                $('#line_name').val(liff.getDecodedIDToken().name)
+                $('#carResultsContainer').slideUp(200, function () {
+                    $('#main').slideDown(200)
+                })
+                $('#pickup_branch_other, #return_branch_other').remove()
+                return
+            }
 
             console.log(data);
             $.post(scriptURL, data, function (res) {
@@ -654,8 +707,10 @@
                 pickup_datetime,
                 return_datetime
             }
-            saveToSheet(data)
-            await sendToLine(data)
+            await Promise.all([
+                saveToSheet(data),
+                sendToLine(data)
+            ])
             Swal.fire({
                 icon: 'success',
                 title: 'ส่งข้อมูลเรียบร้อย',
@@ -690,18 +745,21 @@
         function saveToSheet(data) {
             data.opt = 'save'
             console.log(data);
-            $.post(scriptURL, data, function (res) {
-                if (res.success) {
-                    console.log('Data saved to sheet')
-                    resolve()
-                } else {
-                    console.error('Error saving data to sheet')
-                    reject()
-                }
+            return new Promise((resolve, reject) => {
+                $.post(scriptURL, data, function (res) {
+                    if (res.success) {
+                        console.log('Data saved to sheet')
+                        resolve()
+                    } else {
+                        console.error('Error saving data to sheet')
+                        reject()
+                    }
+                })
+
             })
         }
 
-        function sendToLine(data) {
+        function sendToLine(data, noImage) {
             return new Promise((resolve, reject) => {
                 // Create a Flex Message
                 let flexMessage = {
@@ -710,17 +768,6 @@
                     contents: {
                         type: "bubble",
                         size: "giga",
-                        hero: {
-                            type: "image",
-                            url: data.image,
-                            size: "5xl",
-                            aspectRatio: "1:1",
-                            aspectMode: "cover",
-                            action: {
-                                type: "uri",
-                                uri: data.image
-                            }
-                        },
                         header: {
                             type: "box",
                             layout: "vertical",
@@ -743,105 +790,6 @@
                             type: "box",
                             layout: "vertical",
                             contents: [
-                                {
-                                    type: "box",
-                                    layout: "vertical",
-                                    contents: [
-                                        {
-                                            type: "text",
-                                            text: "🚘 ข้อมูลรถ",
-                                            weight: "bold",
-                                            color: "#1DB446",
-                                            size: "md",
-                                            wrap: true,
-                                            scaling: true
-                                        },
-                                        {
-                                            type: "box",
-                                            layout: "vertical",
-                                            contents: [
-                                                {
-                                                    type: "box",
-                                                    layout: "horizontal",
-                                                    contents: [
-                                                        {
-                                                            type: "text",
-                                                            text: "ยี่ห้อ:",
-                                                            size: "sm",
-                                                            color: "#555555",
-                                                            flex: 2,
-                                                            wrap: true,
-                                                            scaling: true
-                                                        },
-                                                        {
-                                                            type: "text",
-                                                            text: data.brand,
-                                                            size: "sm",
-                                                            color: "#111111",
-                                                            flex: 4,
-                                                            wrap: true,
-                                                            scaling: true
-                                                        }
-                                                    ]
-                                                },
-                                                {
-                                                    type: "box",
-                                                    layout: "horizontal",
-                                                    contents: [
-                                                        {
-                                                            type: "text",
-                                                            text: "รุ่น:",
-                                                            size: "sm",
-                                                            color: "#555555",
-                                                            flex: 2,
-                                                            wrap: true,
-                                                            scaling: true
-                                                        },
-                                                        {
-                                                            type: "text",
-                                                            text: data.model,
-                                                            size: "sm",
-                                                            color: "#111111",
-                                                            flex: 4,
-                                                            wrap: true,
-                                                            scaling: true
-                                                        }
-                                                    ]
-                                                },
-                                                {
-                                                    type: "box",
-                                                    layout: "horizontal",
-                                                    contents: [
-                                                        {
-                                                            type: "text",
-                                                            text: "สี:",
-                                                            size: "sm",
-                                                            color: "#555555",
-                                                            flex: 2,
-                                                            wrap: true,
-                                                            scaling: true
-                                                        },
-                                                        {
-                                                            type: "text",
-                                                            text: data.color,
-                                                            size: "sm",
-                                                            color: "#111111",
-                                                            flex: 4,
-                                                            wrap: true,
-                                                            scaling: true
-                                                        }
-                                                    ]
-                                                }
-                                            ],
-                                            margin: "md"
-                                        }
-                                    ],
-                                    paddingBottom: "15px",
-                                    paddingTop: "5px"
-                                },
-                                {
-                                    type: "separator"
-                                },
                                 {
                                     type: "box",
                                     layout: "vertical",
@@ -1059,6 +1007,121 @@
                     }
                 };
 
+                if (!noImage) {
+                    flex.contents.body.contents.unshift(
+                        {
+                            type: "box",
+                            layout: "vertical",
+                            contents: [
+                                {
+                                    type: "text",
+                                    text: "🚘 ข้อมูลรถ",
+                                    weight: "bold",
+                                    color: "#1DB446",
+                                    size: "md",
+                                    wrap: true,
+                                    scaling: true
+                                },
+                                {
+                                    type: "box",
+                                    layout: "vertical",
+                                    contents: [
+                                        {
+                                            type: "box",
+                                            layout: "horizontal",
+                                            contents: [
+                                                {
+                                                    type: "text",
+                                                    text: "ยี่ห้อ:",
+                                                    size: "sm",
+                                                    color: "#555555",
+                                                    flex: 2,
+                                                    wrap: true,
+                                                    scaling: true
+                                                },
+                                                {
+                                                    type: "text",
+                                                    text: data.brand,
+                                                    size: "sm",
+                                                    color: "#111111",
+                                                    flex: 4,
+                                                    wrap: true,
+                                                    scaling: true
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            type: "box",
+                                            layout: "horizontal",
+                                            contents: [
+                                                {
+                                                    type: "text",
+                                                    text: "รุ่น:",
+                                                    size: "sm",
+                                                    color: "#555555",
+                                                    flex: 2,
+                                                    wrap: true,
+                                                    scaling: true
+                                                },
+                                                {
+                                                    type: "text",
+                                                    text: data.model,
+                                                    size: "sm",
+                                                    color: "#111111",
+                                                    flex: 4,
+                                                    wrap: true,
+                                                    scaling: true
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            type: "box",
+                                            layout: "horizontal",
+                                            contents: [
+                                                {
+                                                    type: "text",
+                                                    text: "สี:",
+                                                    size: "sm",
+                                                    color: "#555555",
+                                                    flex: 2,
+                                                    wrap: true,
+                                                    scaling: true
+                                                },
+                                                {
+                                                    type: "text",
+                                                    text: data.color,
+                                                    size: "sm",
+                                                    color: "#111111",
+                                                    flex: 4,
+                                                    wrap: true,
+                                                    scaling: true
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    margin: "md"
+                                }
+                            ],
+                            paddingBottom: "15px",
+                            paddingTop: "5px"
+                        },
+                        {
+                            type: "separator"
+                        }
+                    )
+                    flex.contents.hero = {
+                        type: "image",
+                        url: data.image,
+                        size: "5xl",
+                        aspectRatio: "1:1",
+                        aspectMode: "cover",
+                        action: {
+                            type: "uri",
+                            uri: data.image
+                        }
+                    }
+                }
+
                 // Send the messages to LINE
                 liff.sendMessages([
                     flexMessage
@@ -1087,8 +1150,8 @@
         }
 
     </script>
-     <script>
-        function showLoading(img,isloading) {
+    <script>
+        function showLoading(img, isloading) {
             if (img) {
                 $('#loadingOverlay').find('img').attr('src', img)
             }
@@ -1100,7 +1163,7 @@
             $('#loadingOverlay').fadeIn(300).css('display', 'flex');
             $('body').addClass('loading');
             setTimeout(() => {
-               hideLoading();
+                hideLoading();
             }, 4000);
         }
 
