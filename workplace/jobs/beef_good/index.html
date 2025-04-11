@@ -496,11 +496,14 @@
                     if (result.isConfirmed) {
                         // Remove the item
                         itemElement.fadeOut(300, function () {
-                            $(this).remove();
+                            itemElement.remove();
+                            scanHistory = scanHistory.filter(item => item.barcode !== itemElement.data('barcode'));
+                            localStorage.setItem('beefScanHistory', JSON.stringify(scanHistory));
                             // Update totals
                             updateTotals();
                             // Show empty state if no items left
-                            if ($('.inventory-item').length === 0) {
+                            if (scanHistory.length === 0) {
+                                $('#inventoryHeader, #actionButtons').hide();
                                 $('#emptyState').show();
                             }
                         });
@@ -633,6 +636,8 @@
             // Clone the template
             const template = document.getElementById('item-template');
             const itemElement = document.importNode(template.content, true);
+
+            $(itemElement).find('.inventory-item').attr('data-barcode', barcode); // Set barcode data attribute
 
             // Set item data
             $(itemElement).find('.item-name').text(item.fullname);
@@ -967,16 +972,12 @@
 
                 // Add items to details table
                 if (row.data && row.data.length > 0) {
-                    row.data
-                        .sort((a, b) => {
-                            return moment(b[6]).toDate().getTime() - moment(a[6]).toDate().getTime();
-                        })
-                    row.groupId = Object.groupBy(row.data, x => x[2])
+                    row.groupId = Object.groupBy(row.data, x => x[9])
                     Object.keys(row.groupId)
-                        .sort((a, b) => {
-                            return a.localeCompare(b, 'th', { numeric: true });
-                        })
                         .forEach((key, index) => {
+                            row.groupId[key] = row.groupId[key].sort((a, b) => {
+                                return a[3].localeCompare(b[3], 'th', { numeric: true });
+                            })
                             let item = row.groupId[key][0]
                             $('#detailsTableBody').append(`
                             <tr class="text-center text-nowrap">
