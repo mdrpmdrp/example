@@ -462,7 +462,7 @@
                     barcodeInput.focus();
                 } else {
                     $('#dateInput').focus();
-                    $('#table').DataTable().ajax.reload(null, false);
+                    // $('#table').DataTable().ajax.reload(null, false);
                 }
             });
 
@@ -585,19 +585,14 @@
             }
 
             // Extract information from barcode
-            const productId = barcode.substring(2, 8);
+            const productId = barcode.substring(4, 8);
             console.log("🚀 ~ searchInventory ~ productId:", productId)
             const weightRaw = barcode.substring(8, 13);
             const priceRaw = barcode.substring(13, 18);
 
-            // Convert weight (with 3 decimal places)
             const weight = parseFloat(weightRaw) / 1000;
-
-            // Convert price (no decimal places)
             const price = parseInt(priceRaw);
             console.log(data[Number(productId).toString()]);
-            // const fullProductName = data[Number(productId).toString()].fullProductName || 'ไม่พบข้อมูลสินค้า';
-            // const productName = data[Number(productId).toString()].productName || 'ไม่พบข้อมูลสินค้า';
             const product = data[Number(productId).toString()];
 
             // Create item data directly from barcode
@@ -972,7 +967,9 @@
 
                 // Add items to details table
                 if (row.data && row.data.length > 0) {
-                    row.groupId = Object.groupBy(row.data, x => x[9])
+                    row.groupId = Object.groupBy(row.data, function (x) {
+                        return x[9].slice(4)
+                    });
                     Object.keys(row.groupId)
                         .forEach((key, index) => {
                             row.groupId[key] = row.groupId[key].sort((a, b) => {
@@ -980,12 +977,12 @@
                             })
                             let item = row.groupId[key][0]
                             $('#detailsTableBody').append(`
-                            <tr class="text-center text-nowrap">
-                                <td class="text-center">${index + 1}</td>
-                                <td class="text-center">${item[3]}</td>
-                                <td class="text-center">${item[4]}</td>
-                                <td class="text-end">${item[5]}</td>
-                                <td class="text-end">${row.groupId[key].reduce((acc, curr) => acc + parseFloat(curr[6]), 0).toLocaleString({
+                            <tr>
+                                <td class="text-center text-nowrap">${index + 1}</td>
+                                <td class="text-center text-nowrap">${item[3]}</td>
+                                <td class="text-center text-nowrap">${item[4]}</td>
+                                <td class="text-end text-nowrap">${item[5]}</td>
+                                <td class="text-end text-nowrap">${row.groupId[key][0][6].toLocaleString({
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2
                             })} กก.</td>
@@ -1013,7 +1010,7 @@
             $('#table').on('click', '.print-btn', function () {
                 const row = table.row($(this).closest('tr')).data();
                 console.log("Row data:", row);
-                if(row.data?.length == 0) {
+                if (row.data?.length == 0) {
                     Swal.fire({
                         title: 'ไม่สามารถพิมพ์ได้',
                         text: 'ไม่มีรายการสินค้าในบิลนี้',
@@ -1028,7 +1025,9 @@
                 row.data = row.data.sort((a, b) => {
                     return moment(b[6]).toDate().getTime() - moment(a[6]).toDate().getTime();
                 })
-                row.groupId = Object.groupBy(row.data, x => x[2])
+                row.groupId = Object.groupBy(row.data, function (x) {
+                    return x[9].slice(4)
+                });
                 printBillDetails(row);
             });
         }
@@ -1079,12 +1078,12 @@
                     .forEach((key, index) => {
                         let item = row.groupId[key][0]
                         $('#detailsTableBodyPrint').append(`
-                            <tr class="text-center text-nowrap">
-                                <td class="text-center">${index + 1}</td>
-                                <td class="text-center">${item[3]}</td>
-                                <td class="text-center">${item[4]}</td>
-                                <td class="text-end">${item[5]}</td>
-                                <td class="text-end">${row.groupId[key].reduce((acc, curr) => acc + parseFloat(curr[6]), 0).toLocaleString({
+                            <tr>
+                                <td class="text-center text-nowrap">${index + 1}</td>
+                                <td class="text-center text-nowrap">${item[3]}</td>
+                                <td class="text-center text-nowrap">${item[4]}</td>
+                                <td class="text-end text-nowrap">${item[5]}</td>
+                                <td class="text-end text-nowrap">${row.groupId[key][0][6].toLocaleString({
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
                         })} กก.</td>

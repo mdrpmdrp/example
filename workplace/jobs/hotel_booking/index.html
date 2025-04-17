@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- no cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!-- no cache -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Booking</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Add Flatpickr for date picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@200;300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Mitr', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .booking-container {
+            max-width: 800px;
+            margin: 30px auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .header {
+            background-color: #0d6efd;
+            color: white;
+            padding: 20px 0;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .form-label {
+            font-weight: 500;
+        }
+
+        .date-picker-container {
+            background-color: #f1f8ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .room-option {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+
+        .room-option:hover {
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            transform: translateY(-3px);
+        }
+
+        .room-option.selected {
+            border-color: #0d6efd;
+            background-color: #f1f8ff;
+        }
+
+        .room-option img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+
+        .booking-summary {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .btn-book {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: 500;
+            padding: 10px 25px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        .btn-book:hover {
+            background-color: #0b5ed7;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container booking-container">
+        <div class="header">
+            <h1><i class="bi bi-building"></i> Hotel Booking</h1>
+            <p>Find and book your perfect stay</p>
+        </div>
+
+        <form id="bookingForm">
+            <!-- Date Selection Section -->
+            <div class="date-picker-container">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="checkInDate" class="form-label">Check-in Date</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                            <input type="text" class="form-control" id="checkInDate" placeholder="Select check-in date"
+                                required>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="checkOutDate" class="form-label">Check-out Date</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                            <input type="text" class="form-control" id="checkOutDate"
+                                placeholder="Select check-out date" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="adults" class="form-label">Adults</label>
+                        <select class="form-select" id="adults" required>
+                            <option value="1">1</option>
+                            <option value="2" selected>2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="children" class="form-label">Children</label>
+                        <select class="form-select" id="children">
+                            <option value="0" selected>0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Room Selection Section -->
+            <h3 class="mb-3">Available Rooms</h3>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="room-option" data-room-type="standard" data-price="1200">
+                        <img src="https://images.unsplash.com/photo-1566665797739-1674de7a421a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218MHx8aG90ZWwgcm9vbXx8fHx8fDE2ODEyMzQyMzY&ixlib=rb-4.0.3&q=80&utm_campaign=api-credit&utm_medium=referral&utm_source=unsplash_source&w=1080"
+                            alt="Standard Room">
+                        <h5 class="mt-2">Standard Room</h5>
+                        <p class="text-muted small">1 queen bed, free WiFi, 25 sq.m.</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">฿1,200 / night</span>
+                            <button type="button" class="btn btn-outline-primary btn-sm select-room">Select</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="room-option" data-room-type="suite" data-price="2500">
+                        <img src="https://images.unsplash.com/photo-1591088398332-8a7791972843?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218MHx8aG90ZWwgc3VpdGV8fHx8fHwxNjgxMjM0Mzc2&ixlib=rb-4.0.3&q=80&utm_campaign=api-credit&utm_medium=referral&utm_source=unsplash_source&w=1080"
+                            alt="Suite">
+                        <h5 class="mt-2">Suite</h5>
+                        <p class="text-muted small">1 king bed, living room, jacuzzi, 45 sq.m.</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">฿2,500 / night</span>
+                            <button type="button" class="btn btn-outline-primary btn-sm select-room">Select</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="room-option" data-room-type="family" data-price="2200">
+                        <img src="https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218MHx8aG90ZWwgZmFtaWx5IHJvb218fHx8fHwxNjgxMjM0NDI1&ixlib=rb-4.0.3&q=80&utm_campaign=api-credit&utm_medium=referral&utm_source=unsplash_source&w=1080"
+                            alt="Family Room">
+                        <h5 class="mt-2">Family Room</h5>
+                        <p class="text-muted small">1 king bed, 2 single beds, 40 sq.m.</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">฿2,200 / night</span>
+                            <button type="button" class="btn btn-outline-primary btn-sm select-room">Select</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guest Information Section -->
+            <h3 class="mb-3 mt-4">Guest Information</h3>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="firstName" class="form-label">First Name</label>
+                    <input type="text" class="form-control" id="firstName" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="lastName" class="form-label">Last Name</label>
+                    <input type="text" class="form-control" id="lastName" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="phone" class="form-label">Phone</label>
+                    <input type="tel" class="form-control" id="phone" required>
+                </div>
+                <div class="col-12 mb-3">
+                    <label for="specialRequests" class="form-label">Special Requests (optional)</label>
+                    <textarea class="form-control" id="specialRequests" rows="3"></textarea>
+                </div>
+            </div>
+
+            <!-- Booking Summary Section -->
+            <div id="bookingSummary" class="booking-summary mb-4" style="display: none;">
+                <h4 class="mb-3">Booking Summary</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Check-in:</strong> <span id="summaryCheckIn"></span></p>
+                        <p><strong>Check-out:</strong> <span id="summaryCheckOut"></span></p>
+                        <p><strong>Guests:</strong> <span id="summaryGuests"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Room Type:</strong> <span id="summaryRoomType"></span></p>
+                        <p><strong>Price per Night:</strong> <span id="summaryPrice"></span></p>
+                        <p><strong>Total Price:</strong> <span id="summaryTotal" class="fw-bold"></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Method Section -->
+            <h3 class="mb-3">Payment Method</h3>
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="paymentMethod" id="creditCard"
+                            value="creditCard" checked>
+                        <label class="form-check-label" for="creditCard">
+                            Credit Card
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="paymentMethod" id="bankTransfer"
+                            value="bankTransfer">
+                        <label class="form-check-label" for="bankTransfer">
+                            Bank Transfer
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="paymentMethod" id="payAtHotel"
+                            value="payAtHotel">
+                        <label class="form-check-label" for="payAtHotel">
+                            Pay at Hotel
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-book">Book Now</button>
+            </div>
+        </form>
+
+        <!-- Available Bank Images -->
+        <div class="row mt-4 text-center">
+            <div class="col-12">
+                <p class="text-muted">Supported Payment Methods</p>
+            </div>
+            <div class="col">
+                <img src="kbank.jpg" alt="Kasikorn Bank" height="30">
+            </div>
+            <div class="col">
+                <img src="scb.jpg" alt="Siam Commercial Bank" height="30">
+            </div>
+            <div class="col">
+                <img src="bbl.jpg" alt="Bangkok Bank" height="30">
+            </div>
+            <div class="col">
+                <img src="ktb.jpg" alt="Krung Thai Bank" height="30">
+            </div>
+            <div class="col">
+                <img src="bay.jpg" alt="Bank of Ayudhya" height="30">
+            </div>
+        </div>
+    </div>
+    <template id="roomOptionTemplate">
+        <div class="room-option" data-room-type="deluxe" data-price="1800">
+            <img src="https://images.unsplash.com/photo-1590490360182-c33d57733427?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218MHx8aG90ZWwgcm9vbXx8fHx8fDE2ODEyMzQzMTY&ixlib=rb-4.0.3&q=80&utm_campaign=api-credit&utm_medium=referral&utm_source=unsplash_source&w=1080"
+                alt="Deluxe Room">
+            <h5 class="mt-2">Deluxe Room</h5>
+            <p class="text-muted small">1 king bed, free WiFi, bathtub, 32 sq.m.</p>
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold">฿1,800 / night</span>
+                <button type="button" class="btn btn-outline-primary btn-sm select-room">Select</button>
+            </div>
+        </div>
+    </template>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js">
+    </script>
+    <script> // VConsole will be exported to `window.VConsole` by default.
+        var vConsole = new window.VConsole();
+    </script> -->
+
+    <script>
+        // Initialize date pickers
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const checkInPicker = flatpickr("#checkInDate", {
+            minDate: "today",
+            dateFormat: "Y-m-d",
+            defaultDate: today,
+            onChange: function (selectedDates, dateStr) {
+                // When check-in date changes, update check-out date minimum
+                const nextDay = new Date(selectedDates[0]);
+                nextDay.setDate(nextDay.getDate() + 1);
+                checkOutPicker.set('minDate', nextDay);
+
+                // If check-out date is now less than check-in date, update it
+                if (checkOutPicker.selectedDates[0] <= selectedDates[0]) {
+                    checkOutPicker.setDate(nextDay);
+                }
+
+                updateBookingSummary();
+            }
+        });
+
+        const checkOutPicker = flatpickr("#checkOutDate", {
+            minDate: tomorrow,
+            dateFormat: "Y-m-d",
+            defaultDate: tomorrow,
+            onChange: function () {
+                updateBookingSummary();
+            }
+        });
+
+        // Room selection functionality
+        const roomOptions = document.querySelectorAll('.room-option');
+        let selectedRoom = null;
+
+        roomOptions.forEach(room => {
+            room.querySelector('.select-room').addEventListener('click', function () {
+                // Remove selection from all rooms
+                roomOptions.forEach(r => r.classList.remove('selected'));
+
+                // Add selection to clicked room
+                room.classList.add('selected');
+                selectedRoom = {
+                    type: room.dataset.roomType,
+                    price: parseInt(room.dataset.price)
+                };
+
+                updateBookingSummary();
+            });
+        });
+
+        // Update booking summary
+        function updateBookingSummary() {
+            if (!selectedRoom) {
+                document.getElementById('bookingSummary').style.display = 'none';
+                return;
+            }
+
+            const checkInDate = checkInPicker.selectedDates[0];
+            const checkOutDate = checkOutPicker.selectedDates[0];
+
+            if (!checkInDate || !checkOutDate) {
+                return;
+            }
+
+            // Calculate number of nights
+            const timeDiff = checkOutDate.getTime() - checkInDate.getTime();
+            const nights = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+            // Set values in summary
+            document.getElementById('summaryCheckIn').textContent = formatDate(checkInDate);
+            document.getElementById('summaryCheckOut').textContent = formatDate(checkOutDate);
+            document.getElementById('summaryGuests').textContent =
+                document.getElementById('adults').value + ' Adults, ' +
+                document.getElementById('children').value + ' Children';
+            document.getElementById('summaryRoomType').textContent =
+                selectedRoom.type.charAt(0).toUpperCase() + selectedRoom.type.slice(1);
+            document.getElementById('summaryPrice').textContent = '฿' + selectedRoom.price.toLocaleString();
+            document.getElementById('summaryTotal').textContent = '฿' + (selectedRoom.price * nights).toLocaleString();
+
+            // Show summary
+            document.getElementById('bookingSummary').style.display = 'block';
+        }
+
+        // Format date to be more readable
+        function formatDate(date) {
+            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        // Handle form submission
+        document.getElementById('bookingForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            if (!selectedRoom) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Room Selection Required',
+                    text: 'Please select a room before booking.'
+                });
+                return;
+            }
+
+            // Normally would send form data to server here
+            Swal.fire({
+                icon: 'success',
+                title: 'Booking Successful!',
+                text: 'Your booking has been confirmed. A confirmation email has been sent to your email address.',
+                confirmButtonText: 'OK'
+            });
+        });
+
+        // Update guest selection
+        document.getElementById('adults').addEventListener('change', updateBookingSummary);
+        document.getElementById('children').addEventListener('change', updateBookingSummary);
+    </script>
+</body>
+
+</html>
