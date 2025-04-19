@@ -78,11 +78,14 @@ function handleCheckAvailability(params) {
         
         // Check availability in the spreadsheet
         const availableRooms = getAvailableRooms(checkInDate, checkOutDate, roomQuantity);
+        let room_detail = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Room Detail').getRange(2, 1, 1, 4).getValues()[0];
         
         return { 
             success: true, 
             availableRooms: availableRooms,
-            nights: daysDiff 
+            roomType: room_detail[0],
+            roomPrice: room_detail[2],
+            roomDescription: room_detail[3],
         };
     } catch (error) {
         return { success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบความพร้อมใช้งาน: ' + error.message };
