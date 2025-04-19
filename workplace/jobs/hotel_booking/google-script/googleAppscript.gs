@@ -103,7 +103,10 @@ function handleCheckAvailability(params) {
         }
 
         // Check availability in the spreadsheet
-        let available_data = getAvailableRooms(checkInDate, checkOutDate, roomQuantity, dates_array);
+        let available_data = getAvailableRooms(roomQuantity, dates_array);
+        if (available_data.available <= 0) {
+            return { success: false, message: 'ไม่พบห้องว่างในช่วงวันที่เลือก กรุณาเลือกวันที่อื่น' };
+        }
 
         return {
             success: true,
@@ -119,13 +122,11 @@ function handleCheckAvailability(params) {
 
 /**
  * Get the number of available rooms for the given date range
- * @param {Date} checkIn - Check-in date
- * @param {Date} checkOut - Check-out date
  * @param {number} roomQuantity - Number of rooms requested
  * @param {Array} dates_array - Array of room availability data
  * @return {number} Number of available rooms
  */
-function getAvailableRooms(checkIn, checkOut, roomQuantity = 0, dates_array = []) {
+function getAvailableRooms(roomQuantity = 0, dates_array = []) {
     dates_array = dates_array
         .map((item) => {
             return {
@@ -143,9 +144,16 @@ function getAvailableRooms(checkIn, checkOut, roomQuantity = 0, dates_array = []
         .sort((a, b) => {
             return new Date(a.date) - new Date(b.date);
         });
+    if (dates_array.length == 0) {
+        return {
+            available: 0,
+            roomRate: 0
+        }
+    }
 
     let available_data = {}
     available_data['available'] = dates_array.length <= 0 ? 0 : Math.min(...dates_array.map((item) => item.remain));
+    available_data['available'] = available_data.available < roomQuantity ? 0 : available_data.available;
     available_data['roomRate'] = parseFloat(dates_array[0].rate);
 
     return available_data;
