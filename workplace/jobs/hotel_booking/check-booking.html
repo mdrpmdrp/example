@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- no cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!-- no cache -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตรวจสอบสถานะการจอง</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@200;300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Mitr', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            color: #231f20;
+        }
+
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .booking-container {
+            max-width: 800px;
+            margin: 30px auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            color: #231f20
+        }
+
+        .header {
+            background-color: #8e784f;
+            color: white;
+            padding: 20px 0;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .header h1,
+        .header p {
+            color: white;
+        }
+
+        .hotel-logo {
+            width: 60px;
+            height: 60px;
+        }
+
+        .form-label {
+            font-weight: 500;
+        }
+
+        .search-container {
+            background-color: #f5f1ea;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .booking-details {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+
+        .booking-status {
+            font-size: 1rem;
+            padding: 8px 12px;
+            border-radius: 6px;
+            display: inline-block;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+
+        .status-confirmed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-cancelled {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .btn-search {
+            background-color: #8e784f;
+            color: white;
+            font-weight: 500;
+            padding: 8px 20px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        .btn-search:hover {
+            background-color: #6d5a3a;
+            color: white;
+        }
+
+        .btn-back {
+            background-color: #6c757d;
+            color: white;
+            font-weight: 500;
+            padding: 8px 20px;
+            border-radius: 5px;
+            border: none;
+            text-decoration: none;
+        }
+
+        .btn-back:hover {
+            background-color: #5a6268;
+            color: white;
+            text-decoration: none;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: #dee2e6;
+            margin: 20px 0;
+        }
+
+        /* @media (max-width: 767px) {
+            .booking-container {
+                margin: 15px auto;
+                padding: 15px;
+            }
+        } */
+
+        /* Print styles */
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+                margin: 0;
+                font-size: 11pt; /* Reduced font size */
+            }
+            
+            .booking-container {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                border-radius: 0;
+            }
+            
+            .header {
+                background-color: white !important;
+                color: #000 !important;
+                padding: 10px 0 !important; /* Reduced padding */
+                text-align: center;
+                box-shadow: none;
+                margin-bottom: 10px !important; /* Reduced margin */
+            }
+            
+            .header h1, .header span {
+                color: #000 !important;
+            }
+            
+            .header h1 {
+                font-size: 18pt !important;
+                margin-bottom: 0 !important;
+            }
+            
+            .search-container, 
+            #bookingsList,
+            #noResults,
+            .btn-search, 
+            .btn-back,
+            #backToListButton,
+            #printButton,
+            #cancelBookingButton,
+            .header{
+                display: none !important;
+            }
+            
+            #bookingDetails {
+                display: block !important;
+                border: 1px solid #ddd;
+                background-color: white;
+                margin: 0;
+                padding: 10px !important; /* Reduced padding */
+                page-break-inside: avoid;
+            }
+            
+            .booking-status {
+                border: 1px solid #000;
+                padding: 3px 8px !important; /* Reduced padding */
+                font-size: 7pt !important; /* Reduced font size */
+            }
+            
+            .status-confirmed {
+                background-color: white !important;
+                color: #000 !important;
+                border: 1px solid #155724;
+            }
+            
+            .status-pending {
+                background-color: white !important;
+                color: #000 !important;
+                border: 1px solid #856404;
+            }
+            
+            .status-cancelled {
+                background-color: white !important;
+                color: #000 !important;
+                border: 1px solid #721c24;
+            }
+            
+            .divider {
+                border-top: 1px solid #ddd;
+                margin: 8px 0 !important; /* Reduced margin */
+            }
+            
+            /* Compact layout for print */
+            .booking-header h3 {
+                font-size: 14pt !important;
+                margin-bottom: 5px !important;
+            }
+            
+            .booking-header p {
+                margin-bottom: 5px !important;
+            }
+            
+            h5 {
+                font-size: 12pt !important;
+                margin-bottom: 5px !important;
+            }
+            
+            p {
+                margin-bottom: 3px !important;
+                line-height: 1.3 !important;
+            }
+            
+            .row {
+                margin-left: -5px !important;
+                margin-right: -5px !important;
+            }
+            
+            .col-md-6 {
+                padding-left: 5px !important;
+                padding-right: 5px !important;
+            }
+            
+            /* Print header optimization */
+            #printHeader {
+                padding: 10px 0 !important;
+            }
+            
+            #printHeader img {
+                width: 60px !important;
+                height: 60px !important;
+            }
+            
+            #printHeader h2 {
+                font-size: 16pt !important;
+                margin-top: 5px !important;
+                margin-bottom: 0 !important;
+            }
+            
+            #printHeader p {
+                font-size: 10pt !important;
+            }
+            
+            /* Print footer optimization */
+            #printBookingReference {
+                margin-top: 10px !important;
+            }
+            
+            #printBookingReference p {
+                margin-bottom: 2px !important;
+            }
+            
+            #printBookingReference small {
+                font-size: 9pt !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="booking-container">
+            <div class="header">
+                <div class="d-flex align-items-center justify-content-center p-2">
+                    <img src="https://img5.pic.in.th/file/secure-sv1/Asset-4f4db280d314ea126.png" alt="Hotel Logo"
+                        class="hotel-logo me-2">
+                    <div>
+                        <h1>ตรวจสอบสถานะการจอง</h1>
+                        <span>ดูรายละเอียดการจองของท่าน</span>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Search Form -->
+            <div class="search-container">
+                <form id="searchForm">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">อีเมลของท่าน</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input type="email" class="form-control" id="email" placeholder="กรอกอีเมลที่ใช้ในการจอง" required>
+                            <button type="submit" class="btn btn-search">ค้นหา</button>
+                        </div>
+                        <div class="form-text mt-2">
+                            <i class="bi bi-info-circle me-1"></i> กรุณากรอกอีเมลที่ท่านใช้ในการจองห้องพัก เพื่อดูข้อมูลการจองทั้งหมดของท่าน
+                        </div>
+                    </div>
+                </form>
+                <div class="text-center mt-3">
+                    <a href="index.html" class="btn btn-back">
+                        <i class="bi bi-house-door me-2"></i> กลับสู่หน้าหลัก
+                    </a>
+                </div>
+            </div>
+    
+            <!-- Multiple Bookings Display -->
+            <div id="bookingsList" class="mb-4" style="display: none;">
+                <h3 class="mb-4">การจองของท่าน</h3>
+                <div class="row" id="bookingsContainer">
+                    <!-- Booking cards will be added here by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Booking Card Template -->
+            <template id="bookingCardTemplate">
+                <div class="col-md-12 mb-4">
+                    <div class="booking-card card shadow border-0">
+                        <div class="card-header bg-primary-subtle border-0 py-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-0 fw-bold">หมายเลขการจอง: <span class="booking-id text-primary"></span></h5>
+                                    <small class="text-muted created-date"><i class="bi bi-clock me-1"></i></small>
+                                </div>
+                                <small class="booking-status text-black-50"></small>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-calendar-check text-primary me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">วันที่เข้าพัก</small>
+                                            <strong class="check-in"></strong>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-calendar-x text-danger me-2 fs-5"></i> 
+                                        <div>
+                                            <small class="text-muted d-block">วันที่ออก</small>
+                                            <strong class="check-out"></strong>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-moon-stars text-info me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">จำนวนคืน</small>
+                                            <strong class="nights"></strong> 
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-people text-success me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">ผู้เข้าพัก</small>
+                                            <strong class="guests"></strong>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-buildings text-secondary me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">จำนวนห้อง</small>
+                                            <strong><span class="room-quantity"></span> ห้อง</strong>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-cash-stack text-success me-2 fs-5"></i>
+                                        <div>
+                                            <small class="text-muted d-block">ราคารวม</small>
+                                            <strong class="total-price text-danger fw-bold"></strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-end">
+                                <button class="btn btn-sm btn-secondary-subtle view-details-btn rounded-pill px-3">
+                                    <i class="bi bi-eye me-1"></i> ดูรายละเอียด
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+    
+            <!-- Booking Details (hidden by default) -->
+            <div id="bookingDetails" class="booking-details" style="display: none;">
+                <div class="booking-header">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <h3 class="mb-2">การจองของ <span id="guestName">-</span></h3>
+                        <span class="booking-status status-confirmed" id="bookingStatus">ยืนยันแล้ว</span>
+                    </div>
+                    <p class="text-muted">หมายเลขการจอง: <span id="displayBookingId" class="fw-bold">-</span></p>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>รายละเอียดการจอง</h5>
+                        <p><i class="bi bi-calendar-check me-2"></i> <strong>วันที่เข้าพัก:</strong> <span id="checkIn">-</span></p>
+                        <p><i class="bi bi-calendar-x me-2"></i> <strong>วันที่ออก:</strong> <span id="checkOut">-</span></p>
+                        <p><i class="bi bi-moon-stars me-2"></i> <strong>จำนวนคืน:</strong> <span id="nights">-</span></p>
+                        <p><i class="bi bi-people me-2"></i> <strong>ผู้เข้าพัก:</strong> <span id="guests">-</span></p>
+                    </div>
+                   
+                </div>
+                <div class="divider"></div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>ห้องพัก</h5>
+                        <p><i class="bi bi-house me-2"></i> <strong>ประเภทห้อง:</strong> <span id="roomType">-</span></p>
+                        <p><i class="bi bi-cash-coin me-2"></i> <strong>ราคาต่อคืน:</strong> <span id="pricePerNight">-</span></p>
+                        <p><i class="bi bi-cash-stack me-2"></i> <strong>ราคารวมทั้งหมด:</strong> <span id="totalPrice" class="text-danger fw-bold">-</span></p>
+                    </div>
+                </div>
+                <div class="divider"></div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>ข้อมูลการติดต่อ</h5>
+                        <p><i class="bi bi-envelope me-2"></i> <strong>อีเมล์:</strong> <span id="email">-</span></p>
+                        <p><i class="bi bi-telephone me-2"></i> <strong>เบอร์โทรศัพท์:</strong> <span id="phone">-</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>คำขอพิเศษ</h5>
+                        <p id="specialRequests" class="fst-italic">-</p>
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="gap-2 justify-content-between mt-3 d-flex flex-column-reverse flex-md-row">
+                    <div class="col-12 col-md-auto">
+                        <button type="button" id="backToListButton" class="btn btn-back w-100">
+                            <i class="bi bi-arrow-left me-2"></i> กลับไปรายการจอง
+                        </button>
+                    </div>
+                    <div class="col-12 col-md-auto">
+                        <div class="d-flex flex-md-row flex-column justify-content-md-end gap-2">
+                            <button type="button" id="cancelBookingButton" class="btn btn-danger">
+                                <i class="bi bi-x-circle me-2"></i> ยกเลิกการจอง
+                            </button>
+                            <button type="button" id="printButton" class="btn btn-search">
+                                <i class="bi bi-printer me-2"></i> พิมพ์รายละเอียด
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- No Results Message (hidden by default) -->
+            <div id="noResults" class="text-center py-5" style="display: none;">
+                <i class="bi bi-exclamation-circle text-warning" style="font-size: 3rem;"></i>
+                <h4 class="mt-3">ไม่พบข้อมูลการจอง</h4>
+                <p class="text-muted">กรุณาตรวจสอบหมายเลขการจองอีกครั้ง</p>
+                <div class="mt-4">
+                    <a href="index.html" class="btn btn-back me-2">
+                        <i class="bi bi-arrow-left me-2"></i> กลับไปหน้าหลัก
+                    </a>
+                    <button type="button" id="searchAgain" class="btn btn-search">
+                        <i class="bi bi-search me-2"></i> ค้นหาอีกครั้ง
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/locale/th.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            moment.locale('th');
+            
+            // Google Apps Script URL - Replace with your actual deployed script URL
+            const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqS2yBlpOE7IVtx856bOPAxQ1ZzDk6wMk8PipwH067xmj-bKcOjJb5fBTm_kkz5KDWRg/exec";
+            
+            // Handle search form submission
+            $('#searchForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const email = $('#email').val().trim();
+                if (!email) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'กรุณากรอกอีเมล',
+                        text: 'โปรดกรอกอีเมลที่ใช้ในการจอง',
+                        confirmButtonText: 'ตกลง',
+                        customClass: {popup: 'rounded-3'}
+                    });
+                    return;
+                }
+                
+                // Show loading message
+                Swal.fire({
+                    title: 'กำลังค้นหา...',
+                    text: 'กรุณารอสักครู่',
+                    allowOutsideClick: false,
+                    customClass: {popup: 'rounded-3'},
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Prepare data to send to Google Script
+                const data = {
+                    action: 'searchBookingByEmail',
+                    email: email
+                };
+                
+                // Send request to Google Script
+                $.ajax({
+                    url: GOOGLE_SCRIPT_URL,
+                    type: 'GET',
+                    data: data,
+                    dataType: 'jsonp',
+                    success: function(response) {
+                        Swal.close(); // Close loading dialog
+                        
+                        if (response && response.success && response.data && response.data.length > 0) {
+                            displayBookingsList(response.data);
+                        } else {
+                            showNoResults();
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'ไม่พบข้อมูลการจอง',
+                                text: 'ไม่พบข้อมูลการจองที่ตรงกับอีเมลที่คุณระบุ',
+                                confirmButtonText: 'ตกลง',
+                                customClass: {popup: 'rounded-3'}
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.close(); // Close loading dialog
+                        
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: 'ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
+                            confirmButtonText: 'ตกลง',
+                            customClass: {popup: 'rounded-3'}
+                        });
+                    }
+                });
+            });
+            
+            // Handle search again button
+            $('#searchAgain').on('click', function() {
+                $('#email').val('').focus();
+                $('#noResults').fadeOut(300);
+            });
+            
+            // Handle print button
+            $('#printButton').on('click', function() {
+                // Prepare print-friendly version
+                prepareForPrinting();
+                
+                // Print
+                window.print();
+                
+                // Restore after printing
+                setTimeout(restoreAfterPrinting, 500);
+            });
+            
+            // Function to prepare the page for printing
+            function prepareForPrinting() {
+                // Create print-only header if it doesn't exist
+                if ($('#printHeader').length === 0) {
+                    $('body').prepend(`
+                        <div id="printHeader" class="d-none">
+                            <div class="text-center py-2">
+                                <img src="https://img5.pic.in.th/file/secure-sv1/Asset-4f4db280d314ea126.png" alt="Hotel Logo" style="width: 60px; height: 60px;">
+                                <h2 class="mt-2 mb-0">รายละเอียดการจองห้องพัก</h2>
+                                <p class="small mb-0">${moment().format('DD/MM/YYYY')}</p>
+                            </div>
+                        </div>
+                    `);
+                }
+                
+                // Show print header and hide unneeded elements
+                $('#printHeader').removeClass('d-none');
+                
+                // Create or update compact print layout
+                if ($('#printLayout').length === 0) {
+                    let bookingStatus = $('#bookingStatus').text();
+                    let statusClass = '';
+                    
+                    if ($('#bookingStatus').hasClass('status-confirmed')) {
+                        statusClass = 'text-success';
+                    } else if ($('#bookingStatus').hasClass('status-pending')) {
+                        statusClass = 'text-warning';
+                    } else if ($('#bookingStatus').hasClass('status-cancelled')) {
+                        statusClass = 'text-danger';
+                    }
+                    
+                    let printContent = `
+                        <div id="printLayout" class="d-none">
+                            <div style="margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px; text-align: center;">
+                                <p style="margin: 0; font-weight: bold;">โปรดแสดงหมายเลขการจอง: ${$('#displayBookingId').text()} เมื่อเช็คอิน</p>
+                                <p style="margin: 0; font-size: 9pt;">พิมพ์เมื่อ: ${moment().format('DD/MM/YYYY HH:mm:ss')}</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    $('body').append(printContent);
+                } else {
+                    // Update existing print layout with current data
+                    $('#printLayout #printBookingId').text($('#displayBookingId').text());
+                }
+                
+                // Show print layout
+                $('#printLayout').removeClass('d-none');
+            }
+            
+            // Function to restore the page after printing
+            function restoreAfterPrinting() {
+                // Hide print-specific elements
+                $('#printHeader').addClass('d-none');
+                $('#printLayout').addClass('d-none');
+            }
+
+            // Handle back to list button
+            $('#backToListButton').on('click', function() {
+                $('#bookingDetails').hide();
+                $('#bookingsList').fadeIn(500);
+                $('html, body').animate({
+                    scrollTop: $('#bookingsList').offset().top - 20
+                }, 500);
+            });
+            
+            // Handle cancel booking button
+            $('#cancelBookingButton').on('click', function() {
+                // Get the current booking ID and check-in date
+                const bookingId = $('#displayBookingId').text();
+                const checkInDate = moment($('#checkIn').text(), 'dddd, D MMMM YYYY');
+                const today = moment();
+                
+                // Check if already cancelled
+                if ($('#bookingStatus').hasClass('status-cancelled')) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'การจองถูกยกเลิกแล้ว',
+                        text: 'การจองนี้ได้ถูกยกเลิกไปแล้ว',
+                        confirmButtonText: 'ตกลง',
+                        customClass: {popup: 'rounded-3'}
+                    });
+                    return;
+                }
+                
+                // Check if check-in date has passed
+                if (!checkInDate.isValid() || checkInDate.isBefore(today, 'day')) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ไม่สามารถยกเลิกได้',
+                        text: 'ไม่สามารถยกเลิกการจองที่ผ่านวันเช็คอินไปแล้ว',
+                        confirmButtonText: 'ตกลง',
+                        customClass: {popup: 'rounded-3'}
+                    });
+                    return;
+                }
+                
+                // Check if at least 1 day before check-in
+                const daysDiff = checkInDate.diff(today, 'days');
+                if (daysDiff < 1) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ไม่สามารถยกเลิกได้',
+                        text: 'ต้องยกเลิกการจองล่วงหน้าอย่างน้อย 1 วันก่อนวันเช็คอิน',
+                        confirmButtonText: 'ตกลง',
+                        customClass: {popup: 'rounded-3'}
+                    });
+                    return;
+                }
+                
+                // Confirm cancellation
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ยืนยันการยกเลิก?',
+                    html: `
+                        <p>คุณต้องการยกเลิกการจองหมายเลข <strong>${bookingId}</strong> ใช่หรือไม่?</p>
+                        <p>การยกเลิกการจองไม่สามารถเปลี่ยนแปลงได้</p>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'ยืนยันการยกเลิก',
+                    cancelButtonText: 'ไม่ยกเลิก',
+                    confirmButtonColor: '#dc3545',
+                    customClass: {popup: 'rounded-3'}
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        cancelBooking(bookingId);
+                    }
+                });
+            });
+            
+            // Function to cancel booking
+            function cancelBooking(bookingId) {
+                // Show loading
+                Swal.fire({
+                    title: 'กำลังยกเลิกการจอง...',
+                    text: 'กรุณารอสักครู่',
+                    allowOutsideClick: false,
+                    customClass: {popup: 'rounded-3'},
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Send cancel request to Google Script
+                const data = {
+                    action: 'cancelBooking',
+                    bookingId: bookingId
+                };
+                
+                $.ajax({
+                    url: GOOGLE_SCRIPT_URL,
+                    type: 'POST',
+                    data: data,
+                    success: function(response) {
+                        Swal.close();
+                        
+                        if (response && response.success) {
+                            // Update UI to show cancelled status
+                            $('#bookingStatus').removeClass('status-confirmed status-pending')
+                                .addClass('status-cancelled')
+                                .text('ยกเลิกแล้ว');
+                            
+                            // Show success message
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'ยกเลิกการจองสำเร็จ',
+                                text: 'การจองของคุณได้ถูกยกเลิกเรียบร้อยแล้ว',
+                                confirmButtonText: 'ตกลง',
+                                customClass: {popup: 'rounded-3'}
+                            });
+
+                            $('#bookingsContainer').find(`.booking-card:has(.booking-id:contains(${bookingId}))`).remove();
+                            
+                            // Hide booking details and show bookings list
+                            $('#bookingDetails').fadeOut(500, function() {
+                                $('#bookingsList').fadeIn(500);
+                            });
+                            $('html, body').animate({
+                                scrollTop: $('#bookingsList').offset().top - 20
+                            }, 500);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'เกิดข้อผิดพลาด',
+                                text: response.message || 'ไม่สามารถยกเลิกการจองได้ กรุณาลองใหม่อีกครั้ง',
+                                confirmButtonText: 'ตกลง',
+                                customClass: {popup: 'rounded-3'}
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.close();
+                        
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: 'ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
+                            confirmButtonText: 'ตกลง',
+                            customClass: {popup: 'rounded-3'}
+                        });
+                    }
+                });
+            }
+
+            // Function to display bookings list
+            function displayBookingsList(bookings) {
+                console.log(bookings);
+                $('#noResults').hide();
+                $('#bookingsList').fadeIn(500);
+                $('#bookingsContainer').empty();
+
+                // Group bookings by status
+                const groupedBookings = {
+                    confirmed: [],
+                    pending: [],
+                    cancelled: []
+                };
+
+                // Categorize bookings by status
+                bookings.forEach(booking => {
+                    const status = booking.status.toLowerCase();
+                    if (status === 'confirmed') {
+                        groupedBookings.confirmed.push(booking);
+                    } else if (status === 'pending') {
+                        groupedBookings.pending.push(booking);
+                    } else if (status === 'cancelled') {
+                        groupedBookings.cancelled.push(booking);
+                    }
+                });
+                console.log(groupedBookings);
+
+                // Display status groups in desired order
+                if (groupedBookings.confirmed.length > 0) {
+                    appendBookingGroup('ยืนยันแล้ว', 'text-success', groupedBookings.confirmed);
+                }
+                
+                if (groupedBookings.pending.length > 0) {
+                    appendBookingGroup('รอการยืนยัน', 'text-warning', groupedBookings.pending);
+                }
+                
+                if (groupedBookings.cancelled.length > 0) {
+                    appendBookingGroup('ยกเลิกแล้ว', 'text-danger', groupedBookings.cancelled);
+                }
+
+                $('html, body').animate({
+                    scrollTop: $('#bookingsList').offset().top - 20
+                }, 500);
+            }
+
+            // Function to append a group of bookings with header
+            function appendBookingGroup(groupTitle, titleClass, bookings) {
+                // Create unique ID for this group
+                const groupId = `booking-group-${titleClass.replace('text-', '')}`;
+                
+                // Add group header with collapse functionality
+                $('#bookingsContainer').append(`
+                    <div class="col-12">
+                        <div class="d-flex align-items-center mb-2 mt-3 group-header cursor-pointer" 
+                             data-bs-toggle="collapse" data-bs-target="#${groupId}" aria-expanded="true">
+                            <div class=" me-2 ${titleClass.replace('text-', 'bg-')}" 
+                                 style="width: 5px; height: 24px; border-radius: 3px;"></div>
+                            <h4 class="mb-0 ${titleClass}">${groupTitle}</h4>
+                            <span class="ms-2 badge ${titleClass.replace('text-', 'bg-')} rounded-pill">${bookings.length}</span>
+                            <i class="bi bi-chevron-down ms-auto"></i>
+                        </div>
+                    </div>
+                    <div class="col-12 collapse ${$('.group-header').length == 0? 'show': ''}" id="${groupId}">
+                        <div class="d-flex">
+                            <div class=" me-2 ${titleClass.replace('text-', 'bg-')}" 
+                                style="width: 5px; border-radius: 3px;"></div>
+                            <div class="row booking-items w-100"></div>
+                        </div>
+                      
+                    </div>
+                `);
+
+                // Add bookings for this group
+                bookings.forEach(booking => {
+                    const bookingElement = $(document.importNode($('#bookingCardTemplate').get(0).content, true));
+
+                    // Set booking ID and created date
+                    bookingElement.find('.booking-id').text(booking.bookingId);
+                    bookingElement.find('.created-date').text(moment(booking.createdAt).format('D MMM YYYY'));
+                    
+                    // Set check-in date as header
+                    const checkInDate = moment(booking.checkInDate);
+                    bookingElement.find('.check-in-header').text(checkInDate.format('D MMM YYYY'));
+                    
+                    // Set status with color indicator
+                    const statusElement = bookingElement.find('.booking-status');
+                    const statusIndicator = bookingElement.find('.booking-status-indicator');
+                    statusIndicator.removeClass('bg-success bg-warning bg-danger');
+                    statusElement.removeClass('bg-success bg-warning bg-danger text-white');
+                    booking.status = booking.status.toLowerCase();
+                    if (booking.status === 'confirmed') {
+                        statusElement.text('ยืนยันแล้ว')
+                        statusIndicator.addClass('bg-success').css({'width': '10px', 'height': '40px', 'border-radius': '3px'});
+                    } else if (booking.status === 'pending') {
+                        statusElement.text('รอการยืนยัน')
+                        statusIndicator.addClass('bg-warning').css({'width': '10px', 'height': '40px', 'border-radius': '3px'});
+                    } else if (booking.status === 'cancelled') {
+                        statusElement.text('ยกเลิกแล้ว')
+                        statusIndicator.addClass('bg-danger').css({'width': '10px', 'height': '40px', 'border-radius': '3px'});
+                    }
+
+                    const checkOutDate = moment(booking.checkOutDate);
+                    const nights = checkOutDate.diff(checkInDate, 'days');
+
+                    // Fill card body information
+                    const cardBody = bookingElement.find('.card-body');
+                    cardBody.html(`
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-calendar-check text-primary me-2 fs-5"></i>
+                                    <div>
+                                        <small class="text-muted d-block">วันที่เข้าพัก</small>
+                                        <strong>${checkInDate.format('dddd, D MMMM')}</strong>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-calendar-x text-danger me-2 fs-5"></i> 
+                                    <div>
+                                        <small class="text-muted d-block">วันที่ออก</small>
+                                        <strong>${checkOutDate.format('dddd, D MMMM')}</strong>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-moon-stars text-info me-2 fs-5"></i>
+                                    <div>
+                                        <small class="text-muted d-block">จำนวนคืน</small>
+                                        <strong>${nights} คืน</strong> 
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-people text-success me-2 fs-5"></i>
+                                    <div>
+                                        <small class="text-muted d-block">ผู้เข้าพัก</small>
+                                        <strong>${booking.adults} ผู้ใหญ่${booking.children > 0 ? ', ' + booking.children + ' เด็ก' : ''}</strong>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-buildings text-secondary me-2 fs-5"></i>
+                                    <div>
+                                        <small class="text-muted d-block">จำนวนห้อง</small>
+                                        <strong>${booking.roomQuantity || 1} ห้อง</strong>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-cash-stack text-success me-2 fs-5"></i>
+                                    <div>
+                                        <small class="text-muted d-block">ราคารวม</small>
+                                        <strong class="text-danger fw-bold">฿${(parseInt(booking.pricePerNight || 1200) * nights).toLocaleString()}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-end">
+                            <button class="btn btn-sm btn-search view-details-btn rounded-pill px-3">
+                                <i class="bi bi-eye me-1"></i> ดูรายละเอียด
+                            </button>
+                        </div>
+                    `);
+
+                    // Add event handler for view details button
+                    bookingElement.find('.view-details-btn').on('click', function() {
+                        displayBookingDetails(booking);
+                    });
+
+                    $(`#${groupId} .booking-items`).append(bookingElement);
+                });
+                
+                // Add event listener for group header icon rotation
+                $(`.group-header[data-bs-target="#${groupId}"]`).on('click', function() {
+                    const icon = $(this).find('i.bi');
+                    if ($(this).attr('aria-expanded') === 'true') {
+                        icon.removeClass('bi-chevron-down').addClass('bi-chevron-right');
+                        $(this).attr('aria-expanded', 'false');
+                    } else {
+                        icon.removeClass('bi-chevron-right').addClass('bi-chevron-down');
+                        $(this).attr('aria-expanded', 'true');
+                    }
+                });
+            }
+
+            // Function to display booking details
+            function displayBookingDetails(booking) {
+                console.log(booking);
+                $('#bookingsList').hide();
+                $('#bookingDetails').fadeIn(500);
+                
+                
+                $('#displayBookingId').text(booking.bookingId);
+                $('#guestName').text(`${booking.firstName} ${booking.lastName}`);
+                
+                const statusElement = $('#bookingStatus');
+                statusElement.removeClass('status-confirmed status-pending status-cancelled');
+                
+                if (booking.status === 'confirmed') {
+                    statusElement.text('ยืนยันแล้ว').addClass('status-confirmed');
+                } else if (booking.status === 'pending') {
+                    statusElement.text('รอการยืนยัน').addClass('status-pending');
+                } else if (booking.status === 'cancelled') {
+                    statusElement.text('ยกเลิกแล้ว').addClass('status-cancelled');
+                }
+                
+                const checkInDate = moment(booking.checkInDate);
+                const checkOutDate = moment(booking.checkOutDate);
+                const nights = checkOutDate.diff(checkInDate, 'days');
+                
+                $('#checkIn').text(checkInDate.format('dddd, D MMMM YYYY'));
+                $('#checkOut').text(checkOutDate.format('dddd, D MMMM YYYY'));
+                $('#nights').text(nights + ' คืน');
+                
+                let guestsText = `${booking.adults} ผู้ใหญ่`;
+                if (booking.children > 0) {
+                    guestsText += `, ${booking.children} เด็ก`;
+                }
+                $('#guests').text(guestsText);
+                
+                $('#roomType').text(booking.roomType || 'Standard');
+                $('#pricePerNight').text(`฿${parseInt(booking.pricePerNight || 1200).toLocaleString()}`);
+                $('#totalPrice').text(`฿${(parseInt(booking.pricePerNight || 1200) * nights).toLocaleString()}`);
+                
+                $('#email').text(booking.email);
+                $('#phone').text(booking.phone);
+                
+                $('#specialRequests').text(booking.specialRequests && booking.specialRequests.trim() !== '' ? 
+                    booking.specialRequests : 'ไม่มี');
+
+                if(booking.status === 'cancelled') {
+                    $('#cancelBookingButton').hide();
+                } else {
+                    $('#cancelBookingButton').show();
+                }
+                
+                $('html, body').animate({
+                    scrollTop: $('#bookingDetails').offset().top - 20
+                }, 500);
+            }
+            
+            // Function to show no results message
+            function showNoResults() {
+                $('#bookingsList').hide();
+                $('#bookingDetails').hide();
+                $('#noResults').fadeIn(500);
+                
+                $('html, body').animate({
+                    scrollTop: $('#noResults').offset().top - 20
+                }, 500);
+            }
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const emailParam = urlParams.get('email');
+            
+            if (emailParam) {
+                $('#email').val(emailParam);
+                $('#searchForm').submit();
+            }
+        });
+    </script>
+</body>
+</html>

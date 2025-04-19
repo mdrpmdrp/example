@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 
+</html>
+
 <head>
     <!-- no cache -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Pragma" no-cache" />
     <meta http-equiv="Expires" content="0" />
     <!-- no cache -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hotel Booking</title>
+    <title>ตรวจสอบห้องว่างและราคา</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
         integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
@@ -24,12 +26,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@200;300;400;500;600;700&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+        integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         * {
             font-family: 'Mitr', sans-serif;
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            color: #231f20;
         }
 
         body {
@@ -43,10 +49,12 @@
             border-radius: 10px;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
             padding: 20px;
+            color: #231f20
         }
 
         .header {
-            background-color: #0d6efd;
+            background-color: #8e784f;
+            /* Updated to match logo's brown/gold color */
             color: white;
             padding: 20px 0;
             border-radius: 8px;
@@ -54,12 +62,23 @@
             text-align: center;
         }
 
+        .header h1,
+        .header p {
+            color: white;
+        }
+
+        .hotel-logo {
+            width: 60px;
+            height: 60px;
+        }
+
         .form-label {
             font-weight: 500;
         }
 
         .date-picker-container {
-            background-color: #f1f8ff;
+            background-color: #f5f1ea;
+            /* Lighter shade complementing the logo */
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
@@ -79,8 +98,10 @@
         }
 
         .room-option.selected {
-            border-color: #0d6efd;
-            background-color: #f1f8ff;
+            border-color: #8e784f;
+            /* Updated to match logo */
+            background-color: #f5f1ea;
+            /* Light complementary color */
         }
 
         .room-option img {
@@ -98,7 +119,8 @@
         }
 
         .btn-book {
-            background-color: #0d6efd;
+            background-color: #8e784f;
+            /* Updated to match logo */
             color: white;
             font-weight: 500;
             padding: 10px 25px;
@@ -107,7 +129,92 @@
         }
 
         .btn-book:hover {
-            background-color: #0b5ed7;
+            background-color: #6d5a3a;
+            /* Darker shade for hover effect */
+            color: white;
+        }
+
+        .check-booking-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #8e784f;
+            text-decoration: none;
+        }
+
+        .check-booking-link:hover {
+            color: #6d5a3a;
+            text-decoration: underline;
+        }
+
+        /* Availability Badge Styling */
+        .availability-badge {
+            background-color: #e8f4f8;
+            color: #0a58ca;
+            border-left: 4px solid #0d6efd;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 1.2rem;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #available-rooms-count {
+            color: #0d6efd;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Carousel custom styling */
+        .carousel {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .carousel-item img {
+            height: 300px;
+            object-fit: cover;
+        }
+
+        .carousel-caption {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 10px;
+            bottom: 20px;
+        }
+
+        @media (max-width: 767px) {
+            .carousel-item img {
+                height: 220px;
+            }
+
+            .carousel-caption {
+                display: block !important;
+                padding: 5px;
+                bottom: 10px;
+            }
+
+            .carousel-caption h5 {
+                font-size: 0.9rem;
+                margin-bottom: 0;
+            }
+
+            .carousel-caption p {
+                font-size: 0.75rem;
+                margin-bottom: 0;
+            }
         }
     </style>
 
@@ -115,17 +222,77 @@
 
 <body>
     <div class="container booking-container">
+      <div class="booking-container">
         <div class="header">
-            <h1><i class="bi bi-building"></i> Hotel Booking</h1>
-            <p>Find and book your perfect stay</p>
+            <div class="d-flex align-items-center justify-content-center p-2">
+                <img src="https://img5.pic.in.th/file/secure-sv1/Asset-4f4db280d314ea126.png" alt="Hotel Logo"
+                    class="hotel-logo me-2">
+                <div>
+                    <h1>ตรวจสอบห้องว่างและราคา</h1>
+                    <span>ค้นหาและจองที่พักที่สมบูรณ์แบบสำหรับคุณ</span>
+                </div>
+            </div>
         </div>
 
-        <form id="bookingForm">
+        <!-- Ads Carousel -->
+        <div id="adsCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
+            <div class="carousel-indicators">
+                <button type="button" data-bs-target="#adsCarousel" data-bs-slide-to="0" class="active"
+                    aria-current="true" aria-label="Slide 1"></button>
+                <button type="button" data-bs-target="#adsCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+                <button type="button" data-bs-target="#adsCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
+                <button type="button" data-bs-target="#adsCarousel" data-bs-slide-to="3" aria-label="Slide 4"></button>
+            </div>
+            <!-- https://img2.pic.in.th/pic/30ba58d5-91ba-44cd-8ee5-1dd666b18703.jpg
+https://img5.pic.in.th/file/secure-sv1/910c66b9-4972-46a7-9f27-2d9375b789b8.jpg
+https://img2.pic.in.th/pic/a7b203ad-a107-4d5c-a371-55f2859dee75.jpg
+https://img5.pic.in.th/file/secure-sv1/d07141fe-f7cc-4f00-b5c0-c3e804aa6725.jpg -->
+            <div class="carousel-inner rounded">
+                <div class="carousel-item active">
+                    <img src="https://img2.pic.in.th/pic/30ba58d5-91ba-44cd-8ee5-1dd666b18703.jpg" class="d-block w-100"
+                        alt="Special Promotion">
+                    <!-- <div class="carousel-caption d-none d-md-block">
+                        <h5>พิเศษ! จองห้องพัก 2 คืนขึ้นไป ลด 20%</h5>
+                        <p>เมื่อจองผ่านเว็บไซต์โดยตรง ถึง 30 เมษายน 2025</p>
+                    </div> -->
+                </div>
+                <div class="carousel-item">
+                    <img src="https://img5.pic.in.th/file/secure-sv1/910c66b9-4972-46a7-9f27-2d9375b789b8.jpg"
+                        class="d-block w-100" alt="Restaurant Promotion">
+                </div>
+                <div class="carousel-item">
+                    <img src="https://img2.pic.in.th/pic/a7b203ad-a107-4d5c-a371-55f2859dee75.jpg" class="d-block w-100"
+                        alt="Spa Promotion">
+                </div>
+                <div class="carousel-item">
+                    <img src="https://img5.pic.in.th/file/secure-sv1/d07141fe-f7cc-4f00-b5c0-c3e804aa6725.jpg"
+                        class="d-block w-100" alt="Spa2 Promotion">
+                </div>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#adsCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#adsCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>
+        <div class="my-2 d-flex justify-content-end">
+            <div>
+                <a href="check-booking.html" class="check-booking-link">
+                    <i class="bi bi-search me-1"></i> ตรวจสอบสถานะการจอง
+                </a>
+            </div>
+
+        </div>
+
+        <form id="checkAvailabilityForm" class="mb-4">
             <!-- Date Selection Section -->
             <div class="date-picker-container">
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="checkInDate" class="form-label">Check-in Date</label>
+                        <label for="checkInDate"> วันที่เข้าพัก</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
                             <input type="text" class="form-control" id="checkInDate" placeholder="Select check-in date"
@@ -133,317 +300,542 @@
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label for="checkOutDate" class="form-label">Check-out Date</label>
+                        <label for="checkOutDate"> วันที่ออก</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
                             <input type="text" class="form-control" id="checkOutDate"
                                 placeholder="Select check-out date" required>
                         </div>
                     </div>
+                    <div class="col-md-12 mb-3">
+                        <label for="roomQuantity">จำนวนห้อง</label>
+                        <select class="form-select" id="roomQuantity" required>
+                            <option value="1" selected>1 ห้อง</option>
+                            <option value="2">2 ห้อง</option>
+                            <option value="3">3 ห้อง</option>
+                            <option value="4">4 ห้อง</option>
+                            <option value="5">5 ห้อง</option>
+                            <option value="6">6 ห้อง</option>
+                            <option value="7">7 ห้อง</option>
+                            <option value="8">8 ห้อง</option>
+                            <option value="9">9 ห้อง</option>
+                            <option value="10">10 ห้อง</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="adults" class="form-label">Adults</label>
+                        <label for="adults">ผู้ใหญ่</label>
                         <select class="form-select" id="adults" required>
-                            <option value="1">1</option>
-                            <option value="2" selected>2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
+                            <option value="1">1 คน</option>
+                            <option value="2" selected>2 คน</option>
                         </select>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label for="children" class="form-label">Children</label>
+                        <label for="children">เด็ก</label>
                         <select class="form-select" id="children">
-                            <option value="0" selected>0</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
+                            <option value="0" selected>0 คน</option>
                         </select>
                     </div>
                 </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-book" id="checkAvailabilityBtn">
+                        <i class="bi bi-search me-2"></i>ตรวจสอบห้องว่าง
+                    </button>
+                </div>
             </div>
-
+        </form>
+        <!-- Availability Status Section -->
+        <form id="bookingForm" style="display: none;">
             <!-- Room Selection Section -->
-            <h3 class="mb-3">Available Rooms</h3>
             <div class="row">
-                <div class="col-md-6 mb-3">
-                    <div class="room-option" data-room-type="standard" data-price="1200">
-                        <img src="https://images.unsplash.com/photo-1566665797739-1674de7a421a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218MHx8aG90ZWwgcm9vbXx8fHx8fDE2ODEyMzQyMzY&ixlib=rb-4.0.3&q=80&utm_campaign=api-credit&utm_medium=referral&utm_source=unsplash_source&w=1080"
-                            alt="Standard Room">
-                        <h5 class="mt-2">Standard Room</h5>
-                        <p class="text-muted small">1 queen bed, free WiFi, 25 sq.m.</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="fw-bold">฿1,200 / night</span>
-                            <button type="button" class="btn btn-outline-primary btn-sm select-room">Select</button>
-                        </div>
+                <h3 class="mb-3">ข้อมูลห้องพัก</h3>
+                <div class="col-12">
+                    <div id="availability-status" class="availability-badge my-2 h4" style="display: none;">
+                        <strong>ห้องพักว่าง:</strong> <span id="available-rooms-count">0</span> ห้อง
                     </div>
                 </div>
-                <div class="col-md-6 mb-3">
+                <template id="roomTemplate">
+                    <div class="col-md-8 mx-auto mb-3">
+                        <div class="room-option selected" data-room-type="standard" data-price="1200">
+                            <img src="{{image}}" alt="{{roomType}}">
+                            <p class="text-muted small">{{description}}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold">฿{{price}} / คืน</span>
+                                <span class="badge bg-primary">{{available}} ห้องว่าง</span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <div class="col-12 mt-2" id="roomOptions">
+                    <!-- Room options will be dynamically generated here -->
 
-                </div>
-                <div class="col-md-6 mb-3">
-                    <div class="room-option" data-room-type="suite" data-price="2500">
-                        <img src="https://images.unsplash.com/photo-1591088398332-8a7791972843?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218MHx8aG90ZWwgc3VpdGV8fHx8fHwxNjgxMjM0Mzc2&ixlib=rb-4.0.3&q=80&utm_campaign=api-credit&utm_medium=referral&utm_source=unsplash_source&w=1080"
-                            alt="Suite">
-                        <h5 class="mt-2">Suite</h5>
-                        <p class="text-muted small">1 king bed, living room, jacuzzi, 45 sq.m.</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="fw-bold">฿2,500 / night</span>
-                            <button type="button" class="btn btn-outline-primary btn-sm select-room">Select</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <div class="room-option" data-room-type="family" data-price="2200">
-                        <img src="https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218MHx8aG90ZWwgZmFtaWx5IHJvb218fHx8fHwxNjgxMjM0NDI1&ixlib=rb-4.0.3&q=80&utm_campaign=api-credit&utm_medium=referral&utm_source=unsplash_source&w=1080"
-                            alt="Family Room">
-                        <h5 class="mt-2">Family Room</h5>
-                        <p class="text-muted small">1 king bed, 2 single beds, 40 sq.m.</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="fw-bold">฿2,200 / night</span>
-                            <button type="button" class="btn btn-outline-primary btn-sm select-room">Select</button>
-                        </div>
-                    </div>
                 </div>
             </div>
 
             <!-- Guest Information Section -->
-            <h3 class="mb-3 mt-4">Guest Information</h3>
+            <h3 class="mb-3 mt-4">ข้อมูลผู้เข้าพัก</h3>
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label for="firstName" class="form-label">First Name</label>
+                    <label for="firstName">ชื่อ</label>
                     <input type="text" class="form-control" id="firstName" required>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label for="lastName" class="form-label">Last Name</label>
+                    <label for="lastName">นามสกุล</label>
                     <input type="text" class="form-control" id="lastName" required>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label for="email" class="form-label">Email</label>
+                    <label for="email">อีเมล์</label>
                     <input type="email" class="form-control" id="email" required>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label for="phone" class="form-label">Phone</label>
+                    <label for="phone">เบอร์โทรศัพท์</label>
                     <input type="tel" class="form-control" id="phone" required>
                 </div>
                 <div class="col-12 mb-3">
-                    <label for="specialRequests" class="form-label">Special Requests (optional)</label>
+                    <label for="specialRequests">คำขอพิเศษ (ไม่จำเป็น)</label>
                     <textarea class="form-control" id="specialRequests" rows="3"></textarea>
                 </div>
             </div>
 
             <!-- Booking Summary Section -->
             <div id="bookingSummary" class="booking-summary mb-4" style="display: none;">
-                <h4 class="mb-3">Booking Summary</h4>
+                <h4 class="mb-3">สรุปการจอง</h4>
                 <div class="row">
                     <div class="col-md-6">
-                        <p><strong>Check-in:</strong> <span id="summaryCheckIn"></span></p>
-                        <p><strong>Check-out:</strong> <span id="summaryCheckOut"></span></p>
-                        <p><strong>Guests:</strong> <span id="summaryGuests"></span></p>
+                        <p><strong>วันเข้าพัก :</strong> <span id="summaryCheckIn"></span></p>
+                        <p><strong>วันออก :</strong> <span id="summaryCheckOut"></span></p>
+                        <p><strong>รวมวันเข้าพัก :</strong> <span id="summaryNights"></span></p>
+                        <p><strong>จำนวนห้อง :</strong> <span id="summaryRoomQuantity"></span></p>
+                        <p><strong>ผู้เข้าพัก :</strong> <span id="summaryGuests"></span></p>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Room Type:</strong> <span id="summaryRoomType"></span></p>
-                        <p><strong>Price per Night:</strong> <span id="summaryPrice"></span></p>
-                        <p><strong>Total Price:</strong> <span id="summaryTotal" class="fw-bold"></span></p>
+                        <p><strong>ราคา / คืน :</strong> <span id="summaryPrice"></span></p>
+                        <p><strong>ราคารวม :</strong> <span id="summaryTotal" class="fw-bold text-danger"></span></p>
+                    </div>
+                    <div class="col-12">
+                        <div class="special-request mt-2">
+                            <p><strong>คำขอพิเศษ :</strong></p>
+                            <p id="summarySpecialRequest" class="bg-light p-2 rounded small fst-italic">ไม่มี</p>
+                        </div>
+
                     </div>
                 </div>
             </div>
-
-            <!-- Payment Method Section -->
-            <h3 class="mb-3">Payment Method</h3>
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="paymentMethod" id="creditCard"
-                            value="creditCard" checked>
-                        <label class="form-check-label" for="creditCard">
-                            Credit Card
-                        </label>
-                    </div>
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="paymentMethod" id="bankTransfer"
-                            value="bankTransfer">
-                        <label class="form-check-label" for="bankTransfer">
-                            Bank Transfer
-                        </label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="paymentMethod" id="payAtHotel"
-                            value="payAtHotel">
-                        <label class="form-check-label" for="payAtHotel">
-                            Pay at Hotel
-                        </label>
-                    </div>
-                </div>
+            <!-- Google reCAPTCHA -->
+            <div class="d-flex justify-content-center mb-3">
+                <div class="g-recaptcha mb-3" data-sitekey="6Lcy0hwrAAAAAIzb4Mv8oiw5eiJvAQ55H_3xGOOg"
+                    data-callback="onRecaptchaSuccess"></div>
             </div>
-
+            <!-- Submit Button -->
             <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-book">Book Now</button>
+                <button type="submit" class="btn btn-book rounded-2" style="display: none;">
+                    จองเลย
+                </button>
             </div>
         </form>
+      </div>
 
-        <!-- Available Bank Images -->
-        <div class="row mt-4 text-center">
-            <div class="col-12">
-                <p class="text-muted">Supported Payment Methods</p>
-            </div>
-            <div class="col">
-                <img src="kbank.jpg" alt="Kasikorn Bank" height="30">
-            </div>
-            <div class="col">
-                <img src="scb.jpg" alt="Siam Commercial Bank" height="30">
-            </div>
-            <div class="col">
-                <img src="bbl.jpg" alt="Bangkok Bank" height="30">
-            </div>
-            <div class="col">
-                <img src="ktb.jpg" alt="Krung Thai Bank" height="30">
-            </div>
-            <div class="col">
-                <img src="bay.jpg" alt="Bank of Ayudhya" height="30">
-            </div>
-        </div>
     </div>
-    <template id="roomOptionTemplate">
-        <div class="room-option" data-room-type="deluxe" data-price="1800">
-            <img src="https://images.unsplash.com/photo-1590490360182-c33d57733427?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218MHx8aG90ZWwgcm9vbXx8fHx8fDE2ODEyMzQzMTY&ixlib=rb-4.0.3&q=80&utm_campaign=api-credit&utm_medium=referral&utm_source=unsplash_source&w=1080"
-                alt="Deluxe Room">
-            <h5 class="mt-2">Deluxe Room</h5>
-            <p class="text-muted small">1 king bed, free WiFi, bathtub, 32 sq.m.</p>
-            <div class="d-flex justify-content-between align-items-center">
-                <span class="fw-bold">฿1,800 / night</span>
-                <button type="button" class="btn btn-outline-primary btn-sm select-room">Select</button>
-            </div>
-        </div>
-    </template>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js">
-    </script>
-    <script> // VConsole will be exported to `window.VConsole` by default.
-        var vConsole = new window.VConsole();
-    </script> -->
-
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/locale/th.js"></script>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <script>
-        // Initialize date pickers
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        // Google Apps Script Web App URL - replace with your actual deployed web app URL
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqS2yBlpOE7IVtx856bOPAxQ1ZzDk6wMk8PipwH067xmj-bKcOjJb5fBTm_kkz5KDWRg/exec";
 
-        const checkInPicker = flatpickr("#checkInDate", {
-            minDate: "today",
-            dateFormat: "Y-m-d",
-            defaultDate: today,
-            onChange: function (selectedDates, dateStr) {
-                // When check-in date changes, update check-out date minimum
-                const nextDay = new Date(selectedDates[0]);
-                nextDay.setDate(nextDay.getDate() + 1);
-                checkOutPicker.set('minDate', nextDay);
+        // Automatically select the standard room (the only room type)
+        const RoomOptions = {
+            type: "standard",
+            price: 1200,
+            available: 0 // Will be updated from Google Sheets
+        };
 
-                // If check-out date is now less than check-in date, update it
-                if (checkOutPicker.selectedDates[0] <= selectedDates[0]) {
-                    checkOutPicker.setDate(nextDay);
+        // Update booking summary immediately to show default selection
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize date pickers
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            moment.locale('th');
+
+            const checkInPicker = flatpickr("#checkInDate", {
+                minDate: "today",
+                altInput: true,
+                altFormat: "j F Y",
+                dateFormat: "Y-m-d",
+                defaultDate: today,
+                locale: "th",
+                onChange: function (selectedDates, dateStr) {
+                    // When check-in date changes, update check-out date minimum
+                    const nextDay = moment(dateStr, 'YYYY-MM-DD').add(1, 'days').format('YYYY-MM-DD');
+                    const checkOutDate = checkOutPicker.selectedDates[0];
+
+                    // Set minimum check-out date to the day after check-in
+                    checkOutPicker.set('minDate', nextDay);
+
+                    // If current check-out date is before new check-in date, update it
+                    if (moment(checkOutDate, 'YYYY-MM-DD').isBefore(nextDay)) {
+                        checkOutPicker.setDate(nextDay);
+                    }
+
                 }
+            });
 
-                updateBookingSummary();
-            }
-        });
+            const checkOutPicker = flatpickr("#checkOutDate", {
+                minDate: tomorrow,
+                altInput: true,
+                dateFormat: "Y-m-d",
+                altFormat: "j F Y",
+                defaultDate: tomorrow,
+                locale: "th"
+            });
 
-        const checkOutPicker = flatpickr("#checkOutDate", {
-            minDate: tomorrow,
-            dateFormat: "Y-m-d",
-            defaultDate: tomorrow,
-            onChange: function () {
-                updateBookingSummary();
-            }
-        });
-
-        // Room selection functionality
-        const roomOptions = document.querySelectorAll('.room-option');
-        let selectedRoom = null;
-
-        roomOptions.forEach(room => {
-            room.querySelector('.select-room').addEventListener('click', function () {
-                // Remove selection from all rooms
-                roomOptions.forEach(r => r.classList.remove('selected'));
-
-                // Add selection to clicked room
-                room.classList.add('selected');
-                selectedRoom = {
-                    type: room.dataset.roomType,
-                    price: parseInt(room.dataset.price)
-                };
-
+            $('#specialRequests').on('input', function () {
                 updateBookingSummary();
             });
         });
 
-        // Update booking summary
-        function updateBookingSummary() {
-            if (!selectedRoom) {
-                document.getElementById('bookingSummary').style.display = 'none';
+        document.getElementById('roomQuantity').addEventListener('change', function () {
+            const selectedRoomQuantity = parseInt(this.value);
+            const adultsSelect = document.getElementById('adults');
+            const childrenSelect = document.getElementById('children');
+
+            let adult = parseInt(adultsSelect.value);
+            let child = parseInt(childrenSelect.value);
+            // Clear previous options
+            adultsSelect.innerHTML = '';
+            childrenSelect.innerHTML = '';
+
+            // Populate adults and children select options based on room quantity
+            let maxPerRoom = 2; // Default max adults per room
+
+            for (let i = 1; i <= selectedRoomQuantity * maxPerRoom; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i + ' ' + 'คน'
+                adultsSelect.appendChild(option);
+                childrenSelect.appendChild(option.cloneNode(true));
+            }
+            adultsSelect.value = adult > selectedRoomQuantity * maxPerRoom ? selectedRoomQuantity * maxPerRoom : adult;
+            childrenSelect.value = child > selectedRoomQuantity * maxPerRoom ? selectedRoomQuantity * maxPerRoom : child;
+
+        });
+
+        // Handle availability check form submission
+        document.getElementById('checkAvailabilityForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const checkInDate = $('#checkInDate').val();
+            const checkOutDate = $('#checkOutDate').val();
+            const roomQuantity = $('#roomQuantity').val();
+
+            if (!checkInDate || !checkOutDate) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'กรุณาเลือกวันที่',
+                    text: 'กรุณาเลือกวันที่เข้าพักและวันที่ออก',
+                    confirmButtonText: 'ตกลง',
+                    customClass: {popup: 'rounded-3'}
+                });
                 return;
             }
 
-            const checkInDate = checkInPicker.selectedDates[0];
-            const checkOutDate = checkOutPicker.selectedDates[0];
+            // Show loading state
+            Swal.fire({
+                icon: 'info',
+                title: 'กำลังตรวจสอบห้องว่าง...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                customClass: {popup: 'rounded-3'},
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            console.log('checkInDate:', checkInDate);
+            console.log('checkOutDate:', checkOutDate);
+            console.log('roomQuantity:', roomQuantity);
+
+            // Call the Google Apps Script to check availability
+            checkAvailability(checkInDate, checkOutDate, roomQuantity);
+        });
+
+        // Function to check availability using Google Apps Script
+        function checkAvailability(checkInDate, checkOutDate, roomQuantity) {
+            // Prepare the data to send to Google Apps Script
+            const data = {
+                action: 'checkAvailability',
+                checkInDate: checkInDate,
+                checkOutDate: checkOutDate,
+                roomQuantity: roomQuantity,
+            };
+
+            // Make the AJAX request to Google Apps Script
+            $.ajax({
+                url: GOOGLE_SCRIPT_URL,
+                method: 'GET',
+                data: data,
+                dataType: 'jsonp',
+                success: function (response) {
+                    Swal.close(); // Close loading dialog
+                    // Check if the response is valid
+
+                    if (response && response.success) {
+                        // Update available rooms count
+                        RoomOptions.available = response.availableRooms || 0;
+
+                        if (RoomOptions.available > 0) {
+                            // Show availability status
+                            $('#available-rooms-count').text(RoomOptions.available);
+
+
+                            // Show booking form
+                            $('#bookingForm').fadeIn(500);
+
+                            // Render room options
+                            renderRoomOptions();
+
+                            // Update booking summary
+                            updateBookingSummary();
+
+                            // Scroll to booking form
+                            $('html, body').animate({
+                                scrollTop: $('#bookingForm').offset().top - 20
+                            }, 500);
+
+
+                            // Ensure the availability status is visible after scrolling
+                            setTimeout(() => {
+                                $('#availability-status').addClass('animate__animated animate__slideInRight');
+                                $('#availability-status').show();
+                                setTimeout(() => {
+                                    $('#availability-status').removeClass('animate__animated animate__slideInRight');
+                                }, 1000);
+                            }, 1000);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'ไม่มีห้องว่าง',
+                                text: 'ขออภัย ไม่มีห้องว่างในช่วงวันที่คุณเลือก',
+                                confirmButtonText: 'ตกลง',
+                                customClass: {popup: 'rounded-3'}
+                            });
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: response.message || 'ไม่สามารถตรวจสอบห้องว่างได้ กรุณาลองอีกครั้ง',
+                            confirmButtonText: 'ตกลง',
+                            customClass: {popup: 'rounded-3'}
+                        });
+                    }
+                },
+                error: function () {
+                    Swal.close(); // Close loading dialog
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองอีกครั้ง',
+                        confirmButtonText: 'ตกลง',
+                        customClass: {popup: 'rounded-3'}
+                    });
+                }
+            });
+        }
+
+        // Update booking summary
+        function updateBookingSummary() {
+            const checkInDate = $('#checkInDate').val();
+            const checkOutDate = $('#checkOutDate').val();
+            const specialRequests = $('#specialRequests').val();
+            const roomQuantity = $('#roomQuantity').val();
 
             if (!checkInDate || !checkOutDate) {
                 return;
             }
 
             // Calculate number of nights
-            const timeDiff = checkOutDate.getTime() - checkInDate.getTime();
+            const timeDiff = moment(checkOutDate).diff(moment(checkInDate));
             const nights = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
             // Set values in summary
-            document.getElementById('summaryCheckIn').textContent = formatDate(checkInDate);
-            document.getElementById('summaryCheckOut').textContent = formatDate(checkOutDate);
-            document.getElementById('summaryGuests').textContent =
-                document.getElementById('adults').value + ' Adults, ' +
-                document.getElementById('children').value + ' Children';
-            document.getElementById('summaryRoomType').textContent =
-                selectedRoom.type.charAt(0).toUpperCase() + selectedRoom.type.slice(1);
-            document.getElementById('summaryPrice').textContent = '฿' + selectedRoom.price.toLocaleString();
-            document.getElementById('summaryTotal').textContent = '฿' + (selectedRoom.price * nights).toLocaleString();
+            $('#summaryCheckIn').text(moment(checkInDate).format('dddd, D MMMM YYYY'));
+            $('#summaryCheckOut').text(moment(checkOutDate).format('dddd, D MMMM YYYY'));
+            $('#summaryNights').text(nights + ' คืน');
+
+            $('#summaryGuests').text(
+                $('#adults').val() + ' ผู้ใหญ่, ' +
+                $('#children').val() + ' เด็ก'
+            );
+            $('#summaryRoomQuantity').text(roomQuantity + ' ห้อง');
+            $('#summaryPrice').text('฿' + RoomOptions.price.toLocaleString());
+            $('#summaryTotal').text('฿' + (RoomOptions.price * nights).toLocaleString());
+
+            // Update special requests section
+            if (specialRequests && specialRequests.trim() !== '') {
+                $('#summarySpecialRequest').text(specialRequests);
+            } else {
+                $('#summarySpecialRequest').text('ไม่มี');
+            }
 
             // Show summary
-            document.getElementById('bookingSummary').style.display = 'block';
+            $('#bookingSummary').show();
         }
 
-        // Format date to be more readable
-        function formatDate(date) {
-            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
-            return date.toLocaleDateString('en-US', options);
+        // Render room options
+        function renderRoomOptions() {
+            const roomTemplate = $('#roomTemplate')
+            const roomContainer = $('#roomOptions');
+
+            // Clear existing room options
+            roomContainer.empty();
+
+            let roomCard = roomTemplate.html();
+            roomCard = roomCard.replace(/{{roomType}}/g, RoomOptions.type);
+            roomCard = roomCard.replace(/{{price}}/g, RoomOptions.price);
+            roomCard = roomCard.replace(/{{available}}/g, RoomOptions.available);
+            roomCard = roomCard.replace(/{{image}}/g, "https://img2.pic.in.th/pic/30ba58d5-91ba-44cd-8ee5-1dd666b18703.jpg");
+            roomCard = roomCard.replace(/{{description}}/g, "1 queen bed, free WiFi, 25 sq.m.");
+            roomContainer.append(roomCard);
         }
 
-        // Handle form submission
+        // Handle booking form submission
         document.getElementById('bookingForm').addEventListener('submit', function (e) {
             e.preventDefault();
-
-            if (!selectedRoom) {
+            if (!verifyRecaptcha()) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Room Selection Required',
-                    text: 'Please select a room before booking.'
+                    title: 'การยืนยันล้มเหลว',
+                    text: 'กรุณายืนยันตัวตนด้วย reCAPTCHA',
+                    confirmButtonText: 'ตกลง',
+                    customClass: {popup: 'rounded-3'}
                 });
                 return;
             }
 
-            // Normally would send form data to server here
+            // Show loading state
             Swal.fire({
-                icon: 'success',
-                title: 'Booking Successful!',
-                text: 'Your booking has been confirmed. A confirmation email has been sent to your email address.',
-                confirmButtonText: 'OK'
+                title: 'กำลังดำเนินการจอง...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                customClass: {popup: 'rounded-3'},
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            let stay = moment($('#checkOutDate').val(), 'YYYY-MM-DD').diff(moment($('#checkInDate').val(), 'YYYY-MM-DD'), 'days');
+            console.log('stay:', stay);
+            if (stay < 0) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'วันที่ไม่ถูกต้อง',
+                    text: 'กรุณาเลือกวันที่เข้าพักและวันที่ออกให้ถูกต้อง',
+                    confirmButtonText: 'ตกลง',
+                    customClass: {popup: 'rounded-3'}
+                });
+                return;
+            }
+
+            const formData = {
+                action: 'createBooking',
+                checkInDate: $('#checkInDate').val(),
+                checkOutDate: $('#checkOutDate').val(),
+                adults: $('#adults').val(),
+                children: $('#children').val(),
+                firstName: $('#firstName').val(),
+                lastName: $('#lastName').val(),
+                email: $('#email').val(),
+                phone: $('#phone').val(),
+                specialRequests: $('#specialRequests').val(),
+                roomQuantity: $('#roomQuantity').val(),
+                stay: stay,
+                'g-recaptcha-response': grecaptcha.getResponse()
+            };
+
+            // Make the AJAX request to Google Apps Script to create the booking
+            $.ajax({
+                url: GOOGLE_SCRIPT_URL,
+                method: 'POST',
+                data: formData,
+                success: function (response) {
+                    Swal.close(); // Close loading dialog
+
+                    if (response && response.success) {
+                        // Show success message with booking ID
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'จองสำเร็จ!',
+                            html: `
+                                <p>หมายเลขการจองของคุณคือ: <strong>${response.bookingId}</strong></p>
+                                <p>เราได้ส่งรายละเอียดการจองไปยังอีเมล์ของคุณแล้ว</p>
+                            `,
+                            confirmButtonText: 'ตกลง',
+                            customClass: {popup: 'rounded-3'}
+                        }).then((result) => {
+                            // Redirect to check booking page with the booking ID
+                            window.location.href = `check-booking.html?id=${response.bookingId}`;
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: response.message || 'ไม่สามารถทำการจองได้ กรุณาลองอีกครั้ง',
+                            confirmButtonText: 'ตกลง',
+                            customClass: {popup: 'rounded-3'}
+                        });
+                    }
+                },
+                error: function () {
+                    Swal.close(); // Close loading dialog
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองอีกครั้ง',
+                        confirmButtonText: 'ตกลง',
+                        customClass: {popup: 'rounded-3'}
+                    });
+                }
             });
         });
 
         // Update guest selection
         document.getElementById('adults').addEventListener('change', updateBookingSummary);
         document.getElementById('children').addEventListener('change', updateBookingSummary);
+
+        // Initialize and configure the advertisement carousel
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize the carousel with Bootstrap's carousel method
+            const adsCarousel = new bootstrap.Carousel(document.getElementById('adsCarousel'), {
+                interval: 5000,  // Change slides every 5 seconds
+                wrap: true,      // Cycle continuously
+                touch: true,     // Allow touch swipe on mobile
+                pause: 'hover'   // Pause on mouse hover
+            });
+        });
+    </script>
+    <script>
+        function verifyRecaptcha() {
+            const recaptchaResponse = grecaptcha.getResponse();
+            console.log(recaptchaResponse);
+            if (recaptchaResponse.length === 0) {
+                return false; // reCAPTCHA not verified
+            }
+            return true; // reCAPTCHA verified
+        }
+
+        function onRecaptchaSuccess(token) {
+            $('.btn-book').show();
+        }
+
     </script>
 </body>
 
