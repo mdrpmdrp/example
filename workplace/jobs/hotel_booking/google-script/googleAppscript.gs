@@ -55,9 +55,9 @@ function doGet(e) {
 function handleCheckAvailability(params) {
     try {
         // Get parameters
-        const checkInDate = params?.checkInDate || '2025-04-09'
-        const checkOutDate = params?.checkOutDate || '2025-04-25'
-        const roomQuantity = params?.roomQuantity || 1;
+        let checkInDate = params?.checkInDate || '2025-04-20'
+        let checkOutDate = params?.checkOutDate || '2025-04-25'
+        let roomQuantity = params?.roomQuantity || 1;
 
         // Validate dates
         if (!checkInDate || !checkOutDate) {
@@ -70,7 +70,7 @@ function handleCheckAvailability(params) {
         }
 
         // Calculate number of nights
-        const daysDiff = Math.ceil((new Date(checkOutDate) - new Date(checkInDate)) / (1000 * 60 * 60 * 24));
+        let daysDiff = Math.ceil((new Date(checkOutDate) - new Date(checkInDate)) / (1000 * 60 * 60 * 24));
         if (daysDiff <= 0) {
             return { success: false, message: 'กรุณาเลือกวันที่เช็คอินและเช็คเอาท์ที่ถูกต้อง' };
         }
@@ -84,8 +84,8 @@ function handleCheckAvailability(params) {
         let checkOut_date = new Date(checkOutDate);
         let dates_array = []
         while (checkIn_date < checkOut_date) {
-            let index = room_rate[0].findIndex((item) => {
-                return item == checkInDate
+            let index = room_rate.findIndex((item) => {
+                return item[0] == checkInDate
             });
             if (index != -1) {
                 dates_array.push(room_rate[index]);
@@ -103,7 +103,7 @@ function handleCheckAvailability(params) {
         }
 
         // Check availability in the spreadsheet
-        const available_data = getAvailableRooms(checkInDate, checkOutDate, roomQuantity, dates_array);
+        let available_data = getAvailableRooms(checkInDate, checkOutDate, roomQuantity, dates_array);
 
         return {
             success: true,
@@ -146,8 +146,7 @@ function getAvailableRooms(checkIn, checkOut, roomQuantity = 0, dates_array = []
 
     let available_data = {}
     available_data['available'] = dates_array.length <= 0 ? 0 : Math.min(...dates_array.map((item) => item.remain));
-    available_data['roomRate'] = dates_array[0].rate;
-    available_data['roomQuantity'] = dates_array[0].available;
+    available_data['roomRate'] = parseFloat(dates_array[0].rate);
 
     return available_data;
     // const ss = SpreadsheetApp.getActiveSpreadsheet();
