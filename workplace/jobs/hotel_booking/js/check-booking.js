@@ -8,14 +8,11 @@ window.addEventListener("load", function () {
 });
 $(document).ready(function () {
     moment.locale('th');
-
     // Google Apps Script URL - Replace with your actual deployed script URL
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqS2yBlpOE7IVtx856bOPAxQ1ZzDk6wMk8PipwH067xmj-bKcOjJb5fBTm_kkz5KDWRg/exec";
-
     // Handle search form submission
     $('#searchForm').on('submit', function (e) {
         e.preventDefault();
-
         const email = $('#email').val().trim();
         if (!email) {
             Swal.fire({
@@ -27,7 +24,6 @@ $(document).ready(function () {
             });
             return;
         }
-
         // Show loading message
         Swal.fire({
             title: 'กำลังค้นหา...',
@@ -38,13 +34,11 @@ $(document).ready(function () {
                 Swal.showLoading();
             }
         });
-
         // Prepare data to send to Google Script
         const data = {
             action: 'searchBookingByEmail',
             email: email
         };
-
         // Send request to Google Script
         NProgress.start();
         NProgress.inc();
@@ -55,7 +49,6 @@ $(document).ready(function () {
             dataType: 'jsonp',
             success: function (response) {
                 Swal.close(); // Close loading dialog
-
                 if (response && response.success && response.data && response.data.length > 0) {
                     booking_data = response.data;
                     displayBookingsList();
@@ -73,7 +66,6 @@ $(document).ready(function () {
             error: function () {
                 NProgress.done();
                 Swal.close(); // Close loading dialog
-
                 Swal.fire({
                     icon: 'error',
                     title: 'เกิดข้อผิดพลาด',
@@ -87,25 +79,20 @@ $(document).ready(function () {
             }
         });
     });
-
     // Handle search again button
     $('#searchAgain').on('click', function () {
         $('#email').val('').focus();
         $('#noResults').fadeOut(300);
     });
-
     // Handle print button
     $('#printButton').on('click', function () {
         // Prepare print-friendly version
         prepareForPrinting();
-
         // Print
         window.print();
-
         // Restore after printing
         setTimeout(restoreAfterPrinting, 500);
     });
-
     // Function to prepare the page for printing
     function prepareForPrinting() {
         // Create print-only header if it doesn't exist
@@ -120,15 +107,12 @@ $(document).ready(function () {
                 </div>
             `);
         }
-
         // Show print header and hide unneeded elements
         $('#printHeader').removeClass('d-none');
-
         // Create or update compact print layout
         if ($('#printLayout').length === 0) {
             let bookingStatus = $('#bookingStatus').text();
             let statusClass = '';
-
             if ($('#bookingStatus').hasClass('status-confirmed')) {
                 statusClass = 'text-success';
             } else if ($('#bookingStatus').hasClass('status-pending')) {
@@ -136,7 +120,6 @@ $(document).ready(function () {
             } else if ($('#bookingStatus').hasClass('status-cancelled')) {
                 statusClass = 'text-danger';
             }
-
             let printContent = `
                 <div id="printLayout" class="d-none">
                     <div style="margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px; text-align: center;">
@@ -145,24 +128,20 @@ $(document).ready(function () {
                     </div>
                 </div>
             `;
-
             $('body').append(printContent);
         } else {
             // Update existing print layout with current data
             $('#printLayout #printBookingId').text($('#displayBookingId').text());
         }
-
         // Show print layout
         $('#printLayout').removeClass('d-none');
     }
-
     // Function to restore the page after printing
     function restoreAfterPrinting() {
         // Hide print-specific elements
         $('#printHeader').addClass('d-none');
         $('#printLayout').addClass('d-none');
     }
-
     // Handle back to list button
     $('#backToListButton').on('click', function () {
         $('#bookingDetails').hide();
@@ -171,17 +150,12 @@ $(document).ready(function () {
             scrollTop: $('#bookingsList').offset().top - 20
         }, 500);
     });
-
     // Handle cancel booking button
     $('#cancelBookingButton').on('click', function () {
         // Get the current booking ID and check-in date
         const bookingId = $('#displayBookingId').text();
-        console.log("🚀 ~ bookingId:", bookingId)
         const checkInDate = moment($('#checkIn').text(), 'YYYY-MM-DD');
-        console.log("🚀 ~ checkInDate:", checkInDate)
         const today = moment();
-        console.log("🚀 ~ today:", today)
-
         // Check if already cancelled
         if ($('#bookingStatus').hasClass('status-cancelled')) {
             Swal.fire({
@@ -193,12 +167,7 @@ $(document).ready(function () {
             });
             return;
         }
-
-
-
         // Check if at least 1 day before check-in
-        console.log("🚀 ~ today.get('dayOfYear'):", today.get('dayOfYear'))
-        console.log("🚀 ~ checkInDate.get('dayOfYear'):", checkInDate.get('dayOfYear'))
         const daysDiff = checkInDate.get('dayOfYear') - today.get('dayOfYear');
         if (daysDiff < 1) {
             Swal.fire({
@@ -210,7 +179,6 @@ $(document).ready(function () {
             });
             return;
         }
-
         // Check if check-in date has passed
         if (!checkInDate.isValid() || checkInDate.get('dayOfYear') < today.get('dayOfYear')) {
             Swal.fire({
@@ -222,7 +190,6 @@ $(document).ready(function () {
             });
             return;
         }
-
         // Confirm cancellation
         Swal.fire({
             icon: 'warning',
@@ -242,7 +209,6 @@ $(document).ready(function () {
             }
         });
     });
-
     // Function to cancel booking
     function cancelBooking(bookingId) {
         // Show loading
@@ -255,13 +221,11 @@ $(document).ready(function () {
                 Swal.showLoading();
             }
         });
-
         // Send cancel request to Google Script
         const data = {
             action: 'cancelBooking',
             bookingId: bookingId
         };
-
         NProgress.start();
         NProgress.inc();
         $.ajax({
@@ -270,13 +234,11 @@ $(document).ready(function () {
             data: data,
             success: function (response) {
                 Swal.close();
-
                 if (response && response.success) {
                     // Update UI to show cancelled status
                     $('#bookingStatus').removeClass('status-confirmed status-pending')
                         .addClass('status-cancelled')
                         .text('ยกเลิกแล้ว');
-
                     // Show success message
                     Swal.fire({
                         icon: 'success',
@@ -285,7 +247,6 @@ $(document).ready(function () {
                         confirmButtonText: 'ตกลง',
                         customClass: { popup: 'rounded-3' }
                     });
-
                     let bookings = JSON.parse(JSON.stringify(booking_data));
                     booking = bookings.find(b => b.bookingId === bookingId);
                     if (booking) {
@@ -309,7 +270,6 @@ $(document).ready(function () {
             },
             error: function () {
                 Swal.close();
-
                 Swal.fire({
                     icon: 'error',
                     title: 'เกิดข้อผิดพลาด',
@@ -323,7 +283,6 @@ $(document).ready(function () {
             }
         });
     }
-
     // Function to display bookings list
     function displayBookingsList() {
         let bookings = JSON.parse(JSON.stringify(booking_data));
@@ -331,11 +290,9 @@ $(document).ready(function () {
             showNoResults();
             return;
         }
-        console.log(bookings);
         $('#noResults').hide();
         $('#bookingsList').fadeIn(500);
         $('#bookingsContainer').empty();
-
         // Group bookings by status
         const groupedBookings = {
             confirmed: [],
@@ -343,7 +300,6 @@ $(document).ready(function () {
             cancelled: [],
             history: []
         };
-
         // Categorize bookings by status
         bookings.forEach(booking => {
             const checkInDate = moment(booking.checkInDate);
@@ -359,34 +315,27 @@ $(document).ready(function () {
         groupedBookings.pending.sort((a, b) => new Date(b.checkInDate) - new Date(a.checkInDate));
         groupedBookings.cancelled.sort((a, b) => new Date(b.checkInDate) - new Date(a.checkInDate));
         groupedBookings.history.sort((a, b) => new Date(b.checkInDate) - new Date(a.checkInDate));
-
         // Display status groups in desired order
         if (groupedBookings.pending.length > 0) {
             appendBookingGroup('รอการยืนยัน', 'text-warning', groupedBookings.pending);
         }
-
         if (groupedBookings.confirmed.length > 0) {
             appendBookingGroup('ยืนยันแล้ว', 'text-success', groupedBookings.confirmed);
         }
-
         if (groupedBookings.cancelled.length > 0) {
             appendBookingGroup('ยกเลิกแล้ว', 'text-danger', groupedBookings.cancelled);
         }
-
         if (groupedBookings.history.length > 0) {
             appendBookingGroup('ประวัติการจอง', 'text-secondary', groupedBookings.history);
         }
-
         $('html, body').animate({
             scrollTop: $('#bookingsList').offset().top - 20
         }, 500);
     }
-
     // Function to append a group of bookings with header
     function appendBookingGroup(groupTitle, titleClass, bookings) {
         // Create unique ID for this group
         const groupId = `booking-group-${titleClass.replace('text-', '')}`;
-
         // Add group header with collapse functionality
         $('#bookingsContainer').append(`
             <div class="col-12">
@@ -405,25 +354,20 @@ $(document).ready(function () {
                         style="width: 5px; border-radius: 3px;"></div>
                     <div class="row booking-items w-100"></div>
                 </div>
-              
             </div>
             <div class="col-12 mt-3">
                 <hr>
             </div>
         `);
-
         // Add bookings for this group
         bookings.forEach(booking => {
             const bookingElement = $(document.importNode($('#bookingCardTemplate').get(0).content, true));
-
             // Set booking ID and created date
             bookingElement.find('.booking-id').text(booking.bookingId);
             bookingElement.find('.created-date').text(moment(booking.createdAt).format('YYYY-MM-DD'));
-
             // Set check-in date as header
             const checkInDate = moment(booking.checkInDate);
             bookingElement.find('.check-in-header').text(checkInDate.format('YYYY-MM-DD'));
-
             // Set status with color indicator
             const statusElement = bookingElement.find('.booking-status');
             const statusIndicator = bookingElement.find('.booking-status-indicator');
@@ -440,10 +384,8 @@ $(document).ready(function () {
                 statusElement.text('ยกเลิกแล้ว')
                 statusIndicator.addClass('bg-danger').css({ 'width': '10px', 'height': '40px', 'border-radius': '3px' });
             }
-
             const checkOutDate = moment(booking.checkOutDate);
             const nights = checkOutDate.diff(checkInDate, 'days');
-
             // Fill card body information
             const cardBody = bookingElement.find('.card-body');
             cardBody.html(`
@@ -501,15 +443,12 @@ $(document).ready(function () {
                     </button>
                 </div>
             `);
-
             // Add event handler for view details button
             bookingElement.find('.view-details-btn').on('click', function () {
                 displayBookingDetails(booking);
             });
-
             $(`#${groupId} .booking-items`).append(bookingElement);
         });
-
         // Add event listener for group header icon rotation
         $(`.group-header[data-bs-target="#${groupId}"]`).on('click', function () {
             const icon = $(this).find('i.bi');
@@ -522,20 +461,14 @@ $(document).ready(function () {
             }
         });
     }
-
     // Function to display booking details
     function displayBookingDetails(booking) {
-        console.log(booking);
         $('#bookingsList').hide();
         $('#bookingDetails').fadeIn(500);
-
-
         $('#displayBookingId').text(booking.bookingId);
         $('#guestName').text(`${booking.firstName} ${booking.lastName}`);
-
         const statusElement = $('#bookingStatus');
         statusElement.removeClass('status-confirmed status-pending status-cancelled');
-
         if (booking.status === 'confirmed') {
             statusElement.text('ยืนยันแล้ว').addClass('status-confirmed');
         } else if (booking.status === 'pending') {
@@ -543,56 +476,44 @@ $(document).ready(function () {
         } else if (booking.status === 'cancelled') {
             statusElement.text('ยกเลิกแล้ว').addClass('status-cancelled');
         }
-
         const checkInDate = moment(booking.checkInDate);
         const checkOutDate = moment(booking.checkOutDate);
         const nights = checkOutDate.diff(checkInDate, 'days');
-
         $('#checkIn').text(checkInDate.format('YYYY-MM-DD'));
         $('#checkOut').text(checkOutDate.format('YYYY-MM-DD'));
         $('#nights').text(nights + ' คืน');
-
         let guestsText = `${booking.adults} ผู้ใหญ่`;
         if (booking.children > 0) {
             guestsText += `, ${booking.children} เด็ก`;
         }
         $('#guests').text(guestsText);
-
         $('#roomType').text(booking.roomType || 'Standard');
         $('#pricePerNight').text(`฿${parseInt(booking.pricePerNight || 1200).toLocaleString()}`);
         $('#totalPrice').text(`฿${(parseInt(booking.pricePerNight || 1200) * nights * booking.roomQuantity).toLocaleString()}`);
-
         $('#email').text(booking.email);
         $('#phone').text(booking.phone);
-
         $('#specialRequests').text(booking.specialRequests && booking.specialRequests.trim() !== '' ?
             booking.specialRequests : 'ไม่มี');
-
         if (booking.status === 'cancelled') {
             $('#cancelBookingButton').hide();
         } else {
             $('#cancelBookingButton').show();
         }
-
         $('html, body').animate({
             scrollTop: $('#bookingDetails').offset().top - 20
         }, 500);
     }
-
     // Function to show no results message
     function showNoResults() {
         $('#bookingsList').hide();
         $('#bookingDetails').hide();
         $('#noResults').fadeIn(500);
-
         $('html, body').animate({
             scrollTop: $('#noResults').offset().top - 20
         }, 500);
     }
-
     const urlParams = new URLSearchParams(window.location.search);
     const emailParam = urlParams.get('s');
-
     if (emailParam) {
         $('#email').val(emailParam);
         $('#searchForm').submit();

@@ -1,13 +1,11 @@
 // Google Apps Script Web App URL - replace with your actual deployed web app URL
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqS2yBlpOE7IVtx856bOPAxQ1ZzDk6wMk8PipwH067xmj-bKcOjJb5fBTm_kkz5KDWRg/exec";
-
 // Automatically select the standard room (the only room type)
 const RoomOptions = {
     type: "standard",
     price: 1200,
     available: 0 // Will be updated from Google Sheets
 };
-
 // Update booking summary immediately to show default selection
 document.addEventListener('DOMContentLoaded', function () {
     NProgress.start();
@@ -17,7 +15,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     moment.locale('th');
-
     const checkInPicker = flatpickr("#checkInDate", {
         minDate: "today",
         dateFormat: "Y-m-d",
@@ -27,48 +24,38 @@ document.addEventListener('DOMContentLoaded', function () {
             // When check-in date changes, update check-out date minimum
             const nextDay = moment(dateStr, 'YYYY-MM-DD').add(1, 'days').format('YYYY-MM-DD');
             const checkOutDate = checkOutPicker.selectedDates[0];
-
             // Set minimum check-out date to the day after check-in
             checkOutPicker.set('minDate', nextDay);
-
             // If current check-out date is before new check-in date, update it
             if (moment(checkOutDate, 'YYYY-MM-DD').isBefore(nextDay)) {
                 checkOutPicker.setDate(nextDay);
             }
-
         }
     });
-
     const checkOutPicker = flatpickr("#checkOutDate", {
         minDate: tomorrow,
         dateFormat: "Y-m-d",
         defaultDate: tomorrow,
         locale: "th"
     });
-
     $('#specialRequests').on('input', function () {
         updateBookingSummary();
     });
 });
-
 window.addEventListener('load', function () {
     NProgress.done();
 });
-
 document.getElementById('roomQuantity').addEventListener('change', function () {
     const selectedRoomQuantity = parseInt(this.value);
     const adultsSelect = document.getElementById('adults');
     const childrenSelect = document.getElementById('children');
-
     let adult = parseInt(adultsSelect.value);
     let child = parseInt(childrenSelect.value);
     // Clear previous options
     adultsSelect.innerHTML = '';
     childrenSelect.innerHTML = '';
-
     // Populate adults and children select options based on room quantity
     let maxPerRoom = 2; // Default max adults per room
-
     for (let i = 0; i <= selectedRoomQuantity * maxPerRoom; i++) {
         const option = document.createElement('option');
         option.value = i;
@@ -79,17 +66,13 @@ document.getElementById('roomQuantity').addEventListener('change', function () {
     }
     adultsSelect.value = adult < selectedRoomQuantity ? selectedRoomQuantity : (adult > selectedRoomQuantity * maxPerRoom ? selectedRoomQuantity * maxPerRoom : adult);
     childrenSelect.value = child > selectedRoomQuantity * maxPerRoom ? selectedRoomQuantity * maxPerRoom : child;
-
 });
-
 // Handle availability check form submission
 document.getElementById('checkAvailabilityForm').addEventListener('submit', function (e) {
     e.preventDefault();
-
     const checkInDate = $('#checkInDate').val();
     const checkOutDate = $('#checkOutDate').val();
     const roomQuantity = $('#roomQuantity').val();
-
     if (!checkInDate || !checkOutDate) {
         Swal.fire({
             icon: 'error',
@@ -100,7 +83,6 @@ document.getElementById('checkAvailabilityForm').addEventListener('submit', func
         });
         return;
     }
-
     // Show loading state
     Swal.fire({
         icon: 'info',
@@ -112,14 +94,9 @@ document.getElementById('checkAvailabilityForm').addEventListener('submit', func
             Swal.showLoading();
         }
     });
-    console.log('checkInDate:', checkInDate);
-    console.log('checkOutDate:', checkOutDate);
-    console.log('roomQuantity:', roomQuantity);
-
     // Call the Google Apps Script to check availability
     checkAvailability(checkInDate, checkOutDate, roomQuantity);
 });
-
 // Function to check availability using Google Apps Script
 function checkAvailability(checkInDate, checkOutDate, roomQuantity) {
     // Prepare the data to send to Google Apps Script
@@ -129,7 +106,6 @@ function checkAvailability(checkInDate, checkOutDate, roomQuantity) {
         checkOutDate: checkOutDate,
         roomQuantity: roomQuantity,
     };
-
     // Make the AJAX request to Google Apps Script
     NProgress.start();
     NProgress.inc()
@@ -141,35 +117,25 @@ function checkAvailability(checkInDate, checkOutDate, roomQuantity) {
         success: function (response) {
             Swal.close(); // Close loading dialog
             // Check if the response is valid
-
             if (response && response.success) {
-                console.log('Response:', response);
                 // Update available rooms count
                 RoomOptions.available = response.availableRooms || 0;
                 RoomOptions.price = response.roomPrice || 0;
                 RoomOptions.type = response.roomType || 'Standard Room';
                 RoomOptions.description = response.roomDescription || 'Standard Room with all amenities';
-
                 if (RoomOptions.available > 0) {
                     // Show availability status
                     $('#available-rooms-count').text(RoomOptions.available);
-
-
                     // Show booking form
                     $('#bookingForm').fadeIn(500);
-
                     // Render room options
                     renderRoomOptions();
-
                     // Update booking summary
                     updateBookingSummary();
-
                     // Scroll to booking form
                     $('html, body').animate({
                         scrollTop: $('#bookingForm').offset().top - 20
                     }, 500);
-
-
                     // Ensure the availability status is visible after scrolling
                     setTimeout(() => {
                         $('#availability-status').addClass('animate__animated animate__pulse animate__infinite');
@@ -199,7 +165,6 @@ function checkAvailability(checkInDate, checkOutDate, roomQuantity) {
         },
         error: function () {
             Swal.close(); // Close loading dialog
-
             Swal.fire({
                 icon: 'error',
                 title: 'เกิดข้อผิดพลาด',
@@ -213,27 +178,22 @@ function checkAvailability(checkInDate, checkOutDate, roomQuantity) {
         }
     });
 }
-
 // Update booking summary
 function updateBookingSummary() {
     const checkInDate = $('#checkInDate').val();
     const checkOutDate = $('#checkOutDate').val();
     const specialRequests = $('#specialRequests').val();
     const roomQuantity = $('#roomQuantity').val();
-
     if (!checkInDate || !checkOutDate) {
         return;
     }
-
     // Calculate number of nights
     const timeDiff = moment(checkOutDate).diff(moment(checkInDate));
     const nights = Math.ceil(timeDiff / (1000 * 3600 * 24));
-
     // Set values in summary
     $('#summaryCheckIn').text(moment(checkInDate).format('YYYY-MM-DD'));
     $('#summaryCheckOut').text(moment(checkOutDate).format('YYYY-MM-DD'));
     $('#summaryNights').text(nights + ' คืน');
-
     $('#summaryGuests').text(
         $('#adults').val() + ' ผู้ใหญ่, ' +
         $('#children').val() + ' เด็ก'
@@ -241,26 +201,21 @@ function updateBookingSummary() {
     $('#summaryRoomQuantity').text(roomQuantity + ' ห้อง');
     $('#summaryPrice').text('฿' + RoomOptions.price.toLocaleString());
     $('#summaryTotal').text('฿' + (RoomOptions.price * nights * roomQuantity).toLocaleString());
-
     // Update special requests section
     if (specialRequests && specialRequests.trim() !== '') {
         $('#summarySpecialRequest').text(specialRequests);
     } else {
         $('#summarySpecialRequest').text('ไม่มี');
     }
-
     // Show summary
     $('#bookingSummary').show();
 }
-
 // Render room options
 function renderRoomOptions() {
     const roomTemplate = $('#roomTemplate')
     const roomContainer = $('#roomOptions');
-
     // Clear existing room options
     roomContainer.empty();
-
     let roomCard = roomTemplate.html();
     roomCard = roomCard.replace(/{{roomType}}/g, RoomOptions.type);
     roomCard = roomCard.replace(/{{price}}/g, RoomOptions.price.toLocaleString());
@@ -269,7 +224,6 @@ function renderRoomOptions() {
     roomCard = roomCard.replace(/{{description}}/g, RoomOptions.description);
     roomContainer.append(roomCard);
 }
-
 // Handle booking form submission
 document.getElementById('bookingForm').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -283,19 +237,7 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
         });
         return;
     }
-
-    // Show loading state
-    Swal.fire({
-        title: 'กำลังดำเนินการจอง...',
-        text: 'กรุณารอสักครู่',
-        allowOutsideClick: false,
-        customClass: { popup: 'rounded-3' },
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
     let stay = moment($('#checkOutDate').val(), 'YYYY-MM-DD').diff(moment($('#checkInDate').val(), 'YYYY-MM-DD'), 'days');
-    console.log('stay:', stay);
     if (stay < 0) {
         Swal.fire({
             icon: 'error',
@@ -306,7 +248,16 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
         });
         return;
     }
-
+    // Show loading state
+    Swal.fire({
+        title: 'กำลังดำเนินการจอง...',
+        text: 'กรุณารอสักครู่',
+        allowOutsideClick: false,
+        customClass: { popup: 'rounded-3' },
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
     const formData = {
         action: 'createBooking',
         checkInDate: $('#checkInDate').val(),
@@ -326,7 +277,6 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
         'g-recaptcha-response': grecaptcha.getResponse(),
         'check-booking-endpoint': location.href.replace('/index.html', '/check-booking.html')
     };
-
     // Make the AJAX request to Google Apps Script to create the booking
     NProgress.start();
     NProgress.inc()
@@ -336,7 +286,6 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
         data: formData,
         success: function (response) {
             Swal.close(); // Close loading dialog
-
             if (response && response.success) {
                 // Show success message with booking ID
                 Swal.fire({
@@ -364,7 +313,6 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
         },
         error: function () {
             Swal.close(); // Close loading dialog
-
             Swal.fire({
                 icon: 'error',
                 title: 'เกิดข้อผิดพลาด',
@@ -378,11 +326,9 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
         }
     });
 });
-
 // Update guest selection
 document.getElementById('adults').addEventListener('change', updateBookingSummary);
 document.getElementById('children').addEventListener('change', updateBookingSummary);
-
 // Initialize and configure the advertisement carousel
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize the carousel with Bootstrap's carousel method
@@ -395,13 +341,11 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 function verifyRecaptcha() {
     const recaptchaResponse = grecaptcha.getResponse();
-    console.log(recaptchaResponse);
     if (recaptchaResponse.length === 0) {
         return false; // reCAPTCHA not verified
     }
     return true; // reCAPTCHA verified
 }
-
 function onRecaptchaSuccess(token) {
     $('.btn-book').show();
 }
