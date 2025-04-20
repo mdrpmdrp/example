@@ -79,21 +79,7 @@ function handleCheckAvailability(params) {
         let room_detail_sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Room Detail')
         let room_detail_data = room_detail_sheet.getRange(2, 1, 1, 2).getValues()[0];
         let room_rate = room_detail_sheet.getRange(2, 4, room_detail_sheet.getLastRow(), 6).getDisplayValues().filter(row => row[0] != '');
-
-        let checkIn_date = new Date(checkInDate);
-        let checkOut_date = new Date(checkOutDate);
-        let dates_array = []
-        while (checkIn_date < checkOut_date) {
-            let index = room_rate.findIndex((item) => {
-                return item[0] == checkInDate
-            });
-            if (index != -1) {
-                dates_array.push(room_rate[index]);
-            }
-            checkIn_date.setDate(checkIn_date.getDate() + 1);
-            checkInDate = Utilities.formatDate(checkIn_date, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-        }
-
+        let dates_array = getBookingDateRange(checkInDate, checkOutDate, room_rate);
         if (dates_array.length == 0) {
             return { success: false, message: 'ไม่พบห้องว่างในช่วงวันที่เลือก กรุณาเลือกวันที่อื่น' };
         }
@@ -118,6 +104,36 @@ function handleCheckAvailability(params) {
     } catch (error) {
         return { success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบความพร้อมใช้งาน: ' + error.message };
     }
+}
+
+/**
+ * 
+ * @param {string} checkInDate - Check-in date in 'yyyy-MM-dd' format
+ * @param {string} checkOutDate - Check-out date in 'yyyy-MM-dd' format
+ * @param {Array} room_rate - Array of room availability data
+ * @returns 
+ */
+function getBookingDateRange(checkInDate, checkOutDate, room_rate) {
+    if (!room_rate) {
+        let room_detail_sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Room Detail')
+        room_rate = room_detail_sheet.getRange(2, 4, room_detail_sheet.getLastRow(), 6).getDisplayValues().filter(row => row[0] != '');
+    }
+
+    let checkIn_date = new Date(checkInDate);
+    let checkOut_date = new Date(checkOutDate);
+    let dates_array = []
+    while (checkIn_date < checkOut_date) {
+        let index = room_rate.findIndex((item) => {
+            return item[0] == checkInDate
+        });
+        if (index != -1) {
+            dates_array.push(room_rate[index]);
+        }
+        checkIn_date.setDate(checkIn_date.getDate() + 1);
+        checkInDate = Utilities.formatDate(checkIn_date, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    }
+
+    return dates_array;
 }
 
 /**
@@ -239,9 +255,7 @@ function handleCreateBooking(params) {
         }
 
         // Check if rooms are available
-        const checkIn = new Date(params.checkInDate);
-        const checkOut = new Date(params.checkOutDate);
-        const availableRooms = getAvailableRooms(checkIn, checkOut);
+        const availableRooms = getAvailableRooms(params.roomQuantity, getBookingDateRange(params.checkInDate, params.checkOutDate));
 
         if (availableRooms <= 0) {
             lock.releaseLock();
@@ -250,7 +264,6 @@ function handleCreateBooking(params) {
 
         // Generate booking ID
         const bookingId = generateBookingId();
-        let room_detail = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Room Detail').getRange(2, 1, 1, 4).getValues()[0];
 
         // Create booking object
         const booking = {
@@ -268,9 +281,9 @@ function handleCreateBooking(params) {
             createdAt: new Date(),
             stay: params.stay || '1',
             roomQuantity: params.roomQuantity || 1,
-            roomType: room_detail[0],
-            roomPrice: room_detail[2],
-            room_detail: room_detail[3],
+            roomType: params.roomType || 'Standard Room',
+            roomPrice: params.roomPrice || 0,
+            room_detail: params.room_detail || '',
             check_endpoint: params['check-booking-endpoint']
         };
 
@@ -522,7 +535,8 @@ function handleSearchBookingByEmail(params) {
         }
 
         // Sort bookings by check-in date (newest first)
-        matchingBookings.sort((a, b) => new Date(b.checkInDate) - new Date(a.checkInDate));
+        matchingBookings
+        .sort((a, b) => new Date(b.checkInDate) - new Date(a.checkInDate));
 
         return {
             success: true,
@@ -762,11 +776,11 @@ function sendBookingConfirmationEmail(booking) {
                     </div>
                     <div class="detail-row">
                         <strong>วันเช็คอิน:  </strong>&nbsp;&nbsp;&nbsp;
-                        <span>${Utilities.formatDate(checkInDate, Session.getScriptTimeZone(), "EEEE, MMMM d, yyyy")}</span>
+                        <span>${Utilities.formatDate(checkInDate, Session.getScriptTimeZone(), "yyyy-MM-dd")}</span>
                     </div>
                     <div class="detail-row">
                         <strong>วันเช็คเอาท์:  </strong>&nbsp;&nbsp;&nbsp;
-                        <span>${Utilities.formatDate(checkOutDate, Session.getScriptTimeZone(), "EEEE, MMMM d, yyyy")}</span>
+                        <span>${Utilities.formatDate(checkOutDate, Session.getScriptTimeZone(), "yyyy-MM-dd")}</span>
                     </div>
                     <div class="detail-row">
                         <strong>ระยะเวลาพักอาศัย:  </strong>&nbsp;&nbsp;&nbsp;
