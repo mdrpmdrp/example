@@ -32,8 +32,6 @@ function doGet(e) {
 
     if (action === 'checkAvailability') {
         result = handleCheckAvailability(e.parameter);
-    } else if (action === 'searchBooking') {
-        result = handleSearchBooking(e.parameter);
     } else if (action === 'searchBookingByEmail') {
         result = handleSearchBookingByEmail(e.parameter);
     } else {
@@ -322,6 +320,8 @@ function saveBooking(booking) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let bookingsSheet = ss.getSheetByName('booking');
     let newrow = bookingsSheet.getLastRow() + 1;
+    let perNight = booking.roomPrice;
+    let totalPrice = perNight * booking.stay * booking.roomQuantity;
     let numberFormats = [[
         '@', // Booking ID
         'yyyy-MM-dd HH:mm:ss', // Created At
@@ -335,6 +335,8 @@ function saveBooking(booking) {
         '@', // Special Requests
         '0', // Stay
         '0', // Room Quantity
+        '0', // Room Price
+        '0', // Total Price
         '@' // Status
     ]];
     bookingsSheet.getRange(newrow, 1, 1, numberFormats[0].length)
@@ -352,6 +354,8 @@ function saveBooking(booking) {
             booking.specialRequests,
             booking.stay,
             booking.roomQuantity,
+            perNight,
+            totalPrice,
             booking.status
         ]]);
 
@@ -398,75 +402,6 @@ function verifyCaptcha(params) {
 }
 
 /**
- * Handle the search booking action
- * @param {Object} params - The request parameters
- * @return {Object} The search result
- */
-function handleSearchBooking(params) {
-    try {
-        // Get booking ID from parameters
-        const bookingId = params.bookingId;
-
-        // Validate booking ID
-        if (!bookingId) {
-            return { success: false, message: 'กรุณากรอกหมายเลขการจอง' };
-        }
-
-        // Get the spreadsheet and the bookings sheet
-        const ss = SpreadsheetApp.getActiveSpreadsheet();
-        const bookingsSheet = ss.getSheetByName('Bookings');
-
-        if (!bookingsSheet) {
-            return { success: false, message: 'เกิดข้อผิดพลาดในการเข้าถึงข้อมูลการจอง' };
-        }
-
-        // Get all bookings
-        const dataRange = bookingsSheet.getDataRange();
-        const bookingsData = dataRange.getValues();
-
-        // Find the booking with the matching ID
-        let bookingRow = null;
-        for (let i = 1; i < bookingsData.length; i++) {
-            if (bookingsData[i][0] === bookingId) {
-                bookingRow = bookingsData[i];
-                break;
-            }
-        }
-
-        // If booking not found
-        if (!bookingRow) {
-            return { success: false, message: 'ไม่พบข้อมูลการจองที่ตรงกัน' };
-        }
-        let room_detail = ss.getSheetByName('Room Detail').getRange(2, 1, 1, 4).getValues()[0];
-
-        // Extract booking details
-        const booking = {
-            bookingId: bookingRow[0],
-            checkInDate: bookingRow[1],
-            checkOutDate: bookingRow[2],
-            adults: bookingRow[3],
-            children: bookingRow[4],
-            firstName: bookingRow[5],
-            lastName: bookingRow[6],
-            email: bookingRow[7],
-            phone: bookingRow[8],
-            specialRequests: bookingRow[9],
-            status: bookingRow[10].toLowerCase(),
-            roomType: room_detail[0],
-            roomPrice: room_detail[2],
-            room_detail: room_detail[3]
-        };
-
-        return {
-            success: true,
-            data: booking
-        };
-    } catch (error) {
-        return { success: false, message: 'เกิดข้อผิดพลาดในการค้นหาการจอง: ' + error.message };
-    }
-}
-
-/**
  * Handle search booking by email action
  * @param {Object} params - The request parameters
  * @return {Object} The search result
@@ -484,7 +419,7 @@ function handleSearchBookingByEmail(params) {
         // Get the spreadsheet and the bookings sheet
         const ss = SpreadsheetApp.getActiveSpreadsheet();
         let bookingsSheet = ss.getSheetByName('booking');
-        let room_detail = ss.getSheetByName('Room Detail').getRange(2, 1, 1, 4).getValues()[0];
+        let room_detail = ss.getSheetByName('Room Detail').getRange(2, 1, 1, 2).getValues()[0];
 
         if (!bookingsSheet) {
             return { success: false, message: 'Bookings sheet not found' };
@@ -513,10 +448,11 @@ function handleSearchBookingByEmail(params) {
                     specialRequests: bookingsData[i][9] || '',
                     stay: bookingsData[i][10] || 0,
                     roomQuantity: bookingsData[i][11] || 1,
-                    status: bookingsData[i][12] || '',
+                    status: bookingsData[i][14] || '',
                     roomType: room_detail[0] || '',
-                    pricePerNight: room_detail[2] || 0,
-                    room_detail: room_detail[3] || '',
+                    pricePerNight: bookingsData[i][12] || 0,
+                    totalPrice: bookingsData[i][13] || 0,
+                    room_detail: room_detail[1] || '',
                     // Extract first and last name from full name
                     firstName: (bookingsData[i][2] || '').split(' ')[0] || '',
                     lastName: (bookingsData[i][2] || '').split(' ').slice(1).join(' ') || ''
@@ -603,7 +539,7 @@ function handleCancelBooking(params) {
 
 
         // Update booking status to 'cancelled'
-        bookingsSheet.getRange(bookingRow, 13).setValue('Cancelled'); // Adjust column index based on your sheet structure
+        bookingsSheet.getRange(bookingRow, 15).setValue('Cancelled'); // Adjust column index based on your sheet structure
 
         // Send cancellation email
         const booking = {

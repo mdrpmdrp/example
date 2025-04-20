@@ -77,7 +77,7 @@ document.getElementById('roomQuantity').addEventListener('change', function () {
         if (1 === 0) continue
         adultsSelect.appendChild(option);
     }
-    adultsSelect.value = adult > selectedRoomQuantity * maxPerRoom ? selectedRoomQuantity * maxPerRoom : adult;
+    adultsSelect.value = adult < selectedRoomQuantity ? selectedRoomQuantity : (adult > selectedRoomQuantity * maxPerRoom ? selectedRoomQuantity * maxPerRoom : adult);
     childrenSelect.value = child > selectedRoomQuantity * maxPerRoom ? selectedRoomQuantity * maxPerRoom : child;
 
 });
@@ -240,7 +240,7 @@ function updateBookingSummary() {
     );
     $('#summaryRoomQuantity').text(roomQuantity + ' ห้อง');
     $('#summaryPrice').text('฿' + RoomOptions.price.toLocaleString());
-    $('#summaryTotal').text('฿' + (RoomOptions.price * nights).toLocaleString());
+    $('#summaryTotal').text('฿' + (RoomOptions.price * nights * roomQuantity).toLocaleString());
 
     // Update special requests section
     if (specialRequests && specialRequests.trim() !== '') {

@@ -483,14 +483,14 @@ $(document).ready(function () {
                             <i class="bi bi-buildings text-secondary me-2 fs-5"></i>
                             <div>
                                 <small class="text-muted d-block">จำนวนห้อง</small>
-                                <strong>${booking.roomQuantity || 1} ห้อง</strong>
+                                <strong>${booking.roomQuantity} ห้อง</strong>
                             </div>
                         </div>
                         <div class="d-flex align-items-center">
                             <i class="bi bi-cash-stack text-success me-2 fs-5"></i>
                             <div>
                                 <small class="text-muted d-block">ราคารวม</small>
-                                <strong class="text-danger fw-bold">฿${(parseInt(booking.pricePerNight || 1200) * nights).toLocaleString()}</strong>
+                                <strong class="text-danger fw-bold">฿${(parseInt(booking.pricePerNight) * nights * booking.roomQuantity).toLocaleString()}</strong>
                             </div>
                         </div>
                     </div>
@@ -560,7 +560,7 @@ $(document).ready(function () {
 
         $('#roomType').text(booking.roomType || 'Standard');
         $('#pricePerNight').text(`฿${parseInt(booking.pricePerNight || 1200).toLocaleString()}`);
-        $('#totalPrice').text(`฿${(parseInt(booking.pricePerNight || 1200) * nights).toLocaleString()}`);
+        $('#totalPrice').text(`฿${(parseInt(booking.pricePerNight || 1200) * nights * booking.roomQuantity).toLocaleString()}`);
 
         $('#email').text(booking.email);
         $('#phone').text(booking.phone);
