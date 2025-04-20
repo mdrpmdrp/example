@@ -168,7 +168,12 @@ function doPost(e) {
     let available_data = {}
     available_data['available'] = dates_array.length <= 0 ? 0 : Math.min(...dates_array.map((item) => item.remain));
     available_data['available'] = available_data.available < roomQuantity ? 0 : available_data.available;
-    available_data['roomRate'] = parseFloat(dates_array[0].rate);
+    available_data['roomRate'] = dates_array.map((acc, item) => {
+      return {
+        date: acc.date,
+        price: acc.rate,
+      }
+    })
   
     return available_data;
     // const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -238,11 +243,11 @@ function doPost(e) {
     }
   
     try {
-      const recaptchaResponse = verifyCaptcha(params);
-      if (!recaptchaResponse.success) {
-        lock.releaseLock();
-        return { success: false, message: 'ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่อีกครั้ง' };
-      }
+      // const recaptchaResponse = verifyCaptcha(params);
+      // if (!recaptchaResponse.success) {
+      //   lock.releaseLock();
+      //   return { success: false, message: 'ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่อีกครั้ง' };
+      // }
       // Verify required fields
       const requiredFields = ['checkInDate', 'checkOutDate', 'firstName', 'lastName', 'email', 'phone'];
       for (const field of requiredFields) {
@@ -280,7 +285,7 @@ function doPost(e) {
         stay: params.stay || '1',
         roomQuantity: params.roomQuantity || 1,
         roomType: params.roomType || 'Standard Room',
-        roomPrice: params.roomPrice || 0,
+        roomPrice: params.roomPrice ? JSON.parse(params.roomPrice) : '0',
         room_detail: params.room_detail || '',
         check_endpoint: params['check-booking-endpoint']
       };
@@ -320,8 +325,12 @@ function doPost(e) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let bookingsSheet = ss.getSheetByName('booking');
     let newrow = bookingsSheet.getLastRow() + 1;
-    let perNight = booking.roomPrice;
-    let totalPrice = perNight * booking.stay * booking.roomQuantity;
+    let perNight = booking.roomPrice.map((item) => {
+      return item.date + ": " + item.price
+    }).join('\n');
+    let totalPrice = booking.roomPrice.reduce((acc, item) => {
+      return acc + Number(item.price)
+    }, 0);
     let numberFormats = [[
       '@', // Booking ID
       'yyyy-MM-dd HH:mm:ss', // Created At
@@ -335,7 +344,7 @@ function doPost(e) {
       '@', // Special Requests
       '0', // Stay
       '0', // Room Quantity
-      '0', // Room Price
+      '@', // Room Price
       '0', // Total Price
       '@' // Status
     ]];
@@ -584,211 +593,217 @@ function doPost(e) {
     const checkInDate = new Date(booking.checkInDate);
     const checkOutDate = new Date(booking.checkOutDate);
     const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-    const roomTotalPrice = nights * booking.roomPrice * booking.roomQuantity;
+    const roomTotalPrice = booking.roomPrice.reduce((acc, item) => {
+      return acc + Number(item.price)
+    }, 0);
   
     const subject = `🏨 Booking Confirmation - ${booking.bookingId}`;
   
     // Create HTML email body with professional formatting
     const htmlBody = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>ยืนยันได้รับข้อมูลการจอง</title>
-          <style>
-              body {
-                  font-family: Arial, sans-serif;
-                  line-height: 1.6;
-                  color: #333333;
-                  max-width: 600px;
-                  margin: 0 auto;
-              }
-              .email-container {
-                  border: 1px solid #e9e2d0;
-                  border-radius: 10px;
-                  overflow: hidden;
-              }
-              .email-header {
-                  background-color: #8e784f;
-                  background-image: linear-gradient(45deg, #8e784f, #70603e);
-                  color: white;
-                  padding: 20px;
-                  text-align: center;
-              }
-              .email-header h1 {
-                  margin: 0;
-                  color: white;
-                  font-size: 24px;
-              }
-              .email-body {
-                  padding: 20px;
-                  background-color: #ffffff;
-              }
-              .booking-details {
-                  background-color: #f5f1ea;
-                  border-radius: 8px;
-                  padding: 15px;
-                  margin: 20px 0;
-              }
-              .detail-row {
-                  display: flex;
-                  justify-content: space-between;
-                  margin-bottom: 10px;
-                  border-bottom: 1px solid #e9e2d0;
-                  padding-bottom: 10px;
-              }
-              .detail-row:last-child {
-                  border-bottom: none;
-                  margin-bottom: 0;
-                  padding-bottom: 0;
-              }
-              .price-row {
-                  font-weight: bold;
-                  color: #8e784f;
-              }
-              .total-price {
-                  font-size: 18px;
-                  color: #cc6b5a;
-              }
-              .email-footer {
-                  background-color: #f5f1ea;
-                  padding: 15px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #666;
-              }
-              .button {
-                  background-color: #8e784f;
-                  color: white;
-                  padding: 12px 24px;
-                  text-decoration: none;
-                  border-radius: 5px;
-                  display: inline-block;
-                  margin-top: 20px;
-                  font-weight: bold;
-              }
-              .special-requests {
-                  background-color: #f9f9f9;
-                  border-left: 3px solid #8e784f;
-                  padding: 10px 15px;
-                  margin: 15px 0;
-                  font-style: italic;
-              }
-              .thank-you {
-                  text-align: center;
-                  margin: 20px 0;
-                  color: #8e784f;
-                  font-weight: bold;
-                  font-size: 16px;
-              }
-              .booking-id {
-                  font-family: monospace;
-                  background-color: #f5f1ea;
-                  padding: 5px 10px;
-                  border-radius: 4px;
-                  font-weight: bold;
-                  letter-spacing: 1px;
-              }
-          </style>
-      </head>
-      <body>
-          <div class="email-container">
-              <div class="email-header">
-                  <h1>ยืนยันการจอง</h1>
-                  <p>ขอบคุณที่เลือกใช้บริการโรงแรมของเรา</p>
-              </div>
-              <div class="email-body">
-                  <p>เรียน คุณ${booking.firstName} ${booking.lastName},</p>
-                  
-                  <p>ขอบคุณสำหรับการจองกับเรา เรายินดีที่จะต้อนรับคุณสู่โรงแรมของเรา กรุณาตรวจสอบรายละเอียดการจองด้านล่าง:</p>
-                  
-                  <div class="booking-details">
-                      <div class="detail-row">
-                          <strong>หมายเลขการจอง:  </strong>&nbsp;&nbsp;&nbsp;
-                          <span class="booking-id">${booking.bookingId}</span>
-                      </div>
-                      <div class="detail-row">
-                          <strong>วันเช็คอิน:  </strong>&nbsp;&nbsp;&nbsp;
-                          <span>${Utilities.formatDate(checkInDate, Session.getScriptTimeZone(), "yyyy-MM-dd")}</span>
-                      </div>
-                      <div class="detail-row">
-                          <strong>วันเช็คเอาท์:  </strong>&nbsp;&nbsp;&nbsp;
-                          <span>${Utilities.formatDate(checkOutDate, Session.getScriptTimeZone(), "yyyy-MM-dd")}</span>
-                      </div>
-                      <div class="detail-row">
-                          <strong>ระยะเวลาพักอาศัย:  </strong>&nbsp;&nbsp;&nbsp;
-                          <span>${nights} คืน</span>
-                      </div>
-                      <div class="detail-row">
-                          <strong>จำนวนห้องพัก:  </strong>&nbsp;&nbsp;&nbsp;
-                          <span>${booking.roomQuantity} ห้องมาตรฐาน</span>
-                      </div>
-                      <div class="detail-row">
-                          <strong>ผู้เข้าพัก:  </strong>&nbsp;&nbsp;&nbsp;
-                          <span>ผู้ใหญ่ ${booking.adults} ท่าน${booking.children > 0 ? ', เด็ก ' + booking.children + ' ท่าน' : ''}</span>
-                      </div>
-                      <div class="detail-row price-row">
-                          <strong>ราคาต่อคืน:  </strong>&nbsp;&nbsp;&nbsp;
-                          <span>฿${booking.roomPrice.toLocaleString()}</span>
-                      </div>
-                      <div class="detail-row price-row">
-                          <strong>ราคารวมทั้งหมด:  </strong>&nbsp;&nbsp;&nbsp;
-                          <span class="total-price">฿${roomTotalPrice.toLocaleString()}</span>
-                      </div>
-                  </div>
-                  
-                  ${booking.specialRequests ? `
-                  <p><strong>ความต้องการพิเศษ:  </strong></p>
-                  <div class="special-requests">${booking.specialRequests}</div>
-                  ` : ''}
-                  
-                  <p>หากคุณต้องการเปลี่ยนแปลงการจองหรือมีคำถามใดๆ กรุณาติดต่อแผนกต้อนรับของเราพร้อมแจ้งหมายเลขการจอง หรือตรวจสอบสถานะการจองออนไลน์ได้</p>
-                  
-                  <div style="text-align: center;">
-                      <a href="${booking.check_endpoint}?s=${encodeURIComponent(booking.email)
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ยืนยันได้รับข้อมูลการจอง</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                }
+                .email-container {
+                    border: 1px solid #e9e2d0;
+                    border-radius: 10px;
+                    overflow: hidden;
+                }
+                .email-header {
+                    background-color: #8e784f;
+                    background-image: linear-gradient(45deg, #8e784f, #70603e);
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                }
+                .email-header h1 {
+                    margin: 0;
+                    color: white;
+                    font-size: 24px;
+                }
+                .email-body {
+                    padding: 20px;
+                    background-color: #ffffff;
+                }
+                .booking-details {
+                    background-color: #f5f1ea;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin: 20px 0;
+                }
+                .detail-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 10px;
+                    border-bottom: 1px solid #e9e2d0;
+                    padding-bottom: 10px;
+                }
+                .detail-row:last-child {
+                    border-bottom: none;
+                    margin-bottom: 0;
+                    padding-bottom: 0;
+                }
+                .price-row {
+                    font-weight: bold;
+                    color: #8e784f;
+                }
+                .total-price {
+                    font-size: 18px;
+                    color: #cc6b5a;
+                }
+                .email-footer {
+                    background-color: #f5f1ea;
+                    padding: 15px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: #666;
+                }
+                .button {
+                    background-color: #8e784f;
+                    color: white;
+                    padding: 12px 24px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    display: inline-block;
+                    margin-top: 20px;
+                    font-weight: bold;
+                }
+                .special-requests {
+                    background-color: #f9f9f9;
+                    border-left: 3px solid #8e784f;
+                    padding: 10px 15px;
+                    margin: 15px 0;
+                    font-style: italic;
+                }
+                .thank-you {
+                    text-align: center;
+                    margin: 20px 0;
+                    color: #8e784f;
+                    font-weight: bold;
+                    font-size: 16px;
+                }
+                .booking-id {
+                    font-family: monospace;
+                    background-color: #f5f1ea;
+                    padding: 5px 10px;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    letter-spacing: 1px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="email-container">
+                <div class="email-header">
+                    <h1>ยืนยันการจอง</h1>
+                    <p>ขอบคุณที่เลือกใช้บริการโรงแรมของเรา</p>
+                </div>
+                <div class="email-body">
+                    <p>เรียน คุณ${booking.firstName} ${booking.lastName},</p>
+                    
+                    <p>ขอบคุณสำหรับการจองกับเรา เรายินดีที่จะต้อนรับคุณสู่โรงแรมของเรา กรุณาตรวจสอบรายละเอียดการจองด้านล่าง:</p>
+                    
+                    <div class="booking-details">
+                        <div class="detail-row">
+                            <strong>หมายเลขการจอง:  </strong>&nbsp;&nbsp;&nbsp;
+                            <span class="booking-id">${booking.bookingId}</span>
+                        </div>
+                        <div class="detail-row">
+                            <strong>วันเช็คอิน:  </strong>&nbsp;&nbsp;&nbsp;
+                            <span>${Utilities.formatDate(checkInDate, Session.getScriptTimeZone(), "yyyy-MM-dd")}</span>
+                        </div>
+                        <div class="detail-row">
+                            <strong>วันเช็คเอาท์:  </strong>&nbsp;&nbsp;&nbsp;
+                            <span>${Utilities.formatDate(checkOutDate, Session.getScriptTimeZone(), "yyyy-MM-dd")}</span>
+                        </div>
+                        <div class="detail-row">
+                            <strong>ระยะเวลาพักอาศัย:  </strong>&nbsp;&nbsp;&nbsp;
+                            <span>${nights} คืน</span>
+                        </div>
+                        <div class="detail-row">
+                            <strong>ผู้เข้าพัก:  </strong>&nbsp;&nbsp;&nbsp;
+                            <span>ผู้ใหญ่ ${booking.adults} ท่าน${booking.children > 0 ? ', เด็ก ' + booking.children + ' ท่าน' : ''}</span>
+                        </div>
+                        <div class="detail-row">
+                            <strong>จำนวนห้องพัก:  </strong>&nbsp;&nbsp;&nbsp;
+                            <span>${booking.roomQuantity} ห้องมาตรฐาน</span>
+                        </div>
+                        <div class="detail-row">
+                        <strong>ราคาต่อคืน:  </strong>&nbsp;&nbsp;&nbsp;
+                            <span><ul>${booking.roomPrice.map((item) => {
+      return `<li>${item.date}:&nbsp;&nbsp;&nbsp;&nbsp;฿${Number(item.price).toLocaleString()}</li>`
+    }).join('')}</span>
+                        </div>
+                        <div class="detail-row price-row">
+                            <strong>ราคารวมทั้งหมด:  </strong>&nbsp;&nbsp;&nbsp;
+                            <span class="total-price">฿${roomTotalPrice.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    
+                    ${booking.specialRequests ? `
+                    <p><strong>ความต้องการพิเศษ:  </strong></p>
+                    <div class="special-requests">${booking.specialRequests}</div>
+                    ` : ''}
+                    
+                    <p>หากคุณต้องการเปลี่ยนแปลงการจองหรือมีคำถามใดๆ กรุณาติดต่อแผนกต้อนรับของเราพร้อมแจ้งหมายเลขการจอง หรือตรวจสอบสถานะการจองออนไลน์ได้</p>
+                    
+                    <div style="text-align: center;">
+                        <a href="${booking.check_endpoint}?s=${encodeURIComponent(booking.email)
       }" class="button">ตรวจสอบการจองของคุณ</a>
-                  </div>
-                  
-                  <p class="thank-you">เราหวังว่าจะได้ต้อนรับคุณเร็วๆ นี้!</p>
-              </div>
-              <div class="email-footer">
-                  <p>นี่คืออีเมลอัตโนมัติ กรุณาอย่าตอบกลับอีเมลนี้</p>
-                  <p>© 2025 บริการจองโรงแรม สงวนลิขสิทธิ์</p>
-              </div>
-          </div>
-      </body>
-      </html>
-      `;
+                    </div>
+                    
+                    <p class="thank-you">เราหวังว่าจะได้ต้อนรับคุณเร็วๆ นี้!</p>
+                </div>
+                <div class="email-footer">
+                    <p>นี่คืออีเมลอัตโนมัติ กรุณาอย่าตอบกลับอีเมลนี้</p>
+                    <p>© 2025 บริการจองโรงแรม สงวนลิขสิทธิ์</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        `;
   
     // Create plain text version as fallback
     const plainBody = `
-  เรียน คุณ${booking.firstName} ${booking.lastName},
-  
-  ขอบคุณสำหรับการจองกับเรา เรายินดีที่จะต้อนรับคุณสู่โรงแรมของเรา กรุณาตรวจสอบรายละเอียดการจองด้านล่าง:
-  
-  รายละเอียดการจอง:
-  ---------------
-  หมายเลขการจอง: ${booking.bookingId}
-  วันเช็คอิน: ${Utilities.formatDate(checkInDate, Session.getScriptTimeZone(), "EEEE, MMMM d, yyyy")}
-  วันเช็คเอาท์: ${Utilities.formatDate(checkOutDate, Session.getScriptTimeZone(), "EEEE, MMMM d, yyyy")}
-  ระยะเวลาพักอาศัย: ${nights} คืน
-  จำนวนห้องพัก: ${booking.roomQuantity} ห้องมาตรฐาน
-  ผู้เข้าพัก: ผู้ใหญ่ ${booking.adults} ท่าน${booking.children > 0 ? ', เด็ก ' + booking.children + ' ท่าน' : ''}
-  ราคาต่อคืน: ฿${booking.roomPrice.toLocaleString()}
-  ราคารวมทั้งหมด: ฿${roomTotalPrice.toLocaleString()}
-  
-  ${booking.specialRequests ? `ความต้องการพิเศษ: ${booking.specialRequests}\n` : ''}
-  
-  หากคุณต้องการเปลี่ยนแปลงการจองหรือมีคำถามใดๆ กรุณาติดต่อแผนกต้อนรับของเราพร้อมแจ้งหมายเลขการจอง
-  
-  ตรวจสอบการจองออนไลน์: ${booking.check_endpoint}?s=${encodeURIComponent(booking.email)}
-  
-  เราหวังว่าจะได้ต้อนรับคุณเร็วๆ นี้!
-  
-  นี่คืออีเมลอัตโนมัติ กรุณาอย่าตอบกลับอีเมลนี้
-  © 2025 บริการจองโรงแรม สงวนลิขสิทธิ์
-      `;
+    เรียน คุณ${booking.firstName} ${booking.lastName},
+    
+    ขอบคุณสำหรับการจองกับเรา เรายินดีที่จะต้อนรับคุณสู่โรงแรมของเรา กรุณาตรวจสอบรายละเอียดการจองด้านล่าง:
+    
+    รายละเอียดการจอง:
+    ---------------
+    หมายเลขการจอง: ${booking.bookingId}
+    วันเช็คอิน: ${Utilities.formatDate(checkInDate, Session.getScriptTimeZone(), "EEEE, MMMM d, yyyy")}
+    วันเช็คเอาท์: ${Utilities.formatDate(checkOutDate, Session.getScriptTimeZone(), "EEEE, MMMM d, yyyy")}
+    ผู้เข้าพัก: ผู้ใหญ่ ${booking.adults} ท่าน${booking.children > 0 ? ', เด็ก ' + booking.children + ' ท่าน' : ''}
+    ระยะเวลาพักอาศัย: ${nights} คืน
+    จำนวนห้องพัก: ${booking.roomQuantity} ห้องมาตรฐาน
+    ราคาต่อคืน: ฿${booking.roomPrice.map((item) => {
+      return `${item.date}: ฿${item.price.toLocaleString()}`
+    }).join('\n')}
+    ราคารวมทั้งหมด: ฿${roomTotalPrice.toLocaleString()}
+    
+    ${booking.specialRequests ? `ความต้องการพิเศษ: ${booking.specialRequests}\n` : ''}
+    
+    หากคุณต้องการเปลี่ยนแปลงการจองหรือมีคำถามใดๆ กรุณาติดต่อแผนกต้อนรับของเราพร้อมแจ้งหมายเลขการจอง
+    
+    ตรวจสอบการจองออนไลน์: ${booking.check_endpoint}?s=${encodeURIComponent(booking.email)}
+    
+    เราหวังว่าจะได้ต้อนรับคุณเร็วๆ นี้!
+    
+    นี่คืออีเมลอัตโนมัติ กรุณาอย่าตอบกลับอีเมลนี้
+    © 2025 บริการจองโรงแรม สงวนลิขสิทธิ์
+        `;
   
     // Send email with both HTML and plain text versions
     MailApp.sendEmail({
@@ -808,140 +823,140 @@ function doPost(e) {
   
     // Create HTML email body with professional formatting
     const htmlBody = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>ยืนยันการยกเลิกการจอง</title>
-          <style>
-              body {
-                  font-family: Arial, sans-serif;
-                  line-height: 1.6;
-                  color: #333333;
-                  max-width: 600px;
-                  margin: 0 auto;
-              }
-              .email-container {
-                  border: 1px solid #e9e2d0;
-                  border-radius: 10px;
-                  overflow: hidden;
-              }
-              .email-header {
-                  background-color: #8e784f;
-                  background-image: linear-gradient(45deg, #8e784f, #70603e);
-                  color: white;
-                  padding: 20px;
-                  text-align: center;
-              }
-              .email-header h1 {
-                  margin: 0;
-                  color: white;
-                  font-size: 24px;
-              }
-              .email-body {
-                  padding: 20px;
-                  background-color: #ffffff;
-              }
-              .booking-details {
-                  background-color: #f5f1ea;
-                  border-radius: 8px;
-                  padding: 15px;
-                  margin: 20px 0;
-              }
-              .detail-row {
-                  display: flex;
-                  justify-content: space-between;
-                  margin-bottom: 10px;
-                  border-bottom: 1px solid #e9e2d0;
-                  padding-bottom: 10px;
-              }
-              .detail-row:last-child {
-                  border-bottom: none;
-                  margin-bottom: 0;
-                  padding-bottom: 0;
-              }
-              .price-row {
-                  font-weight: bold;
-                  color: #8e784f;
-              }
-              .total-price {
-                  font-size: 18px;
-                  color: #cc6b5a;
-              }
-              .email-footer {
-                  background-color: #f5f1ea;
-                  padding: 15px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #666;
-              }
-              .button {
-                  background-color: #8e784f;
-                  color: white;
-                  padding: 12px 24px;
-                  text-decoration: none;
-                  border-radius: 5px;
-                  display: inline-block;
-                  margin-top: 20px;
-                  font-weight: bold;
-              }
-              .special-requests {
-                  background-color: #f9f9f9;
-                  border-left: 3px solid #8e784f;
-                  padding: 10px 15px;
-                  margin: 15px 0;
-                  font-style: italic;
-              }
-              .thank-you {
-                  text-align: center;
-                  margin: 20px 0;
-                  color: #8e784f;
-                  font-weight: bold;
-                  font-size: 16px;
-              }
-              .booking-id {
-                  font-family: monospace;
-                  background-color: #f5f1ea;
-                  padding: 5px 10px;
-                  border-radius: 4px;
-                  font-weight: bold;
-                  letter-spacing: 1px;
-              }
-          </style>
-      </head>
-      <body>
-          <div class="email-container">
-              <div class="email-header">
-                  <h1>ยืนยันการยกเลิกการจอง</h1>
-                  <p>ขอบคุณที่เลือกใช้บริการโรงแรมของเรา</p>
-              </div>
-              <div class="email-body">
-                  <p>เรียน คุณ${booking.name},</p>
-                  
-                  <p>เราขอแจ้งให้ทราบว่าการจองของคุณหมายเลข ${booking.bookingId} ได้ถูกยกเลิกเรียบร้อยแล้ว</p>
-                  
-                  <p>หากคุณมีคำถามหรือข้อสงสัยเพิ่มเติม กรุณาติดต่อแผนกต้อนรับของเรา</p>
-                  
-                  <p class="thank-you">เราหวังว่าจะได้ต้อนรับคุณในโอกาสหน้า!</p>
-              </div>
-              <div class="email-footer">
-                  <p>นี่คืออีเมลอัตโนมัติ กรุณาอย่าตอบกลับอีเมลนี้</p>
-                  <p>© 2025 บริการจองโรงแรม สงวนลิขสิทธิ์</p>
-              </div>
-          </div>
-      </body>
-      </html>
-      `;
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ยืนยันการยกเลิกการจอง</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                }
+                .email-container {
+                    border: 1px solid #e9e2d0;
+                    border-radius: 10px;
+                    overflow: hidden;
+                }
+                .email-header {
+                    background-color: #8e784f;
+                    background-image: linear-gradient(45deg, #8e784f, #70603e);
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                }
+                .email-header h1 {
+                    margin: 0;
+                    color: white;
+                    font-size: 24px;
+                }
+                .email-body {
+                    padding: 20px;
+                    background-color: #ffffff;
+                }
+                .booking-details {
+                    background-color: #f5f1ea;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin: 20px 0;
+                }
+                .detail-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 10px;
+                    border-bottom: 1px solid #e9e2d0;
+                    padding-bottom: 10px;
+                }
+                .detail-row:last-child {
+                    border-bottom: none;
+                    margin-bottom: 0;
+                    padding-bottom: 0;
+                }
+                .price-row {
+                    font-weight: bold;
+                    color: #8e784f;
+                }
+                .total-price {
+                    font-size: 18px;
+                    color: #cc6b5a;
+                }
+                .email-footer {
+                    background-color: #f5f1ea;
+                    padding: 15px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: #666;
+                }
+                .button {
+                    background-color: #8e784f;
+                    color: white;
+                    padding: 12px 24px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    display: inline-block;
+                    margin-top: 20px;
+                    font-weight: bold;
+                }
+                .special-requests {
+                    background-color: #f9f9f9;
+                    border-left: 3px solid #8e784f;
+                    padding: 10px 15px;
+                    margin: 15px 0;
+                    font-style: italic;
+                }
+                .thank-you {
+                    text-align: center;
+                    margin: 20px 0;
+                    color: #8e784f;
+                    font-weight: bold;
+                    font-size: 16px;
+                }
+                .booking-id {
+                    font-family: monospace;
+                    background-color: #f5f1ea;
+                    padding: 5px 10px;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    letter-spacing: 1px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="email-container">
+                <div class="email-header">
+                    <h1>ยืนยันการยกเลิกการจอง</h1>
+                    <p>ขอบคุณที่เลือกใช้บริการโรงแรมของเรา</p>
+                </div>
+                <div class="email-body">
+                    <p>เรียน คุณ${booking.name},</p>
+                    
+                    <p>เราขอแจ้งให้ทราบว่าการจองของคุณหมายเลข ${booking.bookingId} ได้ถูกยกเลิกเรียบร้อยแล้ว</p>
+                    
+                    <p>หากคุณมีคำถามหรือข้อสงสัยเพิ่มเติม กรุณาติดต่อแผนกต้อนรับของเรา</p>
+                    
+                    <p class="thank-you">เราหวังว่าจะได้ต้อนรับคุณในโอกาสหน้า!</p>
+                </div>
+                <div class="email-footer">
+                    <p>นี่คืออีเมลอัตโนมัติ กรุณาอย่าตอบกลับอีเมลนี้</p>
+                    <p>© 2025 บริการจองโรงแรม สงวนลิขสิทธิ์</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        `;
     // Create plain text version as fallback
     const plainBody = `
-  เรียน คุณ${booking.name},
-  เราขอแจ้งให้ทราบว่าการจองของคุณหมายเลข ${booking.bookingId} ได้ถูกยกเลิกเรียบร้อยแล้ว
-  หากคุณมีคำถามหรือข้อสงสัยเพิ่มเติม กรุณาติดต่อแผนกต้อนรับของเรา
-  เราหวังว่าจะได้ต้อนรับคุณในโอกาสหน้า!
-  นี่คืออีเมลอัตโนมัติ กรุณาอย่าตอบกลับอีเมลนี้
-  © 2025 บริการจองโรงแรม สงวนลิขสิทธิ์
-      `;
+    เรียน คุณ${booking.name},
+    เราขอแจ้งให้ทราบว่าการจองของคุณหมายเลข ${booking.bookingId} ได้ถูกยกเลิกเรียบร้อยแล้ว
+    หากคุณมีคำถามหรือข้อสงสัยเพิ่มเติม กรุณาติดต่อแผนกต้อนรับของเรา
+    เราหวังว่าจะได้ต้อนรับคุณในโอกาสหน้า!
+    นี่คืออีเมลอัตโนมัติ กรุณาอย่าตอบกลับอีเมลนี้
+    © 2025 บริการจองโรงแรม สงวนลิขสิทธิ์
+        `;
   
     // Send email with both HTML and plain text versions
     MailApp.sendEmail({

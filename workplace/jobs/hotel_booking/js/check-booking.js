@@ -360,6 +360,7 @@ $(document).ready(function () {
             </div>
         `);
         // Add bookings for this group
+        
         bookings.forEach(booking => {
             const bookingElement = $(document.importNode($('#bookingCardTemplate').get(0).content, true));
             // Set booking ID and created date
@@ -388,6 +389,7 @@ $(document).ready(function () {
             const nights = checkOutDate.diff(checkInDate, 'days');
             // Fill card body information
             const cardBody = bookingElement.find('.card-body');
+            booking.totalPrice = booking.pricePerNight.split('\n').map(room => parseInt(room.split(':')[1].trim())).reduce((a, b) => a + b, 0);
             cardBody.html(`
                 <div class="row g-3">
                     <div class="col-md-6">
@@ -432,7 +434,7 @@ $(document).ready(function () {
                             <i class="bi bi-cash-stack text-success me-2 fs-5"></i>
                             <div>
                                 <small class="text-muted d-block">ราคารวม</small>
-                                <strong class="text-danger fw-bold">฿${(parseInt(booking.pricePerNight) * nights * booking.roomQuantity).toLocaleString()}</strong>
+                                <strong class="text-danger fw-bold">฿${booking.totalPrice.toLocaleString()}</strong>
                             </div>
                         </div>
                     </div>
@@ -488,8 +490,13 @@ $(document).ready(function () {
         }
         $('#guests').text(guestsText);
         $('#roomType').text(booking.roomType || 'Standard');
-        $('#pricePerNight').text(`฿${parseInt(booking.pricePerNight || 1200).toLocaleString()}`);
-        $('#totalPrice').text(`฿${(parseInt(booking.pricePerNight || 1200) * nights * booking.roomQuantity).toLocaleString()}`);
+        $('#pricePerNight').html(booking.pricePerNight.split('\n').map(room => room.split(':')).map(e =>{
+            let date = moment(e[0].trim(), 'YYYY-MM-DD').format('YYYY-MM-DD');
+            let price = e[1].trim().replace('฿', '').replace(',', '');
+            return `<li class="list-group-item"><div class="d-flex justify-content-between"><span>${date}</span><span>฿${Number(price).toLocaleString()}</span></div></li>`;
+        }).join(''))
+        $('#roomQuantity').text(booking.roomQuantity + ' ห้อง');
+        $('#totalPrice').text(`฿${parseInt(booking.totalPrice).toLocaleString()}`);
         $('#email').text(booking.email);
         $('#phone').text(booking.phone);
         $('#specialRequests').text(booking.specialRequests && booking.specialRequests.trim() !== '' ?

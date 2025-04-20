@@ -123,6 +123,7 @@ function checkAvailability(checkInDate, checkOutDate, roomQuantity) {
                 RoomOptions.price = response.roomPrice || 0;
                 RoomOptions.type = response.roomType || 'Standard Room';
                 RoomOptions.description = response.roomDescription || 'Standard Room with all amenities';
+                
                 if (RoomOptions.available > 0) {
                     // Show availability status
                     $('#available-rooms-count').text(RoomOptions.available);
@@ -198,9 +199,13 @@ function updateBookingSummary() {
         $('#adults').val() + ' ผู้ใหญ่, ' +
         $('#children').val() + ' เด็ก'
     );
-    $('#summaryRoomQuantity').text(roomQuantity + ' ห้อง');
-    $('#summaryPrice').text('฿' + RoomOptions.price.toLocaleString());
-    $('#summaryTotal').text('฿' + (RoomOptions.price * nights * roomQuantity).toLocaleString());
+    $('#summaryRoomQuantity').text(roomQuantity + ' ห้อง')
+    $('#summaryPriceList').html(RoomOptions.price.map(e =>{
+        let date = new Date(e.date);
+        let price = e.price.toLocaleString();
+        return `<li class="list-group-item"><div class="d-flex justify-content-between"><span>${moment(date).format('YYYY-MM-DD')}</span><span>฿${Number(price).toLocaleString()}</span></div></li>`;
+    }).join(''));
+    $('#summaryTotal').text('฿' + RoomOptions.price.reduce((a, b) => a + Number(b.price), 0).toLocaleString());
     // Update special requests section
     if (specialRequests && specialRequests.trim() !== '') {
         $('#summarySpecialRequest').text(specialRequests);
@@ -217,8 +222,6 @@ function renderRoomOptions() {
     // Clear existing room options
     roomContainer.empty();
     let roomCard = roomTemplate.html();
-    roomCard = roomCard.replace(/{{roomType}}/g, RoomOptions.type);
-    roomCard = roomCard.replace(/{{price}}/g, RoomOptions.price.toLocaleString());
     roomCard = roomCard.replace(/{{available}}/g, RoomOptions.available);
     roomCard = roomCard.replace(/{{image}}/g, "https://img2.pic.in.th/pic/30ba58d5-91ba-44cd-8ee5-1dd666b18703.jpg");
     roomCard = roomCard.replace(/{{description}}/g, RoomOptions.description);
@@ -271,12 +274,14 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
         specialRequests: $('#specialRequests').val(),
         roomQuantity: $('#roomQuantity').val(),
         roomType: RoomOptions.type,
-        roomPrice: RoomOptions.price,
+        roomPrice:JSON.stringify( RoomOptions.price),
         room_detail: RoomOptions.description,
         stay: stay,
         'g-recaptcha-response': grecaptcha.getResponse(),
         'check-booking-endpoint': location.href.replace('/index.html', '/check-booking.html')
     };
+
+    
     // Make the AJAX request to Google Apps Script to create the booking
     NProgress.start();
     NProgress.inc()
@@ -299,7 +304,7 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
                     customClass: { popup: 'rounded-3' }
                 }).then((result) => {
                     // Redirect to check booking page with the booking ID
-                    window.location.href = `check-booking.html?id=${response.bookingId}`;
+                    window.location.href = `check-booking.html?s=${encodeURIComponent(formData.email)}`;
                 });
             } else {
                 Swal.fire({
