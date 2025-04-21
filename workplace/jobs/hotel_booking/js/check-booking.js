@@ -1,5 +1,6 @@
 var booking_data
 document.addEventListener("DOMContentLoaded", function () {
+    AOS.init() 
     NProgress.start();
     NProgress.inc()
 });
@@ -333,6 +334,7 @@ $(document).ready(function () {
         }, 500);
     }
     // Function to append a group of bookings with header
+    let booking_count = 1
     function appendBookingGroup(groupTitle, titleClass, bookings) {
         // Create unique ID for this group
         const groupId = `booking-group-${titleClass.replace('text-', '')}`;
@@ -363,6 +365,9 @@ $(document).ready(function () {
         
         bookings.forEach(booking => {
             const bookingElement = $(document.importNode($('#bookingCardTemplate').get(0).content, true));
+            bookingElement.attr('id', `booking-${booking.bookingId}`);
+          
+            
             // Set booking ID and created date
             bookingElement.find('.booking-id').text(booking.bookingId);
             bookingElement.find('.created-date').text(moment(booking.createdAt).format('YYYY-MM-DD'));
@@ -386,10 +391,10 @@ $(document).ready(function () {
                 statusIndicator.addClass('bg-danger').css({ 'width': '10px', 'height': '40px', 'border-radius': '3px' });
             }
             const checkOutDate = moment(booking.checkOutDate);
-            const nights = checkOutDate.diff(checkInDate, 'days');
+            const nights = checkOutDate.get('dayOfYear') - checkInDate.get('dayOfYear');
             // Fill card body information
             const cardBody = bookingElement.find('.card-body');
-            booking.totalPrice = booking.pricePerNight.split('\n').map(room => parseInt(room.split(':')[1].trim())).reduce((a, b) => a + b, 0);
+            booking.totalPrice = booking.pricePerNight.split('\n').map(room => parseInt(room.split(':')[1].trim())).reduce((a, b) => a + b, 0) * nights
             cardBody.html(`
                 <div class="row g-3">
                     <div class="col-md-6">
@@ -451,6 +456,14 @@ $(document).ready(function () {
             });
             $(`#${groupId} .booking-items`).append(bookingElement);
         });
+        $(`#${groupId} .booking-items .col-md-12`).each((index, element) => {
+            console.log(index, element);
+            if(index % 2 === 0) {
+                $(element).attr('data-aos', 'fade-right');
+            }else{
+                $(element).attr('data-aos', 'fade-left');
+            }
+        })
         // Add event listener for group header icon rotation
         $(`.group-header[data-bs-target="#${groupId}"]`).on('click', function () {
             const icon = $(this).find('i.bi');
@@ -480,7 +493,7 @@ $(document).ready(function () {
         }
         const checkInDate = moment(booking.checkInDate);
         const checkOutDate = moment(booking.checkOutDate);
-        const nights = checkOutDate.diff(checkInDate, 'days');
+        const nights = checkOutDate.get('dayOfYear') - checkInDate.get('dayOfYear');
         $('#checkIn').text(checkInDate.format('YYYY-MM-DD'));
         $('#checkOut').text(checkOutDate.format('YYYY-MM-DD'));
         $('#nights').text(nights + ' คืน');

@@ -205,7 +205,7 @@ function updateBookingSummary() {
         let price = e.price.toLocaleString();
         return `<li class="list-group-item"><div class="d-flex justify-content-between"><span>${moment(date).format('YYYY-MM-DD')}</span><span>฿${Number(price).toLocaleString()}</span></div></li>`;
     }).join(''));
-    $('#summaryTotal').text('฿' + RoomOptions.price.reduce((a, b) => a + Number(b.price), 0).toLocaleString());
+    $('#summaryTotal').text('฿' + (RoomOptions.price.reduce((a, b) => a + Number(b.price), 0) * Number(roomQuantity)).toLocaleString());
     // Update special requests section
     if (specialRequests && specialRequests.trim() !== '') {
         $('#summarySpecialRequest').text(specialRequests);
