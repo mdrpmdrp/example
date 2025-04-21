@@ -25,6 +25,9 @@ $(document).ready(function () {
             });
             return;
         }
+        $('#noResults').hide();
+        $('#bookingsList').hide();
+        $('#bookingDetails').hide();
         // Show loading message
         Swal.fire({
             title: 'กำลังค้นหา...',
@@ -394,7 +397,7 @@ $(document).ready(function () {
             const nights = checkOutDate.get('dayOfYear') - checkInDate.get('dayOfYear');
             // Fill card body information
             const cardBody = bookingElement.find('.card-body');
-            booking.totalPrice = booking.pricePerNight.split('\n').map(room => parseInt(room.split(':')[1].trim())).reduce((a, b) => a + b, 0) * nights
+            booking.totalPrice = booking.pricePerNight.split('\n').map(room => parseInt(room.split(':')[1].trim())).reduce((a, b) => a + b, 0) * booking.roomQuantity
             cardBody.html(`
                 <div class="row g-3">
                     <div class="col-md-6">

@@ -330,7 +330,7 @@ function doPost(e) {
     }).join('\n');
     let totalPrice = booking.roomPrice.reduce((acc, item) => {
       return acc + Number(item.price)
-    }, 0) * Number(booking.stay)
+    }, 0) * Number(booking.roomQuantity)
     let numberFormats = [[
       '@', // Booking ID
       'yyyy-MM-dd HH:mm:ss', // Created At
@@ -595,7 +595,7 @@ function doPost(e) {
     const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
     const roomTotalPrice = booking.roomPrice.reduce((acc, item) => {
       return acc + Number(item.price)
-    }, 0) * Number(booking.stay);
+    }, 0) * Number(booking.roomQuantity);
   
     const subject = `🏨 Booking Confirmation - ${booking.bookingId}`;
   
