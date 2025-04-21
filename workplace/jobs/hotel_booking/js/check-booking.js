@@ -460,7 +460,7 @@ $(document).ready(function () {
             $(`#${groupId} .booking-items`).append(bookingElement);
         });
         $(`#${groupId} .booking-items .col-md-12`).each((index, element) => {
-            console.log(index, element);
+            
             if(index % 2 === 0) {
                 $(element).attr('data-aos', 'fade-right');
             }else{
