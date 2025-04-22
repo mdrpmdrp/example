@@ -6,6 +6,16 @@ const RoomOptions = {
     price: 1200,
     available: 0 // Will be updated from Google Sheets
 };
+
+
+const urlParams = new URLSearchParams(window.location.search);
+const emailParam = urlParams.get('s');
+if (emailParam) {
+    let pathname = window.location.pathname
+    if (pathname.includes['index.html/']) pathname = pathname.replace('index.html/', '')
+    window.open(location.origin + location.pathname + 'check-booking.html?s=' + encodeURIComponent(emailParam), '_self')
+    // window.open(location.href.split('index.html')[0] + 'check-booking.html?s=' + encodeURIComponent(emailParam), '_self')
+}
 // Update booking summary immediately to show default selection
 document.addEventListener('DOMContentLoaded', function () {
     NProgress.start();
@@ -123,7 +133,7 @@ function checkAvailability(checkInDate, checkOutDate, roomQuantity) {
                 RoomOptions.price = response.roomPrice || 0;
                 RoomOptions.type = response.roomType || 'Standard Room';
                 RoomOptions.description = response.roomDescription || 'Standard Room with all amenities';
-                
+
                 if (RoomOptions.available > 0) {
                     // Show availability status
                     $('#available-rooms-count').text(RoomOptions.available);
@@ -200,7 +210,7 @@ function updateBookingSummary() {
         $('#children').val() + ' เด็ก'
     );
     $('#summaryRoomQuantity').text(roomQuantity + ' ห้อง')
-    $('#summaryPriceList').html(RoomOptions.price.map(e =>{
+    $('#summaryPriceList').html(RoomOptions.price.map(e => {
         let date = new Date(e.date);
         let price = e.price.toLocaleString();
         return `<li class="list-group-item"><div class="d-flex justify-content-between"><span>${moment(date).format('YYYY-MM-DD')}</span><span>฿${Number(price).toLocaleString()}</span></div></li>`;
@@ -261,6 +271,8 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
             Swal.showLoading();
         }
     });
+    let pathname = window.location.pathname
+    if (pathname.includes['index.html/']) pathname = pathname.replace('index.html/', '')
     const formData = {
         action: 'createBooking',
         checkInDate: $('#checkInDate').val(),
@@ -274,14 +286,13 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
         specialRequests: $('#specialRequests').val(),
         roomQuantity: $('#roomQuantity').val(),
         roomType: RoomOptions.type,
-        roomPrice:JSON.stringify( RoomOptions.price),
+        roomPrice: JSON.stringify(RoomOptions.price),
         room_detail: RoomOptions.description,
         stay: stay,
         'g-recaptcha-response': grecaptcha.getResponse(),
-        'check-booking-endpoint': location.href.replace('/index.html', '/check-booking.html')
+        'check-booking-endpoint': location.origin + location.pathname + 'check-booking.html'
     };
 
-    
     // Make the AJAX request to Google Apps Script to create the booking
     NProgress.start();
     NProgress.inc()

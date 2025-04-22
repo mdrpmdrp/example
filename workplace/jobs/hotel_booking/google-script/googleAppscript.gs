@@ -264,6 +264,11 @@ function doPost(e) {
         lock.releaseLock();
         return { success: false, message: 'ห้องพักในวันที่เลือกเต็มแล้ว กรุณาเลือกวันที่อื่น' };
       }
+
+      if(availableRooms.available < params.roomQuantity) {
+        lock.releaseLock();
+        return { success: false, message: 'ห้องพักในวันที่เลือกไม่เพียงพอ กรุณาเลือกจำนวนห้องพักที่น้อยลง หรือเลือกวันที่อื่น' };
+        }
   
       // Generate booking ID
       const bookingId = generateBookingId();
@@ -324,7 +329,7 @@ function doPost(e) {
   function saveBooking(booking) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let bookingsSheet = ss.getSheetByName('booking');
-    let newrow = bookingsSheet.getLastRow() + 1;
+    let newrow = SuperScript.getRealLastRow('A',bookingsSheet) +1
     let perNight = booking.roomPrice.map((item) => {
       return item.date + ": " + item.price
     }).join('\n');
