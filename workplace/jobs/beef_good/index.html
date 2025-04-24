@@ -29,6 +29,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <style>
         * {
             font-family: 'Noto Sans Thai', sans-serif;
@@ -338,7 +340,7 @@
                 sortDescending: ": เรียงจากมากไปน้อย"
             }
         }
-        const demo_data = <?!= getBarcodeDatas() ?>; // Fetch data from Google Sheets
+        // const demo_data = <?!= getBarcodeDatas() ?>; // Fetch data from Google Sheets
         $(document).ready(function () {
             moment.locale('th'); // Set Thai locale for moment.js
             $('#dateInput').flatpickr({
@@ -871,9 +873,11 @@
                 severSide: false,
                 processing: true,
                 ajax: function (data, callback, settings) {
+                    NProgress.start();
                     const date = $('#dateInput').val();
                     console.log("🚀 ~ date:", date)
                     google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
+                        NProgress.done();
                         if (res.success) {
                             const printData = JSON.parse(res.data);
                             callback({
@@ -1108,6 +1112,7 @@
             printWindow.document.write($('#print-area').html());
             printWindow.document.write('</div>');
             printWindow.document.write('</body></html>');
+
             printWindow.document.close();
             printWindow.onload = function () {
                 printWindow.print();
@@ -1127,6 +1132,18 @@
     <script src="https://cdn.datatables.net/v/bs5/dt-2.2.2/date-1.5.5/r-3.0.4/datatables.min.js"
         integrity="sha384-rLmuC6QiRpU3tKULE0+0yoUC4bOdfliJtgfKQnEIX1VqsucsKqaDl7qb0fCvbkxy"
         crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init();
+        document.addEventListener("DOMContentLoaded", function () {
+            NProgress.start();
+            NProgress.inc()
+        });
+        window.addEventListener("load", function () {
+            NProgress.done();
+        });
+    </script>
 </body>
 
 </html>
