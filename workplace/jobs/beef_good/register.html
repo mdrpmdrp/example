@@ -25,8 +25,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/material_red.css">
-    <link href="https://cdn.datatables.net/v/bs5/dt-2.3.0/b-3.2.3/date-1.5.5/fh-4.0.1/r-3.0.4/datatables.min.css"
-        rel="stylesheet" integrity="sha384-inKXuQoYs9G4uCrsdpZfO0APODSpr+h/bAdCbAI/LztEPB8XNdyfZQDwkz6lEZjO"
+    <link
+        href="https://cdn.datatables.net/v/bs5/dt-2.3.0/b-3.2.3/date-1.5.5/fh-4.0.1/r-3.0.4/sl-3.0.0/datatables.min.css"
+        rel="stylesheet" integrity="sha384-pDoMXaoekHsQmb1L6aeyRL/WoJRQnDTYvUeWu4LbiTVT2Vhp2niYUKgdwBE/Tnl8"
         crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
@@ -128,16 +129,6 @@
             border-color: var(--primary-color);
         }
 
-        /* Progress bar styling */
-        #nprogress .bar {
-            background: var(--primary-color) !important;
-        }
-
-        #nprogress .spinner-icon {
-            border-top-color: var(--primary-color) !important;
-            border-left-color: var(--primary-color) !important;
-        }
-
         /* Logo styling */
         .logo-container {
             position: relative;
@@ -233,6 +224,29 @@
             color: var(--dark-color) !important;
         }
 
+        /* Enhanced checkbox styling for better contrast */
+        .select-cow, .select-all-cows {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--primary-color);
+            border-radius: 3px !important;
+            background-color: #fff;
+            cursor: pointer;
+            margin-right: 5px;
+            vertical-align: middle;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .select-cow:checked , .select-all-cows:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .select-cow:focus, .select-all-cows:focus {
+            box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.25);
+            outline: none;
+        }
+
         .dt-head-nowrap {
             white-space: nowrap;
         }
@@ -262,7 +276,8 @@
                     </li>
                     <li class="nav-item" id="logoutBtnContainer" style="display: none;">
                         <button class="nav-link d-flex align-items-center" id="logoutBtn">
-                            <i class="fa-solid fa-right-from-bracket"></i>&nbsp;<span id="logoutText" style="display:none">ออกจากระบบ</span>
+                            <i class="fa-solid fa-right-from-bracket"></i>&nbsp;<span id="logoutText"
+                                style="display:none">ออกจากระบบ</span>
                         </button>
                     </li>
                 </ul>
@@ -315,9 +330,12 @@
                                         <label for="loginPassword">รหัสผ่าน</label>
                                         <div class="invalid-feedback mt-2">กรุณากรอกรหัสผ่าน</div>
                                     </div>
-                                    <div class="d-flex align-items-center justify-content-between mt-4 mb-0">
-                                        <a class="small text-beef" href="#">ลืมรหัสผ่าน?</a>
-                                        <button class="btn btn-beef fw-bold" type="submit">เข้าสู่ระบบ</button>
+                                    <div class="d-flex align-items-center justify-content-center mt-4 mb-0">
+                                        <button class="btn btn-beef fw-bold rounded-3" type="submit"
+                                            style="min-width: 200px;">
+                                            <i class="fa-solid fa-right-to-bracket me-2"></i>
+                                            เข้าสู่ระบบ
+                                        </button>
                                     </div>
                                 </form>
                             </div>
@@ -384,7 +402,8 @@
                                     </div>
                                     <div class="mt-4 mb-0">
                                         <div class="d-grid">
-                                            <button class="btn btn-beef fw-bold" type="submit">ลงทะเบียน</button>
+                                            <button class="btn btn-beef fw-bold rounded-3" type="submit"
+                                                style="min-width: 200px;">ลงทะเบียน</button>
                                         </div>
                                     </div>
                                 </form>
@@ -589,6 +608,66 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="exportFormModal" tabindex="-1" aria-labelledby="exportFormModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-beef text-light">
+                    <h5 class="modal-title" id="exportFormModalLabel">แบบฟอร์มการส่งออก</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="exportForm">
+                        <div class="row mb-3 g-3">
+                            <div class="col-md-6">
+                                <label for="exportDate"><i class="fas fa-calendar-alt me-1"></i> วันที่ออก</label>
+                                <input type="text" class="form-control datepicker" id="exportDate" name="exportDate"
+                                    required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="exportDestination"><i class="fas fa-map-marker-alt me-1"></i>
+                                    ปลายทางที่ส่งโคไป</label>
+                                <input type="text" class="form-control" id="exportDestination" name="exportDestination"
+                                    required>
+                            </div>
+                        </div>
+                        <div class="row mb-3 g-3">
+                            <div class="col-md-6">
+                                <label for="exportMaleCount"><i class="fas fa-mars me-1"></i> จำนวนผู้</label>
+                                <input type="number" min="0" class="form-control bg-secondary-subtle"
+                                    id="exportMaleCount" name="exportMaleCount" required readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="exportFemaleCount"><i class="fas fa-venus me-1"></i> จำนวนเมีย</label>
+                                <input type="number" min="0" class="form-control bg-secondary-subtle"
+                                    id="exportFemaleCount" name="exportFemaleCount" required readonly>
+                            </div>
+                        </div>
+                        <div class="row mb-3 g-3">
+                            <div class="col-md-12">
+                                <label for="exportCowIds"><i class="fas fa-tag me-1"></i> เลขประจำตัวโค (cowId)</label>
+                                <textarea class="form-control bg-secondary-subtle" id="exportCowIds" name="exportCowIds"
+                                    rows="4" required readonly></textarea>
+                                <small class="text-muted">กรณีหลายตัวให้คั่นด้วยเครื่องหมาย , (คอมม่า)</small>
+                            </div>
+                        </div>
+                        <div class="row mb-3 g-3">
+                            <div class="col-md-12">
+                                <label for="exportRemarks"><i class="fas fa-comment me-1"></i> หมายเหตุ</label>
+                                <textarea class="form-control" id="exportRemarks" name="exportRemarks"
+                                    rows="3"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <small class="text-muted">* หมายเหตุ: กรุณากรอกข้อมูลให้ครบถ้วน</small>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-beef" id="saveExportFormBtn">บันทึกข้อมูล</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
@@ -597,8 +676,9 @@
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
-    <script src="https://cdn.datatables.net/v/bs5/dt-2.3.0/b-3.2.3/date-1.5.5/fh-4.0.1/r-3.0.4/datatables.min.js"
-        integrity="sha384-MgMi4coTI9ymqUqY9XSiKQ4M1GKj4GuyieM6lBn73vv8YrfnC9yMfgj+itrSOHyW"
+    <script
+        src="https://cdn.datatables.net/v/bs5/dt-2.3.0/b-3.2.3/date-1.5.5/fh-4.0.1/r-3.0.4/sl-3.0.0/datatables.min.js"
+        integrity="sha384-NGgUUnjETvXZrx9vJMQOG/C654mzSDv63TrMt0zQmS1HW58fN4RdjorjyZqEMIZ9"
         crossorigin="anonymous"></script>
 
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
@@ -1191,7 +1271,7 @@
                     '<div class="col-12"><input type="radio" class="btn-check rounded-3" name="status-radio" id="status1" value="อยู่ในฟาร์ม" autocomplete="off">' +
                     '<label class="btn btn-outline-success w-100" for="status1">อยู่ในฟาร์ม</label></div>' +
                     '<div class="col-12"><input type="radio" class="btn-check rounded-3" name="status-radio" id="status3" value="ส่งออกแล้ว" autocomplete="off">' +
-                    '<label class="btn btn-outline-secondary w-100" for="status3">ส่งออกแล้ว</label></div>' +
+                    '<label class="btn btn-outline-secondary w-100" for="status3">ส่งออก</label></div>' +
                     '</div></div>',
                 didOpen: () => {
                     $('input[name="status-radio"]').on('change', function () {
@@ -1230,6 +1310,31 @@
             }).then((result) => {
                 console.log("🚀 ~ changeStatus ~ result:", result)
                 if (result.isConfirmed && selectStatus != null) {
+                    // If selected status is "ส่งออกแล้ว", show export form modal
+                    if (selectStatus === 'ส่งออกแล้ว') {
+                        showExportFormModal([{
+                            cowID: data.cowID,
+                            name: data.cowName,
+                            gender: data.cowGender,
+                        }]);
+                        return;
+                    }
+                    let status_index = {
+                        'อยู่กับสมาชิก': 1,
+                        'อยู่ในฟาร์ม': 2,
+                        'ส่งออกแล้ว': 3
+                    }
+                    if (status_index[data.cowStatus] > status_index[selectStatus]) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: 'ไม่สามารถเปลี่ยนสถานะโคจาก ' + data.cowStatus + ' เป็น ' + selectStatus,
+                            confirmButtonColor: 'var(--primary-color)'
+                        });
+                        return;
+                    }
+
+                    // Continue with original status change flow for other statuses
                     let userSession = JSON.parse(localStorage.getItem('userSession'));
                     NProgress.start()
                     NProgress.inc();
@@ -1274,6 +1379,75 @@
             })
         }
 
+        function showExportFormModal(data) {
+            console.log("🚀 ~ showExportFormModal ~ data:", data);
+            $('#exportFormModal').modal('show');
+            let userSession = JSON.parse(localStorage.getItem('userSession'));
+            $('#exportCowIds').attr('data-export-ids', data.map(cow => cow.cowID).join(',')).val(data.map(cow => cow.name).join(', '));
+            $('#exportMaleCount').val(data.filter(cow => cow.gender === 'ผู้').length);
+            $('#exportFemaleCount').val(data.filter(cow => cow.gender === 'เมีย').length);
+            $('#exportForm').off('submit').on('submit', function (e) {
+                e.preventDefault();
+                const exportData = {
+                    cowIDs: $('#exportCowIds').attr('data-export-ids'),
+                    exportDestination: $('#exportDestination').val(),
+                    exportMaleCount: parseInt($('#exportMaleCount').val()),
+                    exportFemaleCount: parseInt($('#exportFemaleCount').val()),
+                    exportDate: $('#exportDate').val(),
+                    exportRemarks: $('#exportRemarks').val(),
+                    userId: userSession.id,
+                    userName: userSession.name,
+                };
+                if (exportData.cowIDs.split(',').length !== (exportData.exportMaleCount + exportData.exportFemaleCount)) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: 'จำนวนรหัส/ชื่อโคที่ส่งออก ไม่ตรงกับจำนวนที่เลือก',
+                        confirmButtonColor: 'var(--primary-color)'
+                    });
+                    return;
+                }
+                Swal.fire({
+                    iconHtml: '<i class="bi bi-hourglass-split text-danger"></i>',
+                    title: 'กำลังบันทึกข้อมูลการส่งออก',
+                    customClass: {
+                        icon: 'border-0',
+                        title: 'text-danger',
+                        content: 'text-dark',
+                        popup: 'rounded-4'
+                    },
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading()
+                    },
+                });
+                google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
+                    res = JSON.parse(res);
+                    if (res.success) {
+                        $('#exportFormModal').modal('hide');
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'บันทึกข้อมูลการส่งออกเรียบร้อยแล้ว'
+                        });
+                        $('#exportForm')[0].reset();
+                        cowDataTable.ajax.reload(null, false);
+                        $('#exportCowIds').attr('data-export-ids', '').val('');
+                        $('#exportMaleCount').val(0);
+                        $('#exportFemaleCount').val(0);
+                        $('.select-cow').attr('checked', false);
+                        $('.btn-export-cow').attr('disabled', true).addClass('d-none');
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: res.message,
+                            confirmButtonColor: 'var(--primary-color)'
+                        });
+                    }
+                }).saveExportData(exportData);
+            });
+        }
+
         $('#cowDataTable').on('click', '.btn-delete-cow', function () {
             const id = $(this).data('id');
             // Implement delete cow functionality with confirmation
@@ -1300,7 +1474,96 @@
             });
         });
 
+        // Setup save export form button functionality
+        $('#saveExportFormBtn').on('click', function () {
+            $('#exportForm').submit()
+        });
 
+        function saveExportData() {
+            // Get user session
+            let userSession = JSON.parse(localStorage.getItem('userSession'));
+            // Get form data
+            const formData = {
+                cowIDs: $('#exportCowIds').val(),
+                exportDestination: $('#exportDestination').val(),
+                exportMaleCount: $('#exportMaleCount').val(),
+                exportFemaleCount: $('#exportFemaleCount').val(),
+                exportDate: $('#exportDate').val(),
+                exportRemarks: $('#exportRemarks').val(),
+                userId: userSession.id,
+                userName: userSession.name,
+            };
+
+            if (formData.cowIDs.split(',').length !== (formData.exportMaleCount + formData.exportFemaleCount)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'จำนวนรหัสโคที่ส่งออกไม่ตรงกับจำนวนที่ระบุ',
+                    confirmButtonColor: 'var(--primary-color)'
+                });
+                return;
+            }
+
+
+            NProgress.start();
+            NProgress.inc();
+            Swal.fire({
+                iconHtml: '<i class="bi bi-hourglass-split text-danger"></i>',
+                title: 'กำลังบันทึกข้อมูลการส่งออก',
+                customClass: {
+                    icon: 'border-0',
+                    title: 'text-danger',
+                    content: 'text-dark',
+                    popup: 'rounded-4'
+                },
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                },
+            });
+
+            // Call backend to save export data
+            google.script.run
+                .withFailureHandler(function (error) {
+                    console.log(error);
+                    NProgress.done();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: 'ไม่สามารถบันทึกข้อมูลการส่งออกได้ โปรดลองอีกครั้ง',
+                        confirmButtonColor: 'var(--primary-color)'
+                    });
+                })
+                .withSuccessHandler(function (res) {
+                    res = JSON.parse(res);
+                    NProgress.done();
+                    if (res.success) {
+                        // Close modal and refresh data
+                        $('#exportFormModal').modal('hide');
+                        $('#exportForm')[0].reset();
+                        cowDataTable.ajax.reload(null, false);
+
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'บันทึกข้อมูลการส่งออกเรียบร้อยแล้ว'
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: res.message || 'ไม่สามารถบันทึกข้อมูลการส่งออกได้ โปรดลองอีกครั้ง',
+                            confirmButtonColor: 'var(--primary-color)'
+                        });
+                    }
+                })
+                .saveExportData({
+                    ...formData,
+                    userId: userSession.id,
+                    userName: userSession.name
+                });
+        }
+
+        // Custom SweetAlert2 theme to match our color scheme
     </script>
     <script>
         AOS.init();
@@ -1308,6 +1571,15 @@
         document.addEventListener("DOMContentLoaded", function () {
             NProgress.start();
             NProgress.inc();
+
+            // Initialize datepicker for export form
+            flatpickr("#exportDate", {
+                locale: "th",
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: "j F Y",
+                defaultDate: 'today',
+            });
 
             // Custom SweetAlert2 theme to match our color scheme
             Toast = Swal.mixin({
@@ -1500,7 +1772,8 @@
         $(document).ready(function () {
             let session = localStorage.getItem('userSession');
             console.log("🚀 ~ session:", session)
-            if (session == null || (session.expired && session.expired < moment().unix())) {
+            console.log("🚀 ~ moment().unix():", moment().unix());
+            if (session == null || (session.expired && Number(session.expired) < moment().unix())) {
                 localStorage.removeItem('userSession');
                 initLoginForm();
             } else {
@@ -1508,7 +1781,6 @@
                 session.expired = moment().unix() + 7200; // 2 hours session
                 ROLE = session.role
                 $('#currentUsername').text(session.name)
-                $('#userInfoContainer').show()
                 localStorage.setItem('userSession', JSON.stringify(session));
                 initializeApp();
             }
@@ -1582,8 +1854,7 @@
                                 data: res.data
                             });
                         }).getData(session.id, session.role !== 'Member');
-                    }
-                    ,
+                    },
                     language: {
                         url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/th.json',
                     },
@@ -1596,17 +1867,20 @@
                                 className: 'btn btn-beef'
                             }
                         },
-                        buttons: [
-                            {
-                                text: '<i class="bi bi-plus-circle"></i> เพิ่มโค',
-                                className: 'btn btn-beef',
-                                action: function () {
-                                    $('#addCowModal').modal('show');
-                                }
-                            },
-                        ],
+                        buttons: getButtonsBasedOnRole(ROLE),
                     },
                     columns: [
+                        {
+                            data: null,
+                            title: '#',
+                            className: 'dt-head-center dt-head-nowrap all',
+                            render: function (data, type, row, meta) {
+                                if (type === 'display') {
+                                    return meta.row + meta.settings._iDisplayStart + 1;
+                                }
+                                return meta.row;
+                            }
+                        },
                         {
                             data: 'date',
                             title: 'วันที่',
@@ -1632,8 +1906,16 @@
                         },
                         {
                             data: 'cowName',
-                            title: 'รหัสโค/ชื่อโค',
+                            title: '<input type="checkbox" class="form-check-input d-none select-all-cows" id="select-all-cows"> รหัสโค/ชื่อโค',
                             className: 'dt-head-center dt-head-nowrap dt-body-start all',
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    return row.cowStatus === 'ส่งออกแล้ว' ? `<span class="text-muted">${data}</span>` :
+                                        (ROLE === 'Member' ? `<span class="text-muted">${data}</span>` :
+                                            `<input type="checkbox" class="form-check-input d-none select-cow" data-id="${row.cowID}" data-name="${data}" data-gender="${row.cowGender}" id="select-cow-${row.cowID}" /><span class="ms-2">${row.cowName}</span>`);
+                                }
+                                return data;
+                            }
                         },
                         {
                             data: 'birthDate',
@@ -1736,19 +2018,116 @@
 
                         },
                         {
-                            targets: [1, 3, 15],
+                            targets: [2, 4, 16],
                             className: 'all'
                         },
                         {
-                            targets: [1, 5, 14],
+                            targets: [2, 6, 15],
                             className: 'text-nowrap'
                         },
                     ],
 
-                    order: [[0, 'desc']],
+                    order: [[1, 'desc']],
+                    initComplete: function (settings, json) {
+
+                        // Add event listener for the "select all" checkbox
+                        $('.select-all-cows').on('change', function () {
+                            if ($(this).is(':checked')) {
+                                $('.select-cow').prop('checked', true);
+                            } else {
+                                $('.select-cow').prop('checked', false);
+                            }
+                            // Trigger change event on select-cow checkboxes to update UI
+                            $('.select-cow').trigger('change');
+                        });
+                        NProgress.done();
+
+                    },
                 });
                 NProgress.done();
             });
+        }
+
+        function getButtonsBasedOnRole(role) {
+            // Base button that all users have
+            let buttons = [
+                {
+                    text: '<i class="bi bi-plus-circle"></i> เพิ่มโค',
+                    className: 'btn btn-beef',
+                    action: function () {
+                        $('#addCowModal').modal('show');
+                    }
+                }
+            ];
+
+            // Add additional buttons based on role
+            buttons.push(
+                {
+                    text: '<i class="bi bi-file-earmark-arrow-up"></i> เลือกโคส่งออก',
+                    className: 'btn btn-beef btn-enable-select' + (ROLE === 'Member' ? ' d-none' : ''),
+                    action: function () {
+                        if ($('.btn-enable-select').hasClass('cancel-select')) {
+                            // Exit selection mode
+                            $('.btn-enable-select').removeClass('cancel-select')
+                                .html('<i class="bi bi-file-earmark-arrow-up"></i> เลือกโคส่งออก')
+                                .removeClass('btn-danger').addClass('btn-beef');
+                            $('.select-cow, .select-all-cows').prop('checked', false).addClass('d-none');
+                            $('.btn-export-cow').attr('disabled', true).addClass('d-none');
+                            return;
+                        }
+
+                        // Enter selection mode
+                        $('.btn-enable-select').html('<i class="bi bi-file-earmark-arrow-down"></i> ยกเลิก')
+                            .addClass('btn-danger cancel-select').removeClass('btn-beef');
+                        $('.select-cow, .select-all-cows').removeClass('d-none');
+
+                        // Handle checkbox changes
+                        $('.select-cow').on('change', function () {
+                            let selectedCows = $('.select-cow:checked').length;
+                            let totalSelectableCows = $('.select-cow:visible').length;
+
+                            // Update the export button visibility
+                            if (selectedCows > 0) {
+                                $('.btn-export-cow').removeAttr('disabled').removeClass('d-none');
+                            } else {
+                                $('.btn-export-cow').attr('disabled', true).addClass('d-none');
+                            }
+
+                            // Update "select all" checkbox state
+                            if (selectedCows === 0) {
+                                $('.select-all-cows').prop('checked', false);
+                            } else if (selectedCows === totalSelectableCows) {
+                                $('.select-all-cows').prop('checked', true);
+                            } else {
+                                // If some but not all are selected, keep the header checkbox unchecked
+                                $('.select-all-cows').prop('checked', false);
+                            }
+                        });
+                    }
+                },
+                {
+                    text: '<i class="bi bi-file-earmark-arrow-up"></i> ส่งออกโค',
+                    className: 'btn btn-beef btn-export-cow d-none', // Add d-none class
+                    action: function () {
+                        let selectedCows = $('.select-cow:checked').toArray().map(function (checkbox) {
+                            return {
+                                cowID: $(checkbox).data('id'),
+                                name: $(checkbox).data('name'),
+                                gender: $(checkbox).data('gender')
+                            }
+                        });
+                        if (selectedCows.length === 0) {
+                            Toast.fire({
+                                icon: 'error',
+                                title: 'กรุณาเลือกโคที่ต้องการส่งออก'
+                            });
+                            return;
+                        }
+                        showExportFormModal(selectedCows);
+                    }
+                }
+            );
+            return buttons;
         }
 
         function showImagePreview(src) {
