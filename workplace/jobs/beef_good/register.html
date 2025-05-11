@@ -225,7 +225,8 @@
         }
 
         /* Enhanced checkbox styling for better contrast */
-        .select-cow, .select-all-cows {
+        .select-cow,
+        .select-all-cows {
             width: 18px;
             height: 18px;
             border: 2px solid var(--primary-color);
@@ -237,18 +238,27 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
-        .select-cow:checked , .select-all-cows:checked {
+        .select-cow:checked,
+        .select-all-cows:checked {
             background-color: var(--primary-color);
             border-color: var(--primary-color);
         }
 
-        .select-cow:focus, .select-all-cows:focus {
+        .select-cow:focus,
+        .select-all-cows:focus {
             box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.25);
             outline: none;
         }
 
         .dt-head-nowrap {
             white-space: nowrap;
+        }
+
+        .temp-readonly {
+            background-color: var(--secondary-color) !important;
+            color: var(--dark-color) !important;
+            cursor: not-allowed;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -363,8 +373,9 @@
                                     </div>
                                     <div class="form-floating mb-3">
                                         <input class="form-control" id="registerEmail" type="email"
-                                            placeholder="name@example.com" required />
-                                        <label for="registerEmail">อีเมล</label>
+                                            placeholder="name@example.com" />
+                                        <label for="registerEmail">อีเมล <small
+                                                class="text-muted">(ไม่บังคับ)</small></label>
                                         <div class="invalid-feedback mt-2">กรุณากรอกอีเมลให้ถูกต้อง</div>
                                     </div>
                                     <div class="form-floating mb-3">
@@ -537,11 +548,11 @@
                                     รหัสพ่อ/ชื่อพ่อ</label>
                                 <input type="text" class="form-control" id="fatherCode" name="fatherCode" required>
                             </div>
-                            <div class="col-md-6">
+                            <!-- <div class="col-md-6">
                                 <label for="ffatherCode"><i class="fas fa-dna me-1"></i>
                                     Fพ่อ</label>
                                 <input type="text" class="form-control" id="ffatherCode" name="ffatherCode" required>
-                            </div>
+                            </div> -->
                         </div>
                         <div class="row mb-3 g-3">
                             <div class="col-md-6">
@@ -572,8 +583,8 @@
                                 </template>
                                 <label for="cowImage">
                                     <i class="bi bi-image-fill text-red"></i>
-                                    รูปภาพ <span class="text-muted">(ใส่จำนวนรูปภาพตามแบบที่ลูกค้าเลือก สูงสุด 5
-                                        รูป)</span>
+                                    รูปภาพ <span class="text-muted">(สูงสุด 5 รูป)</span><br>
+                                    <small class="text-beef">* กรณีลูกโค กรุณาอัพรูปแม่โคด้วย</small>
                                 </label>
                                 <div class="rounded-3 border bg-secondary-subtle p-2 text-center"
                                     style="cursor: pointer;" id="image-label">
@@ -603,7 +614,7 @@
                 <div class="modal-footer">
                     <small class="text-muted">* หมายเหตุ: กรุณากรอกข้อมูลให้ครบถ้วน</small>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="button" class="btn btn-beef" id="saveCowBtn">บันทึกข้อมูล</button>
+                    <button type="button" class="btn btn-beef btn-secondary" id="saveCowBtn">บันทึกข้อมูล</button>
                 </div>
             </div>
         </div>
@@ -648,7 +659,7 @@
                                 <label for="exportCowIds"><i class="fas fa-tag me-1"></i> เลขประจำตัวโค (cowId)</label>
                                 <textarea class="form-control bg-secondary-subtle" id="exportCowIds" name="exportCowIds"
                                     rows="4" required readonly></textarea>
-                                <small class="text-muted">กรณีหลายตัวให้คั่นด้วยเครื่องหมาย , (คอมม่า)</small>
+                                <small class="text-beef">กรณีหลายตัวให้คั่นด้วยเครื่องหมาย , (คอมม่า)</small>
                             </div>
                         </div>
                         <div class="row mb-3 g-3">
@@ -817,7 +828,8 @@
                 $('#image-label').text('คลิกเพื่อเลือกรูปภาพ');
                 $('form#addCowForm').data('editMode', false);
                 $('#addCowForm').removeClass('was-validated');
-                $('form#addCowForm button[type="submit"]').removeAttr('disabled').text('บันทึกข้อมูล');
+                $('#saveCowBtn').removeAttr('disabled').text('บันทึกข้อมูล');
+                $('.temp-readonly').removeClass('temp-readonly');
                 $('#addCowModalLabel').text('เพิ่มข้อมูลโค');
             });
 
@@ -863,7 +875,7 @@
                 motherCode: $('#motherCode').val(),
                 fmotherCode: $('#fmotherCode').val(),
                 fatherCode: $('#fatherCode').val(),
-                ffatherCode: $('#ffatherCode').val(),
+                // ffatherCode: $('#ffatherCode').val(),
                 cowOwner: $('#cowOwner').val(),
                 dataDate: $('#dataDate').val(),
                 remark: $('#remark').val()
@@ -1064,9 +1076,8 @@
             $('#motherCode').val(data.motherCode);
             $('#fmotherCode').val(data.fmotherCode);
             $('#fatherCode').val(data.fatherCode);
-            $('#ffatherCode').val(data.ffatherCode);
+            // $('#ffatherCode').val(data.ffatherCode);
             $('#cowOwner').val(data.cowOwner);
-            ROLE !== 'Member' ? $('#dataDate')[0]._flatpickr.setDate(data.dataDate, true) : $('#dataDate').val(moment(data.dataDate).format('YYYY-MM-DD'));
             $('#remark').val(data.remark);
             // Show the modal
             $('#addCowModal').modal('show');
@@ -1075,6 +1086,7 @@
             $('#saveCowBtn').text('บันทึกการแก้ไข');
             $('form#addCowForm').data('editMode', true);
             $('#temp-imgs').val('');
+
 
             // show image
             let images = [data.cowImage1, data.cowImage2, data.cowImage3, data.cowImage4, data.cowImage5].filter(img => img !== '');
@@ -1085,7 +1097,7 @@
                     let imgElement = $($('#img-template').html());
                     $('.img-grid-col').eq(i % 3).append(imgElement)
                     imgElement.find('img').attr('src', img)
-                    imgElement.find('span').on('click', function () {
+                    imgElement.find('span').addClass('span-delete').on('click', function () {
                         deleteImage(img, row, data)
                     });
                     imgElement.find('img').on('click', function () {
@@ -1099,6 +1111,17 @@
                         });
                     });
                 });
+            }
+            if (ROLE !== 'Member') {
+                $('#dataDate')[0]._flatpickr.setDate(data.dataDate, true)
+            } else {
+                // set form to readonly if row.date  is passed for 7 days
+                let date = moment(data.date).add(7, 'days').format('YYYY-MM-DD')
+                if (moment(date).isBefore(moment())) {
+                    $('form#addCowForm').find('input, select, textarea, #image-label, .span-delete').addClass('temp-readonly')
+                    $('#saveCowBtn').attr('disabled', true).text('ไม่สามารถแก้ไขได้หลังจาก 7 วัน')
+                }
+                $('#dataDate').val(moment(data.dataDate).format('YYYY-MM-DD'));
             }
         }
 
@@ -1388,6 +1411,11 @@
             $('#exportFemaleCount').val(data.filter(cow => cow.gender === 'เมีย').length);
             $('#exportForm').off('submit').on('submit', function (e) {
                 e.preventDefault();
+                let form = $(this)[0];
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
                 const exportData = {
                     cowIDs: $('#exportCowIds').attr('data-export-ids'),
                     exportDestination: $('#exportDestination').val(),
@@ -1398,6 +1426,8 @@
                     userId: userSession.id,
                     userName: userSession.name,
                 };
+                // Validate form data
+
                 if (exportData.cowIDs.split(',').length !== (exportData.exportMaleCount + exportData.exportFemaleCount)) {
                     Swal.fire({
                         icon: 'error',
@@ -1429,13 +1459,15 @@
                             icon: 'success',
                             title: 'บันทึกข้อมูลการส่งออกเรียบร้อยแล้ว'
                         });
-                        $('#exportForm')[0].reset();
-                        cowDataTable.ajax.reload(null, false);
-                        $('#exportCowIds').attr('data-export-ids', '').val('');
-                        $('#exportMaleCount').val(0);
-                        $('#exportFemaleCount').val(0);
-                        $('.select-cow').attr('checked', false);
-                        $('.btn-export-cow').attr('disabled', true).addClass('d-none');
+                        cowDataTable.ajax.reload(function () {
+                            console.log("reload..");
+                            $('#exportCowIds').attr('data-export-ids', '').val('');
+                            $('#exportForm')[0].reset();
+                            $('#exportDate')[0]._flatpickr.setDate(new Date(), true);
+                            if ($('.show-all-cows').is(':visible')) {
+                                cowDataTable.buttons(1).trigger()
+                            }
+                        }, false);
                     } else {
                         Swal.fire({
                             icon: 'error',
@@ -1479,91 +1511,6 @@
             $('#exportForm').submit()
         });
 
-        function saveExportData() {
-            // Get user session
-            let userSession = JSON.parse(localStorage.getItem('userSession'));
-            // Get form data
-            const formData = {
-                cowIDs: $('#exportCowIds').val(),
-                exportDestination: $('#exportDestination').val(),
-                exportMaleCount: $('#exportMaleCount').val(),
-                exportFemaleCount: $('#exportFemaleCount').val(),
-                exportDate: $('#exportDate').val(),
-                exportRemarks: $('#exportRemarks').val(),
-                userId: userSession.id,
-                userName: userSession.name,
-            };
-
-            if (formData.cowIDs.split(',').length !== (formData.exportMaleCount + formData.exportFemaleCount)) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาด',
-                    text: 'จำนวนรหัสโคที่ส่งออกไม่ตรงกับจำนวนที่ระบุ',
-                    confirmButtonColor: 'var(--primary-color)'
-                });
-                return;
-            }
-
-
-            NProgress.start();
-            NProgress.inc();
-            Swal.fire({
-                iconHtml: '<i class="bi bi-hourglass-split text-danger"></i>',
-                title: 'กำลังบันทึกข้อมูลการส่งออก',
-                customClass: {
-                    icon: 'border-0',
-                    title: 'text-danger',
-                    content: 'text-dark',
-                    popup: 'rounded-4'
-                },
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading()
-                },
-            });
-
-            // Call backend to save export data
-            google.script.run
-                .withFailureHandler(function (error) {
-                    console.log(error);
-                    NProgress.done();
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'เกิดข้อผิดพลาด',
-                        text: 'ไม่สามารถบันทึกข้อมูลการส่งออกได้ โปรดลองอีกครั้ง',
-                        confirmButtonColor: 'var(--primary-color)'
-                    });
-                })
-                .withSuccessHandler(function (res) {
-                    res = JSON.parse(res);
-                    NProgress.done();
-                    if (res.success) {
-                        // Close modal and refresh data
-                        $('#exportFormModal').modal('hide');
-                        $('#exportForm')[0].reset();
-                        cowDataTable.ajax.reload(null, false);
-
-                        Toast.fire({
-                            icon: 'success',
-                            title: 'บันทึกข้อมูลการส่งออกเรียบร้อยแล้ว'
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'เกิดข้อผิดพลาด',
-                            text: res.message || 'ไม่สามารถบันทึกข้อมูลการส่งออกได้ โปรดลองอีกครั้ง',
-                            confirmButtonColor: 'var(--primary-color)'
-                        });
-                    }
-                })
-                .saveExportData({
-                    ...formData,
-                    userId: userSession.id,
-                    userName: userSession.name
-                });
-        }
-
-        // Custom SweetAlert2 theme to match our color scheme
     </script>
     <script>
         AOS.init();
@@ -1773,22 +1720,24 @@
             let session = localStorage.getItem('userSession');
             console.log("🚀 ~ session:", session)
             console.log("🚀 ~ moment().unix():", moment().unix());
-            if (session == null || (session.expired && Number(session.expired) < moment().unix())) {
+            if (session == null || (JSON.parse(session).expired && JSON.parse(session).expired < moment().unix())) {
                 localStorage.removeItem('userSession');
                 initLoginForm();
             } else {
                 session = JSON.parse(session);
-                session.expired = moment().unix() + 7200; // 2 hours session
                 ROLE = session.role
                 $('#currentUsername').text(session.name)
                 localStorage.setItem('userSession', JSON.stringify(session));
                 initializeApp();
             }
-            $('#logoutBtn').on('mouseenter', function () {
-                $('#logoutText').show(400)
-            }).on('mouseleave', function () {
-                $('#logoutText').hide(400)
+            $(window).on('resize', function () {
+                $('#logoutBtn').on('mouseenter', function () {
+                    $('#logoutText').show(400)
+                }).on('mouseleave', function () {
+                    $('#logoutText').hide(400)
+                });
             });
+            $(window).trigger('resize');
         });
 
         $('#logoutBtn').on('click', function () {
@@ -1838,6 +1787,7 @@
                 // Initialize the cow data table
                 cowDataTable = $('#cowDataTable').DataTable({
                     responsive: true,
+                    scrollX: true,
                     serverSide: false,
                     processing: true,
                     ajax: function (data, callback, settings) {
@@ -1893,14 +1843,21 @@
                             }
                         },
                         {
-                            data: 'cowID',
-                            title: 'รหัสโค',
-                            visible: false,
-                            className: 'dt-head-center dt-head-nowrap all',
+                            data: 'memberCode',
+                            title: 'รหัสฟาร์ม',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center' +
+                                (ROLE !== 'Member' ? ' all' : ''),
+                            visible: ROLE !== 'Member',
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    return `<span class="text-success">${data}</span>`;
+                                }
+                                return data;
+                            }
                         },
                         {
-                            data: 'memberCode',
-                            title: 'รหัสสมาชิก',
+                            data: 'cowID',
+                            title: 'รหัสโค',
                             visible: false,
                             className: 'dt-head-center dt-head-nowrap',
                         },
@@ -1929,25 +1886,27 @@
                             }
                         },
                         {
+                            data: null,
+                            title: 'อายุ',
+                            className: 'dt-head-center dt-head-nowrap all',
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    // x ปี x เดือน x วัน
+                                    return '<span class="text-primary">' + moment().diff(moment(row.birthDate), 'years') + '</span> ปี '
+                                }
+                                return moment().diff(moment(row.birthDate), 'months')
+                            }
+                        },
+                        {
                             data: 'cowGender',
                             title: 'เพศ',
                             className: 'dt-head-center dt-head-nowrap dt-body-center',
 
                         },
                         {
-                            data: 'cowStatus',
-                            title: 'สถานะ',
-                            className: 'dt-head-center dt-head-nowrap all',
-                            render: function (data) {
-                                return `<button class="w-100 rounded-3 btn btn-sm btn-${data == 'อยู่ในฟาร์ม' ? 'success' : data == 'อยู่กับสมาชิก' ? 'primary' : 'muted'} change-status-btn ${ROLE === 'Member' ? 'pe-none' : ''}" ${ROLE === 'Member' ? '' : 'onclick="changeStatus(this)"'} data-status="${data}">
-                                    ${ROLE === 'Member' ? '' : '<i class="fa-solid fa-arrow-pointer fa-flip-horizontal"></i>&nbsp;'}
-                                    ${data}</button>`;
-                            }
-                        },
-                        {
                             data: 'fcowCode',
                             title: 'Fโค',
-                            className: 'dt-head-center dt-head-nowrap dt-body-center',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center all',
                         },
                         {
                             data: 'motherCode',
@@ -1964,15 +1923,56 @@
                             title: 'รหัสพ่อ/ชื่อพ่อ',
                             className: 'dt-head-center dt-head-nowrap dt-body-center',
                         },
-                        {
-                            data: 'ffatherCode',
-                            className: 'dt-head-center dt-head-nowrap dt-body-center',
-                            title: 'Fพ่อ'
-                        },
+                        // {
+                        //     data: 'ffatherCode',
+                        //     className: 'dt-head-center dt-head-nowrap dt-body-center',
+                        //     title: 'Fพ่อ'
+                        // },
                         {
                             data: 'cowOwner',
                             title: 'ชื่อเจ้าของโค/ที่มา',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center all',
+                        },
+                        {
+                            data: 'memberName',
+                            title: 'ผู้บันทึกข้อมูล',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center' +
+                                (ROLE !== 'Member' ? ' all' : ''),
+                        },
+                        {
+                            data: 'farmInDate',
+                            title: 'วันที่เข้าฟาร์ม',
+                            visible: ROLE !== 'Member',
                             className: 'dt-head-center dt-head-nowrap dt-body-center',
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    return moment(data).format('DD/MM/YYYY');
+                                }
+                                return new Date(data).getTime();
+                            }
+                        },
+                        {
+                            data: 'dataDate',
+                            title: 'วันที่บันทึกข้อมูล',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center' +
+                                (ROLE !== 'Member' ? ' all' : ''),
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    return moment(data).format('DD/MM/YYYY');
+                                }
+                                return new Date(data).getTime();
+                            }
+                        },
+                        {
+                            data: 'lastUpdate',
+                            title: 'วันที่อัพเดทข้อมูล',
+                            className: 'dt-head-center dt-head-nowrap',
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    return moment(data).format('DD/MM/YYYY HH:mm:ss');
+                                }
+                                return new Date(data).getTime();
+                            }
                         },
                         {
                             data: 'remark',
@@ -1992,6 +1992,17 @@
                                 } else {
                                     return '<div class="text-center">ไม่มีรูปภาพ</div>';
                                 }
+                            }
+                        },
+                        {
+                            data: 'cowStatus',
+                            title: 'สถานะ',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center' +
+                                (ROLE !== 'Member' ? ' all' : ''),
+                            render: function (data) {
+                                return `<button class="w-100 rounded-3 btn btn-sm btn-${data == 'อยู่ในฟาร์ม' ? 'success' : data == 'อยู่กับสมาชิก' ? 'primary' : 'muted'} change-status-btn ${ROLE === 'Member' ? 'pe-none' : ''}" ${ROLE === 'Member' ? '' : 'onclick="changeStatus(this)"'} data-status="${data}">
+                                    ${ROLE === 'Member' ? '' : '<i class="fa-solid fa-arrow-pointer fa-flip-horizontal"></i>&nbsp;'}
+                                    ${data}</button>`;
                             }
                         },
                         {
@@ -2022,7 +2033,7 @@
                             className: 'all'
                         },
                         {
-                            targets: [2, 6, 15],
+                            targets: [2, 7, 15],
                             className: 'text-nowrap'
                         },
                     ],
@@ -2040,6 +2051,26 @@
                             // Trigger change event on select-cow checkboxes to update UI
                             $('.select-cow').trigger('change');
                         });
+                        // Add status filter dropdown for non-Member users
+                        if (ROLE !== 'Member') {
+                            // Replace status column header with select dropdown
+                            let statusFilterHtml = `
+                                <select class="form-select status-filter">
+                                    <option value="" selected>ทั้งหมด</option>
+                                    <option value="อยู่ในฟาร์ม">อยู่ในฟาร์ม</option>
+                                    <option value="อยู่กับสมาชิก">อยู่กับสมาชิก</option>
+                                    <option value="ส่งออกแล้ว">ส่งออกแล้ว</option>
+                                </select>
+                            `;
+                            
+                            $(cowDataTable.column(19).header()).html(statusFilterHtml);
+                            
+                            // Add filtering functionality
+                            $('.status-filter').on('change', function() {
+                                let filterValue = $(this).val();
+                                cowDataTable.column(19).search(filterValue).draw();
+                            });
+                        }
                         NProgress.done();
 
                     },
