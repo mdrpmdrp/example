@@ -81,6 +81,18 @@
             transition: all 0.3s ease;
         }
 
+        .btn-export-cow {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            padding: 8px 12px;
+            margin-right: 8px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
         .btn-beef:hover {
             background-color: var(--dark-color);
             color: var(--accent-color);
@@ -225,7 +237,8 @@
         }
 
         /* Enhanced checkbox styling for better contrast */
-        .select-cow, .select-all-cows {
+        .select-cow,
+        .select-all-cows {
             width: 18px;
             height: 18px;
             border: 2px solid var(--primary-color);
@@ -237,18 +250,27 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
-        .select-cow:checked , .select-all-cows:checked {
+        .select-cow:checked,
+        .select-all-cows:checked {
             background-color: var(--primary-color);
             border-color: var(--primary-color);
         }
 
-        .select-cow:focus, .select-all-cows:focus {
+        .select-cow:focus,
+        .select-all-cows:focus {
             box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.25);
             outline: none;
         }
 
         .dt-head-nowrap {
             white-space: nowrap;
+        }
+
+        .temp-readonly {
+            background-color: var(--secondary-color) !important;
+            color: var(--dark-color) !important;
+            cursor: not-allowed;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -363,8 +385,9 @@
                                     </div>
                                     <div class="form-floating mb-3">
                                         <input class="form-control" id="registerEmail" type="email"
-                                            placeholder="name@example.com" required />
-                                        <label for="registerEmail">อีเมล</label>
+                                            placeholder="name@example.com" />
+                                        <label for="registerEmail">อีเมล <small
+                                                class="text-muted">(ไม่บังคับ)</small></label>
                                         <div class="invalid-feedback mt-2">กรุณากรอกอีเมลให้ถูกต้อง</div>
                                     </div>
                                     <div class="form-floating mb-3">
@@ -470,18 +493,24 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="addCowForm" enctype="multipart/form-data">
+                    <form id="addCowForm">
                         <div class="row mb-3 g-3">
                             <div class="col-md-6 d-none">
-                                <label for="memberCode"><i class="fas fa-id-card"></i> Member ID</label>
-                                <input type="text" class="form-control bg-secondary-subtle" id="memberCode"
-                                    name="memberCode" readonly>
+                                <label for="userID"><i class="fas fa-id-card"></i> Member ID</label>
+                                <input type="text" class="form-control bg-secondary-subtle" id="userID" name="userID"
+                                    readonly>
                             </div>
                             <div class="col-md-6 d-none">
                                 <label for="cowID"><i class="fas fa-tag me-1"></i>
-                                    Cow ID *</label>
-                                <input type="text" class="form-control bg-secondary-subtle" id="cowID" name="cowID"
-                                    required readonly value="AUTO ID">
+                                    cowID</label>
+                                <input type="text" class="form-control" id="cowID" name="cowID" required readonly
+                                    value="AUTO ID">
+                            </div>
+                            <div class="col-md-6 d-none">
+                                <label for="farmID"><i class="fas fa-tag me-1"></i>
+                                    รหัสฟาร์ม *</label>
+                                <input type="text" class="form-control" id="farmID" name="farmID"
+                                    oninput="checkFarmID(this.value)">
                             </div>
                             <div class="col-md-6">
                                 <label for="cowName"><i class="fas fa-tag me-1"></i>
@@ -537,11 +566,11 @@
                                     รหัสพ่อ/ชื่อพ่อ</label>
                                 <input type="text" class="form-control" id="fatherCode" name="fatherCode" required>
                             </div>
-                            <div class="col-md-6">
+                            <!-- <div class="col-md-6">
                                 <label for="ffatherCode"><i class="fas fa-dna me-1"></i>
                                     Fพ่อ</label>
                                 <input type="text" class="form-control" id="ffatherCode" name="ffatherCode" required>
-                            </div>
+                            </div> -->
                         </div>
                         <div class="row mb-3 g-3">
                             <div class="col-md-6">
@@ -572,8 +601,8 @@
                                 </template>
                                 <label for="cowImage">
                                     <i class="bi bi-image-fill text-red"></i>
-                                    รูปภาพ <span class="text-muted">(ใส่จำนวนรูปภาพตามแบบที่ลูกค้าเลือก สูงสุด 5
-                                        รูป)</span>
+                                    รูปภาพ <span class="text-muted">(สูงสุด 5 รูป)</span><br>
+                                    <small class="text-beef">* กรณีลูกโค กรุณาอัพรูปแม่โคด้วย</small>
                                 </label>
                                 <div class="rounded-3 border bg-secondary-subtle p-2 text-center"
                                     style="cursor: pointer;" id="image-label">
@@ -603,7 +632,7 @@
                 <div class="modal-footer">
                     <small class="text-muted">* หมายเหตุ: กรุณากรอกข้อมูลให้ครบถ้วน</small>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="button" class="btn btn-beef" id="saveCowBtn">บันทึกข้อมูล</button>
+                    <button type="button" class="btn btn-beef btn-secondary" id="saveCowBtn">บันทึกข้อมูล</button>
                 </div>
             </div>
         </div>
@@ -648,7 +677,7 @@
                                 <label for="exportCowIds"><i class="fas fa-tag me-1"></i> เลขประจำตัวโค (cowId)</label>
                                 <textarea class="form-control bg-secondary-subtle" id="exportCowIds" name="exportCowIds"
                                     rows="4" required readonly></textarea>
-                                <small class="text-muted">กรณีหลายตัวให้คั่นด้วยเครื่องหมาย , (คอมม่า)</small>
+                                <small class="text-beef">กรณีหลายตัวให้คั่นด้วยเครื่องหมาย , (คอมม่า)</small>
                             </div>
                         </div>
                         <div class="row mb-3 g-3">
@@ -788,14 +817,35 @@
 
         // Set current date and user info when opening the add cow modal
         $('#addCowModal')
-            .on('show.bs.modal', function () {
+            .on('shown.bs.modal', function () {
                 let session = JSON.parse(localStorage.getItem('userSession'));
                 if (session) {
-                    $('#memberCode').val(session.id);
+                    $('#userID').val(session.id);
                     $('#recorder').val(session.name);
-                    if ($('form#addCowForm').data('editMode') == false) {
+
+                    const isEditMode = $('form#addCowForm').attr('data-editmode');
+                    console.log("🚀 ~ isEditMode:", isEditMode)
+                    const isMember = ROLE === 'Member';
+                    console.log("🚀 ~ isMember:", isMember)
+
+                    // Set date only for new records
+                    if (!isEditMode) {
                         $('#dataDate').val(moment().format('YYYY-MM-DD'));
+                        $('#farmID')
+                            .attr('readonly', isMember)
+                            .parent()
+                            .toggleClass('d-none', isMember);
+                    } else {
+                        $('#farmID').attr('readonly', !isMember)
                     }
+
+                    // // Configure farmID field based on user role (same for both edit and add modes)
+                    // $('#farmID')
+                    //     .toggleClass('bg-secondary-subtle', !isMember)
+                    //     .attr('required', isMember)
+                    //     .parent()
+                    //     .toggleClass('d-none', !isMember);
+
                 } else {
                     Swal.fire({
                         icon: 'error',
@@ -810,14 +860,16 @@
                     });
                 }
             })
-            .on('hidden.bs.modal', function () {
+            .on('hide.bs.modal', function () {
                 $('#addCowForm')[0].reset();
+                $('#farmID').val('').attr('readonly', true).removeAttr('required').removeClass('bg-secondary-subtle').parent().addClass('d-none');
                 $('#temp-imgs').val('');
                 $('.img-grid-col').empty();
                 $('#image-label').text('คลิกเพื่อเลือกรูปภาพ');
-                $('form#addCowForm').data('editMode', false);
+                $('form#addCowForm').removeAttr('data-editmode');
                 $('#addCowForm').removeClass('was-validated');
-                $('form#addCowForm button[type="submit"]').removeAttr('disabled').text('บันทึกข้อมูล');
+                $('#saveCowBtn').removeAttr('disabled').text('บันทึกข้อมูล');
+                $('.temp-readonly').removeClass('temp-readonly');
                 $('#addCowModalLabel').text('เพิ่มข้อมูลโค');
             });
 
@@ -831,7 +883,7 @@
                 return;
             }
 
-            if ($('#temp-imgs')[0].files.length == 0 && $('.img-grid-col img').length == 0 && !$('form#addCowForm').data('editMode')) {
+            if ($('#temp-imgs')[0].files.length == 0 && $('.img-grid-col img').length == 0 && !$('form#addCowForm').attr('data-editmode')) {
                 Swal.fire({
                     icon: 'error',
                     title: 'กรุณาเลือกรูปภาพ',
@@ -851,9 +903,10 @@
             // Gather form data
             let userSession = JSON.parse(localStorage.getItem('userSession'));
             const formData = {
-                memberCode: $('#memberCode').val(),
+                userID: $('#userID').val(),
                 role: userSession.role,
                 memberName: userSession.name,
+                farmID: $('#farmID').val(),
                 cowID: $('#cowID').val() == "AUTO ID" ? undefined : $('#cowID').val(),
                 cowName: $('#cowName').val(),
                 birthDate: $('#birthDate').val(),
@@ -863,15 +916,14 @@
                 motherCode: $('#motherCode').val(),
                 fmotherCode: $('#fmotherCode').val(),
                 fatherCode: $('#fatherCode').val(),
-                ffatherCode: $('#ffatherCode').val(),
                 cowOwner: $('#cowOwner').val(),
                 dataDate: $('#dataDate').val(),
                 remark: $('#remark').val()
             }
             NProgress.start();
             NProgress.inc();
-            uploadFiles(formData.memberCode, new Date().getTime()).then((res) => {
-                if ($('form#addCowForm').data('editMode')) {
+            uploadFiles(formData.userID, new Date().getTime()).then((res) => {
+                if ($('form#addCowForm').attr('data-editmode')) {
                     if (res.length > 0) {
                         res = [...res, ...$('.img-grid-col img').not('.isNew').toArray().map(img => {
                             return $(img).attr('src').split('/d/')[1]
@@ -884,7 +936,7 @@
                 }
                 cowData = {
                     ...formData,
-                    isEdit: $('form#addCowForm').data('editMode') ? true : false,
+                    isEdit: $('form#addCowForm').attr('data-editmode') ? true : false,
                     cowImage: res,
                     role: ROLE
 
@@ -898,7 +950,7 @@
             // Add cow to database (you would integrate with your backend here)
         });
 
-        async function uploadFiles(memberCode, cowID) {
+        async function uploadFiles(userID, cowID) {
             const f = document.getElementById("temp-imgs");
             if (f.files.length == 0) {
                 return []
@@ -919,7 +971,7 @@
                     Swal.showLoading()
                 },
             })
-            const { token, folder_id } = await getDownloadToken(memberCode, cowID);
+            const { token, folder_id } = await getDownloadToken(userID, cowID);
             let file = await new Promise((resolve, reject) => {
                 let length = f.files.length;
                 let count = 0;
@@ -987,7 +1039,7 @@
             return file;
         }
 
-        function getDownloadToken(memberCode, cowID) {
+        function getDownloadToken(userID, cowID) {
             return new Promise((resolve, reject) => {
                 google.script.run.withSuccessHandler((res) => {
                     res = JSON.parse(res);
@@ -996,7 +1048,7 @@
                     } else {
                         reject(res.message);
                     }
-                }).getDownloadToken(memberCode, cowID);
+                }).getDownloadToken(userID, cowID);
             });
         }
 
@@ -1055,8 +1107,9 @@
             const data = cowDataTable.row(row).data();
             console.log("🚀 ~ editCow ~ data:", data)
             // Populate the form with the data
-            $('#memberCode').val(data.memberCode);
-            $('#cowID').val(data.cowID);
+            $('#userID').val(data.userID);
+            $('#farmID').val(data.farmID)
+            $('#cowID').val(data.cowID)
             $('#cowName').val(data.cowName);
             $('#birthDate')[0]._flatpickr.setDate(data.birthDate, true);
             $('#cowGender').val(data.cowGender);
@@ -1064,17 +1117,17 @@
             $('#motherCode').val(data.motherCode);
             $('#fmotherCode').val(data.fmotherCode);
             $('#fatherCode').val(data.fatherCode);
-            $('#ffatherCode').val(data.ffatherCode);
+            // $('#ffatherCode').val(data.ffatherCode);
             $('#cowOwner').val(data.cowOwner);
-            ROLE !== 'Member' ? $('#dataDate')[0]._flatpickr.setDate(data.dataDate, true) : $('#dataDate').val(moment(data.dataDate).format('YYYY-MM-DD'));
             $('#remark').val(data.remark);
             // Show the modal
-            $('#addCowModal').modal('show');
             // Set the form to edit mode
             $('#addCowModalLabel').text('แก้ไขข้อมูลโค');
             $('#saveCowBtn').text('บันทึกการแก้ไข');
-            $('form#addCowForm').data('editMode', true);
+            $('form#addCowForm').attr('data-editmode', true);
             $('#temp-imgs').val('');
+            $('#addCowModal').modal('show');
+
 
             // show image
             let images = [data.cowImage1, data.cowImage2, data.cowImage3, data.cowImage4, data.cowImage5].filter(img => img !== '');
@@ -1085,7 +1138,7 @@
                     let imgElement = $($('#img-template').html());
                     $('.img-grid-col').eq(i % 3).append(imgElement)
                     imgElement.find('img').attr('src', img)
-                    imgElement.find('span').on('click', function () {
+                    imgElement.find('span').addClass('span-delete').on('click', function () {
                         deleteImage(img, row, data)
                     });
                     imgElement.find('img').on('click', function () {
@@ -1099,6 +1152,17 @@
                         });
                     });
                 });
+            }
+            if (ROLE !== 'Member') {
+                $('#dataDate')[0]._flatpickr.setDate(data.dataDate, true)
+            } else {
+                // set form to readonly if row.date  is passed for 7 days
+                let date = moment(data.date).add(7, 'days').format('YYYY-MM-DD')
+                if (moment(date).isBefore(moment())) {
+                    $('form#addCowForm').find('input, select, textarea, #image-label, .span-delete').addClass('temp-readonly')
+                    $('#saveCowBtn').attr('disabled', true).text('ไม่สามารถแก้ไขได้หลังจาก 7 วัน')
+                }
+                $('#dataDate').val(moment(data.dataDate).format('YYYY-MM-DD'));
             }
         }
 
@@ -1140,8 +1204,7 @@
                         res = JSON.parse(res);
                         NProgress.done()
                         if (res.success) {
-                            // Remove row from DataTable
-                            cowDataTable.row(row).remove().draw(false);
+                            cowDataTable.ajax.reload(null, false);
                             Toast.fire({
                                 icon: 'success',
                                 title: 'ลบข้อมูลโคเรียบร้อยแล้ว'
@@ -1155,7 +1218,7 @@
                                 confirmButtonColor: 'var(--primary-color)'
                             });
                         }
-                    }).deleteCow(data.cowID, data.memberCode)
+                    }).deleteCow(data.cowID, data.userID)
                 }
             })
         }
@@ -1247,7 +1310,7 @@
                                 confirmButtonColor: 'var(--primary-color)'
                             });
                         }
-                    }).deleteImage(url.split('/d/')[1], data.cowID, images, data.memberCode)
+                    }).deleteImage(url.split('/d/')[1], data.cowID, images, data.userID)
 
                 }
             });
@@ -1307,18 +1370,11 @@
                     return status.val()
                 },
 
-            }).then((result) => {
+            }).then(async (result) => {
                 console.log("🚀 ~ changeStatus ~ result:", result)
                 if (result.isConfirmed && selectStatus != null) {
+                    console.log("🚀 ~ changeStatus ~ selectStatus:", selectStatus)
                     // If selected status is "ส่งออกแล้ว", show export form modal
-                    if (selectStatus === 'ส่งออกแล้ว') {
-                        showExportFormModal([{
-                            cowID: data.cowID,
-                            name: data.cowName,
-                            gender: data.cowGender,
-                        }]);
-                        return;
-                    }
                     let status_index = {
                         'อยู่กับสมาชิก': 1,
                         'อยู่ในฟาร์ม': 2,
@@ -1333,6 +1389,64 @@
                         });
                         return;
                     }
+                    if (selectStatus === 'ส่งออกแล้ว') {
+                        showExportFormModal([{
+                            cowID: data.cowID,
+                            name: data.cowName,
+                            gender: data.cowGender,
+                            farmID: data.farmID,
+                        }]);
+                        return;
+                    } else if (selectStatus === 'อยู่ในฟาร์ม') {
+                        let fid
+                        await Swal.fire({
+                            icon: 'info',
+                            title: 'กรุณากรอกรหัสฟาร์ม',
+                            html: '<input type="text" class="form-control text-center" id="swal-farmID" placeholder="กรอกรหัสฟาร์ม">',
+                            focusConfirm: false,
+                            showLoaderOnConfirm: true,
+                            preConfirm: async () => {
+                                const farmID = $('#swal-farmID').val()
+                                if (!farmID) {
+                                    Swal.showValidationMessage('กรุณากรอกรหัสฟาร์ม')
+                                    return false;
+                                }
+                                let is_available = await checkfid(farmID, true)
+                                console.log("🚀 ~ changeStatus ~ is_available:", is_available)
+                                if (!is_available) {
+                                    Swal.showValidationMessage('รหัสฟาร์มนี้ถูกใช้แล้ว')
+                                    return false;
+                                }
+                                fid = farmID
+                                return farmID;
+                            },
+                            didOpen: () => {
+                                $('#swal-farmID').focus().on('input', function () {
+                                    fid = $(this).val()
+                                    console.log("🚀 ~ fid:", fid)
+                                });
+                            },
+                            showCancelButton: true,
+                            confirmButtonText: 'รับเข้าฟาร์ม',
+                            cancelButtonText: 'ยกเลิก',
+                            confirmButtonColor: 'var(--primary-color)',
+                            cancelButtonColor: '#6c757d',
+                            customClass: {
+                                title: 'text-danger',
+                                content: 'text-dark',
+                                popup: 'rounded-4',
+                                input: 'rounded-3',
+
+                            },
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                data.farmID = fid
+                            } else {
+                                return false;
+                            }
+                        })
+                    }
+
 
                     // Continue with original status change flow for other statuses
                     let userSession = JSON.parse(localStorage.getItem('userSession'));
@@ -1357,10 +1471,7 @@
                         NProgress.done()
                         if (res.success) {
                             // Update the cow data table
-                            cowDataTable.row(row).data({
-                                ...data,
-                                cowStatus: selectStatus
-                            }).draw(false);
+                            cowDataTable.ajax.reload(null, false);
                             Toast.fire({
                                 icon: 'success',
                                 title: 'เปลี่ยนสถานะโคเรียบร้อยแล้ว'
@@ -1374,22 +1485,44 @@
                                 confirmButtonColor: 'var(--primary-color)'
                             });
                         }
-                    }).changeStatus(data.cowID, selectStatus, userSession.id, userSession.name)
+                    }).changeStatus(data.cowID, selectStatus, userSession.id, userSession.name, data.farmID)
                 }
             })
         }
 
         function showExportFormModal(data) {
             console.log("🚀 ~ showExportFormModal ~ data:", data);
+            if(data.map(cow => cow.farmID).some(cow => !cow || cow === "")) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ยังไม่สามารถส่งออกได้',
+                    html: 'พบโคที่เลือกบางตัวยังไม่ได้รับเข้าฟาร์ม' + '<br><span class="text-danger">กรุณารับเข้าฟาร์มก่อน</span>',
+                    confirmButtonColor: 'var(--primary-color)',
+                    customClass: {
+                        icon: 'border-0',
+                        title: 'text-danger',
+                        content: 'text-dark',
+                        popup: 'rounded-4'
+                    },
+                    confirmButtonText: 'ตกลง',
+                })
+                return
+            } 
             $('#exportFormModal').modal('show');
             let userSession = JSON.parse(localStorage.getItem('userSession'));
-            $('#exportCowIds').attr('data-export-ids', data.map(cow => cow.cowID).join(',')).val(data.map(cow => cow.name).join(', '));
+            $('#exportCowIds').attr('data-export-ids', data.map(cow => cow.cowID).join(',')).val(data.map(cow => cow.farmID).join(', '));
             $('#exportMaleCount').val(data.filter(cow => cow.gender === 'ผู้').length);
             $('#exportFemaleCount').val(data.filter(cow => cow.gender === 'เมีย').length);
             $('#exportForm').off('submit').on('submit', function (e) {
                 e.preventDefault();
+                let form = $(this)[0];
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
                 const exportData = {
                     cowIDs: $('#exportCowIds').attr('data-export-ids'),
+                    farmIDs: $('#exportCowIds').val(),
                     exportDestination: $('#exportDestination').val(),
                     exportMaleCount: parseInt($('#exportMaleCount').val()),
                     exportFemaleCount: parseInt($('#exportFemaleCount').val()),
@@ -1398,6 +1531,8 @@
                     userId: userSession.id,
                     userName: userSession.name,
                 };
+                // Validate form data
+
                 if (exportData.cowIDs.split(',').length !== (exportData.exportMaleCount + exportData.exportFemaleCount)) {
                     Swal.fire({
                         icon: 'error',
@@ -1429,13 +1564,15 @@
                             icon: 'success',
                             title: 'บันทึกข้อมูลการส่งออกเรียบร้อยแล้ว'
                         });
-                        $('#exportForm')[0].reset();
-                        cowDataTable.ajax.reload(null, false);
-                        $('#exportCowIds').attr('data-export-ids', '').val('');
-                        $('#exportMaleCount').val(0);
-                        $('#exportFemaleCount').val(0);
-                        $('.select-cow').attr('checked', false);
-                        $('.btn-export-cow').attr('disabled', true).addClass('d-none');
+                        cowDataTable.ajax.reload(function () {
+                            console.log("reload..");
+                            $('#exportCowIds').attr('data-export-ids', '').val('');
+                            $('#exportForm')[0].reset();
+                            $('#exportDate')[0]._flatpickr.setDate(new Date(), true);
+                            if ($('.show-all-cows').is(':visible')) {
+                                cowDataTable.buttons(1).trigger()
+                            }
+                        }, false);
                     } else {
                         Swal.fire({
                             icon: 'error',
@@ -1479,91 +1616,66 @@
             $('#exportForm').submit()
         });
 
-        function saveExportData() {
-            // Get user session
-            let userSession = JSON.parse(localStorage.getItem('userSession'));
-            // Get form data
-            const formData = {
-                cowIDs: $('#exportCowIds').val(),
-                exportDestination: $('#exportDestination').val(),
-                exportMaleCount: $('#exportMaleCount').val(),
-                exportFemaleCount: $('#exportFemaleCount').val(),
-                exportDate: $('#exportDate').val(),
-                exportRemarks: $('#exportRemarks').val(),
-                userId: userSession.id,
-                userName: userSession.name,
-            };
 
-            if (formData.cowIDs.split(',').length !== (formData.exportMaleCount + formData.exportFemaleCount)) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาด',
-                    text: 'จำนวนรหัสโคที่ส่งออกไม่ตรงกับจำนวนที่ระบุ',
-                    confirmButtonColor: 'var(--primary-color)'
-                });
-                return;
+        let checIDtimeout = null;
+        function checkFarmID(value, waiting = true) {
+            let timeout = 0;
+            if (waiting) timeout = 1000;
+            else timerout = 1;
+            if (checIDtimeout) {
+                clearTimeout(checIDtimeout);
             }
-
-
-            NProgress.start();
-            NProgress.inc();
-            Swal.fire({
-                iconHtml: '<i class="bi bi-hourglass-split text-danger"></i>',
-                title: 'กำลังบันทึกข้อมูลการส่งออก',
-                customClass: {
-                    icon: 'border-0',
-                    title: 'text-danger',
-                    content: 'text-dark',
-                    popup: 'rounded-4'
-                },
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading()
-                },
-            });
-
-            // Call backend to save export data
-            google.script.run
-                .withFailureHandler(function (error) {
-                    console.log(error);
-                    NProgress.done();
+            checIDtimeout = setTimeout(() => {
+                NProgress.start();
+                if (waiting == false) {
                     Swal.fire({
-                        icon: 'error',
-                        title: 'เกิดข้อผิดพลาด',
-                        text: 'ไม่สามารถบันทึกข้อมูลการส่งออกได้ โปรดลองอีกครั้ง',
-                        confirmButtonColor: 'var(--primary-color)'
+                        iconHtml: '<i class="bi bi-hourglass-split text-danger"></i>',
+                        title: 'กำลังตรวจสอบรหัสโค',
+                        customClass: {
+                            icon: 'border-0',
+                            title: 'text-danger',
+                            content: 'text-dark',
+                            popup: 'rounded-4'
+                        },
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading()
+                        },
                     });
-                })
-                .withSuccessHandler(function (res) {
-                    res = JSON.parse(res);
-                    NProgress.done();
-                    if (res.success) {
-                        // Close modal and refresh data
-                        $('#exportFormModal').modal('hide');
-                        $('#exportForm')[0].reset();
-                        cowDataTable.ajax.reload(null, false);
+                }
 
-                        Toast.fire({
-                            icon: 'success',
-                            title: 'บันทึกข้อมูลการส่งออกเรียบร้อยแล้ว'
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'เกิดข้อผิดพลาด',
-                            text: res.message || 'ไม่สามารถบันทึกข้อมูลการส่งออกได้ โปรดลองอีกครั้ง',
-                            confirmButtonColor: 'var(--primary-color)'
-                        });
-                    }
-                })
-                .saveExportData({
-                    ...formData,
-                    userId: userSession.id,
-                    userName: userSession.name
-                });
+                checkfid(value, waiting)
+            }, timeout);
         }
 
-        // Custom SweetAlert2 theme to match our color scheme
+        async function checkfid(value, waiting = true) {
+            let res = await new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler((res) => {
+                    res = JSON.parse(res);
+                    console.log("🚀 ~ google.script.run.withSuccessHandler ~ res:", res)
+                    if (res.success) {
+                        if (waiting) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: res.message,
+                                showConfirmButton: false,
+                                timer: 2000,
+                                timerProgressBar: true,
+                                customClass: {
+                                    icon: 'border-0',
+                                    title: 'text-success',
+                                    content: 'text-dark',
+                                    popup: 'rounded-4'
+                                }
+                            })
+                        }
+                    }
+                    resolve(res.success)
+                }).checkFarmID(value)
+            });
+            return res;
+        }
+
     </script>
     <script>
         AOS.init();
@@ -1773,22 +1885,24 @@
             let session = localStorage.getItem('userSession');
             console.log("🚀 ~ session:", session)
             console.log("🚀 ~ moment().unix():", moment().unix());
-            if (session == null || (session.expired && Number(session.expired) < moment().unix())) {
+            if (session == null || (JSON.parse(session).expired && JSON.parse(session).expired < moment().unix())) {
                 localStorage.removeItem('userSession');
                 initLoginForm();
             } else {
                 session = JSON.parse(session);
-                session.expired = moment().unix() + 7200; // 2 hours session
                 ROLE = session.role
                 $('#currentUsername').text(session.name)
                 localStorage.setItem('userSession', JSON.stringify(session));
                 initializeApp();
             }
-            $('#logoutBtn').on('mouseenter', function () {
-                $('#logoutText').show(400)
-            }).on('mouseleave', function () {
-                $('#logoutText').hide(400)
+            $(window).on('resize', function () {
+                $('#logoutBtn').on('mouseenter', function () {
+                    $('#logoutText').show(400)
+                }).on('mouseleave', function () {
+                    $('#logoutText').hide(400)
+                });
             });
+            $(window).trigger('resize');
         });
 
         $('#logoutBtn').on('click', function () {
@@ -1838,6 +1952,7 @@
                 // Initialize the cow data table
                 cowDataTable = $('#cowDataTable').DataTable({
                     responsive: true,
+                    scrollX: true,
                     serverSide: false,
                     processing: true,
                     ajax: function (data, callback, settings) {
@@ -1893,14 +2008,27 @@
                             }
                         },
                         {
-                            data: 'cowID',
-                            title: 'รหัสโค',
+                            data: 'userID',
+                            title: 'รหัสสมาชิก',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center',
                             visible: false,
-                            className: 'dt-head-center dt-head-nowrap all',
                         },
                         {
-                            data: 'memberCode',
-                            title: 'รหัสสมาชิก',
+                            data: 'farmID',
+                            title: 'รหัสฟาร์ม',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center' +
+                                (ROLE !== 'Member' ? ' all' : ''),
+                            visible: ROLE !== 'Member',
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    return `<span class="text-success">${data}</span>`;
+                                }
+                                return data;
+                            }
+                        },
+                        {
+                            data: 'cowID',
+                            title: 'รหัสโค',
                             visible: false,
                             className: 'dt-head-center dt-head-nowrap',
                         },
@@ -1912,7 +2040,7 @@
                                 if (type === 'display') {
                                     return row.cowStatus === 'ส่งออกแล้ว' ? `<span class="text-muted">${data}</span>` :
                                         (ROLE === 'Member' ? `<span class="text-muted">${data}</span>` :
-                                            `<input type="checkbox" class="form-check-input d-none select-cow" data-id="${row.cowID}" data-name="${data}" data-gender="${row.cowGender}" id="select-cow-${row.cowID}" /><span class="ms-2">${row.cowName}</span>`);
+                                            `<input type="checkbox" class="form-check-input d-none select-cow" data-id="${row.cowID}" data-name="${data}" data-gender="${row.cowGender}" data-farmid="${row.farmID}" id="select-cow-${row.cowID}" /><span class="ms-2">${row.cowName}</span>`);
                                 }
                                 return data;
                             }
@@ -1929,20 +2057,24 @@
                             }
                         },
                         {
+                            data: null,
+                            title: 'อายุ',
+                            className: 'dt-head-center dt-head-nowrap all',
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    let age = moment().diff(moment(row.birthDate), 'years');
+                                    let months = moment().diff(moment(row.birthDate), 'months') % 12;
+                                    let days = moment().diff(moment(row.birthDate), 'days') % 30;
+                                    return `${age > 0 ? age + ' ปี' : months > 0 ? months + ' เดือน' : days + ' วัน'}`;
+                                }
+                                return moment().diff(moment(row.birthDate), 'months')
+                            }
+                        },
+                        {
                             data: 'cowGender',
                             title: 'เพศ',
                             className: 'dt-head-center dt-head-nowrap dt-body-center',
 
-                        },
-                        {
-                            data: 'cowStatus',
-                            title: 'สถานะ',
-                            className: 'dt-head-center dt-head-nowrap all',
-                            render: function (data) {
-                                return `<button class="w-100 rounded-3 btn btn-sm btn-${data == 'อยู่ในฟาร์ม' ? 'success' : data == 'อยู่กับสมาชิก' ? 'primary' : 'muted'} change-status-btn ${ROLE === 'Member' ? 'pe-none' : ''}" ${ROLE === 'Member' ? '' : 'onclick="changeStatus(this)"'} data-status="${data}">
-                                    ${ROLE === 'Member' ? '' : '<i class="fa-solid fa-arrow-pointer fa-flip-horizontal"></i>&nbsp;'}
-                                    ${data}</button>`;
-                            }
                         },
                         {
                             data: 'fcowCode',
@@ -1964,15 +2096,57 @@
                             title: 'รหัสพ่อ/ชื่อพ่อ',
                             className: 'dt-head-center dt-head-nowrap dt-body-center',
                         },
-                        {
-                            data: 'ffatherCode',
-                            className: 'dt-head-center dt-head-nowrap dt-body-center',
-                            title: 'Fพ่อ'
-                        },
+                        // {
+                        //     data: 'ffatherCode',
+                        //     className: 'dt-head-center dt-head-nowrap dt-body-center',
+                        //     title: 'Fพ่อ'
+                        // },
                         {
                             data: 'cowOwner',
                             title: 'ชื่อเจ้าของโค/ที่มา',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center all',
+                        },
+                        {
+                            data: 'memberName',
+                            title: 'ผู้บันทึกข้อมูล',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center' +
+                                (ROLE !== 'Member' ? ' all' : ''),
+                        },
+                        {
+                            data: 'farmInDate',
+                            title: 'วันที่เข้าฟาร์ม',
+                            visible: ROLE !== 'Member',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center'  +
+                            (ROLE !== 'Member' ? ' all' : ''),
+                            render: function (data, type, row) {
+                                if(data === '') return '';
+                                if (type === 'display') {
+                                    return moment(data).format('DD/MM/YYYY');
+                                }
+                                return new Date(data).getTime();
+                            }
+                        },
+                        {
+                            data: 'dataDate',
+                            title: 'วันที่บันทึกข้อมูล',
                             className: 'dt-head-center dt-head-nowrap dt-body-center',
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    return moment(data).format('DD/MM/YYYY');
+                                }
+                                return new Date(data).getTime();
+                            }
+                        },
+                        {
+                            data: 'lastUpdate',
+                            title: 'วันที่อัพเดทข้อมูล',
+                            className: 'dt-head-center dt-head-nowrap',
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    return moment(data).format('DD/MM/YYYY HH:mm:ss');
+                                }
+                                return new Date(data).getTime();
+                            }
                         },
                         {
                             data: 'remark',
@@ -1992,6 +2166,17 @@
                                 } else {
                                     return '<div class="text-center">ไม่มีรูปภาพ</div>';
                                 }
+                            }
+                        },
+                        {
+                            data: 'cowStatus',
+                            title: 'สถานะ',
+                            orderable: false,
+                            className: 'dt-head-center dt-head-nowrap dt-body-center all',
+                            render: function (data) {
+                                return `<button class="w-100 rounded-3 btn btn-sm btn-${data == 'อยู่ในฟาร์ม' ? 'success' : data == 'อยู่กับสมาชิก' ? 'primary' : 'muted'} change-status-btn ${ROLE === 'Member' ? 'pe-none' : ''}" ${ROLE === 'Member' ? '' : 'onclick="changeStatus(this)"'} data-status="${data}">
+                                    ${ROLE === 'Member' ? '' : '<i class="fa-solid fa-arrow-pointer fa-flip-horizontal"></i>&nbsp;'}
+                                    ${data}</button>`;
                             }
                         },
                         {
@@ -2022,7 +2207,7 @@
                             className: 'all'
                         },
                         {
-                            targets: [2, 6, 15],
+                            targets: [2, 7, 15],
                             className: 'text-nowrap'
                         },
                     ],
@@ -2040,6 +2225,30 @@
                             // Trigger change event on select-cow checkboxes to update UI
                             $('.select-cow').trigger('change');
                         });
+                        // Add status filter dropdown for non-Member users
+                        if (ROLE !== 'Member') {
+                            // Replace status column header with select dropdown
+                            let statusFilterHtml = `
+                                <select class="form-select status-filter">
+                                    <option value="" selected>ทั้งหมด</option>
+                                    <option value="อยู่ในฟาร์ม">อยู่ในฟาร์ม</option>
+                                    <option value="อยู่กับสมาชิก">อยู่กับสมาชิก</option>
+                                    <option value="ส่งออกแล้ว">ส่งออกแล้ว</option>
+                                </select>
+                            `;
+
+                            $(cowDataTable.column(20).header()).html(statusFilterHtml);
+                            // Prevent sorting when clicking on the status filter dropdown
+                            $('.status-filter').on('click', function(e) {
+                                e.stopPropagation();
+                            });
+
+                            // Add filtering functionality
+                            $('.status-filter').on('change', function () {
+                                let filterValue = $(this).val();
+                                cowDataTable.column(20).search(filterValue).draw();
+                            });
+                        }
                         NProgress.done();
 
                     },
@@ -2055,6 +2264,7 @@
                     text: '<i class="bi bi-plus-circle"></i> เพิ่มโค',
                     className: 'btn btn-beef',
                     action: function () {
+                        $('form#addCowForm').removeAttr('data-editmode')
                         $('#addCowModal').modal('show');
                     }
                 }
@@ -2107,13 +2317,14 @@
                 },
                 {
                     text: '<i class="bi bi-file-earmark-arrow-up"></i> ส่งออกโค',
-                    className: 'btn btn-beef btn-export-cow d-none', // Add d-none class
+                    className: 'btn btn-export-cow d-none', // Add d-none class
                     action: function () {
                         let selectedCows = $('.select-cow:checked').toArray().map(function (checkbox) {
                             return {
                                 cowID: $(checkbox).data('id'),
                                 name: $(checkbox).data('name'),
-                                gender: $(checkbox).data('gender')
+                                gender: $(checkbox).data('gender'),
+                                farmID: $(checkbox).data('farmid'),
                             }
                         });
                         if (selectedCows.length === 0) {
