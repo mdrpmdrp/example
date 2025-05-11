@@ -302,6 +302,59 @@
             </div>
         </div>
     </div>
+    <!-- Modal for adding beef -->
+    <div class="modal fade" id="manualAddBeefModal" tabindex="-1" aria-labelledby="manualAddBeefModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-beef-subtle">
+                    <h5 class="modal-title text-beef" id="manualAddBeefModalLabel">เพิ่มเนื้อเข้ารายการ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addBeefForm">
+                        <input type="hidden" id="addBeefBillId" value="">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="beefProduct" class="form-label">เลือกเนื้อ</label>
+                                <select class="form-select" id="beefProduct" required>
+                                    <option value="" selected disabled>กรุณาเลือกเนื้อ</option>
+                                    <!-- Options will be populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="beefWeight" class="form-label">น้ำหนัก</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="beefWeight" step="0.01" min="0.01"
+                                        required>
+                                    <select class="form-select text-center" id="weightUnit" required>
+                                        <option value="kg" selected>กิโลกรัม</option>
+                                        <option value="g">กรัม</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="beefQuantity" class="form-label">จำนวน</label>
+                                <input type="number" class="form-control" id="beefQuantity" min="1" value="1" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="beefPrice" class="form-label">ราคา (บาท)</label>
+                                <input type="number" class="form-control" id="beefPrice" readonly>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-dark" id="confirmAddBeefBtn">
+                        <i class="bi bi-plus-circle"></i> เพิ่มรายการ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="container-fluid" id="print-area" style="display: none;">
         <div class="row">
             <div class="col-12 text-center mt-3">
@@ -319,7 +372,7 @@
         let scanHistory = JSON.parse(localStorage.getItem('beefScanHistory')) || [];
         const historyLimit = 500; // Limit history items
         const dt_lang = {
-            processing: '<div class="text-beef">กำลังโหลดข้อมูล...</div>',
+            processing: '<div class="text-beef"><i class="bi bi-arrow-repeat display-1"></i><br>กำลังโหลดข้อมูล...</div>',
             searchPlaceholder: "ค้นหา",
             search: "ค้นหา:",
             lengthMenu: "แสดง _MENU_ รายการ",
@@ -340,7 +393,7 @@
                 sortDescending: ": เรียงจากมากไปน้อย"
             }
         }
-        // const demo_data = <?!= getBarcodeDatas() ?>; // Fetch data from Google Sheets
+        const demo_data = <?!= getBarcodeDatas() ?>; // Fetch data from Google Sheets
         $(document).ready(function () {
             moment.locale('th'); // Set Thai locale for moment.js
             $('#dateInput').flatpickr({
@@ -357,6 +410,28 @@
                 $('#detailsTable').DataTable({
                     language: dt_lang,
                     paging: false,
+                    dom: '<"row justify-content-between"<"col-auto tb-type"><"col-auto"f>>'+
+                        '<"row"<"col-12"lt>>'+
+                        '<"row justify-content-between"<"col-auto"i><"col-auto"p>>',
+                    initComplete: function (settings, json) {
+                        $('.tb-type').html('<div class="btn-group" role="group" aria-label="View Type">' +
+                            '<input type="radio" class="btn-check" name="viewType" id="viewDetailed" autocomplete="off" checked>' +
+                            '<label class="btn btn-outline-dark btn-sm" for="viewDetailed">แยกรายการ</label>' +
+                            '<input type="radio" class="btn-check" name="viewType" id="viewSummary" autocomplete="off">' +
+                            '<label class="btn btn-outline-dark btn-sm" for="viewSummary">รวมรายการ</label>' +
+                            '</div>');
+                        
+                        $('#viewDetailed, #viewSummary').on('change', function() {
+                            const viewType = $(this).attr('id');
+                            if (viewType === 'viewDetailed') {
+                                $('#detailsTable').DataTable().columns(2).visible(true);
+                                $('#detailsTable').DataTable().columns(3).visible(true);
+                            } else {
+                                $('#detailsTable').DataTable().columns(2).visible(false);
+                                $('#detailsTable').DataTable().columns(3).visible(false);
+                            }
+                        });
+                    },
                 }).draw(false)
                 let inputgroupwidth = Math.max(...$('.input-group-text').toArray().map(e => $(e).width()));
                 console.log("🚀 ~ inputgroupwidth:", inputgroupwidth)
@@ -375,8 +450,105 @@
             scanHistory.forEach(item => {
                 searchInventory(item.barcode, true);
             });
-            // Set focus to barcode input
-            // barcodeInput.focus();
+            Object.keys(demo_data).forEach(key => {
+                const product = demo_data[key];
+                $('#beefProduct').append(`<option value="${product.fullProductName}" data-name="${product.productName}" data-id="${key}" data-price="${product.price}" data-type="${product.type}" data-grade="${product.grade}">${product.fullProductName}</option>`);
+            });
+
+            $('#beefProduct, #weightUnit').on('change', function () {
+                calculetePrice();
+            });
+
+            $('#beefWeight').on('input', function () {
+                calculetePrice();
+            });
+
+            $('#beefQuantity').on('input', function () {
+                calculetePrice()
+            });
+            $('#confirmAddBeefBtn').on('click', function () {
+                $('#addBeefForm').submit();
+            });
+
+            $('#addBeefForm').on('submit', function (e) {
+                e.preventDefault();
+                const select_product = $('#beefProduct option:selected');
+                const productName = select_product.data('name');
+                const productId = select_product.data('id');
+                const weight = parseFloat($('#beefWeight').val());
+                const unit = $('#weightUnit').val();
+                const price = parseFloat($('#beefPrice').val());
+                const type = select_product.data('type');
+                const grade = select_product.data('grade');
+                const quantity = parseInt($('#beefQuantity').val());
+                const billid = $('#addBeefBillId').val();
+                const scanTime = moment().format('YYYY-MM-DD HH:mm:ss');
+                const barcode = encryptBarcode(productId, weight, price);
+                if (productName && weight && price && quantity) {
+                    const item = {
+                        barcode: barcode,
+                        productName: productName,
+                        productId: productId,
+                        weight: unit === 'kg' ? weight : (weight / 1000),
+                        unit: unit,
+                        price: price,
+                        type: type,
+                        grade: grade,
+                        quantity: quantity,
+                        scanTime: scanTime,
+                        billid: billid
+                    };
+                    Swal.fire({
+                        title: 'กำลังบันทึกข้อมูล',
+                        text: 'กรุณารอสักครู่...',
+                        icon: 'warning',
+                        confirmButtonColor: '#8B4513',
+                        customClass: {
+                            popup: 'rounded-4'
+                        },
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    })
+                    google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
+                        if (res.success) {
+                            $('#table').DataTable().ajax.reload(null, false);
+                            $('#addBeefForm')[0].reset();
+                            $('#beefProduct').val('').change();
+                            $('#manualAddBeefModal').modal('hide');
+                            showNotification('success', 'บันทึกข้อมูลสำเร็จ', 'ข้อมูลได้ถูกบันทึกลง Google Sheets เรียบร้อยแล้ว');
+                        } else {
+                            Swal.fire({
+                                title: 'บันทึกข้อมูลไม่สำเร็จ',
+                                text: 'กรุณาลองใหม่อีกครั้ง',
+                                icon: 'error',
+                                confirmButtonColor: '#8B4513',
+                                customClass: {
+                                    popup: 'rounded-4'
+                                }
+                            });
+                        }
+                    })
+                        .addBeefToSheet(item);
+
+                } else {
+                    showNotification('error', 'ข้อมูลไม่ครบถ้วน', 'กรุณากรอกข้อมูลให้ครบถ้วน');
+                }
+            });
+
+            const calculetePrice = () => {
+                const weight = parseFloat($('#beefWeight').val());
+                const unit = $('#weightUnit').val();
+                const quantity = parseInt($('#beefQuantity').val());
+                const pricePerKg = parseFloat($('#beefProduct option:selected').data('price'));
+                let price = 0;
+                if (unit === 'kg') {
+                    price = weight * pricePerKg * quantity;
+                } else if (unit === 'g') {
+                    price = (weight / 1000) * pricePerKg * quantity;
+                }
+                $('#beefPrice').val(price.toFixed(3));
+            }
 
             // Search for barcode when Enter is pressed or search button is clicked
             barcodeInput.on('keydown', function (e) {
@@ -571,6 +743,27 @@
             });
         });
 
+        function decryptBarcode(barcode) {
+            return {
+                productId: barcode.substring(4, 8),
+                weight: parseFloat(barcode.substring(8, 13)) / 1000, // Convert to kg
+                price: parseInt(barcode.substring(13, 18))
+            };
+        }
+
+        function encryptBarcode(productId, weight, price) {
+            // Extract whole part and decimal part of weight
+            const [whole, decimal = ''] = weight.toString().split('.');
+            
+            // Format the components
+            const productIdStr = productId.toString().padStart(8, '0');
+            const weightRaw = (whole + decimal.padEnd(3, '0')).slice(0, 5).padStart(5, '0');
+            const priceRaw = Math.round(price).toString().padStart(5, '0');
+            
+            // Construct and return the barcode
+            return '0000' + productIdStr.slice(-4) + weightRaw + priceRaw;
+        }
+
         // Search inventory by barcode
         function searchInventory(barcode, isInitial = false) {
             let data = demo_data
@@ -586,15 +779,11 @@
                 return;
             }
 
-            // Extract information from barcode
-            const productId = barcode.substring(4, 8);
-            console.log("🚀 ~ searchInventory ~ productId:", productId)
-            const weightRaw = barcode.substring(8, 13);
-            const priceRaw = barcode.substring(13, 18);
-
-            const weight = parseFloat(weightRaw) / 1000;
-            const price = parseInt(priceRaw);
-            console.log(data[Number(productId).toString()]);
+            let {
+                productId,
+                weight,
+                price
+            } = decryptBarcode(barcode);
             const product = data[Number(productId).toString()];
 
             // Create item data directly from barcode
@@ -700,61 +889,6 @@
                     </div>
                 `);
                 historyList.append(historyItem);
-            });
-        }
-
-        // Show item details modal
-        function showItemDetails(barcode, item) {
-            Swal.fire({
-                title: item.fullname,
-                html: `
-                    <div class="text-start px-2">
-                        <div class="mb-3 d-flex justify-content-between">
-                            <div>
-                                <span class="badge bg-light text-dark border">รหัส: ${barcode}</span>
-                            </div>
-                            <div>
-                                <span class="badge bg-success">น้ำหนัก: ${item.weight} กก.</span>
-                            </div>
-                        </div>
-                        <table class="table">
-                            <tr>
-                                <td><strong>ชื่อสินค้า:</strong></td>
-                                <td>${item.fullname}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>ประเภท:</strong></td>
-                                <td>${item.type}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>เกรด:</strong></td>
-                                <td>${item.grade}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>วันที่ผลิต:</strong></td>
-                                <td>${formatDate(new Date(item.productionDate))}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>วันหมดอายุ:</strong></td>
-                                <td>${formatDate(new Date(item.expiryDate))}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>แหล่งที่มา:</strong></td>
-                                <td>${item.source}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>ราคา:</strong></td>
-                                <td>${item.price} บาท</td>
-                            </tr>
-                        </table>
-                    </div>
-                `,
-                showConfirmButton: true,
-                confirmButtonText: 'ปิด',
-                confirmButtonColor: '#8B4513',
-                customClass: {
-                    popup: 'rounded-4'
-                }
             });
         }
 
@@ -937,6 +1071,13 @@
                         }
                     },
                     {
+                        title: 'เพิ่มรายการ',
+                        data: null,
+                        render: function (data, type, row) {
+                            return '<button class="btn btn-sm btn-dark add-btn py-0 px-2" onclick="manualAddBeef(this)"><i class="bi bi-plus-circle"></i>&nbsp;เพิ่มเนื้อ</button>'
+                        }
+                    },
+                    {
                         title: 'สั่งพิมพ์',
                         data: null,
                         render: function (data, type, row) {
@@ -972,7 +1113,7 @@
                 // Add items to details table
                 if (row.data && row.data.length > 0) {
                     row.groupId = Object.groupBy(row.data, function (x) {
-                        return x[9].slice(4)
+                        return ("000000000000000000" + x[9].toString()).slice(-18).slice(4)
                     });
                     Object.keys(row.groupId)
                         .forEach((key, index) => {
@@ -1030,7 +1171,7 @@
                     return moment(b[6]).toDate().getTime() - moment(a[6]).toDate().getTime();
                 })
                 row.groupId = Object.groupBy(row.data, function (x) {
-                    return x[9].slice(4)
+                    return ("000000000000000000" + x[9].toString()).slice(-18).slice(4)
                 });
                 printBillDetails(row);
             });
@@ -1118,6 +1259,15 @@
                 printWindow.print();
                 printWindow.close();
             };
+        }
+
+        function manualAddBeef(btn) {
+            const row = $(btn).closest('tr');
+            const data = $('#table').DataTable().row(row).data();
+            console.log("🚀 ~ manualAddBeef ~ data:", data)
+            $('#manualAddBeefModalLabel').text('เพิ่มเนื้อเข้าบิล ' + data.billId);
+            $('#addBeefBillId').val(data.billId);
+            $('#manualAddBeefModal').modal('show');
         }
     </script>
 
