@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <!-- no cache -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -10,7 +9,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบตรวจสอบสินค้า Beef Good</title>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
         integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -31,6 +29,9 @@
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" />
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
     <style>
         * {
             font-family: 'Noto Sans Thai', sans-serif;
@@ -38,26 +39,21 @@
             padding: 0;
             box-sizing: border-box;
         }
-
         .text-beef {
             color: #8B4513;
         }
-
         .btn-beef {
             background-color: #8B4513;
         }
-
         .select,
         #locale {
             width: 100%;
         }
-
         .like {
             margin-right: 10px;
         }
     </style>
 </head>
-
 <body class="bg-light">
     <nav class="navbar bg-black navbar-dark m-0 py-1 navbar-expand-md shadow-sm no-print">
         <div class="container-fluid" data-bs-theme="dark">
@@ -94,7 +90,6 @@
                         <p class="text-center text-secondary">ใช้เครื่องสแกนหรือป้อนรหัสบาร์โค้ดด้านล่าง</p>
                     </div>
                 </div>
-
                 <div class="row mt-3">
                     <div class="col-12">
                         <div class="input-group">
@@ -103,9 +98,7 @@
                             <button class="btn btn-dark border-0" type="button" id="addItemBtn">
                                 <i class="bi bi-plus-circle"></i> เพิ่มรายการ
                             </button>
-
                         </div>
-
                     </div>
                 </div>
                 <div class="row mt-2 justify-content-center">
@@ -143,7 +136,6 @@
                         <!-- Inventory items will be added here dynamically -->
                     </div>
                 </div>
-
                 <!-- History Modal -->
                 <div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel"
                     aria-hidden="true">
@@ -198,8 +190,6 @@
             </div>
         </div>
     </div>
-
-
     <!-- Item Template -->
     <template id="item-template">
         <div class="inventory-item p-2 rounded-3 bg-danger-subtle mb-2" data-barcode="">
@@ -279,12 +269,12 @@
                         <table class="table table-striped table-bordered" id="detailsTable">
                             <thead class="table-dark">
                                 <tr class="text-center">
-                                    <th class="text-center">#</th>
+                                    <!-- <th class="text-center">#</th>
                                     <th class="text-center">ชื่อสินค้า</th>
                                     <th class="text-center">ประเภท</th>
                                     <th class="text-center">เกรด</th>
                                     <th class="text-center">น้ำหนัก</th>
-                                    <th class="text-center">จำนวน</th>
+                                    <th class="text-center">จำนวน</th> -->
                                 </tr>
                             </thead>
                             <tbody id="detailsTableBody" class="text-center"></tbody>
@@ -355,18 +345,7 @@
             </div>
         </div>
     </div>
-    <div class="container-fluid" id="print-area" style="display: none;">
-        <div class="row">
-            <div class="col-12 text-center mt-3">
-                <h4 class="text-beef fw-bold">ใบรายการสินค้า</h4>
-                <p class="text-secondary">วันที่: <span id="printDate"></span></p>
-            </div>
-            <div class="col-12 mt-3" id="printTableContainer">
-                <!-- Print table will be generated here -->
-            </div>
-        </div>
-
-    </div>
+    <div class="container-fluid" id="print-area" style="display: none;"></div>
     <script>
         // Sample data for demonstration - in real implementation, this would come from your backend
         let scanHistory = JSON.parse(localStorage.getItem('beefScanHistory')) || [];
@@ -407,37 +386,12 @@
                 }
             });
             $('#tableDetailsModal').on('shown.bs.modal', function () {
-                $('#detailsTable').DataTable({
-                    language: dt_lang,
-                    paging: false,
-                    dom: '<"row justify-content-between"<"col-auto tb-type"><"col-auto"f>>'+
-                        '<"row"<"col-12"lt>>'+
-                        '<"row justify-content-between"<"col-auto"i><"col-auto"p>>',
-                    initComplete: function (settings, json) {
-                        $('.tb-type').html('<div class="btn-group" role="group" aria-label="View Type">' +
-                            '<input type="radio" class="btn-check" name="viewType" id="viewDetailed" autocomplete="off" checked>' +
-                            '<label class="btn btn-outline-dark btn-sm" for="viewDetailed">แยกรายการ</label>' +
-                            '<input type="radio" class="btn-check" name="viewType" id="viewSummary" autocomplete="off">' +
-                            '<label class="btn btn-outline-dark btn-sm" for="viewSummary">รวมรายการ</label>' +
-                            '</div>');
-                        
-                        $('#viewDetailed, #viewSummary').on('change', function() {
-                            const viewType = $(this).attr('id');
-                            if (viewType === 'viewDetailed') {
-                                $('#detailsTable').DataTable().columns(2).visible(true);
-                                $('#detailsTable').DataTable().columns(3).visible(true);
-                            } else {
-                                $('#detailsTable').DataTable().columns(2).visible(false);
-                                $('#detailsTable').DataTable().columns(3).visible(false);
-                            }
-                        });
-                    },
-                }).draw(false)
+                $('#detailsTable').DataTable().draw(false);
                 let inputgroupwidth = Math.max(...$('.input-group-text').toArray().map(e => $(e).width()));
-                console.log("🚀 ~ inputgroupwidth:", inputgroupwidth)
                 $('.input-group-text').css('min-width', inputgroupwidth + 'pt');
             }).on('hidden.bs.modal', function () {
                 $('#detailsTable').DataTable().destroy();
+                $('#detailsTable').removeAttr('table-type')
             });
             const barcodeInput = $('#barcodeInput');
             const historyBtn = $('#historyBtn');
@@ -454,42 +408,61 @@
                 const product = demo_data[key];
                 $('#beefProduct').append(`<option value="${product.fullProductName}" data-name="${product.productName}" data-id="${key}" data-price="${product.price}" data-type="${product.type}" data-grade="${product.grade}">${product.fullProductName}</option>`);
             });
-
+            $('#beefProduct').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'กรุณาเลือกเนื้อ',
+                allowClear: true,
+                dropdownParent: $('#manualAddBeefModal'),
+                matcher: function(params, data) {
+                    // If there are no search terms, return all of the data
+                    if ($.trim(params.term) === '') {
+                        return data;
+                    }
+                    // Search in text AND data-id attribute
+                    var text = data.text.toLowerCase();
+                    var id = $(data.element).data('id');
+                    var term = params.term.toLowerCase();
+                    // Check if the text or id contains the search term
+                    if (text.indexOf(term) > -1 || (id && id.toString().indexOf(term) > -1)) {
+                        return data;
+                    }
+                    // Return `null` if the term should not be displayed
+                    return null;
+                },
+            });
             $('#beefProduct, #weightUnit').on('change', function () {
                 calculetePrice();
             });
-
             $('#beefWeight').on('input', function () {
                 calculetePrice();
             });
-
             $('#beefQuantity').on('input', function () {
                 calculetePrice()
             });
             $('#confirmAddBeefBtn').on('click', function () {
                 $('#addBeefForm').submit();
             });
-
             $('#addBeefForm').on('submit', function (e) {
                 e.preventDefault();
-                const select_product = $('#beefProduct option:selected');
-                const productName = select_product.data('name');
-                const productId = select_product.data('id');
-                const weight = parseFloat($('#beefWeight').val());
-                const unit = $('#weightUnit').val();
-                const price = parseFloat($('#beefPrice').val());
-                const type = select_product.data('type');
-                const grade = select_product.data('grade');
-                const quantity = parseInt($('#beefQuantity').val());
-                const billid = $('#addBeefBillId').val();
-                const scanTime = moment().format('YYYY-MM-DD HH:mm:ss');
+                let select_product = $('#beefProduct option:selected');
+                let productName = select_product.data('name');
+                let productId = select_product.data('id');
+                let weight = parseFloat($('#beefWeight').val());
+                let unit = $('#weightUnit').val();
+                let price = parseFloat($('#beefPrice').val());
+                let type = select_product.data('type');
+                let grade = select_product.data('grade');
+                let quantity = parseInt($('#beefQuantity').val());
+                let billid = $('#addBeefBillId').val();
+                let scanTime = moment().format('YYYY-MM-DD HH:mm:ss');
+                weight = unit === 'kg' ? weight : (weight / 1000);
                 const barcode = encryptBarcode(productId, weight, price);
                 if (productName && weight && price && quantity) {
                     const item = {
                         barcode: barcode,
                         productName: productName,
                         productId: productId,
-                        weight: unit === 'kg' ? weight : (weight / 1000),
+                        weight: weight,
                         unit: unit,
                         price: price,
                         type: type,
@@ -530,12 +503,10 @@
                         }
                     })
                         .addBeefToSheet(item);
-
                 } else {
                     showNotification('error', 'ข้อมูลไม่ครบถ้วน', 'กรุณากรอกข้อมูลให้ครบถ้วน');
                 }
             });
-
             const calculetePrice = () => {
                 const weight = parseFloat($('#beefWeight').val());
                 const unit = $('#weightUnit').val();
@@ -549,7 +520,6 @@
                 }
                 $('#beefPrice').val(price.toFixed(3));
             }
-
             // Search for barcode when Enter is pressed or search button is clicked
             barcodeInput.on('keydown', function (e) {
                 const barcode = $(this).val().trim();
@@ -560,8 +530,6 @@
                     }
                 }
             });
-
-
             addItemBtn.on('click', function () {
                 const barcode = barcodeInput.val().trim();
                 if (barcode) {
@@ -569,16 +537,13 @@
                     barcodeInput.val('').focus();
                 }
             });
-
             // Open history modal
             historyBtn.on('click', function () {
                 renderHistory();
                 historyModal.show();
             });
-
             saveBtn.on('click', function () {
                 let history = JSON.parse(localStorage.getItem('beefScanHistory')) || [];
-                console.log("🚀 ~ saveBtn.on ~ history:", history);
                 Swal.fire({
                     title: 'กำลังบันทึกข้อมูล',
                     text: 'กรุณารอสักครู่...',
@@ -592,7 +557,6 @@
                     }
                 })
                 google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
-                    console.log("🚀 ~ google.script.run.withFailureHandler ~ res:", res)
                     if (res.success) {
                         $('#inventoryHeader, #actionButtons').hide();
                         Swal.fire({
@@ -625,7 +589,6 @@
                     .saveDataToSheet(history);
             });
             $('.nav-link').click(function () {
-                console.log('clicked');
                 $('.nav-link').removeClass('active');
                 $('.tab-pane').removeClass('show active');
                 $(this).addClass('active');
@@ -639,21 +602,17 @@
                     // $('#table').DataTable().ajax.reload(null, false);
                 }
             });
-
             setTimeout(() => {
                 getPrintData($('#dateInput').val());
             }, 1000);
-
             $('#searchBtn').click(function () {
                 $('#table').DataTable().ajax.reload(null, false);
             });
-
             // Handle delete button click on inventory items
             $(document).on('click', '.delete-btn', function (e) {
                 e.stopPropagation(); // Prevent event bubbling
                 const itemElement = $(this).closest('.inventory-item');
                 const itemName = itemElement.find('.item-name').text();
-
                 Swal.fire({
                     title: 'ยืนยันการลบ',
                     text: `คุณต้องการลบ "${itemName}" ออกจากรายการหรือไม่?`,
@@ -681,13 +640,11 @@
                                 $('#emptyState').show();
                             }
                         });
-
                         // Show notification
                         showNotification('success', 'ลบรายการสำเร็จ', `ลบ "${itemName}" ออกจากรายการแล้ว`);
                     }
                 });
             });
-
             // Clear history
             clearHistoryBtn.on('click', function () {
                 Swal.fire({
@@ -719,7 +676,6 @@
                     }
                 });
             });
-
             // Handle click on history item
             // $(document).on('click', '.history-item', function () {
             //     const barcode = $(this).data('barcode');
@@ -727,7 +683,6 @@
             //     searchInventory(barcode);
             //     barcodeInput.val('').focus();
             // });
-
             // Auto focus on barcode input when page is clicked
             $(document).on('click', function (e) {
                 // Don't focus if clicking on a button, input or inside the history modal
@@ -736,13 +691,146 @@
                     barcodeInput.focus();
                 }
             });
-
             // Keep input in focus even after showing alerts
             $(document).on('shown.bs.modal hidden.bs.modal', function () {
                 setTimeout(() => barcodeInput.focus(), 100);
             });
         });
-
+        function initTableView(viewType) {
+            // Set appropriate headers based on view type
+            const headers = viewType === 'detailed'
+                ? `<tr class="text-center">
+                    <th class="text-center">#</th>
+                    <th class="text-center">ชื่อสินค้า</th>
+                    <th class="text-center">ประเภท</th>
+                    <th class="text-center">เกรด</th>
+                    <th class="text-center">น้ำหนัก</th>
+                    <th class="text-center">จำนวน</th>
+                </tr>`
+                : `<tr class="text-center">
+                    <th class="text-center">#</th>
+                    <th class="text-center">ชื่อสินค้า</th>
+                    <th class="text-center">น้ำหนัก</th>
+                </tr>`;
+            // Update DOM
+            $('#detailsTable thead').html(headers);
+            // Destroy existing DataTable if any
+            if ($.fn.DataTable.isDataTable('#detailsTable')) {
+                $('#detailsTable').DataTable().destroy();
+            }
+            // Initialize DataTable
+            $('#detailsTable').DataTable({
+                language: dt_lang,
+                paging: false,
+                dom: '<"row justify-content-between"<"col-auto tb-type"><"col-auto"f>>' +
+                    '<"row"<"col-12"t>>' +
+                    '<"row justify-content-between"<"col-auto"i><"col-auto"p>>',
+                initComplete: function () {
+                    // Create view toggle buttons
+                    $('.tb-type').html('<div class="btn-group mb-2" role="group" aria-label="View Type">' +
+                        '<input type="radio" class="btn-check" name="viewType" id="viewDetailed" autocomplete="off"' +
+                        (viewType === 'detailed' ? ' checked' : '') + '>' +
+                        '<label class="btn btn-outline-dark btn-sm" for="viewDetailed">แยกรายการ</label>' +
+                        '<input type="radio" class="btn-check" name="viewType" id="viewSummary" autocomplete="off"' +
+                        (viewType === 'summary' ? ' checked' : '') + '>' +
+                        '<label class="btn btn-outline-dark btn-sm" for="viewSummary">รวมรายการ</label>' +
+                        '</div>');
+                    // Set up event handlers for view switching
+                    $('#viewDetailed, #viewSummary').on('change', function () {
+                        const selectedView = $(this).attr('id') === 'viewDetailed' ? 'detailed' : 'summary';
+                        if (selectedView === 'detailed') {
+                            initTableDetailsView();
+                        } else {
+                            initTableSummaryView();
+                        }
+                    });
+                }
+            }).draw(false);
+        }
+        function getBillData(billId) {
+            let row = $('#table').DataTable().rows().data().toArray().find(item => item.billId === billId)
+            return row;
+        }
+        // Wrapper functions for backward compatibility
+        function initTableDetailsView() {
+            // Destroy existing DataTable if any
+            if ($.fn.DataTable.isDataTable('#detailsTable')) {
+                $('#detailsTable').DataTable().destroy();
+            }
+            $('#detailsTable').data('table-type', 'detailed')
+            let billId = $('#detailsTable').data('bill-id');
+            let row = getBillData(billId);
+            if (!row) {
+                showNotification('error', 'ไม่พบข้อมูล', 'ไม่พบข้อมูลในตาราง');
+                return;
+            }
+            // Clear previous details
+            $('#detailsTableBody').empty();
+            // Add items to details table
+            if (row.data && row.data.length > 0) {
+                row.groupId = Object.groupBy(row.data, function (x) {
+                    return ("000000000000000000" + x[9].toString()).slice(-18).slice(4)
+                });
+                Object.keys(row.groupId)
+                    .forEach((key, index) => {
+                        row.groupId[key] = row.groupId[key].sort((a, b) => {
+                            return a[3].localeCompare(b[3], 'th', { numeric: true });
+                        })
+                        let item = row.groupId[key][0]
+                        $('#detailsTableBody').append(`<tr>
+                <td class="text-center text-nowrap">${index + 1}</td>
+                <td class="text-center text-nowrap">${item[3]}</td>
+                <td class="text-center text-nowrap">${item[4]}</td>
+                <td class="text-end text-nowrap">${item[5]}</td>
+                <td class="text-end text-nowrap">${row.groupId[key][0][6].toLocaleString({
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        })} กก.</td>
+                <td class="text-center">${row.groupId[key].length}</td>
+            </tr>`);
+                    });
+            } else {
+                $('#detailsTableBody').append(`<tr><td colspan="5" class="text-center">ไม่พบรายการสินค้า</td></tr>`);
+            }
+            initTableView('detailed');
+        }
+        function initTableSummaryView() {
+            // Destroy existing DataTable if any
+            if ($.fn.DataTable.isDataTable('#detailsTable')) {
+                $('#detailsTable').DataTable().destroy();
+            }
+            $('#detailsTable').data('table-type', 'summary')
+            let billId = $('#detailsTable').data('bill-id');
+            let row = getBillData(billId);
+            if (!row) {
+                showNotification('error', 'ไม่พบข้อมูล', 'ไม่พบข้อมูลในตาราง');
+                return;
+            }
+            // Clear previous details
+            $('#detailsTableBody').empty();
+            // Add items to details table
+            if (row.data && row.data.length > 0) {
+                row.groupName = Object.groupBy(row.data, x => x[3]);
+                Object.keys(row.groupName)
+                    .forEach((key, index) => {
+                        row.groupName[key] = row.groupName[key].sort((a, b) => {
+                            return a[3].localeCompare(b[3], 'th', { numeric: true });
+                        })
+                        let item = row.groupName[key][0]
+                        let weights = row.groupName[key].map(item => item[6]).map(x => parseFloat(x).toFixed(2)).join(', ');
+                        let item_count = row.groupName[key].length;
+                        $('#detailsTableBody').append(`<tr>
+                <td class="text-center text-nowrap">${index + 1}</td>
+                <td class="text-center text-nowrap">${item[3]}&nbsp;<span class="text-muted">(${item_count})</span></td>
+                <td class="text-center">${weights}</td>
+                </tr>`);
+                    });
+            } else {
+                $('#detailsTableBody').append(`<tr><td colspan="5" class="text-center">ไม่พบรายการสินค้า</td></tr>`);
+            }
+            // Initialize DataTable for summary view
+            initTableView('summary');
+        }
         function decryptBarcode(barcode) {
             return {
                 productId: barcode.substring(4, 8),
@@ -750,20 +838,16 @@
                 price: parseInt(barcode.substring(13, 18))
             };
         }
-
         function encryptBarcode(productId, weight, price) {
             // Extract whole part and decimal part of weight
             const [whole, decimal = ''] = weight.toString().split('.');
-            
             // Format the components
             const productIdStr = productId.toString().padStart(8, '0');
             const weightRaw = (whole + decimal.padEnd(3, '0')).slice(0, 5).padStart(5, '0');
-            const priceRaw = Math.round(price).toString().padStart(5, '0');
-            
-            // Construct and return the barcode
-            return '0000' + productIdStr.slice(-4) + weightRaw + priceRaw;
+            const priceRaw = Math.ceil(price).toString().padStart(5, '0');
+            const barcode = '0000' + productIdStr.slice(-4) + weightRaw + priceRaw;
+            return barcode
         }
-
         // Search inventory by barcode
         function searchInventory(barcode, isInitial = false) {
             let data = demo_data
@@ -775,17 +859,14 @@
             if (barcode == '000000000000000000') {
                 // save data
                 localStorage.setItem('beefScanHistory', JSON.stringify(scanHistory));
-                console.log("🚀 ~ searchInventory ~ scanHistory:", scanHistory);
                 return;
             }
-
             let {
                 productId,
                 weight,
                 price
             } = decryptBarcode(barcode);
             const product = data[Number(productId).toString()];
-
             // Create item data directly from barcode
             const item = {
                 fullname: product.fullProductName || 'ไม่พบข้อมูลสินค้า',
@@ -798,14 +879,10 @@
                 price: price,
                 barcode: barcode
             };
-
             // Hide empty state if visible
             $('#emptyState').hide();
-
             // Add to history
-
             // Create and show the item card
-
             // Show notification
             if (!isInitial) {
                 addToHistory(item);
@@ -813,68 +890,52 @@
             }
             renderInventoryItem(barcode, item, productId);
         }
-
         // Render inventory item card
         function renderInventoryItem(barcode, item) {
-            console.log("🚀 ~ renderInventoryItem ~ item:", item)
             $('#emptyState').hide(); // Hide empty state if visible
             $('#inventoryHeader, #actionButtons').show(); // Show header and action buttons
             // Clone the template
             const template = document.getElementById('item-template');
             const itemElement = document.importNode(template.content, true);
-
             $(itemElement).find('.inventory-item').attr('data-barcode', barcode); // Set barcode data attribute
-
             // Set item data
             $(itemElement).find('.item-name').text(item.fullname);
             $(itemElement).find('.item-id').text(item.productId);
-
             // Set only weight
             $(itemElement).find('.item-weight').text(item.weight + ' กก.');
-
             $(itemElement).find('.item-price').text(item.price + ' บาท');
-
             // Set only production date
             const productionDate = new Date(item.productionDate);
             $(itemElement).find('.item-production-date').text();
-
             // Hide expiry badge since we're not displaying it
             $(itemElement).find('.expiry-badge').hide();
-
             // Set scan time
             $(itemElement).find('.item-scan-time').text('สแกนเมื่อ: ' + (moment().format('DD/MM/YYYY HH:mm')));
-
             // Update details button click to show simplified details
             $(itemElement).find('.details-btn').on('click', function () {
                 showSimplifiedItemDetails(barcode, item);
             });
-
             // Add to container
             const container = $('#inventoryContainer');
             container.prepend(itemElement);
-
             // Animate
             setTimeout(() => {
                 container.find('.inventory-item').first().addClass('show');
             }, 10);
         }
-
         // Add to scan history
         function addToHistory(item) {
             scanHistory.unshift(item);
             localStorage.setItem('beefScanHistory', JSON.stringify(scanHistory));
         }
-
         // Render history list
         function renderHistory() {
             const historyList = $('#historyList');
             historyList.empty();
-
             if (scanHistory.length === 0) {
                 historyList.html('<div class="text-center py-4 text-muted">ไม่มีประวัติการสแกน</div>');
                 return;
             }
-
             scanHistory.forEach(item => {
                 const timestamp = new Date(item.timestamp);
                 const historyItem = $(`
@@ -891,7 +952,6 @@
                 historyList.append(historyItem);
             });
         }
-
         // Show simplified item details modal - shows only product ID, weight, price, and production date
         function showSimplifiedItemDetails(barcode, item) {
             Swal.fire({
@@ -934,7 +994,6 @@
                 }
             });
         }
-
         // Show notification
         function showNotification(type, title, message) {
             const toast = Swal.mixin({
@@ -946,14 +1005,12 @@
                     popup: 'rounded-4'
                 }
             });
-
             toast.fire({
                 icon: type,
                 title: title,
                 text: message
             });
         }
-
         // Format date as DD/MM/YYYY
         function formatDate(date) {
             return date.toLocaleDateString('th-TH', {
@@ -962,7 +1019,6 @@
                 year: 'numeric'
             });
         }
-
         // Format time as HH:MM
         function formatTime(date) {
             return date.toLocaleTimeString('th-TH', {
@@ -971,36 +1027,29 @@
                 hour12: false
             });
         }
-
         // Update totals when items are added
         function updateTotals() {
             let itemCount = $('.inventory-item').length;
             let totalWeight = 0;
             let totalPrice = 0;
-
             $('.inventory-item').each(function () {
                 const weightText = $(this).find('.item-weight').text();
                 const priceText = $(this).find('.item-price').text();
-
                 const weight = parseFloat(weightText.replace(' กก.', ''));
                 const price = parseInt(priceText.replace(' บาท', ''));
-
                 totalWeight += weight;
                 totalPrice += price;
             });
-
             $('#itemCount').text(itemCount);
             $('#totalWeight').text(totalWeight.toFixed(2) + ' กก.');
             $('#totalPrice').text(totalPrice + ' บาท');
         }
-
         // Override renderInventoryItem to call updateTotals
         const originalRenderInventoryItem = renderInventoryItem;
         renderInventoryItem = function (barcode, item) {
             originalRenderInventoryItem(barcode, item);
             updateTotals();
         };
-
         function getPrintData() {
             let table = $('#table').DataTable({
                 scrollX: true,
@@ -1009,7 +1058,6 @@
                 ajax: function (data, callback, settings) {
                     NProgress.start();
                     const date = $('#dateInput').val();
-                    console.log("🚀 ~ date:", date)
                     google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
                         NProgress.done();
                         if (res.success) {
@@ -1034,6 +1082,8 @@
                 },
                 language: dt_lang,
                 order: [[0, 'desc']],
+                pageLength: 25,
+                lengthMenu: [10, 25, 50, 100],
                 columns: [
                     { title: 'เลขที่บิล', data: 'billId' },
                     { title: 'จำนวนรายการ', data: null, render: function (data, type, row) { return row.data.length; } },
@@ -1080,6 +1130,9 @@
                     {
                         title: 'สั่งพิมพ์',
                         data: null,
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center text-nowrap',
                         render: function (data, type, row) {
                             return '<button class="btn btn-sm print-btn py-0 px-2" data-barcode="' + row.barcode + '"><i class="bi bi-printer-fill text-beef"></i></button>'
                         }
@@ -1099,62 +1152,22 @@
             });
             $('#table').on('click', '.details-btn', function () {
                 let row = table.row($(this).closest('tr')).data();
-                console.log("Row data:", row);
-
                 // Populate modal with bill details
                 $('#detailDate').text(moment(row.productionDate).format('DD/MM/YYYY'));
                 $('#detailBillId').text(row.billId);
                 $('#detailTotalWeight').text(row.totalWeight.toLocaleString() + ' กก.');
                 $('#detailTotalPrice').text(row.totalPrice.toLocaleString() + ' บาท');
-
-                // Clear previous details
-                $('#detailsTableBody').empty();
-
-                // Add items to details table
-                if (row.data && row.data.length > 0) {
-                    row.groupId = Object.groupBy(row.data, function (x) {
-                        return ("000000000000000000" + x[9].toString()).slice(-18).slice(4)
-                    });
-                    Object.keys(row.groupId)
-                        .forEach((key, index) => {
-                            row.groupId[key] = row.groupId[key].sort((a, b) => {
-                                return a[3].localeCompare(b[3], 'th', { numeric: true });
-                            })
-                            let item = row.groupId[key][0]
-                            $('#detailsTableBody').append(`
-                            <tr>
-                                <td class="text-center text-nowrap">${index + 1}</td>
-                                <td class="text-center text-nowrap">${item[3]}</td>
-                                <td class="text-center text-nowrap">${item[4]}</td>
-                                <td class="text-end text-nowrap">${item[5]}</td>
-                                <td class="text-end text-nowrap">${row.groupId[key][0][6].toLocaleString({
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                            })} กก.</td>
-                                <td class="text-center">${row.groupId[key].length}</td>
-                            </tr>
-                        `);
-                        });
-                } else {
-                    $('#detailsTableBody').append(`
-                        <tr>
-                            <td colspan="5" class="text-center">ไม่พบรายการสินค้า</td>
-                        </tr>
-                    `);
-                }
-
+                $('#detailsTable').data('bill-id', row.billId);
+                initTableDetailsView()
                 // Show the modal
                 $('#tableDetailsModal').modal('show');
-
                 // Setup print button
                 $('#printDetailsBtn').off('click').on('click', function () {
                     printBillDetails(row);
                 });
             });
-
             $('#table').on('click', '.print-btn', function () {
                 const row = table.row($(this).closest('tr')).data();
-                console.log("Row data:", row);
                 if (row.data?.length == 0) {
                     Swal.fire({
                         title: 'ไม่สามารถพิมพ์ได้',
@@ -1173,12 +1186,11 @@
                 row.groupId = Object.groupBy(row.data, function (x) {
                     return ("000000000000000000" + x[9].toString()).slice(-18).slice(4)
                 });
+                $('#detailsTable').data('table-type', 'detailed');
                 printBillDetails(row);
             });
         }
-
         function printBillDetails(row) {
-            console.log("🚀 ~ printBillDetails ~ row:", row)
             let print_html = `
             <div class="row my-3">
                 <div class="col-12 text-end mb-3">
@@ -1200,7 +1212,10 @@
                     <textarea class="form-control" rows="2" readonly></textarea>
                 </div>
             </div>
-            <div class="row mb-3">
+            `;
+            let tableType = $('#detailsTable').data('table-type');
+            if (tableType === 'detailed') {
+                print_html += `<div class="row mb-3"><div class="col-12">
                 <table class="table table-bordered" id="detailsTablePrint">  
                     <tbody id="detailsTableBodyPrint">
                         <tr class="text-center text-nowrap">
@@ -1212,36 +1227,76 @@
                             <th class="text-center">จำนวน</th>
                         </tr>
                     </tbody>
-                </table>
-            </div>`;
-            $('#print-area').html(print_html);
-            if (row.data && row.data.length > 0) {
-                Object.keys(row.groupId)
-                    .sort((a, b) => {
-                        return a.localeCompare(b, 'th', { numeric: true });
-                    })
-                    .forEach((key, index) => {
-                        let item = row.groupId[key][0]
-                        $('#detailsTableBodyPrint').append(`
+                </table></div></div>`;
+                $('#print-area').html(print_html);
+                if (row.data && row.data.length > 0) {
+                    Object.keys(row.groupId)
+                        .sort((a, b) => {
+                            return a.localeCompare(b, 'th', { numeric: true });
+                        })
+                        .forEach((key, index) => {
+                            let item = row.groupId[key][0]
+                            $('#detailsTableBodyPrint').append(`
                             <tr>
                                 <td class="text-center text-nowrap">${index + 1}</td>
                                 <td class="text-center text-nowrap">${item[3]}</td>
                                 <td class="text-center text-nowrap">${item[4]}</td>
                                 <td class="text-end text-nowrap">${item[5]}</td>
                                 <td class="text-end text-nowrap">${row.groupId[key][0][6].toLocaleString({
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        })} กก.</td>
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            })} กก.</td>
                                 <td class="text-center">${row.groupId[key].length}</td>
                             </tr>
                         `);
-                    });
-            } else {
-                $('#detailsTableBodyPrint').append(`
+                        });
+                } else {
+                    $('#detailsTableBodyPrint').append(`
                     <tr>
                         <td colspan="5" class="text-center">ไม่พบรายการสินค้า</td>
                     </tr>
                 `);
+                }
+            } else if (tableType === 'summary') {
+                print_html += `<div class="row mb-3"><div class="col-12">
+                <table class="table table-bordered" id="detailsTablePrint">  
+                    <tbody id="detailsTableBodyPrint">
+                        <tr class="text-center text-nowrap">
+                            <th class="text-center">#</th>
+                            <th class="text-center">ชื่อสินค้า</th>
+                            <th class="text-center">น้ำหนัก (กก.)</th>
+                        </tr>
+                    </tbody>
+                </table></div></div>`;
+                $('#print-area').html(print_html);
+                if (row.data && row.data.length > 0) {
+                    row.groupName = Object.groupBy(row.data, x => x[3]);
+                    Object.keys(row.groupName)
+                        .sort((a, b) => {
+                            return a.localeCompare(b, 'th', { numeric: true });
+                        })
+                        .forEach((key, index) => {
+                            let item = row.groupName[key][0]
+                            let weights = row.groupName[key].map(item => item[6]).map(x => parseFloat(x).toFixed(2)).join(', ');
+                            let item_count = row.groupName[key].length
+                            $('#detailsTableBodyPrint').append(`
+                            <tr>
+                                <td class="text-center text-nowrap">${index + 1}</td>
+                                <td class="text-center text-nowrap">${item[3]}&nbsp;<span class="text-muted">(${item_count} รายการ)</span></td>
+                                <td class="text-center">${weights}</td>
+                            </tr>
+                        `);
+                        });
+                } else {
+                    $('#detailsTableBodyPrint').append(`
+                    <tr>
+                        <td colspan="3" class="text-center">ไม่พบรายการสินค้า</td>
+                    </tr>
+                `);
+                }
+            } else {
+                console.error('Unknown table type:', tableType);
+                return;
             }
             // Print the content of the print area
             const printWindow = window.open('', '', 'width=800,height=600');
@@ -1253,24 +1308,27 @@
             printWindow.document.write($('#print-area').html());
             printWindow.document.write('</div>');
             printWindow.document.write('</body></html>');
-
             printWindow.document.close();
             printWindow.onload = function () {
                 printWindow.print();
-                printWindow.close();
+                // printWindow.close();
             };
         }
-
         function manualAddBeef(btn) {
             const row = $(btn).closest('tr');
             const data = $('#table').DataTable().row(row).data();
-            console.log("🚀 ~ manualAddBeef ~ data:", data)
             $('#manualAddBeefModalLabel').text('เพิ่มเนื้อเข้าบิล ' + data.billId);
             $('#addBeefBillId').val(data.billId);
             $('#manualAddBeefModal').modal('show');
         }
+        $('#manualAddBeefModal').on('show.bs.modal', function () {
+            $('#beefProduct').val('');
+            $('#beefWeight').val('');
+            $('#weightUnit').val('kg');
+            $('#beefPrice').val('');
+            $('#beefProduct').focus();
+        });
     </script>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
@@ -1284,6 +1342,7 @@
         crossorigin="anonymous"></script>
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.full.min.js"></script>
     <script>
         AOS.init();
         document.addEventListener("DOMContentLoaded", function () {
@@ -1295,5 +1354,4 @@
         });
     </script>
 </body>
-
 </html>
