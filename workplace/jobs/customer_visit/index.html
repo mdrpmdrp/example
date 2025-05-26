@@ -244,9 +244,11 @@
             .timeline-item {
                 padding: 10px 10px 10px 20px;
             }
+
             .timeline-item::after {
                 left: 0px;
             }
+
             .timeline::before {
                 left: 10px;
             }
@@ -369,19 +371,24 @@
                                                 alt="" class="img-fluid rounded-3" style="cursor: pointer;">
                                         </div>
                                     </template>
-                                    <label for="images" class="form-label">
-                                        <i class="bi bi-image-fill text-red"></i>
-                                        รูปภาพ <span class="text-muted">(สูงสุด 5 รูป)</span><br>
+                                    <label for="images" class="w-100">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div><i class="bi bi-image-fill text-red"></i> รูปภาพ <span
+                                                    class="text-muted">(สูงสุด 5 รูป)</span></div>
+                                            <button type="button" class="btn btn-link"
+                                                id="open-album-btn">เลือกรูปจากอัลบั้ม</button>
+                                        </div>
+                                        <br>
                                     </label>
+
                                     <div class="rounded-3 border bg-secondary-subtle p-2 text-center"
                                         style="cursor: pointer;" id="image-label">
-                                        คลิกเพื่อเลือกรูปภาพ
+                                        คลิกเพื่อถ่ายภาพ
                                     </div>
                                     <input type="file" class="form-control rounded-3" id="images" name="images"
-                                        accept="image/*" multiple hidden>
+                                        accept="image/*" multiple hidden capture>
                                     <input type="file" name="temp-imgs" id="temp-imgs" class="d-none" multiple hidden
-                                        capture="camera">
-                                    </label>
+                                        capture accept="image/*">
                                 </div>
                                 <div class="col-12" id="imagePreview">
                                     <div class="img-grid-row d-flex flex-wrap mb-4">
@@ -529,19 +536,23 @@
                         </div>
                         <div class="row mb-3 mt-3">
                             <div class="col-md-12">
-                                <label for="editImages" class="form-label">
-                                    <i class="bi bi-image-fill text-red"></i>
-                                    รูปภาพ <span class="text-muted">(สูงสุด 5 รูป)</span><br>
+                                <label for="editImages" class="w-100">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div><i class="bi bi-image-fill text-red"></i> รูปภาพ <span
+                                                class="text-muted">(สูงสุด 5 รูป)</span></div>
+                                        <button type="button" class="btn btn-link"
+                                            id="open-edit-album-btn">เลือกรูปจากอัลบั้ม</button>
+                                    </div>
+                                    <br>
                                 </label>
                                 <div class="rounded-3 border bg-secondary-subtle p-2 text-center"
                                     style="cursor: pointer;" id="edit-image-label">
-                                    คลิกเพื่อเลือกรูปภาพ
+                                    คลิกเพื่อถ่ายภาพ
                                 </div>
                                 <input type="file" class="form-control rounded-3" id="editImages" name="editImages"
-                                    accept="image/*" multiple hidden>
+                                    accept="image/*" multiple hidden capture>
                                 <input type="file" name="edit-temp-imgs" id="edit-temp-imgs" class="d-none" multiple
-                                    hidden capture="camera">
-                                </label>
+                                    accept="image/*" hidden capture>
                             </div>
                             <div class="col-12" id="edit-imagePreview">
                                 <div class="img-grid-row d-flex flex-wrap mb-4">
@@ -573,8 +584,8 @@
         src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js">
         </script>
     <script src="https://cdn.datatables.net/v/bs5/dt-2.3.1/b-3.2.3/date-1.5.5/fh-4.0.2/r-3.0.4/datatables.min.js"
-        integrity="sha384-WWxL4UYUs/1AHv95I/4eysa3tqIIeCie4mPHE89mhU+mOIbI5+z6ebKBizsMbDHO"
-        crossorigin="anonymous"></script>
+        integrity="sha384-WWxL4UYUs/1AHv95I/4eysa3tqIIeCie4mPHE89mhU+mOIbI5+z6ebKBizsMbDHO" crossorigin="anonymous">
+        </script>
     <script>
         let DataChange = false;
         AOS.init({
@@ -586,6 +597,7 @@
         });
         window.addEventListener("load", function () {
             NProgress.done();
+            $('#visitForm').find('.getLocationBtn').click()
         });
     </script>
     <script>
@@ -649,13 +661,14 @@
                     $('.otherJobtype').addClass('d-none');
                     $('.otherJobtype').prop('required', false);
                     $('#edit-temp-imgs')[0].files = null;
-                    $('#edit-image-label').text('คลิกเพื่อเลือกรูปภาพ');
+                    $('#edit-image-label').html('คลิกเพื่อถ่ายภาพ');
                     $('#edit-imagePreview').find('.img-grid-col').empty();
                     isAdd = true;
                     $('#editVisitModal .modal-footer').find('button.save-btn').text('เพิ่มประวัติการเยี่ยม');
                     $('#editVisitModalLabel').text('เพิ่มประวัติการเยี่ยม');
                     $('#editNotes').val('');
                     $('#updatedBy').val('');
+                    $('#editVisitModal').find('.getLocationBtn').click()
                 }, 200);
             });
         });
@@ -697,17 +710,21 @@
         $('#clearFormBtn').on('click', function () {
             $('#visitForm')[0].reset();
             $('#temp-imgs')[0].files = null;
-            $('#image-label').text('คลิกเพื่อเลือกรูปภาพ');
+            $('#image-label').html('คลิกเพื่อถ่ายภาพ');
             $('.img-grid-col').empty();
             $('#locationStatus').text('').removeClass();
         });
 
-        function setupImageHandlers(labelSelector, inputSelector, tempImgsSelector, previewWrapper, isEdit = false) {
+        function setupImageHandlers(labelSelector, inputSelector, tempImgsSelector, previewWrapper, openAlbumBtn, isEdit = false) {
+            $(openAlbumBtn).on('click', function () {
+                $(inputSelector).removeAttr('capture').click();
+            });
             $(labelSelector).click(function () {
                 $(inputSelector).click();
-            });
+            })
 
             $(inputSelector).change(function (e) {
+                $(this).attr('capture', 'environment');
                 let MAX_IMAGES = 5;
                 let files = e.target.files;
                 let tempFiles = $(tempImgsSelector)[0].files;
@@ -775,7 +792,9 @@
                 let reader = new FileReader();
                 reader.onload = function (e) {
                     let img = $($('#img-template').html());
-                    img.find('img').attr('src', e.target.result).addClass('isNew');
+                    img.find('img').attr('src', e.target.result).addClass('isNew').on('click', function () {
+                        showImagePreview(e.target.result);
+                    });
                     img.find('span').on('click', function () {
                         let datatransfer = new DataTransfer();
                         let files = $(tempImgsSelector)[0].files;
@@ -785,27 +804,27 @@
                             }
                         }
                         $(tempImgsSelector)[0].files = datatransfer.files;
+                        if ($(tempImgsSelector)[0].files.length == 0) {
+                            $(labelSelector).html('คลิกเพื่อถ่ายภาพ');
+                        }
                         renderImagePreview([...datatransfer.files], tempImgsSelector, labelSelector, previewWrapper);
-                    });
-                    img.find('img').on('click', function () {
-                        showImagePreview(e.target.src);
                     });
                     let div = $(previewWrapper).find('.img-grid-col').eq(eq);
                     div.append(img);
                     if (i == allFiles.length - 1) {
                         Swal.close();
                     }
-                    $(labelSelector).text('เลือกแล้ว (' + $('.img-grid-col img').length + ') รูป');
+                    $(labelSelector).html('เลือกแล้ว (' + $('.img-grid-col img').length + ') รูป');
                 };
                 reader.readAsDataURL(file);
             });
         }
 
         // Setup for the main form
-        setupImageHandlers('#image-label', '#images', '#temp-imgs', '#imagePreview');
+        setupImageHandlers('#image-label', '#images', '#temp-imgs', '#imagePreview', '#open-album-btn');
 
         // Setup for the edit form
-        setupImageHandlers('#edit-image-label', '#editImages', '#edit-temp-imgs', '#edit-imagePreview');
+        setupImageHandlers('#edit-image-label', '#editImages', '#edit-temp-imgs', '#edit-imagePreview', '#open-edit-album-btn', true);
 
         $('.jobType').on('change', function () {
             const selectedValue = $(this).val();
@@ -1033,7 +1052,7 @@
                 if (res.success) {
                     $('#visitForm')[0].reset();
                     $('#temp-imgs')[0].files = null;
-                    $('#image-label').text('คลิกเพื่อเลือกรูปภาพ');
+                    $('#image-label').html('คลิกเพื่อถ่ายภาพ');
                     $('.img-grid-col').empty();
                     $('#locationStatus').text('').removeClass()
                     $('.jobtype').val('').trigger('change');
@@ -1405,7 +1424,7 @@
             $('#editVisitForm').removeAttr('data-editmode');
             $('#editVisitForm').removeAttr('data-isAdd');
             $('#edit-imagePreview').find('.img-grid-col').empty();
-            $('#edit-image-label').text('คลิกเพื่อเลือกรูปภาพ');
+            $('#edit-image-label').html('คลิกเพื่อถ่ายภาพ');
             $('#edit-temp-imgs')[0].files = null;
             isAdd = false;
             $('#editVisitModal .modal-footer').find('button.save-btn').text('บันทึกการแก้ไข').removeClass('btn-success').addClass('btn-primary');
@@ -1639,6 +1658,11 @@
                 console.error("Geolocation is not supported by this browser.");
             }
         });
+    </script>
+    <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+    <script>
+        // VConsole will be exported to `window.VConsole` by default.
+        var vConsole = new window.VConsole();
     </script>
 </body>
 
