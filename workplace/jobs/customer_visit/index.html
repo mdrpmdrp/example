@@ -253,6 +253,10 @@
                 left: 10px;
             }
         }
+
+        .status-toggle{
+            font-size: 0.875rem !important;
+        }
     </style>
 </head>
 
@@ -332,7 +336,7 @@
                                             class="text-danger">*</span></label>
                                     <div class="input-group">
                                         <input type="text" class="form-control rounded-start-3 location" id="location"
-                                            name="location" readonly required>
+                                            name="location" required>
                                         <button class="btn btn-outline-secondary rounded-end-3 getLocationBtn"
                                             type="button" id="getLocationBtn" name="getLocationBtn">
                                             <i class="bi bi-geo-alt"></i> ดึงพิกัดปัจจุบัน
@@ -443,6 +447,17 @@
                 </div>
                 <div class="modal-body">
                     <div class="container-fluid m-0 p-0">
+                        <div class="row justify-content-center">
+                            <div class="col-12">
+                                <div class="input-group input-group-lg rounded-4 mb-3">
+                                    <span class="input-group-text text-bg-danger">สถานะ</span>
+                                    <select class="form-select" id="visitStatus" name="visitStatus" data-visit-id="">
+                                        <option value="ติดตามงาน">ติดตามงาน</option>
+                                        <option value="จบงานแล้ว">จบงานแล้ว</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                         <div class="timeline-container">
                             <div class="timeline" id="visitTimeline">
                                 <!-- Visit timeline items will be inserted here -->
@@ -508,7 +523,7 @@
                                         class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <input type="text" class="form-control rounded-start-3 location" id="editLocation"
-                                        name="editLocation" readonly required>
+                                        name="editLocation" required>
                                     <button class="btn btn-outline-secondary rounded-end-3 getLocationBtn" type="button"
                                         id="getEditLocationBtn" name="getEditLocationBtn">
                                         <i class="bi bi-geo-alt"></i> ดึงพิกัดปัจจุบัน
@@ -642,6 +657,117 @@
                     AOS.refreshHard();
                 });
                 modalBody.trigger('scroll');
+                $('#visitStatus').off('change').on('change', function () {
+                    let status = $(this).is(':checked') ? 'จบงานแล้ว' : 'ติดตามงาน';
+                    let visitID = $(this).data('visit-id');
+                    if (status === 'จบงานแล้ว') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'ยืนยันการจบงาน',
+                            html: 'คุณต้องการจบงานนี้หรือไม่?' +
+                                '<br><span class="text-danger">หากกดจบงานแล้ว ข้อมูลจะไม่ถูกดึงมาแสดงอีก หากต้องการดูประวัติการเยี่ยม กรุณาไปที่ตารางข้อมูล และเลือกเมนู "แสดงทั้งหมด"</span>',
+                            showCancelButton: true,
+                            confirmButtonText: 'ใช่, จบงาน',
+                            cancelButtonText: 'ไม่, ยกเลิก'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                NProgress.start();
+                                NProgress.inc();
+                                Swal.fire({
+                                    title: 'กำลังเปลี่ยนสถานะ...',
+                                    didOpen: () => {
+                                        Swal.showLoading();
+                                    },
+                                    allowOutsideClick: false,
+                                    showConfirmButton: false
+                                });
+                                google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
+                                    res = JSON.parse(res);
+                                    if (res.success) {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'จบงานเรียบร้อย',
+                                            text: 'สถานะการเยี่ยมถูกเปลี่ยนเป็น "จบงานแล้ว"',
+                                            customClass: {
+                                                icon: 'text-success',
+                                                title: 'text-success',
+                                                content: 'text-dark',
+                                                popup: 'rounded-4'
+                                            }
+                                        });
+                                        $('#visitDataTable').DataTable().ajax.reload(null, true);
+                                    } else {
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'เกิดข้อผิดพลาด',
+                                            text: res.message,
+                                            customClass: {
+                                                icon: 'text-danger',
+                                                title: 'text-danger',
+                                                content: 'text-dark',
+                                                popup: 'rounded-4'
+                                            }
+                                        });
+                                    }
+                                }).changeVisitSAtatus(status, visitID)
+                            } else {
+                                // Reset the status to "ติดตามงาน"
+                                $(this).val('ติดตามงาน');
+                            }
+                        });
+                    } else if (status === 'ติดตามงาน') {
+                        Swal.fire({
+                            icon: 'question',
+                            title: 'ยืนยันการเปลี่ยนสถานะ',
+                            text: 'คุณต้องการเปลี่ยนสถานะเป็น "ติดตามงาน" หรือไม่?',
+                            showCancelButton: true,
+                            confirmButtonText: 'ใช่, เปลี่ยนสถานะ',
+                            cancelButtonText: 'ไม่, ยกเลิก'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                NProgress.start();
+                                NProgress.inc();
+                                Swal.fire({
+                                    title: 'กำลังเปลี่ยนสถานะ...',
+                                    didOpen: () => {
+                                        Swal.showLoading();
+                                    },
+                                    allowOutsideClick: false,
+                                    showConfirmButton: false
+                                });
+                                google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
+                                    res = JSON.parse(res);
+                                    if (res.success) {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'เปลี่ยนสถานะเรียบร้อย',
+                                            text: 'สถานะการเยี่ยมถูกเปลี่ยนเป็น "ติดตามงาน"',
+                                            customClass: {
+                                                icon: 'text-success',
+                                                title: 'text-success',
+                                                content: 'text-dark',
+                                                popup: 'rounded-4'
+                                            }
+                                        });
+                                        $('#visitDataTable').DataTable().ajax.reload(null, true);
+                                    } else {
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'เกิดข้อผิดพลาด',
+                                            text: res.message,
+                                            customClass: {
+                                                icon: 'text-danger',
+                                                title: 'text-danger',
+                                                content: 'text-dark',
+                                                popup: 'rounded-4'
+                                            }
+                                        });
+                                    }
+                                }).changeVisitSAtatus(status, visitID)
+                            }
+                        });
+                    }
+                });
             }).on('hidden.bs.modal', function (event) {
                 let modalBody = $(this).find('.modal-body');
                 modalBody.off('scroll');
@@ -705,6 +831,7 @@
             } else {
                 $('.main-container').css('max-width', '800px');
                 $('#visitForm')[0].reset();
+                $('#visitForm').find('.getLocationBtn').click();
             }
         })
         $('#clearFormBtn').on('click', function () {
@@ -1087,7 +1214,7 @@
                 }
             }).saveData(formData);
         }
-
+        let GET_ALL_VISIT_DATA = false
         function initDataTable() {
             $('#visitDataTable').DataTable({
                 processing: true,
@@ -1098,7 +1225,7 @@
                 buttons: {
                     dom: {
                         button: {
-                            className: 'btn btn-danger btn-sm rounded-4'
+                            className: 'btn btn-danger btn-sm rounded-4 mx-1'
                         }
                     },
                     buttons: [
@@ -1107,17 +1234,29 @@
                             action: function (e, dt, node, config) {
                                 NProgress.start();
                                 NProgress.inc();
-                                dt.ajax.reload(function () {
-                                    NProgress.done();
-                                }, false);
+                                dt.ajax.reload(null, true);
                             }
-                        }
+                        },
+                        // {
+                        //     text: '<i class="bi bi-eye"></i> แสดงทั้งหมด',
+                        //     className: 'btn-warning',
+                        //     action: function (e, dt, node, config) {
+                        //         GET_ALL_VISIT_DATA = !GET_ALL_VISIT_DATA;
+                        //         if (GET_ALL_VISIT_DATA) {
+                        //             $(node).html('<i class="bi bi-eye-slash"></i> แสดงเฉพาะงานที่ติดตามอยู่').addClass('btn-success').removeClass('btn-warning');
+
+                        //         } else {
+                        //             $(node).html('<i class="bi bi-eye"></i> แสดงทั้งหมด').addClass('btn-warning').removeClass('btn-success');
+                        //         }
+                        //         dt.ajax.reload()
+                        //     }
+                        // }
                     ]
                 },
-                dom: "<'row'<'col-12'B>>" +
+                dom: "<'row g-2'<'col-12 col-md-auto'B><'col-12 col-md-auto status-toggle d-flex align-items-center justify-content-center'>>" +
                     "<'row mt-2'<'col-md-6'l><'col-md-6'f>>" +
                     "<'row mt-2'<'col-sm-12'tr>>" +
-                    "<'d-flex justify-content-between align-items-center mt-2'<'flex-wrap'i><'flex-wrap'p>>",
+                    "<'row g-2'<'col-12 col-md-auto'i><'col-12 col-md-auto'p>>",
 
                 ajax: function (data, callback, settings) {
                     NProgress.start();
@@ -1136,7 +1275,7 @@
                         } else {
                             console.error(res.message);
                         }
-                    }).getVisitData();
+                    }).getVisitData(GET_ALL_VISIT_DATA);
                 },
                 columns: [
                     {
@@ -1144,7 +1283,7 @@
                         data: null,
                         className: 'dt-body-center text-nowrap all',
                         render: function (data, type, row, meta) {
-                            return meta.row + meta.settings._iDisplayStart + 1;
+                            return meta.row + 1;
                         }
                     },
                     {
@@ -1156,7 +1295,7 @@
                             return data
                         }
                     },
-                    { title: "รหัสการเยี่ยม", data: "visitID", className: 'dt-body-center dt-head-nowrap dt-head-center text-nowrap' },
+                    { title: "รหัสการเยี่ยม", data: "visitID", className: 'dt-body-center dt-head-nowrap dt-head-center text-nowrap none' },
                     { title: "ประเภทงาน", data: "jobType", className: 'dt-body-center dt-head-nowrap dt-head-center text-nowrap' },
                     { title: "ชื่อผู้รับเหมา", data: "contractorName", className: 'dt-body-center dt-head-nowrap dt-head-center text-nowrap all' },
                     {
@@ -1213,6 +1352,20 @@
                     { title: 'ผู้บันทึกข้อมูล', data: 'recordName', className: 'dt-body-center dt-head-nowrap dt-head-center text-nowrap' },
                     { title: 'ผู้อัพเดทข้อมูล', data: 'updatedBy', className: 'dt-body-center dt-head-nowrap dt-head-center text-nowrap' },
                     {
+                        title: "สถานะ",
+                        data: "status",
+                        className: 'dt-body-center dt-head-nowrap dt-head-center text-nowrap',
+                        render: function (data, type, row) {
+                            if (data == 'ติดตามงาน') {
+                                return `<button class="btn btn-sm btn-success rounded-4 pe-none"><i class="bi bi-hourglass-split"></i> ${data}</button>`;
+                            } else if (data == 'จบงานแล้ว') {
+                                return `<button class="btn btn-sm btn-secondary rounded-4 pe-none"><i class="bi bi-check-circle"></i> ${data}</button>`;
+                            } else {
+                                return `<button class="btn btn-sm btn-warning rounded-4 pe-none"><i class="bi bi-exclamation-triangle"></i> ${data}</button>`;
+                            }
+                        }
+                    },
+                    {
                         title: "รายละเอียด",
                         data: null,
                         orderable: false,
@@ -1230,6 +1383,30 @@
                 order: [[1, 'desc']],
                 pageLength: 10,
                 lengthMenu: [10, 25, 50, 100],
+                initComplete: function (settings, json) {
+                    NProgress.done();
+                    // Add event listener for the details button
+                    $('#visitDataTable').on('click', '.details-btn', function () {
+                        showVisitDetail(this);
+                    });
+                    // Add event listener for the status toggle
+                    let statustoggle = $('<input>', {
+                        type: 'checkbox',
+                        id: 'statusToggle',
+                        class: 'form-check-input'
+                    }).on('change', function () {
+                        GET_ALL_VISIT_DATA = $(this).is(':checked');
+                        $('#visitDataTable').DataTable().ajax.reload();
+                    });
+                    $('.status-toggle').append($('<div>', {
+                        class: 'form-check form-switch',
+                        html: $('<label>', {
+                            class: 'form-check-label',
+                            for: 'statusToggle',
+                            text: 'แสดงทั้งหมด'
+                        }).prepend(statustoggle)
+                    }));
+                }
             });
         }
 
@@ -1303,7 +1480,8 @@
             $('#detailDecisionMaker').val(data.decisionMaker);
             $('#detailCurrentSupplier').val(data.currentSupplier);
             $('#detailNotes').val(data.notes);
-            $('#detailLocation').val(data.location.split('=')[1]);
+            $('#detailLocation').val(data.location);
+            $('#visitStatus').val(data.status).attr('data-visit-id', data.visitID);
 
             const visitTimeline = $('#visitTimeline');
             visitTimeline.empty();
@@ -1387,7 +1565,7 @@
             $('#editDecisionMaker').val(rowData.decisionMaker);
             $('#editCurrentSupplier').val(rowData.currentSupplier);
             $('#editNotes').val(rowData.notes);
-            $('#editLocation').val(rowData.location.split('=')[1]);
+            $('#editLocation').val(rowData.location);
 
             $('#visitDetailModal').modal('hide');
             $('#editVisitModal').modal('show');
@@ -1628,7 +1806,7 @@
                 navigator.geolocation.getCurrentPosition(function (position) {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
-                    btn.parent().find('.location').val(`${lat}, ${lon}`);
+                    btn.parent().find('.location').val('https://maps.google.com/?q=' + lat + ',' + lon);
                     btn.parent().parent().find('.locationStatus').text('ดึงพิกัดสำเร็จ!').removeClass().addClass('locationStatus form-text text-success');
                 }, function (error) {
                     let errorMessage = 'เกิดข้อผิดพลาดในการดึงพิกัด: ';
