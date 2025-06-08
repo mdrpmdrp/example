@@ -714,7 +714,7 @@
                                     required readonly>
                             </div>
                         </div>
-                        <div class="row mb-3">
+                        <div class="row mb-3 g-3">
                             <div class="col-12">
                                 <template id="img-template">
                                     <div
@@ -754,6 +754,11 @@
                             <div class="col-12">
                                 <label for="remark"><i class="fas fa-comment"></i> หมายเหตุ</label>
                                 <textarea class="form-control" id="remark" name="remark" rows="3"></textarea>
+                            </div>
+                            <div class="col-md-6 d-none" id="purchasePriceContainer">
+                                <label for="purchasePrice"><i class="fas fa-tag me-1"></i>
+                                    ราคาซื้อเข้า (บาท)</label>
+                                <input type="number" class="form-control" id="purchasePrice" name="purchasePrice" min="0" step="1">
                             </div>
                         </div>
                     </form>
@@ -828,7 +833,7 @@
     </div>
     <div class="modal fade" id="cowSummaryModal" tabindex="-1" aria-labelledby="cowSummaryModalLabel" aria-hidden="true"
         data-bs-backdrop="static">
-        <div class="modal-dialog modal-fullscreen">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header bg-beef text-light">
                     <h5 class="modal-title" id="cowSummaryModalLabel">สรุปยอดวัวเข้า-ออกประจำปี</h5>
@@ -1317,7 +1322,8 @@
                 fatherCode: $('#fatherCode').val(),
                 cowOwner: $('#cowOwner').val(),
                 dataDate: $('#dataDate').val(),
-                remark: $('#remark').val()
+                remark: $('#remark').val(),
+                purchasePrice: $('#purchasePrice').val() || 0
             }
             NProgress.start();
             NProgress.inc();
@@ -1521,6 +1527,7 @@
             // $('#ffatherCode').val(data.ffatherCode);
             $('#cowOwner').val(data.cowOwner);
             $('#remark').val(data.remark);
+            $('#purchasePrice').val(data.purchasePrice || 0);
             // Show the modal
             // Set the form to edit mode
             $('#addCowModalLabel').text('แก้ไขข้อมูลโค');
@@ -2305,6 +2312,7 @@
                 altFormat: "j F Y",
                 maxDate: 'today'
             });
+
             flatpickr("#feedDate", {
                 locale: "th",
                 dateFormat: 'Y-m-d',
@@ -2312,6 +2320,7 @@
                 altFormat: "j F Y",
                 // defaultDate: 'today',
             });
+
             $('#currentUsername').text(JSON.parse(localStorage.getItem('userSession')).name)
             $('#userInfoContainer').show()
             if (ROLE !== 'Member') {
@@ -2324,6 +2333,9 @@
                     defaultDate: 'today',
                 });
                 $('#dataDate').attr('readonly', false).removeClass('bg-secondary-subtle')
+                if(ROLE  === 'Admin'){
+                    $('#purchasePriceContainer').removeClass('d-none');
+                }
             } else {
                 $('#dataDate').attr('readonly', true).val(moment().format('YYYY-MM-DD')).addClass('bg-secondary-subtle')
             }
@@ -2445,6 +2457,7 @@
                             title: 'อายุ',
                             className: 'dt-head-center dt-head-nowrap all',
                             render: function (data, type, row) {
+                                if(!row.birthDate || row.birthDate === '') return '-';
                                 if (type === 'display') {
                                     let age_month = moment().diff(moment(row.birthDate), 'months')
                                     return age_month + ' เดือน'
@@ -2458,6 +2471,7 @@
                             className: 'dt-head-center dt-head-nowrap' +
                                 (ROLE !== 'Member' ? '' : ' none'),
                             render: function (data, type, row) {
+                                if (data === '') return '';
                                 if (type === 'display') {
                                     return moment(data).format('DD/MM/YYYY');
                                 }
@@ -2469,6 +2483,7 @@
                             title: 'อายุขุน',
                             className: 'dt-head-center dt-head-nowrap all',
                             render: function (data, type, row) {
+                                if(!row.feedDate || row.feedDate === '') return '-';
                                 if (type === 'display') {
                                     let age_month = moment().diff(moment(row.feedDate), 'months')
                                     return age_month + ' เดือน'
@@ -2566,6 +2581,20 @@
                                 (ROLE !== 'Member' ? '' : ' none'),
                         },
                         {
+                            data: 'purchasePrice',
+                            title: 'ราคาซื้อเข้า<br>(บาท)',
+                            className: 'dt-head-center dt-head-nowrap' +
+                                (ROLE === 'Admin' ? ' all' : ' none'),
+                            visible: ROLE === 'Admin',
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    if (!data || data === 0) return '-';
+                                    return new Intl.NumberFormat('th-TH').format(data)
+                                }
+                                return data || 0;
+                            }
+                        },
+                        {
                             data: null,
                             title: 'รูปภาพ',
                             className: 'dt-head-center dt-head-nowrap dt-body-center',
@@ -2645,7 +2674,7 @@
                                 </select>
                             `;
 
-                            $(cowDataTable.column(22).header()).html(statusFilterHtml);
+                            $(cowDataTable.column(23).header()).html(statusFilterHtml);
                             // Prevent sorting when clicking on the status filter dropdown
                             $('.status-filter').on('click', function (e) {
                                 e.stopPropagation();
@@ -2654,7 +2683,7 @@
                             // Add filtering functionality
                             $('.status-filter').on('change', function () {
                                 let filterValue = $(this).val();
-                                cowDataTable.column(22).search(filterValue).draw();
+                                cowDataTable.column(23).search(filterValue).draw();
                             });
                             $('.status-filter').change(); // Trigger change to apply initial filter
                         }
