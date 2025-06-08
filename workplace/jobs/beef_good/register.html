@@ -272,6 +272,72 @@
             cursor: not-allowed;
             pointer-events: none;
         }
+
+        /* Dashboard styles */
+        .dashboard-item {
+            transition: transform 0.3s ease;
+        }
+
+        .dashboard-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .dashboard-icon {
+            width: 56px;
+            height: 56px;
+            font-size: 1.5rem;
+        }
+
+        table.dataTable {
+            tr {
+
+                td,
+                th {
+                    vertical-align: middle !important;
+                }
+            }
+        }
+
+        /* Summary Chart Styles */
+        .table-beef {
+            background-color: rgba(139, 69, 19, 0.1);
+        }
+
+        #cowSummaryBtn {
+            transition: all 0.3s;
+        }
+
+        #cowSummaryBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        @media print {
+
+            .no-print,
+            .no-print * {
+                display: none !important;
+            }
+
+            .modal {
+                position: static;
+                padding: 0;
+                margin: 0;
+                width: 100%;
+            }
+
+            .modal-dialog {
+                width: 100%;
+                max-width: none;
+                margin: 0;
+            }
+
+            .modal-content {
+                border: none;
+                box-shadow: none;
+            }
+        }
     </style>
 </head>
 
@@ -439,12 +505,69 @@
     </div>
     <main>
         <div class="container-fluid d-none" id="mainContainer">
+            <!-- Dashboard Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card shadow-lg border-0 rounded-lg mt-3" data-aos="fade-up" data-aos-duration="800">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 text-beef fw-bold">ภาพรวมข้อมูลโค</h5>
+                            <button class="btn btn-beef btn-sm d-none" id="cowSummaryBtn" data-bs-target="#cowSummaryModal"
+                                data-bs-toggle="modal">
+                                <i class="fa-solid fa-chart-line me-2"></i>สรุปยอดวัวเข้า-ออก
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="row g-0">
+                                <div class="col-md-4">
+                                    <div class="dashboard-item d-flex align-items-center p-4 border-end">
+                                        <div
+                                            class="dashboard-icon bg-beef-light rounded-circle me-3 d-flex align-items-center justify-content-center">
+                                            <i class="fa-solid fa-cow fa-2x text-beef"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="text-muted mb-0">จำนวนโคทั้งหมด</h6>
+                                            <h2 class="fw-bold text-beef mb-0" id="totalCowCount">0</h2>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="dashboard-item d-flex align-items-center p-4 border-end">
+                                        <div
+                                            class="dashboard-icon bg-primary-subtle rounded-circle me-3 d-flex align-items-center justify-content-center">
+                                            <i class="fa-solid fa-mars fa-2x text-primary"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="text-muted mb-0">จำนวนโคเพศผู้</h6>
+                                            <h2 class="fw-bold text-primary mb-0" id="maleCowCount">0</h2>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="dashboard-item d-flex align-items-center p-4">
+                                        <div
+                                            class="dashboard-icon bg-danger-subtle rounded-circle me-3 d-flex align-items-center justify-content-center">
+                                            <i class="fa-solid fa-venus fa-2x text-danger"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="text-muted mb-0">จำนวนโคเพศเมีย</h6>
+                                            <h2 class="fw-bold text-danger mb-0" id="femaleCowCount">0</h2>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End Dashboard Section -->
+
             <div class="row justify-content-center">
                 <div class="col-12">
                     <div class="card shadow-lg border-0 rounded-lg mt-3" data-aos="fade-up" data-aos-duration="1000">
                         <div class="card-header bg-beef text-light text-center">
                             <h4 class="fw-bold">ระบบจัดการข้อมูลโค</h4>
                         </div>
+
                         <div class="card-body p-2">
                             <div class="table-responsive p-2">
                                 <table class="table table-striped table-bordered" id="cowDataTable">
@@ -521,6 +644,12 @@
                                 <label for="birthDate"><i class="fas fa-calendar-alt me-1"></i>
                                     วันเกิด *</label>
                                 <input type="text" class="form-control datepicker" id="birthDate" name="birthDate"
+                                    required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="feedDate"><i class="fas fa-calendar-alt me-1"></i>
+                                    วันที่ขุน</label>
+                                <input type="text" class="form-control datepicker" id="feedDate" name="feedDate"
                                     required>
                             </div>
                             <div class="col-md-6">
@@ -697,6 +826,109 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="cowSummaryModal" tabindex="-1" aria-labelledby="cowSummaryModalLabel" aria-hidden="true"
+        data-bs-backdrop="static">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header bg-beef text-light">
+                    <h5 class="modal-title" id="cowSummaryModalLabel">สรุปยอดวัวเข้า-ออกประจำปี</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="form-floating">
+                                    <select class="form-select" id="summaryYear">
+                                        <!-- จะเติมปีด้วย JavaScript -->
+                                    </select>
+                                    <label for="summaryYear">เลือกปี</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card shadow-sm">
+                                    <div class="card-body">
+                                        <canvas id="cowSummaryChart" style="width:100%; height:100%"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-4 g-3">
+                            <div class="col-md-6">
+                                <div class="card shadow-sm h-100">
+                                    <div class="card-header bg-beef-light">
+                                        <h6 class="card-title mb-0 text-light fw-bold">สรุปการนำเข้า</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover" id="importSummaryTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>เดือน</th>
+                                                        <th class="text-end">จำนวนวัวเข้า</th>
+                                                        <th class="text-end">เพศผู้</th>
+                                                        <th class="text-end">เพศเมีย</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <!-- จะเติมข้อมูลด้วย JavaScript -->
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr class="table-beef">
+                                                        <th>รวมทั้งสิ้น</th>
+                                                        <th class="text-end" id="totalImport">0</th>
+                                                        <th class="text-end" id="totalImportMale">0</th>
+                                                        <th class="text-end" id="totalImportFemale">0</th>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card shadow-sm h-100">
+                                    <div class="card-header bg-beef-light">
+                                        <h6 class="card-title mb-0 text-light fw-bold">สรุปการส่งออก</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover" id="exportSummaryTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>เดือน</th>
+                                                        <th class="text-end">จำนวนวัวออก</th>
+                                                        <th class="text-end">เพศผู้</th>
+                                                        <th class="text-end">เพศเมีย</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <!-- จะเติมข้อมูลด้วย JavaScript -->
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr class="table-beef">
+                                                        <th>รวมทั้งสิ้น</th>
+                                                        <th class="text-end" id="totalExport">0</th>
+                                                        <th class="text-end" id="totalExportMale">0</th>
+                                                        <th class="text-end" id="totalExportFemale">0</th>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous">
         </script>
@@ -712,6 +944,7 @@
 
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script
         src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js">
         </script>
@@ -878,6 +1111,166 @@
                 $('#addCowModalLabel').text('เพิ่มข้อมูลโค');
             });
 
+        $('#cowSummaryModal')
+            .on('show.bs.modal', function () {
+                // Load years dynamically
+                const currentYear = new Date().getFullYear();
+                const yearSelect = $('#summaryYear');
+                yearSelect.empty();
+                for (let year = currentYear; year >= 2000; year--) {
+                    yearSelect.append(`<option value="${year}">${year}</option>`);
+                }
+                yearSelect.val(currentYear); // Set current year as default
+
+                yearSelect.change(function () {
+                    loadCowSummaryData($(this).val());
+                });
+                loadCowSummaryData(currentYear);
+            });
+
+        function loadCowSummaryData(year) {
+            let isMobile = window.innerWidth < 768;
+            let data = $('#cowDataTable').DataTable().rows().data().toArray();
+            console.log("🚀 ~ data:", data);
+            let months_data = new Array(12).fill({
+                importCount: 0,
+                importMale: 0,
+                importFemale: 0,
+                exportCount: 0,
+                exportMale: 0,
+                exportFemale: 0
+            });
+            months_data = months_data.map((month, index) => {
+                let importData = data.filter(row => {
+                    let date = new Date(row.farmInDate);
+                    console.log("🚀 ~ date:", date);
+                    return date.getFullYear() == year && date.getMonth() == index && row.cowStatus == 'อยู่ในฟาร์ม';
+                });
+                let exportData = data.filter(row => {
+                    let date = new Date(row.exportDate);
+                    return date.getFullYear() == year && date.getMonth() == index && row.cowStatus == 'ส่งออกแล้ว';
+                });
+                return {
+                    importCount: importData.length,
+                    importMale: importData.filter(row => row.cowGender == 'ผู้').length,
+                    importFemale: importData.filter(row => row.cowGender == 'เมีย').length,
+                    exportCount: exportData.length,
+                    exportMale: exportData.filter(row => row.cowGender == 'ผู้').length,
+                    exportFemale: exportData.filter(row => row.cowGender == 'เมีย').length
+                };
+            });
+            console.log("🚀 ~ months_data:", months_data);
+
+            // show chart
+            const ctx = document.getElementById('cowSummaryChart').getContext('2d');
+            if (window.cowSummaryChart && typeof window.cowSummaryChart.destroy === 'function') {
+                window.cowSummaryChart.destroy();
+            }
+            window.cowSummaryChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months_data.map((_, index) => moment().month(index).format('MMMM')),
+                    datasets: [
+                        {
+                            label: 'วัวเข้า',
+                            data: months_data.map(month => month.importCount),
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 1,
+                            pointRadius: 4
+                        },
+                        {
+                            label: 'วัวออก',
+                            data: months_data.map(month => month.exportCount),
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 1,
+                            pointRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    // maintainAspectRatio: false,
+                    aspectRatio: isMobile ? 1 : 2.7,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: `สรุปยอดวัวเข้า-ออกประจำปี ${year}`
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // update summary table
+            $('#importSummaryTable').find('tbody, tfoot').empty();
+            $('#exportSummaryTable').find('tbody, tfoot').empty();
+            let totalImport = 0, totalImportMale = 0, totalImportFemale = 0;
+            let totalExport = 0, totalExportMale = 0, totalExportFemale = 0;
+            months_data.forEach((month, index) => {
+                $('#importSummaryTable tbody').append(`
+                    <tr>
+                        <td>${moment().month(index).format('MMMM')}</td>
+                        <td class="text-end">${month.importCount}</td>
+                        <td class="text-end">${month.importMale}</td>
+                        <td class="text-end">${month.importFemale}</td>
+                    </tr>
+                `);
+                $('#exportSummaryTable tbody').append(`
+                    <tr>
+                        <td>${moment().month(index).format('MMMM')}</td>
+                        <td class="text-end">${month.exportCount}</td>
+                        <td class="text-end">${month.exportMale}</td>
+                        <td class="text-end">${month.exportFemale}</td>
+                    </tr>
+                `);
+                totalImport += month.importCount;
+                totalImportMale += month.importMale;
+                totalImportFemale += month.importFemale;
+                totalExport += month.exportCount;
+                totalExportMale += month.exportMale;
+                totalExportFemale += month.exportFemale;
+            });
+            $('#importSummaryTable tfoot').append(`
+                <tr class="table-beef">
+                    <th>รวมทั้งสิ้น</th>
+                    <th class="text-end" id="totalImport">${totalImport}</th>
+                    <th class="text-end" id="totalImportMale">${totalImportMale}</th>
+                    <th class="text-end" id="totalImportFemale">${totalImportFemale}</th>
+                </tr>
+            `);
+            $('#exportSummaryTable tfoot').append(`
+                <tr class="table-beef">
+                    <th>รวมทั้งสิ้น</th>
+                    <th class="text-end" id="totalExport">${totalExport}</th>
+                    <th class="text-end" id="totalExportMale">${totalExportMale}</th>
+                    <th class="text-end" id="totalExportFemale">${totalExportFemale}</th>
+                </tr>
+            `);
+        }
+
         // Handle save cow button
         $('#saveCowBtn').click(function () {
             const form = $('#addCowForm')[0];
@@ -915,6 +1308,7 @@
                 cowID: $('#cowID').val() == "AUTO ID" || $("cowID").val() == "" ? undefined : $('#cowID').val(),
                 cowName: $('#cowName').val(),
                 birthDate: $('#birthDate').val(),
+                feedDate: $('#feedDate').val(),
                 cowGender: $('#cowGender').val(),
                 cowStatus: $('#cowStatus').val(),
                 fcowCode: $('#fcowCode').val(),
@@ -1085,7 +1479,7 @@
                     $('#addCowModal').modal('hide');
                     $('#addCowForm')[0].reset();
                     $('#saveCowBtn').html('บันทึกข้อมูล').prop('disabled', false);
-                    $('#cowDataTable').DataTable().ajax.reload(null, false);
+                    $('#cowDataTable').DataTable().ajax.reload(updateDashboardCounts, false);
                     Toast.fire({
                         icon: 'success',
                         title: 'บันทึกข้อมูลโคเรียบร้อยแล้ว'
@@ -1117,6 +1511,7 @@
             $('#cowID').val(data.cowID)
             $('#cowName').val(data.cowName);
             $('#birthDate')[0]._flatpickr.setDate(data.birthDate, true);
+            $('#feedDate')[0]._flatpickr.setDate(data.feedDate, true);
             $('#cowGender').val(data.cowGender);
             $('#cowStatus').val(data.cowStatus);
             $('#fcowCode').val(data.fcowCode);
@@ -1190,43 +1585,16 @@
                 cancelButtonColor: '#6c757d'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    NProgress.start()
-                    NProgress.inc();
-                    Swal.fire({
-                        iconHtml: '<i class="bi bi-hourglass-split text-danger"></i>',
-                        title: 'กำลังลบข้อมูลโค',
-                        customClass: {
-                            icon: 'border-0',
-                            title: 'text-danger',
-                            content: 'text-dark',
-                            popup: 'rounded-4'
-                        },
-                        allowOutsideClick: false,
-                        didOpen: () => {
-                            Swal.showLoading()
-                        },
-                    })
-                    google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
-                        res = JSON.parse(res);
-                        NProgress.done()
-                        if (res.success) {
-                            cowDataTable.ajax.reload(null, false);
-                            Toast.fire({
-                                icon: 'success',
-                                title: 'ลบข้อมูลโคเรียบร้อยแล้ว'
-                            });
-                        } else {
-                            // Show error message
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'เกิดข้อผิดพลาด',
-                                text: res.message,
-                                confirmButtonColor: 'var(--primary-color)'
-                            });
-                        }
-                    }).deleteCow(data.cowID, data.userID)
+                    // Remove row from DataTable
+                    const row = $(this).closest('tr');
+                    cowDataTable.row(row).remove().draw();
+
+                    Toast.fire({
+                        icon: 'success',
+                        title: 'ลบข้อมูลโคเรียบร้อยแล้ว'
+                    });
                 }
-            })
+            });
         }
 
         function deleteImage(url, row, data) {
@@ -1477,7 +1845,7 @@
                         NProgress.done()
                         if (res.success) {
                             // Update the cow data table
-                            cowDataTable.ajax.reload(null, false);
+                            cowDataTable.ajax.reload(updateDashboardCounts, false);
                             Toast.fire({
                                 icon: 'success',
                                 title: 'เปลี่ยนสถานะโคเรียบร้อยแล้ว'
@@ -1578,6 +1946,7 @@
                             if ($('.show-all-cows').is(':visible')) {
                                 cowDataTable.buttons(1).trigger()
                             }
+                            updateDashboardCounts();
                         }, false);
                     } else {
                         Swal.fire({
@@ -1936,9 +2305,17 @@
                 altFormat: "j F Y",
                 maxDate: 'today'
             });
+            flatpickr("#feedDate", {
+                locale: "th",
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: "j F Y",
+                // defaultDate: 'today',
+            });
             $('#currentUsername').text(JSON.parse(localStorage.getItem('userSession')).name)
             $('#userInfoContainer').show()
             if (ROLE !== 'Member') {
+            
                 flatpickr("#dataDate", {
                     locale: "th",
                     dateFormat: 'Y-m-d',
@@ -2040,7 +2417,7 @@
                         },
                         {
                             data: 'cowName',
-                            title: '<input type="checkbox" class="form-check-input d-none select-all-cows" id="select-all-cows"> รหัสโค/ชื่อโค',
+                            title: '<input type="checkbox" class="form-check-input d-none select-all-cows" id="select-all-cows"> รหัสโค\n/ชื่อโค',
                             className: 'dt-head-center dt-head-nowrap dt-body-start all',
                             render: function (data, type, row) {
                                 if (type === 'display') {
@@ -2054,7 +2431,8 @@
                         {
                             data: 'birthDate',
                             title: 'วันเกิด',
-                            className: 'dt-head-center dt-head-nowrap',
+                            className: 'dt-head-center dt-head-nowrap' +
+                                (ROLE !== 'Member' ? '' : ' none'),
                             render: function (data, type, row) {
                                 if (type === 'display') {
                                     return moment(data).format('DD/MM/YYYY');
@@ -2069,9 +2447,33 @@
                             render: function (data, type, row) {
                                 if (type === 'display') {
                                     let age_month = moment().diff(moment(row.birthDate), 'months')
-                                    return  age_month + ' เดือน'
+                                    return age_month + ' เดือน'
                                 }
                                 return moment().diff(moment(row.birthDate), 'months')
+                            }
+                        },
+                        {
+                            data: 'feedDate',
+                            title: 'วันที่ขุน',
+                            className: 'dt-head-center dt-head-nowrap' +
+                                (ROLE !== 'Member' ? '' : ' none'),
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    return moment(data).format('DD/MM/YYYY');
+                                }
+                                return new Date(data).getTime();
+                            }
+                        },
+                        {
+                            data: null,
+                            title: 'อายุขุน',
+                            className: 'dt-head-center dt-head-nowrap all',
+                            render: function (data, type, row) {
+                                if (type === 'display') {
+                                    let age_month = moment().diff(moment(row.feedDate), 'months')
+                                    return age_month + ' เดือน'
+                                }
+                                return moment().diff(moment(row.feedDate), 'months')
                             }
                         },
                         {
@@ -2088,16 +2490,19 @@
                         {
                             data: 'motherCode',
                             title: 'รหัสแม่/ชื่อแม่',
+                            visible: ROLE !== 'Member',
                             className: 'dt-head-center dt-head-nowrap dt-body-center',
                         },
                         {
                             data: 'fmotherCode',
                             className: 'dt-head-center dt-head-nowrap dt-body-center',
+                            visible: ROLE !== 'Member',
                             title: 'Fแม่'
                         },
                         {
                             data: 'fatherCode',
-                            title: 'รหัสพ่อ/ชื่อพ่อ',
+                            title: 'รหัสพ่อ<br>/ชื่อพ่อ',
+                            visible: ROLE !== 'Member',
                             className: 'dt-head-center dt-head-nowrap dt-body-center',
                         },
                         // {
@@ -2107,21 +2512,21 @@
                         // },
                         {
                             data: 'cowOwner',
-                            title: 'ชื่อเจ้าของโค/ที่มา',
+                            title: 'ชื่อเจ้าของโค<br>/ที่มา',
                             className: 'dt-head-center dt-head-nowrap dt-body-center all',
                         },
                         {
                             data: 'memberName',
                             title: 'ผู้บันทึกข้อมูล',
+                            visible: ROLE !== 'Member',
                             className: 'dt-head-center dt-head-nowrap dt-body-center' +
-                                (ROLE !== 'Member' ? ' all' : ''),
+                                (ROLE !== 'Member' ? ' all' : ' none'),
                         },
                         {
                             data: 'farmInDate',
                             title: 'วันที่เข้าฟาร์ม',
-                            visible: ROLE !== 'Member',
                             className: 'dt-head-center dt-head-nowrap dt-body-center' +
-                                (ROLE !== 'Member' ? ' all' : ''),
+                                (ROLE !== 'Member' ? ' all' : ' none'),
                             render: function (data, type, row) {
                                 if (data === '') return '';
                                 if (type === 'display') {
@@ -2133,7 +2538,8 @@
                         {
                             data: 'dataDate',
                             title: 'วันที่บันทึกข้อมูล',
-                            className: 'dt-head-center dt-head-nowrap dt-body-center',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center' +
+                                (ROLE !== 'Member' ? '' : ' none'),
                             render: function (data, type, row) {
                                 if (type === 'display') {
                                     return moment(data).format('DD/MM/YYYY');
@@ -2144,7 +2550,8 @@
                         {
                             data: 'lastUpdate',
                             title: 'วันที่อัพเดทข้อมูล',
-                            className: 'dt-head-center dt-head-nowrap',
+                            className: 'dt-head-center dt-head-nowrap' +
+                                (ROLE !== 'Member' ? '' : ' none'),
                             render: function (data, type, row) {
                                 if (type === 'display') {
                                     return moment(data).format('DD/MM/YYYY HH:mm:ss');
@@ -2155,12 +2562,13 @@
                         {
                             data: 'remark',
                             title: 'หมายเหตุ',
-                            className: 'dt-head-center dt-head-nowrap',
+                            className: 'dt-head-center dt-head-nowrap' +
+                                (ROLE !== 'Member' ? '' : ' none'),
                         },
                         {
                             data: null,
                             title: 'รูปภาพ',
-                            className: 'dt-head-center dt-head-nowrap',
+                            className: 'dt-head-center dt-head-nowrap dt-body-center',
                             render: function (data, type, row) {
                                 let images = [data.cowImage1, data.cowImage2, data.cowImage3, data.cowImage4, data.cowImage5].filter(img => img !== '');
                                 if (images.length > 0) {
@@ -2219,29 +2627,25 @@
                     order: [[1, 'desc']],
                     initComplete: function (settings, json) {
 
+
                         // Add event listener for the "select all" checkbox
                         $('.select-all-cows').on('change', function () {
-                            if ($(this).is(':checked')) {
-                                $('.select-cow').prop('checked', true);
-                            } else {
-                                $('.select-cow').prop('checked', false);
-                            }
-                            // Trigger change event on select-cow checkboxes to update UI
                             $('.select-cow').trigger('change');
                         });
                         // Add status filter dropdown for non-Member users
                         if (ROLE !== 'Member') {
+                            $('#cowSummaryBtn').removeClass('d-none');
                             // Replace status column header with select dropdown
                             let statusFilterHtml = `
                                 <select class="form-select status-filter">
-                                    <option value="" selected>ทั้งหมด</option>
-                                    <option value="อยู่ในฟาร์ม">อยู่ในฟาร์ม</option>
+                                    <option value="">ทั้งหมด</option>
+                                    <option value="อยู่ในฟาร์ม" selected>อยู่ในฟาร์ม</option>
                                     <option value="อยู่กับสมาชิก">อยู่กับสมาชิก</option>
                                     <option value="ส่งออกแล้ว">ส่งออกแล้ว</option>
                                 </select>
                             `;
 
-                            $(cowDataTable.column(20).header()).html(statusFilterHtml);
+                            $(cowDataTable.column(22).header()).html(statusFilterHtml);
                             // Prevent sorting when clicking on the status filter dropdown
                             $('.status-filter').on('click', function (e) {
                                 e.stopPropagation();
@@ -2250,15 +2654,54 @@
                             // Add filtering functionality
                             $('.status-filter').on('change', function () {
                                 let filterValue = $(this).val();
-                                cowDataTable.column(20).search(filterValue).draw();
+                                cowDataTable.column(22).search(filterValue).draw();
                             });
+                            $('.status-filter').change(); // Trigger change to apply initial filter
                         }
                         NProgress.done();
 
+                        // Update dashboard counts
+                        updateDashboardCounts();
                     },
                 });
                 NProgress.done();
             });
+        }
+
+        // Function to update dashboard counts
+        function updateDashboardCounts() {
+            let allCows = cowDataTable.data().toArray();
+            let totalCount = allCows.length;
+            let maleCount = allCows.filter(cow => cow.cowGender === 'ผู้').length;
+            let femaleCount = allCows.filter(cow => cow.cowGender === 'เมีย').length;
+
+            // Animate count numbers
+            animateCount('totalCowCount', 0, totalCount);
+            animateCount('maleCowCount', 0, maleCount);
+            animateCount('femaleCowCount', 0, femaleCount);
+        }
+
+        // Animate count with counter
+        function animateCount(elementId, start, end) {
+            let duration = 1000;
+            let startTime = null;
+
+            function animation(currentTime) {
+                if (!startTime) startTime = currentTime;
+                let timeElapsed = currentTime - startTime;
+                let progress = Math.min(timeElapsed / duration, 1);
+                let value = Math.floor(progress * (end - start) + start);
+
+                document.getElementById(elementId).textContent = value;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animation);
+                } else {
+                    document.getElementById(elementId).textContent = end;
+                }
+            }
+
+            requestAnimationFrame(animation);
         }
 
         function getButtonsBasedOnRole(role) {
