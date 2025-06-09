@@ -262,28 +262,40 @@
 
 
         async function openWebcamForSelfie() {
-            navigator.mediaDevices
-                .getUserMedia({
-                    video: {
-                        facingMode: "user",
-                        // width: isMobileDevice() ? $('#video').height() : $('#video').width(),
-                        // height: isMobileDevice() ? $('#video').width() : $('#video').height(),
-                        frameRate: {
-                            ideal: 30,
-                            min: 10
-                        },
-                        aspectRatio: isMobileDevice() ? 9 / 16 : 16 / 9,
-                        width: { ideal: isMobileDevice() ? 720 : 1280 },
-                        height: { ideal: isMobileDevice() ? 1280 : 720 }
+            const constraints = {
+                video: {
+                    facingMode: "user",
+                    width: { ideal: isMobileDevice() ? 480 : 640 },
+                    height: { ideal: isMobileDevice() ? 640 : 480 },
+                    frameRate: {
+                        ideal: 30,
+                        min: 10
                     },
-                    audio: false,
-                })
-                .then((stream) => {
-                    video.srcObject = stream;
-                })
-                .catch((error) => {
-                    console.error(error);
+                },
+                audio: false,
+            };
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const video = $('#video')[0];
+                video.srcObject = stream;
+                
+                // Wait for video metadata to load before playing
+                video.onloadedmetadata = function() {
+                    video.play();
+                    console.log(`Video dimensions: ${video.videoWidth}x${video.videoHeight}`);
+                };
+            } catch (error) {
+                console.error("Camera error:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'กล้องไม่ทำงาน',
+                    text: 'ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการเข้าถึงกล้องและลองใหม่อีกครั้ง',
+                    customClass: {
+                        popup: 'rounded-4',
+                    }
                 });
+            }
         }
 
         let playInterval = null;
@@ -320,8 +332,7 @@
                 inputSize: INPUT_SIZE,
                 scoreThreshold: THRESHOLD
             });
-            const detections = await faceapi.detectSingleFace(video,options).withFaceLandmarks().withFaceDescriptor()
-            console.log("🚀 ~ onPlay ~ detections:", detections)
+            const detections = await faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor()
 
 
             const context = canvas.getContext('2d', { willReadFrequently: true });
