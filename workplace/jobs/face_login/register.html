@@ -140,12 +140,13 @@
                             </div>
                             <div class="col">
                                 <label for="threshold" class="form-label">Threshold:</label>
-                                <input type="range" class="form-range" id="threshold" min="0.1" max="0.9" step="0.1" value="0.5">
+                                <input type="range" class="form-range" id="threshold" min="0.1" max="0.9" step="0.1"
+                                    value="0.5">
                                 <div class="text-center"><span id="thresholdValue">0.5</span></div>
                             </div>
                         </div>
                         <script>
-                            $('#threshold').on('input', function() {
+                            $('#threshold').on('input', function () {
                                 $('#thresholdValue').text($(this).val());
                             });
                         </script>
@@ -171,7 +172,7 @@
                 return false;
             }
         }
-        INPUT_SIZE = 512; // Default input size
+        INPUT_SIZE = 128; // Default input size
         THRESHOLD = 0.5; // Default threshold
         $('#inputSize').on('change', function () {
             INPUT_SIZE = parseInt($(this).val());
@@ -265,8 +266,8 @@
             const constraints = {
                 video: {
                     facingMode: "user",
-                    width: { ideal: isMobileDevice() ? 480 : 640 },
-                    height: { ideal: isMobileDevice() ? 640 : 480 },
+                    width: isMobileDevice() ? $('#video').height() : $('#video').width(),
+                    height: isMobileDevice() ? $('#video').width() : $('#video').height(),
                     frameRate: {
                         ideal: 30,
                         min: 10
@@ -274,14 +275,14 @@
                 },
                 audio: false,
             };
-            
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 const video = $('#video')[0];
                 video.srcObject = stream;
-                
+
                 // Wait for video metadata to load before playing
-                video.onloadedmetadata = function() {
+                video.onloadedmetadata = function () {
                     video.play();
                     console.log(`Video dimensions: ${video.videoWidth}x${video.videoHeight}`);
                 };
@@ -308,7 +309,7 @@
                 if (!video.paused && !video.ended) {
                     await onPlay();
                 }
-            });
+            },100); // Adjust the interval as needed (100ms)
         });
 
         const arr_descriptions = [];
