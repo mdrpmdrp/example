@@ -650,7 +650,7 @@
                                 <label for="feedDate"><i class="fas fa-calendar-alt me-1"></i>
                                     วันที่ขุน</label>
                                 <input type="text" class="form-control datepicker" id="feedDate" name="feedDate"
-                                    required>
+                                    equiredr>
                             </div>
                             <div class="col-md-6">
                                 <label for="cowGender"><i class="fas fa-venus-mars me-1"></i>
@@ -1589,17 +1589,54 @@
                 confirmButtonText: 'ใช่, ลบข้อมูล',
                 cancelButtonText: 'ยกเลิก',
                 confirmButtonColor: 'var(--primary-color)',
-                cancelButtonColor: '#6c757d'
+                cancelButtonColor: '#6c757d',
+                customClass: {
+                    title: 'text-danger',
+                    content: 'text-dark',
+                    popup: 'rounded-4'
+                },
             }).then((result) => {
                 if (result.isConfirmed) {
                     // Remove row from DataTable
-                    const row = $(this).closest('tr');
-                    cowDataTable.row(row).remove().draw();
-
-                    Toast.fire({
-                        icon: 'success',
-                        title: 'ลบข้อมูลโคเรียบร้อยแล้ว'
-                    });
+                    Swal.fire({
+                        iconHtml: '<i class="bi bi-hourglass-split text-danger"></i>',
+                        title: 'กำลังลบข้อมูล',
+                        customClass: {
+                            icon: 'border-0',
+                            title: 'text-danger',
+                            content: 'text-dark',
+                            popup: 'rounded-4'
+                        },
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading()
+                        },
+                    })
+                    google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(res => {
+                        res = JSON.parse(res);
+                        NProgress.done()
+                        if (res.success) {
+                            // Show success message
+                            Toast.fire({
+                                icon: 'success',
+                                title: 'ลบข้อมูลโคเรียบร้อยแล้ว'
+                            });
+                            cowDataTable.row(row).remove().draw();
+                        } else {
+                            // Show error message
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'เกิดข้อผิดพลาด',
+                                text: res.message,
+                                confirmButtonColor: 'var(--primary-color)',
+                                customElements: {
+                                    title: 'text-danger',
+                                    content: 'text-dark',
+                                    popup: 'rounded-4'
+                                }
+                            });
+                        }
+                    }).deleteCow(data.cowID, data.userID);
                 }
             });
         }
@@ -1672,7 +1709,10 @@
                                             imageHeight: '100%',
                                             showCloseButton: true,
                                             showConfirmButton: false,
-                                            allowOutsideClick: false
+                                            allowOutsideClick: false,
+                                            customClass: {
+                                                popup: 'rounded-4'
+                                            }
                                         });
                                     });
                                 });
@@ -1688,7 +1728,12 @@
                                 icon: 'error',
                                 title: 'เกิดข้อผิดพลาด',
                                 text: res.message,
-                                confirmButtonColor: 'var(--primary-color)'
+                                confirmButtonColor: 'var(--primary-color)',
+                                customClass: {
+                                    title: 'text-danger',
+                                    content: 'text-dark',
+                                    popup: 'rounded-4'
+                                }
                             });
                         }
                     }).deleteImage(url.split('/d/')[1], data.cowID, images, data.userID)
@@ -1766,7 +1811,12 @@
                             icon: 'error',
                             title: 'เกิดข้อผิดพลาด',
                             text: 'ไม่สามารถเปลี่ยนสถานะโคจาก ' + data.cowStatus + ' เป็น ' + selectStatus,
-                            confirmButtonColor: 'var(--primary-color)'
+                            confirmButtonColor: 'var(--primary-color)',
+                            customClass: {
+                                title: 'text-danger',
+                                content: 'text-dark',
+                                popup: 'rounded-4'
+                            }
                         });
                         return;
                     }
@@ -1863,7 +1913,12 @@
                                 icon: 'error',
                                 title: 'เกิดข้อผิดพลาด',
                                 text: res.message,
-                                confirmButtonColor: 'var(--primary-color)'
+                                confirmButtonColor: 'var(--primary-color)',
+                                customClass: {
+                                    title: 'text-danger',
+                                    content: 'text-dark',
+                                    popup: 'rounded-4'
+                                }
                             });
                         }
                     }).changeStatus(data.cowID, selectStatus, userSession.id, userSession.name, data.farmID)
@@ -1919,7 +1974,13 @@
                         icon: 'error',
                         title: 'เกิดข้อผิดพลาด',
                         text: 'จำนวนรหัส/ชื่อโคที่ส่งออก ไม่ตรงกับจำนวนที่เลือก',
-                        confirmButtonColor: 'var(--primary-color)'
+                        confirmButtonColor: 'var(--primary-color)',
+                        customClass: {
+                            icon: 'border-0',
+                            title: 'text-danger',
+                            content: 'text-dark',
+                            popup: 'rounded-4'
+                        }
                     });
                     return;
                 }
@@ -1960,7 +2021,13 @@
                             icon: 'error',
                             title: 'เกิดข้อผิดพลาด',
                             text: res.message,
-                            confirmButtonColor: 'var(--primary-color)'
+                            confirmButtonColor: 'var(--primary-color)',
+                            customClass: {
+                                icon: 'border-0',
+                                title: 'text-danger',
+                                content: 'text-dark',
+                                popup: 'rounded-4'
+                            }
                         });
                     }
                 }).saveExportData(exportData);
@@ -1978,7 +2045,12 @@
                 confirmButtonText: 'ใช่, ลบข้อมูล',
                 cancelButtonText: 'ยกเลิก',
                 confirmButtonColor: 'var(--primary-color)',
-                cancelButtonColor: '#6c757d'
+                cancelButtonColor: '#6c757d',
+                customElements: {
+                    title: 'text-danger',
+                    content: 'text-dark',
+                    popup: 'rounded-4'
+                },
             }).then((result) => {
                 if (result.isConfirmed) {
                     // Remove row from DataTable
@@ -2152,7 +2224,10 @@
                                 confirmButtonText: 'ตกลง',
                                 confirmButtonColor: 'var(--primary-color)',
                                 background: 'var(--light-color)',
-                                iconColor: 'var(--primary-color)'
+                                iconColor: 'var(--primary-color)',
+                                customClass: {
+                                    popup: 'rounded-4'
+                                }
                             });
                         }
 
@@ -2228,7 +2303,10 @@
                                 confirmButtonText: 'ตกลง',
                                 confirmButtonColor: 'var(--primary-color)',
                                 background: 'var(--light-color)',
-                                iconColor: 'var(--primary-color)'
+                                iconColor: 'var(--primary-color)',
+                                customClass: {
+                                    popup: 'rounded-4'
+                                }
                             });
                         }
 
@@ -2825,7 +2903,12 @@
                 imageHeight: '100%',
                 showCloseButton: true,
                 showConfirmButton: false,
-                allowOutsideClick: false
+                allowOutsideClick: false,
+                customClass: {
+                    popup: 'rounded-4',
+                    image: 'rounded-4',
+                    htmlContainer: 'p-0 rounded-4',
+                },
             });
         }
 
