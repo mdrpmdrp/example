@@ -745,6 +745,42 @@
             letter-spacing: 1px;
         }
 
+        /* Date Selection Button Styles */
+        #show-calendar-btn {
+            background: linear-gradient(135deg, #FF6B6B 0%, #4ECDC4 100%);
+            border: none;
+            color: white;
+            padding: 15px 40px;
+            border-radius: 15px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 200px;
+        }
+
+        #show-calendar-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 15px 35px rgba(255, 107, 107, 0.4);
+            background: linear-gradient(135deg, #FF5252 0%, #26D0CE 100%);
+        }
+
+        #show-calendar-btn:active {
+            transform: translateY(-1px) scale(1.02);
+        }
+
+        #show-calendar-btn i {
+            font-size: 1.3rem;
+        }
+
+        @media (max-width: 768px) {
+            #show-calendar-btn {
+                padding: 12px 30px;
+                font-size: 1.1rem;
+                min-width: 180px;
+            }
+        }
+
         @media (max-width: 768px) {
             .booking-card {
                 padding: 20px;
@@ -808,25 +844,34 @@
                 <div class="step-content active" id="content-1">
                     <h3 class="text-center mb-4">เลือกวันที่ต้องการจองและจำนวนที่นั่ง</h3>
 
-                    <!-- Date Selection Section -->
-                    <div class="calendar-navigation">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <button type="button" id="prev-month">
-                                <i class="bi bi-chevron-left"></i>
-                            </button>
-                            <h4 id="current-month"></h4>
-                            <button type="button" id="next-month">
-                                <i class="bi bi-chevron-right"></i>
-                            </button>
+                    <!-- Date Selection Button -->
+                    <div class="text-center mb-4" id="date-selection-button">
+                        <button type="button" class="btn btn-primary btn-lg" id="show-calendar-btn">
+                            <i class="bi bi-calendar-plus me-2"></i>เลือกวันที่
+                        </button>
+                    </div>
+
+                    <!-- Date Selection Section (Initially Hidden) -->
+                    <div class="calendar-section" id="calendar-section" style="display: none;">
+                        <div class="calendar-navigation">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button type="button" id="prev-month">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <h4 id="current-month"></h4>
+                                <button type="button" id="next-month">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="calendar-container" id="calendar">
+                            <!-- Calendar will be generated here -->
                         </div>
                     </div>
 
-                    <div class="calendar-container" id="calendar">
-                        <!-- Calendar will be generated here -->
-                    </div>
-
-                    <!-- Time Slot Selection Section -->
-                    <div class="mt-5 p-4 bg-white rounded-4 shadow-sm border" id="time-slot-section">
+                    <!-- Time Slot Selection Section (Initially Hidden) -->
+                    <div class="mt-5 p-4 bg-white rounded-4 shadow-sm border" id="time-slot-section" style="display: none;">
                         <div class="text-center mb-4">
                             <h4 class="fw-bold mb-2" style="color: #FF6B6B;">
                                 <i class="bi bi-clock-fill me-2"></i>เลือกช่วงเวลา
@@ -853,8 +898,8 @@
                         </div>
                     </div>
 
-                    <!-- Guest Count Selection Section -->
-                    <div class="mt-5 p-4 bg-white rounded-4 shadow-sm border" id="guest-count-section">
+                    <!-- Guest Count Selection Section (Initially Hidden) -->
+                    <div class="mt-5 p-4 bg-white rounded-4 shadow-sm border" id="guest-count-section" style="display: none;">
                         <div class="text-center mb-4">
                             <h4 class="fw-bold mb-2" style="color: #FF6B6B;">
                                 <i class="bi bi-person-plus-fill me-2"></i>เลือกจำนวนที่นั่ง
@@ -881,8 +926,8 @@
                         </div>
                     </div>
 
-                    <!-- Table Location Selection Section -->
-                    <div class="mt-5 p-4 bg-white rounded-4 shadow-sm border" id="table-location-buttons">
+                    <!-- Table Location Selection Section (Initially Hidden) -->
+                    <div class="mt-5 p-4 bg-white rounded-4 shadow-sm border" id="table-location-buttons" style="display: none;">
                         <div class="text-center mb-4">
                             <h4 class="fw-bold mb-2" style="color: #FF6B6B;">
                                 <i class="bi bi-geo-alt-fill me-2"></i>เลือกตำแหน่งโต๊ะ
@@ -1001,7 +1046,7 @@
         };
 
         function initializeApp() {
-            generateCalendar();
+            // generateCalendar();
             setupEventListeners();
         }
 
@@ -1010,6 +1055,27 @@
             $('#start-booking').click(function () {
                 $('#welcome-page').fadeOut(500, function () {
                     $('#booking-steps').fadeIn(500);
+                });
+            });
+
+            // Show calendar button
+            $('#show-calendar-btn').click(function () {
+                $(this).parent().fadeOut(300, function () {
+                    $('#calendar-section').fadeIn(500, function () {
+                        // Generate calendar when shown
+                        generateCalendar();
+                        // Scroll to calendar section
+                        setTimeout(() => {
+                            document.getElementById('calendar-section').scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
+                            });
+                        }, 100);
+                    });
+                    // Show other sections
+                    $('#time-slot-section').fadeIn(500);
+                    $('#guest-count-section').fadeIn(500);
+                    $('#table-location-buttons').fadeIn(500);
                 });
             });
 
@@ -1239,6 +1305,15 @@
             $(`#step-${step}`).addClass('active');
             $(`#content-${step}`).addClass('active');
 
+            // Reset calendar visibility when going back to step 1
+            if (step === 1) {
+                $('#calendar-section').hide();
+                $('#time-slot-section').hide();
+                $('#guest-count-section').hide();
+                $('#table-location-buttons').hide();
+                $('#date-selection-button').show();
+            }
+
             // Update summary if going to step 2
             if (step === 2) {
                 updateBookingSummary();
@@ -1266,6 +1341,13 @@
             
             // Reset all form inputs
             $('#booking-form')[0].reset();
+            
+            // Reset calendar visibility
+            $('#calendar-section').hide();
+            $('#time-slot-section').hide();
+            $('#guest-count-section').hide();
+            $('#table-location-buttons').hide();
+            $('#date-selection-button').show();
             
             // Reset all button states
             $('.calendar-day').removeClass('selected');
@@ -1394,9 +1476,6 @@
                 $('.btn-location').removeClass('selected').attr('disabled', false);
                 updateNextButtonState();
             }
-
-            // Show location selection buttons
-            $('#table-location-buttons').show();
         }
 
         function updateBookingSummary() {
@@ -1809,7 +1888,6 @@
                     $('.custom-alert-overlay').fadeOut(300, function() {
                         $(this).remove();
                     });
-                    
                     // Show booking summary page with form data
                     showBookingSummaryPage(data);
                 })
