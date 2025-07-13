@@ -532,8 +532,8 @@
                     <i class="bi bi-gear"></i>
                     <span>ระบบจัดการจองคิว</span>
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
-                        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
@@ -622,12 +622,13 @@
 
         // Utility Functions
         const Utils = {
-            getNextDate: () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            
+            getTodayDate: () => moment().format('YYYY-MM-DD'),
+            getNextDate: () => moment().add(1, 'day').format('YYYY-MM-DD'),
+
             formatDate: (date, format = 'DD/MM/YYYY') => moment(date).format(format),
-            
+
             formatDateThai: (date, format = 'DD MMMM YYYY') => moment(date).locale('th').format(format),
-            
+
             showError: (message) => {
                 $(CONFIG.selectors.errorContainer).html(`
                     <div class="error-message">
@@ -635,15 +636,15 @@
                     </div>
                 `);
             },
-            
+
             clearError: () => {
                 $(CONFIG.selectors.errorContainer).empty();
             },
-            
+
             setButtonLoading: (button, isLoading, loadingText = 'กำลังประมวลผล...') => {
                 const $btn = $(button);
                 const $btnText = $btn.find('span').first();
-                
+
                 if (isLoading) {
                     $btn.addClass('loading').prop('disabled', true);
                     $btnText.html(`<span class="spinner"></span>${loadingText}`);
@@ -652,7 +653,7 @@
                     $btnText.text($btnText.data('original-text') || 'เข้าสู่ระบบ');
                 }
             },
-            
+
             saveToStorage: (key, value) => {
                 try {
                     localStorage.setItem(key, value);
@@ -660,7 +661,7 @@
                     console.warn('Could not save to localStorage:', e);
                 }
             },
-            
+
             getFromStorage: (key, defaultValue = null) => {
                 try {
                     return localStorage.getItem(key) || defaultValue;
@@ -675,11 +676,11 @@
         const Auth = {
             login: async (password) => {
                 try {
-                    const response = await $.post(CONFIG.script_url, { 
-                        opt: 'login', 
-                        password: password 
+                    const response = await $.post(CONFIG.script_url, {
+                        opt: 'login',
+                        password: password
                     });
-                    
+
                     if (response.success) {
                         AppState.isLoggedIn = true;
                         return { success: true };
@@ -691,25 +692,25 @@
                     return { success: false, message: 'เกิดข้อผิดพลาดในการเชื่อมต่อ' };
                 }
             },
-            
+
             logout: () => {
                 AppState.isLoggedIn = false;
-                
+
                 // Clean up DataTable if exists
                 if (AppState.dataTable) {
                     AppState.dataTable.destroy();
                     AppState.dataTable = null;
                 }
-                
+
                 // Clean up DatePicker if exists
                 if (AppState.datePicker) {
                     AppState.datePicker.destroy();
                     AppState.datePicker = null;
                 }
-                
+
                 AppState.isInitialized = false;
             },
-            
+
             checkSession: () => {
                 return AppState.isLoggedIn;
             }
@@ -718,7 +719,7 @@
         // UI Module
         const UI = {
             showAdminPage: () => {
-                $(CONFIG.selectors.loginPage).fadeOut(CONFIG.defaults.fadeSpeed, function() {
+                $(CONFIG.selectors.loginPage).fadeOut(CONFIG.defaults.fadeSpeed, function () {
                     $(CONFIG.selectors.adminPage).fadeIn(CONFIG.defaults.fadeSpeed);
                     if (!AppState.isInitialized) {
                         DataTableManager.init();
@@ -726,15 +727,15 @@
                     }
                 });
             },
-            
+
             showLoginPage: () => {
-                $(CONFIG.selectors.adminPage).fadeOut(CONFIG.defaults.fadeSpeed, function() {
+                $(CONFIG.selectors.adminPage).fadeOut(CONFIG.defaults.fadeSpeed, function () {
                     $(CONFIG.selectors.loginPage).fadeIn(CONFIG.defaults.fadeSpeed);
                     $(CONFIG.selectors.password).val('').focus();
                     Utils.clearError();
                 });
             },
-            
+
             showAlert: (options) => {
                 const defaultOptions = {
                     customClass: {
@@ -742,10 +743,10 @@
                         container: 'modern-backdrop'
                     }
                 };
-                
+
                 return Swal.fire({ ...defaultOptions, ...options });
             },
-            
+
             showLoading: (title = 'กำลังโหลดข้อมูล...') => {
                 return UI.showAlert({
                     icon: 'info',
@@ -759,10 +760,10 @@
         $(document).ready(function () {
             // Store original button text
             $(CONFIG.selectors.loginBtnText).data('original-text', $(CONFIG.selectors.loginBtnText).text());
-            
+
             // Always start with login page - no session persistence
             AppState.isLoggedIn = false;
-            
+
             // Initialize event handlers
             EventHandlers.init();
             // Initialize modern alert styles
@@ -777,24 +778,24 @@
                 EventHandlers.bindPasswordField();
                 EventHandlers.bindBrowserEvents();
             },
-            
+
             bindLoginForm: () => {
-                $(CONFIG.selectors.loginForm).on('submit', async function(e) {
+                $(CONFIG.selectors.loginForm).on('submit', async function (e) {
                     e.preventDefault();
-                    
+
                     const password = $(CONFIG.selectors.password).val().trim();
-                    
+
                     Utils.clearError();
-                    
+
                     if (!password) {
                         Utils.showError('กรุณาใส่รหัสผ่าน');
                         return;
                     }
-                    
+
                     Utils.setButtonLoading(CONFIG.selectors.loginBtn, true, 'กำลังตรวจสอบ...');
-                    
+
                     const result = await Auth.login(password);
-                    
+
                     if (result.success) {
                         UI.showAlert({
                             icon: 'success',
@@ -809,13 +810,13 @@
                         Utils.showError(result.message);
                         $(CONFIG.selectors.password).focus().select();
                     }
-                    
+
                     Utils.setButtonLoading(CONFIG.selectors.loginBtn, false);
                 });
             },
-            
+
             bindLogout: () => {
-                $(document).on('click', CONFIG.selectors.logoutBtn, function() {
+                $(document).on('click', CONFIG.selectors.logoutBtn, function () {
                     UI.showAlert({
                         icon: 'question',
                         title: 'ยืนยันการออกจากระบบ',
@@ -832,7 +833,7 @@
                         if (result.isConfirmed) {
                             Auth.logout();
                             UI.showLoginPage();
-                            
+
                             UI.showAlert({
                                 icon: 'success',
                                 title: 'ออกจากระบบแล้ว',
@@ -844,15 +845,15 @@
                     });
                 });
             },
-            
+
             bindPasswordField: () => {
-                $(CONFIG.selectors.password).on('keypress', function(e) {
+                $(CONFIG.selectors.password).on('keypress', function (e) {
                     if (e.which === 13) {
                         $(CONFIG.selectors.loginForm).submit();
                     }
                 });
             },
-            
+
             bindBrowserEvents: () => {
                 // Remove browser event handling since no session persistence needed
             }
@@ -864,14 +865,14 @@
                 if (AppState.dataTable) {
                     AppState.dataTable.destroy();
                 }
-                
+
                 AppState.dataTable = $(CONFIG.selectors.mainTable).DataTable({
                     processing: true,
                     serverSide: false,
                     paging: false,
                     dom: "<'row'<'col-sm-12 col-md-6'B><'col-sm-12 col-md-6'<'filter-sec'>>>" +
-                         "<'row mt-2'<'col-sm-12'tr>>" +
-                         "<'row'<'col-sm-12 col-md-5'i>>",
+                        "<'row mt-2'<'col-sm-12'tr>>" +
+                        "<'row'<'col-sm-12 col-md-5'i>>",
                     ajax: DataTableManager.ajaxConfig,
                     columns: DataTableManager.columnConfig,
                     responsive: true,
@@ -881,14 +882,14 @@
                     initComplete: DataTableManager.initComplete
                 });
             },
-            
-            ajaxConfig: function(data, callback, settings) {
-                const date = $(CONFIG.selectors.dateFilter).val() || Utils.getNextDate();
-                
+
+            ajaxConfig: function (data, callback, settings) {
+                const date = $(CONFIG.selectors.dateFilter).val() || Utils.getTodayDate();
+                console.log(`Loading data for date: ${date}`);
                 UI.showLoading();
-                
+
                 $.getJSON(CONFIG.script_url, { q: 'getbookingdata', date })
-                    .done(function(response) {
+                    .done(function (response) {
                         Swal.close();
                         callback({
                             draw: response.draw,
@@ -897,17 +898,17 @@
                             data: response.data
                         });
                     })
-                    .fail(function() {
+                    .fail(function () {
                         Swal.close();
                         Utils.showError('ไม่สามารถโหลดข้อมูลได้');
                     });
             },
-            
+
             columnConfig: [
                 {
                     title: "วันที่จอง",
                     data: "date",
-                    render: function(data, type, row) {
+                    render: function (data, type, row) {
                         return type === 'display' ? Utils.formatDate(data) : data;
                     }
                 },
@@ -918,23 +919,23 @@
                 {
                     title: "เบอร์โทร",
                     data: "phone",
-                    render: function(data, type, row) {
+                    render: function (data, type, row) {
                         if (!data) return '';
-                        return type === 'display' 
+                        return type === 'display'
                             ? `<a href="tel:${data}" class="text-decoration-none">${data}</a>`
                             : data;
                     },
                     orderable: false
                 }
             ],
-            
+
             columnDefs: [
                 {
                     targets: '_all',
                     className: 'dt-center dt-nowrap'
                 }
             ],
-            
+
             buttonConfig: {
                 dom: {
                     button: {
@@ -951,8 +952,8 @@
                             search: 'applied',
                             order: 'applied'
                         },
-                        filename: function() {
-                            const date = $(CONFIG.selectors.dateFilter).val() || Utils.getNextDate();
+                        filename: function () {
+                            const date = $(CONFIG.selectors.dateFilter).val() || Utils.getTodayDate();
                             const formattedDate = Utils.formatDateThai(date, 'DD-MM-YYYY');
                             return `รายการจองคิว_${formattedDate}`;
                         }
@@ -966,31 +967,31 @@
                             search: 'applied',
                             order: 'applied'
                         },
-                        title: function() {
-                            const date = $(CONFIG.selectors.dateFilter).val() || Utils.getNextDate();
+                        title: function () {
+                            const date = $(CONFIG.selectors.dateFilter).val() || Utils.getTodayDate();
                             const formattedDate = Utils.formatDateThai(date);
                             return `<div style="text-align: center;">รายการจองคิว วันที่ ${formattedDate}</div>`;
                         },
-                        messageTop: function() {
+                        messageTop: function () {
                             const totalRecords = AppState.dataTable ? AppState.dataTable.data().count() : 0;
                             return `<p style="text-align: center; font-size: 14px; margin-bottom: 20px;">จำนวนผู้เข้าสอบทั้งหมด ${totalRecords} คน</p>`;
                         },
-                        customize: function(win) {
+                        customize: function (win) {
                             $(win.document.body).css('font-size', '12px');
                             $(win.document.body).find('table').css('font-size', '11px');
                             $(win.document.body).find('table').find('thead tr').prepend('<th style="width: 50px;">ลำดับ</th>');
-                            $(win.document.body).find('table').find('tbody tr').each(function(index) {
+                            $(win.document.body).find('table').find('tbody tr').each(function (index) {
                                 $(this).prepend(`<td style="text-align: center;">${index + 1}</td>`);
                             });
                         }
                     }
                 ]
             },
-            
-            initComplete: function() {
+
+            initComplete: function () {
                 FilterManager.init();
             },
-            
+
             reload: (callback) => {
                 if (AppState.dataTable) {
                     AppState.dataTable.ajax.reload(callback);
@@ -1008,7 +1009,7 @@
                 }
                 FilterManager.restoreFilters();
             },
-            
+
             createFilterUI: () => {
                 $(CONFIG.selectors.filterSection).html(`
                     <div class="d-flex align-items-center gap-2">
@@ -1017,26 +1018,26 @@
                     </div>
                 `);
             },
-            
+
             initDatePicker: () => {
                 if (AppState.datePicker) {
                     AppState.datePicker.destroy();
                 }
-                
+
                 AppState.datePicker = $(CONFIG.selectors.dateFilter).flatpickr({
                     locale: 'th',
                     altInput: true,
                     altFormat: 'j F Y',
                     dateFormat: 'Y-m-d',
-                    defaultDate: Utils.getNextDate(),
+                    defaultDate: Utils.getTodayDate(),
                     onChange: FilterManager.handleDateChange
                 });
             },
-            
-            handleDateChange: function(selectedDates, dateStr) {
+
+            handleDateChange: function (selectedDates, dateStr) {
                 Utils.saveToStorage(CONFIG.storage_keys.lastFilter, $(CONFIG.selectors.globalSearch).val());
-                
-                DataTableManager.reload(function() {
+
+                DataTableManager.reload(function () {
                     FilterManager.restoreFilters();
                     setTimeout(() => {
                         if (AppState.datePicker) {
@@ -1045,18 +1046,18 @@
                     }, CONFIG.defaults.flatpickrDelay);
                 });
             },
-            
+
             bindSearchFilter: () => {
-                $(CONFIG.selectors.globalSearch).on('input', function() {
+                $(CONFIG.selectors.globalSearch).on('input', function () {
                     const searchTerm = $(this).val().trim();
                     Utils.saveToStorage(CONFIG.storage_keys.lastFilter, searchTerm);
-                    
+
                     if (AppState.dataTable) {
                         AppState.dataTable.search(searchTerm).draw();
                     }
                 });
             },
-            
+
             restoreFilters: () => {
                 const lastFilter = Utils.getFromStorage(CONFIG.storage_keys.lastFilter);
                 if (lastFilter && AppState.dataTable) {
@@ -1111,7 +1112,7 @@
                         backdrop-filter: blur(8px) !important;
                     }
                 `;
-                
+
                 $('<style>').prop('type', 'text/css').html(modernAlertStyles).appendTo('head');
             }
         };
