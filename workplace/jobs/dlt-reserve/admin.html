@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- no cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!-- no cache -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจองคิว - ผู้ดูแลระบบ</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
+    <link
+        href="https://cdn.datatables.net/v/bs5/moment-2.29.4/jszip-3.10.1/dt-2.3.2/b-3.2.4/b-html5-3.2.4/b-print-3.2.4/date-1.5.6/fh-4.0.3/r-3.0.5/datatables.min.css"
+        rel="stylesheet" integrity="sha384-RYlDQHcPkp74S7aXXaBpXAG1ISeYR4LvCOtdwFPPf8UKi5EXVP1TQHedMmol76t1"
+        crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css"
+        integrity="sha512-MQXduO8IQnJVq1qmySpN87QQkiR1bZHtorbJBD0tzy7/0U9+YIC93QWHeGTEoojMVHWWNkoCp8V6OzVSYrX0oQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #a5b4fc;
+            --secondary-color: #f1f5f9;
+            --accent-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-color: #1e293b;
+            --light-color: #f8fafc;
+            --border-radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            font-family: 'Noto Sans Thai', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark-color);
+        }
+
+        .container {
+            max-width: 1200px;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: var(--shadow);
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            color: var(--primary-color) !important;
+            font-weight: 600;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar-brand i {
+            color: var(--primary-color) !important;
+        }
+
+        .navbar-nav .nav-link {
+            color: var(--dark-color) !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-nav .nav-link:hover {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary-color) !important;
+        }
+
+        .card {
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 20px;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-outline-primary {
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            background: transparent;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--primary-color);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger-color) 0%, #dc2626 100%);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .form-control {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            background: white;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 8px;
+        }
+
+        /* Login Page Styles */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-card {
+            max-width: 450px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 40px 30px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%) translateY(-100%) rotate(30deg);
+            }
+
+            50% {
+                transform: translateX(100%) translateY(100%) rotate(30deg);
+            }
+
+            100% {
+                transform: translateX(-100%) translateY(-100%) rotate(30deg);
+            }
+        }
+
+        .login-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-icon i {
+            font-size: 2.5rem;
+            color: white;
+        }
+
+        .login-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-body {
+            padding: 40px 30px;
+        }
+
+        .login-form-group {
+            margin-bottom: 25px;
+        }
+
+        .login-input {
+            padding: 15px 20px;
+            font-size: 1.1rem;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .login-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .login-btn:hover::before {
+            left: 100%;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #dc2626;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #fca5a5;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        /* Admin Dashboard Styles */
+        .admin-container {
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .admin-header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 30px 0;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .admin-header h1 {
+            color: white;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 10px;
+        }
+
+        .admin-header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, var(--danger-color) 0%, #dc2626 100%);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+        }
+
+        .admin-placeholder {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .admin-placeholder i {
+            font-size: 4rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 20px;
+        }
+
+        .admin-placeholder h3 {
+            color: white;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .admin-placeholder p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        /* Animation for page load */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .login-card {
+                margin: 20px;
+                max-width: none;
+            }
+
+            .login-header {
+                padding: 30px 20px 20px;
+            }
+
+            .login-body {
+                padding: 30px 20px;
+            }
+
+            .admin-header h1 {
+                font-size: 2rem;
+            }
+
+            .logout-btn {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+                gap: 4px;
+            }
+
+            .navbar-brand {
+                font-size: 1.2rem;
+            }
+
+            .navbar {
+                padding: 0.5rem 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login Page -->
+    <div id="login-page" class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-icon">
+                    <i class="bi bi-shield-lock"></i>
+                </div>
+                <h2 class="login-title">ระบบผู้ดูแล</h2>
+                <p class="login-subtitle">เข้าสู่ระบบจัดการจองคิว</p>
+            </div>
+            <div class="login-body">
+                <div id="error-container"></div>
+                <form id="login-form">
+                    <div class="login-form-group">
+                        <label for="password" class="form-label">รหัสผ่าน</label>
+                        <input type="password" class="form-control login-input" id="password"
+                            placeholder="กรุณาใส่รหัสผ่าน" required autofocus>
+                    </div>
+                    <button type="submit" class="btn login-btn" id="login-btn">
+                        <span id="login-btn-text">เข้าสู่ระบบ</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-page" class="admin-container" style="display: none;">
+        <!-- Navigation Bar -->
+        <nav class="navbar navbar-expand-lg fixed-top">
+            <div class="container">
+                <a class="navbar-brand" href="#">
+                    <i class="bi bi-gear"></i>
+                    <span>ระบบจัดการจองคิว</span>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <button class="btn logout-btn ms-auto mt-2" id="logout-btn">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>ออกจากระบบ</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="admin-header" style="margin-top: 76px;">
+            <h1>แผงควบคุมสำหรับผู้ดูแลระบบ</h1>
+            <p>จัดการและตรวจสอบรายการจองคิว</p>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <div class="table-responsive">
+                        <table id="mainTable" style="width: 100%;"
+                            class="table table-striped table-bordered table-hover"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.min.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
+    <script
+        src="https://cdn.datatables.net/v/bs5/moment-2.29.4/jszip-3.10.1/dt-2.3.2/b-3.2.4/b-html5-3.2.4/b-print-3.2.4/date-1.5.6/fh-4.0.3/r-3.0.5/datatables.min.js"
+        integrity="sha384-6unofWigSH/oL24fD/fcqfDo89/YPhTPdR0u9ap2bkhXen2GN6WqdLJIkv8ejp03"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"
+        integrity="sha512-K/oyQtMXpxI4+K0W7H25UopjM8pzq0yrVdFdG21Fh5dBe91I40pDd9A4lzNlHPHBIP2cwZuoxaUSX0GJSObvGA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/th.min.js"
+        integrity="sha512-0XU8EDwsRqhnSukLw3KIQoRvFJs3SGlsoLpX1RpRAjmYrc7w56F6J5pwJ0p0p+v23qg14VPRQe9OhPRfbhVzdw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/locale/th.min.js"
+        integrity="sha512-IiSJKJyOVydT9/jfVcnpg7PIUM41Be6YzR5bTiAEAEQxTVtnUhbhiSNtgGXmOTFoxYpYs+LdxWlELOK7iRVVBg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            script_url: 'https://script.google.com/macros/s/AKfycbzznEvfetL4o0UorUuHy4UOlu-pa1O6yfBoOrZDUjXxfjdc2uprgUk-iotenulIj0M/exec',
+            session_key: 'admin_logged_in',
+            storage_keys: {
+                lastFilter: 'lastFilter'
+            },
+            selectors: {
+                loginPage: '#login-page',
+                adminPage: '#admin-page',
+                loginForm: '#login-form',
+                password: '#password',
+                loginBtn: '#login-btn',
+                loginBtnText: '#login-btn-text',
+                errorContainer: '#error-container',
+                logoutBtn: '#logout-btn',
+                mainTable: '#mainTable',
+                dateFilter: '#dateFilter',
+                globalSearch: '#globalSearch',
+                filterSection: '.filter-sec'
+            },
+            defaults: {
+                fadeSpeed: 300,
+                loadingDelay: 1000,
+                flatpickrDelay: 300
+            }
+        };
+
+        // Application State
+        const AppState = {
+            isLoggedIn: false,
+            dataTable: null,
+            datePicker: null,
+            isInitialized: false
+        };
+
+        // Utility Functions
+        const Utils = {
+            getNextDate: () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            
+            formatDate: (date, format = 'DD/MM/YYYY') => moment(date).format(format),
+            
+            formatDateThai: (date, format = 'DD MMMM YYYY') => moment(date).locale('th').format(format),
+            
+            showError: (message) => {
+                $(CONFIG.selectors.errorContainer).html(`
+                    <div class="error-message">
+                        <i class="bi bi-exclamation-triangle"></i> ${message}
+                    </div>
+                `);
+            },
+            
+            clearError: () => {
+                $(CONFIG.selectors.errorContainer).empty();
+            },
+            
+            setButtonLoading: (button, isLoading, loadingText = 'กำลังประมวลผล...') => {
+                const $btn = $(button);
+                const $btnText = $btn.find('span').first();
+                
+                if (isLoading) {
+                    $btn.addClass('loading').prop('disabled', true);
+                    $btnText.html(`<span class="spinner"></span>${loadingText}`);
+                } else {
+                    $btn.removeClass('loading').prop('disabled', false);
+                    $btnText.text($btnText.data('original-text') || 'เข้าสู่ระบบ');
+                }
+            },
+            
+            saveToStorage: (key, value) => {
+                try {
+                    localStorage.setItem(key, value);
+                } catch (e) {
+                    console.warn('Could not save to localStorage:', e);
+                }
+            },
+            
+            getFromStorage: (key, defaultValue = null) => {
+                try {
+                    return localStorage.getItem(key) || defaultValue;
+                } catch (e) {
+                    console.warn('Could not read from localStorage:', e);
+                    return defaultValue;
+                }
+            }
+        };
+
+        // Authentication Module
+        const Auth = {
+            login: async (password) => {
+                try {
+                    const response = await $.post(CONFIG.script_url, { 
+                        opt: 'login', 
+                        password: password 
+                    });
+                    
+                    if (response.success) {
+                        AppState.isLoggedIn = true;
+                        return { success: true };
+                    } else {
+                        return { success: false, message: 'รหัสผ่านไม่ถูกต้อง' };
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    return { success: false, message: 'เกิดข้อผิดพลาดในการเชื่อมต่อ' };
+                }
+            },
+            
+            logout: () => {
+                AppState.isLoggedIn = false;
+                
+                // Clean up DataTable if exists
+                if (AppState.dataTable) {
+                    AppState.dataTable.destroy();
+                    AppState.dataTable = null;
+                }
+                
+                // Clean up DatePicker if exists
+                if (AppState.datePicker) {
+                    AppState.datePicker.destroy();
+                    AppState.datePicker = null;
+                }
+                
+                AppState.isInitialized = false;
+            },
+            
+            checkSession: () => {
+                return AppState.isLoggedIn;
+            }
+        };
+
+        // UI Module
+        const UI = {
+            showAdminPage: () => {
+                $(CONFIG.selectors.loginPage).fadeOut(CONFIG.defaults.fadeSpeed, function() {
+                    $(CONFIG.selectors.adminPage).fadeIn(CONFIG.defaults.fadeSpeed);
+                    if (!AppState.isInitialized) {
+                        DataTableManager.init();
+                        AppState.isInitialized = true;
+                    }
+                });
+            },
+            
+            showLoginPage: () => {
+                $(CONFIG.selectors.adminPage).fadeOut(CONFIG.defaults.fadeSpeed, function() {
+                    $(CONFIG.selectors.loginPage).fadeIn(CONFIG.defaults.fadeSpeed);
+                    $(CONFIG.selectors.password).val('').focus();
+                    Utils.clearError();
+                });
+            },
+            
+            showAlert: (options) => {
+                const defaultOptions = {
+                    customClass: {
+                        popup: 'modern-alert',
+                        container: 'modern-backdrop'
+                    }
+                };
+                
+                return Swal.fire({ ...defaultOptions, ...options });
+            },
+            
+            showLoading: (title = 'กำลังโหลดข้อมูล...') => {
+                return UI.showAlert({
+                    icon: 'info',
+                    title: title,
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+            }
+        };
+
+        $(document).ready(function () {
+            // Store original button text
+            $(CONFIG.selectors.loginBtnText).data('original-text', $(CONFIG.selectors.loginBtnText).text());
+            
+            // Always start with login page - no session persistence
+            AppState.isLoggedIn = false;
+            
+            // Initialize event handlers
+            EventHandlers.init();
+            // Initialize modern alert styles
+            StyleManager.init();
+        });
+
+        // Event Handlers Module
+        const EventHandlers = {
+            init: () => {
+                EventHandlers.bindLoginForm();
+                EventHandlers.bindLogout();
+                EventHandlers.bindPasswordField();
+                EventHandlers.bindBrowserEvents();
+            },
+            
+            bindLoginForm: () => {
+                $(CONFIG.selectors.loginForm).on('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const password = $(CONFIG.selectors.password).val().trim();
+                    
+                    Utils.clearError();
+                    
+                    if (!password) {
+                        Utils.showError('กรุณาใส่รหัสผ่าน');
+                        return;
+                    }
+                    
+                    Utils.setButtonLoading(CONFIG.selectors.loginBtn, true, 'กำลังตรวจสอบ...');
+                    
+                    const result = await Auth.login(password);
+                    
+                    if (result.success) {
+                        UI.showAlert({
+                            icon: 'success',
+                            title: 'เข้าสู่ระบบสำเร็จ',
+                            text: 'ยินดีต้อนรับสู่ระบบผู้ดูแล',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            UI.showAdminPage();
+                        });
+                    } else {
+                        Utils.showError(result.message);
+                        $(CONFIG.selectors.password).focus().select();
+                    }
+                    
+                    Utils.setButtonLoading(CONFIG.selectors.loginBtn, false);
+                });
+            },
+            
+            bindLogout: () => {
+                $(document).on('click', CONFIG.selectors.logoutBtn, function() {
+                    UI.showAlert({
+                        icon: 'question',
+                        title: 'ยืนยันการออกจากระบบ',
+                        text: 'คุณต้องการออกจากระบบใช่หรือไม่?',
+                        showCancelButton: true,
+                        confirmButtonText: 'ออกจากระบบ',
+                        cancelButtonText: 'ยกเลิก',
+                        customClass: {
+                            popup: 'modern-alert',
+                            confirmButton: 'modern-btn-danger',
+                            cancelButton: 'modern-btn-secondary'
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            Auth.logout();
+                            UI.showLoginPage();
+                            
+                            UI.showAlert({
+                                icon: 'success',
+                                title: 'ออกจากระบบแล้ว',
+                                text: 'คุณได้ออกจากระบบเรียบร้อยแล้ว',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        }
+                    });
+                });
+            },
+            
+            bindPasswordField: () => {
+                $(CONFIG.selectors.password).on('keypress', function(e) {
+                    if (e.which === 13) {
+                        $(CONFIG.selectors.loginForm).submit();
+                    }
+                });
+            },
+            
+            bindBrowserEvents: () => {
+                // Remove browser event handling since no session persistence needed
+            }
+        };
+
+        // DataTable Management Module
+        const DataTableManager = {
+            init: () => {
+                if (AppState.dataTable) {
+                    AppState.dataTable.destroy();
+                }
+                
+                AppState.dataTable = $(CONFIG.selectors.mainTable).DataTable({
+                    processing: true,
+                    serverSide: false,
+                    paging: false,
+                    dom: "<'row'<'col-sm-12 col-md-6'B><'col-sm-12 col-md-6'<'filter-sec'>>>" +
+                         "<'row mt-2'<'col-sm-12'tr>>" +
+                         "<'row'<'col-sm-12 col-md-5'i>>",
+                    ajax: DataTableManager.ajaxConfig,
+                    columns: DataTableManager.columnConfig,
+                    responsive: true,
+                    fixedHeader: true,
+                    columnDefs: DataTableManager.columnDefs,
+                    buttons: DataTableManager.buttonConfig,
+                    initComplete: DataTableManager.initComplete
+                });
+            },
+            
+            ajaxConfig: function(data, callback, settings) {
+                const date = $(CONFIG.selectors.dateFilter).val() || Utils.getNextDate();
+                
+                UI.showLoading();
+                
+                $.getJSON(CONFIG.script_url, { q: 'getbookingdata', date })
+                    .done(function(response) {
+                        Swal.close();
+                        callback({
+                            draw: response.draw,
+                            recordsTotal: response.data.length,
+                            recordsFiltered: response.data.length,
+                            data: response.data
+                        });
+                    })
+                    .fail(function() {
+                        Swal.close();
+                        Utils.showError('ไม่สามารถโหลดข้อมูลได้');
+                    });
+            },
+            
+            columnConfig: [
+                {
+                    title: "วันที่จอง",
+                    data: "date",
+                    render: function(data, type, row) {
+                        return type === 'display' ? Utils.formatDate(data) : data;
+                    }
+                },
+                {
+                    title: "ชื่อผู้จอง",
+                    data: "name"
+                },
+                {
+                    title: "เบอร์โทร",
+                    data: "phone",
+                    render: function(data, type, row) {
+                        if (!data) return '';
+                        return type === 'display' 
+                            ? `<a href="tel:${data}" class="text-decoration-none">${data}</a>`
+                            : data;
+                    },
+                    orderable: false
+                }
+            ],
+            
+            columnDefs: [
+                {
+                    targets: '_all',
+                    className: 'dt-center dt-nowrap'
+                }
+            ],
+            
+            buttonConfig: {
+                dom: {
+                    button: {
+                        className: 'btn'
+                    }
+                },
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        text: '<i class="bi bi-file-earmark-excel"></i> ดาวน์โหลด Excel',
+                        titleAttr: 'ดาวน์โหลดเป็น Excel',
+                        className: 'btn btn-success',
+                        exportOptions: {
+                            search: 'applied',
+                            order: 'applied'
+                        },
+                        filename: function() {
+                            const date = $(CONFIG.selectors.dateFilter).val() || Utils.getNextDate();
+                            const formattedDate = Utils.formatDateThai(date, 'DD-MM-YYYY');
+                            return `รายการจองคิว_${formattedDate}`;
+                        }
+                    },
+                    {
+                        extend: 'print',
+                        text: '<i class="bi bi-printer"></i> พิมพ์',
+                        titleAttr: 'พิมพ์รายการ',
+                        className: 'btn btn-primary',
+                        exportOptions: {
+                            search: 'applied',
+                            order: 'applied'
+                        },
+                        title: function() {
+                            const date = $(CONFIG.selectors.dateFilter).val() || Utils.getNextDate();
+                            const formattedDate = Utils.formatDateThai(date);
+                            return `<div style="text-align: center;">รายการจองคิว วันที่ ${formattedDate}</div>`;
+                        },
+                        messageTop: function() {
+                            const totalRecords = AppState.dataTable ? AppState.dataTable.data().count() : 0;
+                            return `<p style="text-align: center; font-size: 14px; margin-bottom: 20px;">จำนวนผู้เข้าสอบทั้งหมด ${totalRecords} คน</p>`;
+                        },
+                        customize: function(win) {
+                            $(win.document.body).css('font-size', '12px');
+                            $(win.document.body).find('table').css('font-size', '11px');
+                            $(win.document.body).find('table').find('thead tr').prepend('<th style="width: 50px;">ลำดับ</th>');
+                            $(win.document.body).find('table').find('tbody tr').each(function(index) {
+                                $(this).prepend(`<td style="text-align: center;">${index + 1}</td>`);
+                            });
+                        }
+                    }
+                ]
+            },
+            
+            initComplete: function() {
+                FilterManager.init();
+            },
+            
+            reload: (callback) => {
+                if (AppState.dataTable) {
+                    AppState.dataTable.ajax.reload(callback);
+                }
+            }
+        };
+
+        // Filter Management Module
+        const FilterManager = {
+            init: () => {
+                if ($(CONFIG.selectors.filterSection).is(':empty')) {
+                    FilterManager.createFilterUI();
+                    FilterManager.initDatePicker();
+                    FilterManager.bindSearchFilter();
+                }
+                FilterManager.restoreFilters();
+            },
+            
+            createFilterUI: () => {
+                $(CONFIG.selectors.filterSection).html(`
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="date" class="form-control p-2 m-0" id="dateFilter">
+                        <input type="search" class="form-control p-2 m-0" id="globalSearch" placeholder="ค้นหาข้อมูล...">
+                    </div>
+                `);
+            },
+            
+            initDatePicker: () => {
+                if (AppState.datePicker) {
+                    AppState.datePicker.destroy();
+                }
+                
+                AppState.datePicker = $(CONFIG.selectors.dateFilter).flatpickr({
+                    locale: 'th',
+                    altInput: true,
+                    altFormat: 'j F Y',
+                    dateFormat: 'Y-m-d',
+                    defaultDate: Utils.getNextDate(),
+                    onChange: FilterManager.handleDateChange
+                });
+            },
+            
+            handleDateChange: function(selectedDates, dateStr) {
+                Utils.saveToStorage(CONFIG.storage_keys.lastFilter, $(CONFIG.selectors.globalSearch).val());
+                
+                DataTableManager.reload(function() {
+                    FilterManager.restoreFilters();
+                    setTimeout(() => {
+                        if (AppState.datePicker) {
+                            AppState.datePicker.close();
+                        }
+                    }, CONFIG.defaults.flatpickrDelay);
+                });
+            },
+            
+            bindSearchFilter: () => {
+                $(CONFIG.selectors.globalSearch).on('input', function() {
+                    const searchTerm = $(this).val().trim();
+                    Utils.saveToStorage(CONFIG.storage_keys.lastFilter, searchTerm);
+                    
+                    if (AppState.dataTable) {
+                        AppState.dataTable.search(searchTerm).draw();
+                    }
+                });
+            },
+            
+            restoreFilters: () => {
+                const lastFilter = Utils.getFromStorage(CONFIG.storage_keys.lastFilter);
+                if (lastFilter && AppState.dataTable) {
+                    $(CONFIG.selectors.globalSearch).val(lastFilter);
+                    AppState.dataTable.search(lastFilter).draw();
+                }
+            }
+        };
+
+        // Style Management Module
+        const StyleManager = {
+            init: () => {
+                const modernAlertStyles = `
+                    .swal2-popup.modern-alert {
+                        border-radius: 20px !important;
+                        border: none !important;
+                        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15) !important;
+                        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%) !important;
+                        backdrop-filter: blur(20px) !important;
+                        padding: 30px !important;
+                    }
+                    
+                    .swal2-popup.modern-alert .swal2-title {
+                        font-family: 'Noto Sans Thai', sans-serif !important;
+                        font-weight: 700 !important;
+                        color: #1e293b !important;
+                    }
+                    
+                    .swal2-popup.modern-alert .swal2-html-container {
+                        font-family: 'Noto Sans Thai', sans-serif !important;
+                        color: #64748b !important;
+                    }
+                    
+                    .swal2-popup.modern-alert .swal2-confirm.modern-btn-danger {
+                        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+                        border: none !important;
+                        border-radius: 8px !important;
+                        padding: 10px 20px !important;
+                        font-weight: 600 !important;
+                    }
+                    
+                    .swal2-popup.modern-alert .swal2-cancel.modern-btn-secondary {
+                        background: #6b7280 !important;
+                        border: none !important;
+                        border-radius: 8px !important;
+                        padding: 10px 20px !important;
+                        font-weight: 600 !important;
+                    }
+
+                    .swal2-container.modern-backdrop {
+                        background: rgba(15, 23, 42, 0.7) !important;
+                        backdrop-filter: blur(8px) !important;
+                    }
+                `;
+                
+                $('<style>').prop('type', 'text/css').html(modernAlertStyles).appendTo('head');
+            }
+        };
+    </script>
+</body>
+
+</html>
