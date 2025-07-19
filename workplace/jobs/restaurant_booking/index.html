@@ -745,14 +745,14 @@
             box-shadow: 0 0 0 0.2rem rgba(153, 126, 69, 0.25);
         }
 
-        .form-control {
+        .form-control, .form-select{
             border-radius: 10px;
             border: 2px solid #e9ecef;
             padding: 12px 15px;
             transition: all 0.3s ease;
         }
 
-        .form-control:focus {
+        .form-control:focus, .form-select:focus {
             border-color: #997e45;
             box-shadow: 0 0 0 0.2rem rgba(153, 126, 69, 0.25);
         }
@@ -1153,9 +1153,31 @@
                     </h3>
 
                     <form id="booking-form">
-                        <div class="mb-3">
-                            <label for="customer-name" class="form-label">ชื่อ-นามสกุล *</label>
-                            <input type="text" class="form-control" id="customer-name" required>
+                        <div class="mb-3 row">
+                            <div class="col-md-6 mb-2 mb-md-0">
+                                <label for="customer-title" class="form-label">คำนำหน้า *</label>
+                                <select class="form-select" id="customer-title" required>
+                                    <option value="" selected disabled>เลือก</option>
+                                    <option value="นาย">นาย</option>
+                                    <option value="นาง">นาง</option>
+                                    <option value="นางสาว">นางสาว</option>
+                                    <option value="อื่นๆ">อื่นๆ</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-2 mb-md-0" id="custom-title-input" style="display: none;">
+                                <label for="customer-title-custom" class="form-label">กรุณากรอกคำนำหน้า *</label>
+                                <input type="text" id="customer-title-custom" value="" class="form-control">
+                            </div>
+                        </div>
+                        <div class="mb-3 row">
+                            <div class="col-md-6 mb-2 mb-md-0">
+                                <label for="customer-firstname" class="form-label">ชื่อ *</label>
+                                <input type="text" class="form-control" id="customer-firstname" required>
+                            </div>
+                            <div class="col-md-6 mb-2 mb-md-0">
+                                <label for="customer-lastname" class="form-label">นามสกุล *</label>
+                                <input type="text" class="form-control" id="customer-lastname" required>
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -1175,7 +1197,8 @@
                             <p class="mb-1" style="color: #333333;"><strong>วันที่:</strong> <span
                                     id="summary-date"></span></p>
                             <p class="mb-1" style="color: #333333;"><strong>จำนวนที่นั่ง:</strong> <span
-                                    id="summary-guests"></span></p>
+                                    id="summary-guests"></span>
+                            </p>
                             <p class="mb-0" style="color: #333333;"><strong>ตำแหน่งโต๊ะ:</strong> <span
                                     id="summary-location"></span></p>
                         </div>
@@ -1259,7 +1282,8 @@
                     </div>
                     <div class="detail-value d-flex align-items-center gap-2">
                         <span id="booking-id-value">{{bookingId}}</span><i class="bi bi-clipboard ms-2"
-                            id="copy-booking-id-btn" title="คัดลอกแล้ว!" data-bs-trigger="manual" style="cursor: pointer;"></i>
+                            id="copy-booking-id-btn" title="คัดลอกแล้ว!" data-bs-trigger="manual"
+                            style="cursor: pointer;"></i>
                     </div>
                 </div>
 
@@ -1495,6 +1519,17 @@
                 submitBooking();
             });
         }
+
+        $('#customer-title').on('change', function () {
+            const selectedValue = $(this).val();
+            if (selectedValue === 'อื่นๆ') {
+                $('#custom-title-input').show();
+                $('#customer-title-custom').prop('required', true);
+            } else {
+                $('#custom-title-input').hide();
+                $('#customer-title-custom').prop('required', false);
+            }
+        });
 
 
 
@@ -1850,7 +1885,9 @@
                 time: selectedTime,
                 guests: selectedGuests,
                 location: selectedLocation,
-                name: $('#customer-name').val(),
+                title: $('#customer-title').val() == 'อื่นๆ' ? $('#customer-title-custom').val() : $('#customer-title').val(),
+                fname: $('#customer-firstname').val(),
+                lname: $('#customer-lastname').val(),
                 phone: $('#customer-phone').val(),
                 email: $('#customer-email').val(),
                 menuImage: $('img[alt="Menu of the Month"]').attr('src')
@@ -1858,7 +1895,7 @@
 
             // Show loading popup
             window.appLanguage == 'en' ? showCustomAlert('loading', 'Processing...', 'Sending booking data, please wait') : showCustomAlert('loading', 'กำลังประมวลผล...', 'กำลังส่งข้อมูลการจอง กรุณารอสักครู่');
-            sendToGoogleAppsScript(bookingData);
+            sendToGoogleSheets(bookingData);
         }
 
         // Custom alert function that matches page theme
@@ -2028,7 +2065,7 @@
                     .replace(/{{bookingDate}}/g, formatBookingDate(bookingData.date) + (window.appLanguage === 'en' ? ' at ' : ' เวลา ') + bookingData.time)
                     .replace(/{{bookingGuests}}/g, bookingData.guests)
                     .replace(/{{bookingLocation}}/g, bookingData.location)
-                    .replace(/{{customerName}}/g, bookingData.name)
+                    .replace(/{{customerName}}/g, bookingData.title + ' ' + bookingData.fname + ' ' + bookingData.lname)
                     .replace(/{{customerPhone}}/g, bookingData.phone)
                     .replace(/{{customerEmail}}/g, bookingData.email)
 
@@ -2086,8 +2123,8 @@
             return date.toLocaleDateString(locale, options);
         }
 
-        function sendToGoogleAppsScript(data) {
-            console.log("🚀 ~ sendToGoogleAppsScript ~ data:", data);
+        function sendToGoogleSheets(data) {
+            console.log("🚀 ~ sendToGoogleSheets ~ data:", data);
             // Call Google Apps Script function to handle booking
             google.script.run
                 .withSuccessHandler(function (response) {
@@ -2095,7 +2132,7 @@
                     if (!response.success) {
                         window.appLanguage == 'en' ? showCustomAlert('error', 'Booking Failed!', response.message, function () {
                         }) :
-                            showCustomAlert('error', 'จองไม่สำเร็จ!', response.message, function () {
+                            showCustomAlert('error', 'จองไม่สำเร็จ!', window.appLanguage == 'en' ? response.messageEn : response.message, function () {
                             });
                         return;
                     }
@@ -2142,8 +2179,12 @@
             $('#back-to-welcome').html('<i class="bi bi-arrow-left-circle me-2"></i> Back');
 
             $('#step-2-title').text('Booking Information');
-            $('label[for="customer-name"]').text('Name');
+            
+            $('label[for="customer-title"]').text('Title');
+            $('label[for="customer-firstname"]').text('First Name');
+            $('label[for="customer-lastname"]').text('Last Name');
             $('label[for="customer-phone"]').text('Phone Number');
+            $('label[for="customer-email"]').text('Email Address');
 
             $('#summary-title').text('Booking Summary');
             $('#summary-date').parent().find('strong').text('Date and Time:');
@@ -2168,6 +2209,9 @@
             $('#booking-phone-label').text('Phone Number:');
             $('#booking-email-label').text('Email:');
             $('#new-booking-btn-text').text('New Booking');
+
+            $('#customer-title').html('<option value="Mr.">Mr.</option><option value="Mrs.">Mrs.</option><option value="Ms.">Ms.</option><option value="อื่นๆ">Other</option>');
+            $('#customer-title-custom').attr('placeholder', 'Please specify your title');
         }
     </script>
 </body>
