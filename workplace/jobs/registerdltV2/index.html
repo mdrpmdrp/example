@@ -1,1 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+  <meta http-equiv="Cache-control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"
+    integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt&display=swap" rel="stylesheet">
+  <!-- icon -->
+  <link rel="icon" href="https://img.icons8.com/color/96/suv.png" type="image/x-icon" />
+  <link
+    href="https://cdn.datatables.net/v/bs5/jszip-3.10.1/dt-1.13.8/b-2.4.2/b-html5-2.4.2/date-1.5.1/fh-3.4.0/r-2.5.0/sl-1.7.0/datatables.min.css"
+    rel="stylesheet">
+
+  <script
+    src="https://cdn.datatables.net/v/bs5/jszip-3.10.1/dt-1.13.8/b-2.4.2/b-html5-2.4.2/date-1.5.1/fh-3.4.0/r-2.5.0/sl-1.7.0/datatables.min.js"></script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/print-js@1.6.0/dist/print.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/print-js@1.6.0/dist/print.min.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100%;
+      height: 100%;
+      font-family: 'Prompt', sans-serif;
+      background-color: #cfecfa;
+      /* background-color: #D3D3D3; */
+    }
+
+    table.dataTable.table-striped>tbody>tr.odd.selected>* {
+      box-shadow: inset 9px 20px 20px 9999px rgba(112, 124, 192, 0.95);
+      box-shadow: inset 0 0 0 9999px rgba(112, 124, 192, 0.95);
+    }
+
+    table.dataTable.table-striped>tbody>tr.even.selected>* {
+      box-shadow: inset 9px 20px 20px 9999px rgba(112, 124, 192, 0.95);
+      box-shadow: inset 0 0 0 9999px rgba(112, 124, 192, 0.95);
+    }
+
+    /* change  .bi-printer to .bi-printer-fill when hover */
+    .bi-printer-fill:hover {
+      color: #0d6efd;
+
+    }
+
+    .container {
+      max-width: 600px;
+    }
+  </style>
+  <title>ระบบลงทะเบียนอบรม</title>
+</head>
+
+<body>
+  <nav class="navbar bg-primary">
+    <div class="container-fluid">
+      <img width="30" height="30" src="https://img.icons8.com/color/96/suv.png" />
+      <div>
+        <button class="btn btn-sm btn-light d-none" data-bs-toggle="modal" data-bs-target="#modalSetting"
+          id="setting-btn"><i class="bi bi-gear-fill"></i>&nbsp;Setting</button>
+        <button class="btn btn-warning btn-sm" id="admin-btn" data-type="login">
+          <i class="bi bi-person-fill-lock"></i>&nbsp;สำหรับผู้ดูแลระบบ
+        </button>
+      </div>
+    </div>
+  </nav>
+  <header>
+    <div class="container-fluid d-flex flex-column align-items-center justify-content-center w-100 mt-4">
+      <div class="col-auto">
+        <img width="80" src="https://img.icons8.com/color/96/suv.png" />
+      </div>
+
+      <div class="col text-center">
+        <h4 class="h1 fw-bold text-dark">ระบบลงทะเบียนอบรม</h4>
+        <h6 class="fw-bold text-muted">ว่าที่ ร.ต.ธวัช สมจิตต์</h6>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="container">
+      <form id="myForm" class="mt-3 g-3 mb-5 row justify-content-center">
+        <!-- รหัสผู้เข้าอบรม -->
+        <div class="col-md-6">
+          <label for="no">รหัสผู้เข้าอบรม</label>
+          <input type="text" class="form-control form-control" id="id" name="id" required>
+        </div>
+        <!-- คำนำหน้าชื่อ -->
+        <div class="col-md-6">
+          <label for="title">คำนำหน้าชื่อ</label>
+          <select class="form-select form-select" aria-label="Default select example" id="title" name="title">
+            <option value="" selected disabled>เลือก</option>
+            <option value="นาย">นาย</option>
+            <option value="นาง">นาง</option>
+            <option value="นางสาว">นางสาว</option>
+            <option value="อื่นๆ">อื่นๆ</option>
+          </select>
+        </div>
+        <!-- ชื่อ (ภาษาไทย) -->
+        <div class="col-md-6">
+          <label for="name">ชื่อ (ภาษาไทย)</label>
+          <input type="text" class="form-control form-control" id="name" name="name">
+        </div>
+
+        <!-- นามสกุล (ภาษาไทย) -->
+        <div class="col-md-6">
+          <label for="surname">นามสกุล (ภาษาไทย)</label>
+          <input type="text" class="form-control form-control" id="surname" name="surname">
+        </div>
+        <!-- เลขบัตรประจำตัวประชาชน -->
+        <div class="col-md-6">
+          <label for="id_card">เลขบัตรประจำตัวประชาชน</label>
+          <input type="text" class="form-control form-control" id="id_card" name="id_card"
+            placeholder="กรอกเฉพาะตัวเลข 13 หลักเท่านั้น" inputmode="numeric">
+        </div>
+        <!-- เบอร์โทรศัพท์ -->
+        <div class="col-md-6">
+          <label for="tel">เบอร์โทรศัพท์</label>
+          <input type="text" class="form-control form-control" id="tel" name="tel" placeholder="กรอกเฉพาะตัวเลขเท่านั้น"
+            inputmode="numeric">
+        </div>
+        <!-- บันทึก -->
+        <div class="col-md-6 text-center">
+          <button type="submit" class="btn btn-primary w-100" id="save" <i class="bi bi-floppy"></i>
+            บันทึก</button>
+        </div>
+      </form>
+      <div class="container-fluid">
+        <iframe id="pdf" style="width: 100%; height: calc(100vw *(1.4142)); display: none;"></iframe>
+      </div>
+    </div>
+    <div class="container-fluid">
+      <div class="table-responsive d-none">
+        <table class="table table-bordered table-hover table-striped" id="table" style="width: 100%;">
+          <thead class="table-dark text-nowrap">
+          </thead>
+          <tbody class="text-nowrap" style="font-size: small;">
+          </tbody>
+          <tfoot class="table-success text-end text-nowrap">
+            <tr>
+              <th colspan="8" class="text-end"></th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal fade" id="modalSetting" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="modalSettingLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="modalSettingLabel"><i class="bi bi-gear-fill"></i>&nbsp;Setting</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="setting-form" class="row g-3">
+            <div class="col-12">
+              <label for="project-name">ชื่องาน</label>
+              <input type="text" class="form-control" id="project-name" name="project-name" placeholder="ชื่องาน"
+                required>
+            </div>
+            <div class="col-12">
+              <label for="project-date">วันที่</label>
+              <input type="date" class="form-control" id="project-date" name="project-date" placeholder="วันที่"
+                required>
+            </div>
+            <!-- <div class="col-12">
+              <label for="registers">จำนวนผู้ลงทะเบียนทั้งหมด</label>
+              <input type="number" class="form-control" id="registers" name="registers" placeholder="จำนวนผู้ลงทะเบียนทั้งหมด"
+                required>
+            </div> -->
+            <div class="col-12">
+              <label for="project-sign">ผู้ลงนาม</label>
+              <input type="text" class="form-control" id="project-sign" name="project-sign" placeholder="ผู้ลงนาม"
+                required>
+            </div>
+            <div class="col-12">
+              <button type="submit" id="submit-btn" hidden>submit</button>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="$('#submit-btn').click()" class="btn btn-primary">บันทึกการตั้งค่า</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+  <script>
+  // VConsole will be exported to `window.VConsole` by default.
+ // var vConsole = new window.VConsole();
+  </script>
+  <script>
+    var toast
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycby5N7425090EWd25YFkE4YkTtTiFm3M5igbKd4h3yF6W6h3dI2eZ4QIRmsFzOJ4Nk9swQ/exec'
+    var form_pdf_bytes, font_bytes, signature_bytes, e_img_bytes, e_img_code_bytes, e_img_nameplate_bytes
+    $(document).ready(async function () {
+
+      toast = Swal.mixin({
+        toast: true,
+        position: 'top',
+        showConfirmButton: false,
+      })
+      // set moment locale
+      moment.locale('th')
+      let admin = localStorage.getItem('admin')
+      if (admin != null) {
+        admin = JSON.parse(admin)
+        if (admin.status == 'login' && admin.expired > new Date().getTime()) {
+          setLogin()
+        } else if (admin.status == 'login' && admin.expired < new Date().getTime()) {
+          localStorage.removeItem('admin')
+        }
+      }
+    })
+
+    $('#admin-btn').click(function () {
+      let type = $(this).data('type')
+      if (type == 'login') {
+        Swal.fire({
+          title: 'กรุณาใส่รหัสผ่าน',
+          input: 'password',
+          inputLabel: 'รหัสผ่าน',
+          inputPlaceholder: 'รหัสผ่าน',
+          customClass: {
+            input: 'text-center'
+          },
+          showCancelButton: true,
+          confirmButtonText: 'ยืนยัน',
+          cancelButtonText: 'ยกเลิก',
+          reverseButtons: true,
+          inputValidator: (value) => {
+            if (!value) {
+              return 'กรุณากรอกข้อมูล'
+            } else if (value.toLowerCase() != 'dlt') {
+              return 'รหัสผ่านไม่ถูกต้อง'
+            }
+          }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            setLogin()
+          }
+        })
+      } else if (type == 'logout') {
+        Swal.fire({
+          title: 'ต้องการออกจากระบบใช่หรือไม่',
+          showCancelButton: true,
+          confirmButtonText: `ออกจากระบบ`,
+          cancelButtonText: `ยกเลิก`,
+          reverseButtons: true,
+        }).then((result) => {
+          /* Read more about isConfirmed, isDenied below */
+          if (result.isConfirmed) {
+            localStorage.removeItem('admin')
+            $.LoadingOverlay("show");
+            location.reload()
+          }
+        })
+      }
+    })
+
+    async function setLogin() {
+      localStorage.setItem('admin', JSON.stringify({status: 'login', expired: new Date().getTime() + 1000 * 60 * 60 * 2}))
+      $('#admin-btn').data('type', 'logout')
+      $('#admin-btn').html('<i class="bi bi-door-open-fill"></i>&nbsp;ออกจากระบบ')
+      toast.fire({
+        icon: 'info',
+        title: 'Loading Data...',
+        showConfirmButton: false,
+      })
+      $('#setting-btn').removeClass('d-none')
+      loadSetting()
+      $.post(scriptUrl, {opt: 'get'}, function (data) {
+        console.log("🚀 !! data:", data)
+        if (data.status == 'success') {
+          toast.update({
+            icon: 'success',
+            title: 'Create Data Table...',
+            showConfirmButton: false,
+          })
+          createDataTable(data.result)
+        }
+      }, 'json')
+      form_pdf_bytes = await fetch('./cert.pdf').then(res => res.arrayBuffer())
+      font_bytes = await fetch('./browa.ttf').then(res => res.arrayBuffer())
+      font_bytes_bold = await fetch('./BROWAB.ttf').then(res => res.arrayBuffer())
+    }
+
+    function loadSetting() {
+      $.post(scriptUrl, {opt: 'get_setting'}, function (data) {
+        console.log("🚀 !! data:", data)
+        if (data.status == 'success') {
+          $('#project-name').val(data.result['project-name'])
+          $('#project-date').val(data.result['project-date'].split('T')[0])
+          $('#project-sign').val(data.result['project-sign'])
+          $('#modalSetting').off('shown.bs.modal').on('shown.bs.modal', function () {
+            let old_setting = $('#setting-form').serializeArray()
+            $('#setting-form').off('submit').on('submit', function () {
+              event.preventDefault()
+              let new_setting = $('#setting-form').serializeArray()
+              if (JSON.stringify(old_setting) != JSON.stringify(new_setting)) {
+                Swal.fire({
+                  title: 'ต้องการบันทึกการตั้งค่าใช่หรือไม่',
+                  showCancelButton: true,
+                  confirmButtonText: `บันทึกเลย`,
+                  cancelButtonText: `ยกเลิก`,
+                  reverseButtons: true,
+                }).then((result) => {
+                  /* Read more about isConfirmed, isDenied below */
+                  if (result.isConfirmed) {
+                    $('.modal-body').LoadingOverlay('show')
+                    let form_obj = {}
+                    new_setting.forEach(element => {
+                      form_obj[element.name] = element.value
+                    });
+                    $.post(scriptUrl, {opt: 'save_setting', form_obj: JSON.stringify(form_obj)}, function (data) {
+                      console.log("🚀 !! data:", data)
+                      if (data.status == 'success') {
+                        $('.modal-body').LoadingOverlay("hide");
+                        Swal.fire({
+                          icon: 'success',
+                          title: 'บันทึกข้อมูลเรียบร้อย',
+                          showConfirmButton: false,
+                          timer: 1000
+                        })
+                        $('#modalSetting').modal('hide')
+                        loadSetting()
+                      }
+                    }, 'json')
+                  }
+                })
+              } else {
+                Swal.fire({
+                  icon: 'info',
+                  title: 'ไม่มีการเปลี่ยนแปลง',
+                  showConfirmButton: false,
+                  timer: 1000
+                })
+              }
+            })
+          })
+        }
+      }, 'json')
+    }
+
+    function base64ToBlob(base64, type) {
+      {
+        let binary = atob(base64)
+        let array = []
+        for (let i = 0; i < binary.length; i++) {
+          array.push(binary.charCodeAt(i))
+        }
+        return new Blob([new Uint8Array(array)], {type: type})
+      }
+    }
+    // อนุญาตให้กรอกเฉพาะตัวเลข
+    $('#id_card, #tel').on('input', function () {
+      this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+    });
+
+    // อนุญาตให้กรอกเฉพาะภาษาไทย
+    $('#name, #surname').on('input', function () {
+      this.value = this.value.replace(/[^ก-๙.]/g, '').replace(/(\..*)\./g, '$1');
+    });
+
+    // เช็คเลขบัตรประจำตัวประชาชน
+    // $('#id_card').on('input', function () {
+    //     const checkID = function (id) {
+    //         if (id.length != 13) return false
+    //         for (i = 0, sum = 0; i < 12; i++)
+    //             sum += parseFloat(id.charAt(i)) * (13 - i); if ((11 - sum % 11) % 10 != parseFloat(id.charAt(12)))
+    //             return false; return true;
+    //     }
+
+    //     let id_card = $(this).val()
+    //     if (id_card.length == 13) {
+    //         if (!checkID(id_card)) {
+    //             Swal.fire({
+    //                 icon: 'error',
+    //                 title: 'เลขบัตรประจำตัวประชาชนไม่ถูกต้อง',
+    //                 text: 'กรุณากรอกใหม่อีกครั้ง',
+    //             })
+    //             $(this).val('')
+    //         }
+    //     }
+    // })
+
+    $('#title').change(function () {
+      if ($(this).val() == 'อื่นๆ') {
+        Swal.fire({
+          title: 'ระบุ อื่นๆ',
+          input: 'text',
+          inputLabel: 'ระบุ',
+          inputPlaceholder: 'ระบุ',
+          showCancelButton: true,
+          inputValidator: (value) => {
+            if (!value) {
+              return 'กรุณากรอกข้อมูล'
+            }
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            $('#title option').last().before(`<option value="${result.value}">${result.value}</option>`)
+            $('#title').val(result.value)
+          }
+        })
+      }
+    });
+
+    var datatable
+    function createDataTable(data) {
+      console.log("🚀 !! data:", data)
+      // const mockSubmissions = [
+      //     {
+      //         "no": "1",
+      //         "title": "นาย",
+      //         "name": "สมชาย",
+      //         "surname": "ใจดี",
+      //         "id_card": "1234567890123",
+      //         "tel": "5555555555",
+      //         "timestamp": new Date().toISOString()
+      //     },
+      //     {
+      //         "no": "2",
+      //         "title": "นาง",
+      //         "name": "จริงใจ",
+      //         "surname": "รักเสมอ",
+      //         "id_card": "9876543210987",
+      //         "tel": "5551234567",
+      //         "timestamp": new Date().toISOString()
+      //     },
+      //     {
+      //         "no": "3",
+      //         "title": "นางสาว",
+      //         "name": "วิชชุดา",
+      //         "surname": "สุขใจ",
+      //         "id_card": "4567890123456",
+      //         "tel": "5557891234",
+      //         "timestamp": new Date().toISOString()
+      //     },
+      //     {
+      //         "no": "4",
+      //         "title": "อื่นๆ",
+      //         "name": "สุขสันต์",
+      //         "surname": "มีความสุข",
+      //         "id_card": "7890123456789",
+      //         "tel": "5554567890",
+      //         "timestamp": new Date().toISOString()
+      //     },
+      //     {
+      //         "no": "5",
+      //         "title": "นาย",
+      //         "name": "วรรณรท",
+      //         "surname": "ยิ้มหวาน",
+      //         "id_card": "2345678901234",
+      //         "tel": "5552345678",
+      //         "timestamp": new Date().toISOString()
+      //     },
+      //     {
+      //         "no": "6",
+      //         "title": "นาง",
+      //         "name": "ชื่นใจ",
+      //         "surname": "สวยงาม",
+      //         "id_card": "6543210987654",
+      //         "tel": "5558765432",
+      //         "timestamp": new Date().toISOString()
+      //     },
+      //     {
+      //         "no": "7",
+      //         "title": "นางสาว",
+      //         "name": "อริสา",
+      //         "surname": "ทรงงาม",
+      //         "id_card": "1230987654321",
+      //         "tel": "5553456789",
+      //         "timestamp": new Date().toISOString()
+      //     },
+      //     {
+      //         "no": "8",
+      //         "title": "อื่นๆ",
+      //         "name": "สุดใจ",
+      //         "surname": "รวยดี",
+      //         "id_card": "5678901234567",
+      //         "tel": "5556789012",
+      //         "timestamp": new Date().toISOString()
+      //     },
+      //     {
+      //         "no": "9",
+      //         "title": "นาย",
+      //         "name": "ประสิทธิ์",
+      //         "surname": "ทำดี",
+      //         "id_card": "7890123456789",
+      //         "tel": "5557890123",
+      //         "timestamp": new Date().toISOString()
+      //     },
+      //     {
+      //         "no": "10",
+      //         "title": "นาง",
+      //         "name": "วีระ",
+      //         "surname": "ประสงค์ดี",
+      //         "id_card": "3456789012345",
+      //         "tel": "5551234567",
+      //         "timestamp": new Date().toISOString()
+      //     }
+      // ];
+
+      // console.log(mockSubmissions);
+      datatable = $('#table').DataTable({
+        data: data,
+        order: [[1, 'asc']],
+        columns: [
+          {
+            data: null,
+            title: 'พิมพ์',
+            render: function (data, type, row, meta) {
+              return `<a class="btn print-item"><i class="bi bi-printer-fill"></i></a>`
+            },
+            orderData: [2],
+          },
+          {
+            data: 'id', title: 'รหัสผู้เข้าอบรม',
+          },
+          {
+            data: 'name', title: 'ชื่อ-นามสกุล',
+            render: function (data, type, row, meta) {
+              return row.name + ' ' + row.surname
+            },
+            visible: false
+          },
+          {
+            data: 'name', title: 'ชื่อ-นามสกุล',
+            render: function (data, type, row, meta) {
+              return row.title + ' ' + row.name + ' ' + row.surname
+            },
+          },
+          {data: 'id_card', title: 'เลขบัตรประจำตัวประชาชน'},
+          {data: 'tel', title: 'เบอร์โทรศัพท์'},
+          {
+            data: 'timestamp',
+            title: 'เวลา',
+            render: function (data, type, row, meta) {
+              return new Date(row.timestamp).toLocaleString('th-TH', {timeZone: 'Asia/Bangkok'})
+            },
+
+          },
+          {
+            data: null,
+            title: 'ลบ',
+            render: function (data, type, row, meta) {
+              return `<a class="btn btn-danger btn-sm delete-item"><i class="bi bi-trash"></i></a>`
+            },
+          }
+
+
+        ],
+        columnDefs: [
+          {
+            targets: '_all',
+            className: 'text-center',
+          },
+          {
+            targets: [0],
+            orderable: false,
+          },
+
+        ],
+        footerCallback: function (row, data, start, end, display) {
+          var api = this.api(), data;
+          // count data
+          let count = api.rows().count()
+          // show in foot alight right
+          $(api.column(0).footer()).html(`<small class="text-end text-muted w-100">ผู้ลงทะเบียนทั้งหมด ${count} รายการ</small>`).removeClass('text-center')
+
+        },
+        language: {
+          search: 'ค้นหา',
+          searchPlaceholder: 'ค้นหา',
+          lengthMenu: 'แสดง _MENU_ แถว',
+          info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ แถว',
+          infoEmpty: 'แสดง 0 ถึง 0 จาก 0 แถว',
+          infoFiltered: '(กรองจากทั้งหมด _MAX_ แถว)',
+          zeroRecords: 'ไม่พบข้อมูลที่ค้นหา',
+          emptyTable: 'ไม่พบข้อมูล',
+          paginate: {
+            first: 'หน้าแรก',
+            previous: 'ก่อนหน้า',
+            next: 'ถัดไป',
+            last: 'หน้าสุดท้าย',
+          },
+        },
+        // responsive: true,
+        scrollX: true,
+        select: {
+          style: 'multi+shift',
+          selector: 'td:not(:first-child)'
+        },
+        dom: '<"row g-2"<"col-6 text-start d-flex flex-column gap-2"<"col-auto"l><"col-auto"B>><"col-6 text-end"f"<"col-12 d-none text-end py-2"<"row g-3 print-all justify-content-end">>>>rtip',
+        buttons: [
+          {
+            extend: 'excel',
+            text: '<i class="bi bi-file-earmark-excel-fill"></i>&nbsp;Excel',
+            className: 'btn btn-success btn-sm',
+            // all rowsinclude unselect row
+
+            exportOptions: {
+              columns: [1, 2, 3, 4, 5],
+              modifier: {
+                selected: null
+              },
+              orthogonal: 'export'
+            }
+          }
+        ],
+        initComplete: function () {
+          $('.table-responsive').removeClass('d-none')
+          setTimeout(() => {
+            datatable.columns.adjust().draw()
+          }, 100);
+
+          // // re-render no column
+          // reRenderNumberColumn()
+          toast.update({
+            icon: 'success',
+            title: 'Create Data Table Success',
+            showConfirmButton: false,
+          })
+          setTimeout(() => {
+            toast.close()
+          }, 1000);
+          let printall = `<div class="col-auto"><button class="btn btn-sm btn-warning" onclick="createMultiplePDF()"><img width="20" src="https://img.icons8.com/ios-filled/50/000000/print--v1.png" alt="print--v1" /> พิมพ์เอกสาร</button></div>`
+          let selectall = `<div class="col-auto select_all"><button class="btn btn-sm btn-info" onclick="datatable.rows().select()"><i class="bi bi-check2-square"></i>&nbsp;เลือกทั้งหมด</button></div>`
+          let deselectall = `<div class="col-auto d-none deselect"><button class="btn btn-sm btn-danger" onclick="datatable.rows().deselect()"><i class="bi bi-x-square"></i>&nbsp;ไม่เลือกทั้งหมด</button></div>`
+          let exportExcel = `<div class="col-auto"><button class="btn btn-sm btn-success" onclick="datatable.button(0).trigger()"><i class="bi bi-file-earmark-excel-fill"></i>&nbsp;Excel</button></div>`
+          $('.print-all').html(selectall + deselectall + printall)
+          $('.select_all').removeClass('d-none').off('click').on('click', function () {
+            datatable.rows().select()
+            $('.select_all').addClass('d-none')
+            $('.deselect').removeClass('d-none')
+          })
+          $('.deselect').off('click').on('click', function () {
+            datatable.rows().deselect()
+            $('.deselect').addClass('d-none')
+            $('.select_all').removeClass('d-none')
+          })
+        }
+      })
+
+      // on .print-item click
+      datatable.on('click', '.print-item', function () {
+        let row_index = datatable.row($(this).parents('tr')).index()
+        createPDF(row_index)
+      })
+
+      // on .bdelete-item click
+      datatable.on('click', '.delete-item', function () {
+        let row_index = datatable.row($(this).parents('tr')).index()
+        console.log("🚀 !! row_index:", row_index)
+        Swal.fire({
+          title: 'กรุณาใส่รหัสเพื่อลบข้อมูล',
+          input: 'password',
+          inputLabel: 'รหัส',
+          inputPlaceholder: 'รหัส',
+          customClass: {
+            input: 'text-center'
+          },
+          showCancelButton: true,
+          confirmButtonText: 'ลบเลย',
+          cancelButtonText: 'ยกเลิก',
+          reverseButtons: true,
+          inputValidator: (value) => {
+            if (!value) {
+              return 'กรุณากรอกข้อมูล'
+            } else if (value.toLowerCase() != 'dlt') {
+              return 'รหัสไม่ถูกต้อง'
+            }
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            Swal.fire({
+              title: 'กำลังลบข้อมูล',
+              text: 'กรุณาอย่าปิดหน้าต่างนี้',
+              allowOutsideClick: false,
+              allowEscapeKey: false,
+              allowEnterKey: false,
+              showConfirmButton: false,
+              didOpen: () => {
+                Swal.showLoading()
+              }
+            })
+            $.post(scriptUrl, {opt: 'delete', id: datatable.rows(row_index).data()[0].id}, function (data) {
+              console.log("🚀 !! data:", data)
+              datatable.row(row_index).remove().draw(false)
+              // reRenderNumberColumn()
+              $('.print-all').parent().addClass('d-none')
+              Swal.fire({
+                icon: 'success',
+                title: 'ลบข้อมูลเรียบร้อย',
+                showConfirmButton: false,
+                timer: 1000
+              })
+            }, 'json')
+          }
+        })
+
+      })
+
+
+      // listen if row in table is selected
+      datatable.on('select deselect', function (e, dt, type, indexes) {
+        let selectedRows = datatable.rows({selected: true}).count()
+        $('#table').find('.bi-printer').removeClass('text-light').addClass('text-dark')
+        if (selectedRows > 0) {
+          $('.print-all').parent().removeClass('d-none')
+        } else {
+          $('.print-all').parent().addClass('d-none')
+        }
+
+        if (type === 'row' && selectedRows > 0) {
+          if (e.type == 'select') {
+            $(this).DataTable().rows(indexes).nodes().to$().find('i').removeClass('text-dark').addClass('text-light')
+          } else {
+            $(this).DataTable().rows(indexes).nodes().to$().find('i').removeClass('text-light').addClass('text-dark')
+          }
+        } else {
+          $(this).find('i').removeClass('text-light').addClass('text-dark')
+          $('#no').val('')
+          $('#title').val('')
+          $('#name').val('')
+          $('#surname').val('')
+          $('#id_card').val('')
+          $('#tel').val('')
+        }
+      })
+
+    }
+
+    function reRenderNumberColumn() {
+      $('#table').DataTable().rows().map(function () {
+        var column = this.nodes().to$();
+        let index = column.index()
+        console.log("🚀 !! index:", index)
+        console.log('aaaa', column.find('td:nth-child(2)'));
+        column.find('td:nth-child(2)').each(function (i) {
+          $(this).html(('000' + (i + 1)).slice(-3));
+        });
+      });
+    }
+
+
+    function base64ToArrayBuffer(base64) {
+      var binaryString = atob(base64);
+      var bytes = new Uint8Array(binaryString.length);
+      for (var i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      return bytes.buffer;
+    }
+
+    function convertArabicToThaiNumber(num) {
+      num = num.toString()
+      let arabic = '0123456789'
+      let thai = '๐๑๒๓๔๕๖๗๘๙'
+      let result = ''
+      for (let i = 0; i < num.length; i++) {
+        // check if num[i] is number
+        if (arabic.indexOf(num[i]) == -1) {
+          result += num[i]
+          continue
+        }
+        result += thai[arabic.indexOf(num[i])]
+      }
+      return result
+    }
+
+    async function createMultiplePDF() {
+      let row_index = datatable.rows({selected: true}).indexes().toArray()
+      console.log("🚀 !! row_index:", row_index)
+      createPDF(row_index, true)
+    }
+
+    async function createPDF(row_index, multiple = false) {
+      if (!multiple) row_index = [row_index]
+      let new_pdf = await PDFDocument.create()
+      Swal.fire({
+        title: 'กำลังสร้างไฟล์ 0/' + row_index.length + ' ไฟล์',
+        html: 'กรุณารอสักครู่',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        allowEnterKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading()
+        }
+      })
+      row_index.forEach(async (index, i) => {
+        console.log("🚀 !! index:", index)
+        let data = datatable.rows(index).data()[0]
+        // get text from column 1
+        let doc_id = datatable.rows(index).nodes().to$().find('td:nth-child(2)').text()
+        // set id_card format to 0-0000-00000-00-0
+        let id_card = data.id_card.toString()
+        id_card = id_card.slice(0, 1) + ' - ' + id_card.slice(1, 5) + ' - ' + id_card.slice(5, 10) + ' - ' + id_card.slice(10, 12) + ' - ' + id_card.slice(12, 13)
+        let page_doc = await PDFDocument.load(form_pdf_bytes)
+        var form = page_doc.getForm()
+        page_doc.registerFontkit(fontkit);
+        const font = await page_doc.embedFont(font_bytes, {subset: true})
+        const font_bold = await page_doc.embedFont(font_bytes_bold, {subset: true})
+        const symbol = await page_doc.embedFont(StandardFonts.ZapfDingbats, {subset: true})
+        form.getTextField('name').setText(data.title + data.name + ' ' + data.surname)
+        form.getTextField('id_card').setText(convertArabicToThaiNumber(id_card))
+        form.getTextField('th_date').setText(convertArabicToThaiNumber(moment(data.timestamp).add(543, 'year').format('DD MMMM YYYY')))
+        form.getTextField('doc_no').setText(convertArabicToThaiNumber('' + doc_id))
+        form.getTextField('project-name').setText($('#project-name').val())
+        form.getTextField('project-sign').setText('(' + $('#project-sign').val() + ')')
+        form.updateFieldAppearances(font);
+        form.getTextField('project-name').updateAppearances(font_bold);
+
+        form.flatten()
+        await page_doc.save()
+        let copyPage = await new_pdf.copyPages(page_doc, [0])
+        new_pdf.addPage(copyPage[0])
+        Swal.update({
+          title: 'กำลังสร้างไฟล์ ' + (i + 1) + '/' + row_index.length + ' ไฟล์',
+          html: 'กรุณารอสักครู่',
+        })
+
+        if (i == row_index.length - 1) {
+          let pdfBytes = await new_pdf.save()
+          let pdfdatauri = await new_pdf.saveAsBase64()
+          Swal.close()
+          // check if on mobile phone, just open in new tab instead of print
+          // check deivce os
+          let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+          if (isMobile) {
+            var iframe = document.createElement('iframe')
+            // open pdf in new small window
+            var blob = new Blob([pdfBytes], {type: 'application/pdf'})
+            var url = URL.createObjectURL(blob)
+            // check if browser doesn't support to open in new tab
+            if (window.open(url + '#toolbar=1&view=fitH', '_blank') == null) {
+              window.open(url + '#toolbar=1&view=fitH', '_self')
+              return
+            }
+          } else {
+            printJS({printable: pdfdatauri, type: 'pdf', base64: true, showModal: true, modalMessage: 'กำลังพิมพ์'})
+          }
+        }
+
+        // $.ajax({
+        //     url: scriptUrl,
+        //     type: 'POST',
+        //     data: {
+        //         opt: 'save',
+        //         form_obj: JSON.stringify(form_obj)
+        //     }
+        // })
+      })
+      // Swal.fire({
+      //     icon: 'success',
+      //     title: 'สร้างไฟล์เสร็จสิ้น',
+      //     timer: 1000,
+      //     showConfirmButton: false,
+      // }).then(async () => {
+      // var iframe = document.getElementById('pdf')
+      // // open pdf in new small window
+      // var blob = new Blob([pdfBytes], { type: 'application/pdf' })
+      // var url = URL.createObjectURL(blob)
+      // iframe.src = url + '#toolbar=1&view=fitH'
+      // let e_code = $('#e_me_code').val() ? $('#e_me_code').val() : 'no_code'
+      // let e_name = $('#e_name').val() ? $('#e_name').val() : 'no_name'
+      // let dept = $('#dept').val() ? $('#dept').val() : 'no_department'
+      // let name = 'PR-' + e_code + '-' + e_name + '-' + dept + '.pdf'
+      // $(iframe).show(200)
+      // $('#a-download').attr('href', url)
+      // $('#a-download').attr('download', name).show()
+      // // scroll to pdf
+      // $('html, body').animate({
+      //     scrollTop: $(iframe).offset().top
+      // }, 500);
+      // pdfDoc = await PDFDocument.load(form_pdf_bytes)
+      // $('#1-file-nsmart, #2-file-quatation').change()
+
+      // print dataurl
+
+
+
+
+
+      // })
+
+      // var iframe = document.getElementById('pdf')
+      // var blob = new Blob([pdfBytes], { type: 'application/pdf' })
+      // var url = URL.createObjectURL(blob)
+      // iframe.src = url + '#toolbar=0&view=fitH'
+      // iframe.onload = function () {
+      //     iframe.contentWindow.print()
+      // }
+
+      // $('#a-download').attr('href', pdfDataUri)
+      // $('#a-download').attr('download', name).show()
+    }
+  </script>
+  <script>
+
+    var pdfDoc
+    var PDFDocument = PDFLib.PDFDocument;
+    var StandardFonts = PDFLib.StandardFonts;
+    var pdfFiles = []
+    $('#myForm').submit(async function () {
+      if ($('#id_card').val().length != 13) {
+        return Swal.fire({
+          icon: "error",
+          title: "เลขบัตรประจำตัวประชาชนไม่ถูกต้อง",
+          text: "กรุณาตรวจสอบเลขบัตรประจำตัวประชาชนให้ถูกต้อง",
+          confirmButtonText: "ตกลง",
+          allowOutsideClick: false,
+        }).then(() => {
+          setTimeout(() => {
+            $('#id_card').focus()
+          }, 400);
+        })
+      }
+      event.preventDefault()
+      Swal.fire({
+        title: 'กำลังบันทึกข้อมูล',
+        text: 'กรุณาอย่าปิดหน้าต่างนี้',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        allowEnterKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading()
+        }
+      })
+
+      let form_obj = $(this).serializeArray()
+      let form_data = {}
+      form_obj.forEach((item) => {
+        form_data[item.name] = item.value
+      })
+      form_data['timestamp'] = new Date().toISOString()
+      console.log("🚀 !! form_data:", form_data)
+      $.post(scriptUrl, {opt: 'submit', form_obj: JSON.stringify(form_data)}, function (data) {
+        if (data.status == "duplicate") {
+          return Swal.fire({
+            icon: "error",
+            title: "รหัสนี้ลงทะเบียนไปแล้ว",
+            text: "กรุณาตรวจสอบรหัสให้ถูกต้อง และลงทะเบียนอีกครั้ง",
+            confirmButtonText: "ตกลง",
+            allowOutsideClick: false,
+          }).then(() => {
+            location.reload()
+          })
+        }
+        console.log("🚀 !! data:", data)
+        if (localStorage.getItem('admin') == null)
+          if (data.status == 'success') {
+            $.post(scriptUrl, {opt: 'send_message', form_obj: JSON.stringify(form_data)}, function (data) {
+              console.log("🚀 !! data:", data)
+            }, 'json')
+            if (localStorage.getItem('admin') != null) {
+
+
+              datatable.row.add(form_data).draw()
+            }
+            // reRenderNumberColumn()
+            Swal.fire({
+              icon: 'success',
+              title: 'บันทึกข้อมูลเรียบร้อย',
+              showConfirmButton: false,
+              timer: 1000
+            })
+            $('#myForm').trigger('reset')
+          }
+      }, 'json')
+      return
+
+
+    })
+
+    // $('#setting-form').submit(function () {
+    //   event.preventDefault()
+    //   $('.modal-body').LoadingOverlay("show");
+    //   let form_obj = $(this).serializeArray()
+    //   let form_data = {}
+    //   form_obj.forEach((item) => {
+    //     form_data[item.name] = item.value
+    //   })
+    //   console.log("🚀 !! form_data:", form_data)
+    //   $.post(scriptUrl, { opt: 'save_setting', form_obj: JSON.stringify(form_data) }, function (data) {
+    //     console.log("🚀 !! data:", data)
+    //     if (data.status == 'success') {
+    //       $('.modal-body').LoadingOverlay("hide");
+    //       Swal.fire({
+    //         icon: 'success',
+    //         title: 'บันทึกข้อมูลเรียบร้อย',
+    //         showConfirmButton: false,
+    //         timer: 1000
+    //       })
+    //       $('#modalSetting').modal('hide')
+    //       loadSetting()
+    //     }
+    //   }, 'json')
+    // })
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+    crossorigin="anonymous"></script>
+  <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
+</body>
+
+</html>
