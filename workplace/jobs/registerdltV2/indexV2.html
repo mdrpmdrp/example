@@ -36,6 +36,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"
         integrity="sha512-K/oyQtMXpxI4+K0W7H25UopjM8pzq0yrVdFdG21Fh5dBe91I40pDd9A4lzNlHPHBIP2cwZuoxaUSX0GJSObvGA=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/th.min.js" integrity="sha512-0XU8EDwsRqhnSukLw3KIQoRvFJs3SGlsoLpX1RpRAjmYrc7w56F6J5pwJ0p0p+v23qg14VPRQe9OhPRfbhVzdw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         * {
             margin: 0;
@@ -118,7 +119,7 @@
                         </div>
                     </div>
                 </div>
-                <form id="myForm" class="mt-3 g-3 mb-5 row justify-content-end" style="display: none;">
+                <form id="myForm" class="mt-3 g-3 mb-5 row justify-content-start align-items-end" style="display: none;">
                     <!-- รหัสผู้เข้าอบรม -->
                     <div class="col-md-6">
                         <label for="id">
@@ -199,6 +200,7 @@
                             <option value="รถจักรยานยนต์">รถจักรยานยนต์</option>
                             <option value="ทั้งสองอย่าง">ทั้งสองอย่าง</option>
                         </select>
+                    </div>
                     <!-- บันทึก -->
                     <div class="col-md-12 text-center">
                         <button type="submit" class="btn btn-primary w-100 rounded-pill" id="save" <i
@@ -319,7 +321,7 @@
     </script>
     <script>
         var toast
-        const scriptUrl = 'https://script.google.com/macros/s/AKfycbxrfs-cRSK9VeT5bxLnT5INJMCUXiJoXT_DIbUDJHQvXUCkm9SjmX1QCJcoC7F1bYDE/exec'
+        const scriptUrl = 'https://script.google.com/macros/s/AKfycbyRJH4S8JeqYAaLeQ2j8Z-578aMWRotjididV_XaLG6sp117jni6oAsxlcIKtkkrns/exec'
         var form_pdf_bytes, font_bytes, signature_bytes, e_img_bytes, e_img_code_bytes, e_img_nameplate_bytes
         $(document).ready(async function () {
             let parameters = new URLSearchParams(window.location.search)
@@ -465,7 +467,8 @@
             console.log("🚀 ~ loadSetting ~ admin:", admin)
             $.post(scriptUrl, { opt: 'get_setting' }, function (data) {
                 if (data.status == 'success') {
-                    $('#project-name, #project-name-head, #project-name-consent').text(data.result['project-name'])
+                    console.log("🚀 ~ loadSetting ~ data:", data);
+                    $('#project-name, #project-name-head, #project-name-consent').text(data.result['project-name']).val(data.result['project-name'])
                     $('#project-date-head').text(moment(data.result['project-date']).format('LL')).attr('data-date', data.result['project-date'])
                     $('#project-date').val(data.result['project-date'].split('T')[0])
                     $('#project-sign').val(data.result['project-sign'])
@@ -1004,17 +1007,17 @@
             const font = await page_doc.embedFont(font_bytes, { subset: true })
             const font_bold = await page_doc.embedFont(font_bytes_bold, { subset: true })
             const symbol = await page_doc.embedFont(StandardFonts.ZapfDingbats, { subset: true })
-            let textFields = ['name', 'date', 'month', 'year', 'project_sign']
+            let textFields = ['project-name', 'id_card', 'th_date', 'name', 'project-sign']
             textFields.forEach((item) => {
                 // set center
                 form.getTextField(item).setAlignment(1)
             })
-            form.getTextField('project-name').setText(convertArabicToThaiNumber($('#project-name').text()))
-            form.getTextField('doc_id').setText(convertArabicToThaiNumber(doc_id))
+            form.getTextField('project-name').setText(convertArabicToThaiNumber($('#project-name').val()))
+            form.getTextField('doc_no').setText(convertArabicToThaiNumber(doc_id))
             form.getTextField('id_card').setText(convertArabicToThaiNumber(id_card))
             form.getTextField('th_date').setText(convertArabicToThaiNumber(moment(data.project_date).add(543, 'year').format('DD MMMM YYYY')))
             form.getTextField('name').setText(data.title + ' ' + data.name + ' ' + data.surname)
-            form.getTextField('project_sign').setText(!fromUser ? $('#project-sign').val() : data.project_sign)
+            form.getTextField('project-sign').setText(!fromUser ? $('#project-sign').val() : data.project_sign)
             form.updateFieldAppearances(font_bold);
             // form.getTextField('name').updateAppearances(font_bold)
             form.flatten()
