@@ -11,7 +11,9 @@ function doGet() {
 function getSellData() {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('รายการขาย');
-    let data = sheet.getDataRange().getValues().slice(1).filter(row => row[0] instanceof Date);
+    let data = sheet.getDataRange().getValues().slice(1).filter(row => row[0] instanceof Date).sort((a, b) => {
+        return b[0] - a[0]; // Sort by date descending
+    });
     return JSON.stringify(data.map((row, index) => {
         return {
             date: row[0],
@@ -20,10 +22,11 @@ function getSellData() {
             weight: row[3],
             price: row[4],
             seller: row[5],
-            status: row[6],
-            YM: row[7],
-            billNo: row[8],
-            uuid: row[9],
+            bank: row[6],
+            monthYear: row[7],
+            status: row[8],
+            billNo: row[9],
+            uuid: row[10]
         }
     }));
 }
@@ -34,37 +37,66 @@ function saveSellData(data) {
     let newrow = [
         new Date(),
         data.category,
-        data.product,
+        data.product != ""? (data.category + " " + data.product +'%') : "",
         data.weight,
         data.price,
         data.seller,
-        "", // status
-        Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM'),
+        data.bank,
+        Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'MM-yyyy'),
+        "เสร็จสิ้น",
         data.billNo,
         Utilities.getUuid()
     ]
     sheet.appendRow(newrow);
+    eventLog('บันทึกข้อมูลการขาย\n' + newrow.join(', ') + '\nโดย ' + data.seller);
     return true;
 }
 
-function deleteSellData(row) {
+function cancelSellData(uuid, canceler){
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('รายการขาย');
-    sheet.deleteRow(row);
-    return true;
+    let finder = sheet.createTextFinder(uuid).findNext()
+    if(!finder){
+        return JSON.stringify({
+            success: false,
+            message: 'ไม่พบข้อมูลที่ต้องการยกเลิก'
+        })
+    }
+    let row = finder.getRow();
+    let data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
+    if(data[8] !== "เสร็จสิ้น"){
+        return JSON.stringify({
+            success: false,
+            message: 'รายการนี้ถูกยกเลิกไปแล้ว'
+        });
+    }
+    data[8] = "ยกเลิก";
+    sheet.getRange(row, 1, 1, data.length).setValues([data]);
+    data.splice(8,1); // Remove the YM column
+    eventLog('ยกเลิกข้อมูลการขาย\n' + data.join(', ') + '\nโดย ' + canceler);
+    return JSON.stringify({
+        success: true,
+        message: 'ยกเลิกข้อมูลการขายสำเร็จ'
+    });
 }
 
 function getList() {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let listSheet = ss.getSheetByName('List');
-    let list = listSheet.getDataRange().getValues().reduce((acc, row) => {
-        if (row[0] == "") return acc; // Skip empty rows
-        let key = row[0];
-        if (!acc[key]) {
-            acc[key] = [];
-        }
-        acc[key].push(row[1]);
-        return acc;
-    }, {})
-    return list
+    let [header, ...list] = listSheet.getDataRange().getValues()
+    let obj = {}
+    header.forEach((key, index) => {
+        obj[key] = list.map(row => row[index]);
+    });
+    return obj
+}
+
+function eventLog(message) {
+    let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let logSheet = ss.getSheetByName('Event Log');
+    if (!logSheet) {
+        logSheet = ss.insertSheet('Event Log');
+        logSheet.appendRow(['Timestamp', 'Message']);
+    }
+    logSheet.appendRow([new Date(), message]);
 }
