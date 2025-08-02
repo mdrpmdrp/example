@@ -164,7 +164,7 @@
         <div class="row">
             <div class="col-12">
                 <!-- กรุณาคลิกที่สถานะ เพื่อยกเลิก -->
-                <p class="mb-3">คลิกที่ปุ่ม "สำเร็จ" เพื่อยกเลิกข้อมูลการขาย</p>
+                <p class="mb-3">คลิกที่ปุ่ม "สำเร็จ" เพื่อยกเลิกข้อมูลการซื้อ</p>
             </div>
             <div class="col-12">
                 <div class="table-responsive">
@@ -179,7 +179,7 @@
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content gold-form-card" style="background: #fff; border: 2px solid #d4af37; color: #232526;">
                 <div class="modal-header border-0 bg-light">
-                    <h3 class="modal-title gold-title w-100 text-center" id="addSellDataModalLabel">ข้อมูลการขาย</h3>
+                    <h3 class="modal-title gold-title w-100 text-center" id="addSellDataModalLabel">บันทึกซื้อ</h3>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" style="background: #fff; color: #232526;">
@@ -193,7 +193,7 @@
                                     <i class="bi bi-calendar"></i>
                                 </button>
                             </div> -->
-                            <input type="text" class="form-control" id="date" name="date" placeholder="เลือกวันที่"
+                            <input type="text" class="form-control bg-primary-subtle" id="date" name="date" placeholder="เลือกวันที่"
                                 required style="border: 1.5px solid #d4af37; background: #fff; color: #232526;" readonly>
                         </div>
 
@@ -211,7 +211,7 @@
                         <div class="mb-3">
                             <label for="product" class="form-label text-dark">สินค้า (คีย์%)</label>
                             <input type="number" class="form-control" id="product" name="product" placeholder="เช่น ทอง71"
-                                required style="border: 1.5px solid #d4af37; background: #fff; color: #232526;" min="0" max="100" onkeyup="handlePercentage(this)">
+                                required style="border: 1.5px solid #d4af37; background: #fff; color: #232526;" min="0" max="100" step="0.1" onkeyup="handlePercentage(this)">
                         </div>
                         <div class="mb-3">
                             <label for="weight" class="form-label text-dark">น้ำหนัก (กรัม)</label>
@@ -269,13 +269,15 @@
             initDataTable();
             $('#addSellDataModal').on('hidden.bs.modal', function () {
                 $('#goldForm')[0].reset();
+                $('#date').val(moment().format('DD/MM/YYYY')).data('date', moment().format('YYYY-MM-DD'));
             });
         });
 
         function handlePercentage(input) {
-            const value = parseFloat(input.value);
-            if(value < 0 || value > 100) {
-                $(input).addClass('is-invalid');
+            let value = parseFloat(input.value);
+            if(value > 100){
+                value = (value / 10).toFixed(1);
+                input.value = value;
             }
         }
         function initDataTable() {
@@ -443,7 +445,7 @@
                     NProgress.done();
                     $('.buttons-sec').html(`
                         <button class="btn gold-btn btn-sm w-100" data-bs-toggle="modal" data-bs-target="#addSellDataModal">
-                            <i class="bi bi-plus-circle-fill"></i> เพิ่มข้อมูลการขาย
+                            <i class="bi bi-plus-circle-fill"></i> เพิ่มข้อมูลการซื้อ
                         </button>
                     `);
                 },
@@ -460,7 +462,7 @@
             e.preventDefault();
             const form = document.getElementById('goldForm');
             const data = {
-                date: form.date.value,
+                date: $('#date').data('date') || moment().format('YYYY-MM-DD'),
                 category: form.category.value,
                 product: form.product.value,
                 weight: form.weight.value,

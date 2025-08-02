@@ -2,7 +2,7 @@ function doGet() {
     let html = HtmlService.createTemplateFromFile('index');
     html.lists = getList();
     return html.evaluate()
-        .setTitle('HENG MONEY - เฮงมันนี่ 4289')
+        .setTitle('บันทึกซื้อ | HENG MONEY - เฮงมันนี่ 4289')
         .setFaviconUrl('https://img5.pic.in.th/file/secure-sv1/b6ea3192-e74b-4483-a7a5-ac5f86a81191.png')
         .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -10,7 +10,7 @@ function doGet() {
 
 function getSellData() {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('รายการขาย');
+    let sheet = ss.getSheetByName('บันทึกซื้อ');
     let data = sheet.getDataRange().getValues().slice(1).filter(row => row[0] instanceof Date).sort((a, b) => {
         return b[0] - a[0]; // Sort by date descending
     });
@@ -33,7 +33,7 @@ function getSellData() {
 
 function saveSellData(data) {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('รายการขาย');
+    let sheet = ss.getSheetByName('บันทึกซื้อ');
     let newrow = [
         new Date(),
         data.category,
@@ -54,7 +54,7 @@ function saveSellData(data) {
 
 function cancelSellData(uuid, canceler){
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('รายการขาย');
+    let sheet = ss.getSheetByName('บันทึกซื้อ');
     let finder = sheet.createTextFinder(uuid).findNext()
     if(!finder){
         return JSON.stringify({
@@ -86,7 +86,7 @@ function getList() {
     let [header, ...list] = listSheet.getDataRange().getValues()
     let obj = {}
     header.forEach((key, index) => {
-        obj[key] = list.map(row => row[index]);
+        obj[key] = list.map(row => row[index]).filter(x => x!= '')
     });
     return obj
 }
