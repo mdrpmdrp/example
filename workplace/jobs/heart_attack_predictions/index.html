@@ -1,1 +1,254 @@
-zkxjzjx
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Attack Risk Predictor</title>
+    <!-- Google Font for a modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Combined and updated CSS for a modern style -->
+    <style>
+        :root {
+            --bg-color-dark: #121212;
+            --card-color: #1e1e1e;
+            --text-color-light: #e0e0e0;
+            --primary-color: #4a90e2;
+            --accent-color: #6a11cb;
+            --gradient-start: #4a90e2;
+            --gradient-end: #004d80;
+            --shadow-light: rgba(0, 0, 0, 0.5);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--bg-color-dark);
+            color: var(--text-color-light);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-color);
+            padding: 2.5em;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px var(--shadow-light);
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid #333;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--text-color-light);
+            margin-bottom: 1em;
+            font-weight: 700;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25em;
+        }
+
+        label {
+            font-weight: 600;
+            color: var(--text-color-light);
+        }
+
+        input {
+            padding: 0.75em 1em;
+            border: 1px solid #444;
+            background-color: #2a2a2a;
+            color: var(--text-color-light);
+            border-radius: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+
+        button {
+            padding: 1em;
+            border: none;
+            background: linear-gradient(45deg, var(--gradient-start), var(--gradient-end));
+            color: #fff;
+            font-size: 1.1em;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 1em;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #predictionResult {
+            margin-top: 2em;
+            padding: 1.5em;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        #predictionResult h2 {
+            margin: 0 0 0.5em 0;
+            font-size: 1.4em;
+        }
+
+        #predictionResult p {
+            margin: 0.5em 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Heart Attack Risk Predictor</h1>
+        <form id="predictionForm">
+            <!-- Input fields for the 13 parameters -->
+            <label for="age">Age:</label>
+            <input type="number" id="age" name="age" required>
+
+            <label for="sex">Sex (0=Female, 1=Male):</label>
+            <input type="number" id="sex" name="sex" min="0" max="1" required>
+
+            <label for="cp">CP (Chest Pain):</label>
+            <input type="number" id="cp" name="cp" required>
+
+            <label for="trestbps">Trestbps (Resting Blood Pressure):</label>
+            <input type="number" id="trestbps" name="trestbps" required>
+
+            <label for="chol">Chol (Cholesterol):</label>
+            <input type="number" id="chol" name="chol" required>
+
+            <label for="fbs">Fbs (Fasting Blood Sugar > 120):</label>
+            <input type="number" id="fbs" name="fbs" min="0" max="1" required>
+
+            <label for="restecg">Restecg (Resting Electrocardiographic Results):</label>
+            <input type="number" id="restecg" name="restecg" required>
+
+            <label for="thalach">Thalach (Max Heart Rate Achieved):</label>
+            <input type="number" id="thalach" name="thalach" required>
+
+            <label for="exang">Exang (Exercise Induced Angina):</label>
+            <input type="number" id="exang" name="exang" min="0" max="1" required>
+
+            <label for="oldpeak">Oldpeak (ST Depression Induced by Exercise):</label>
+            <input type="number" id="oldpeak" name="oldpeak" step="any" required>
+
+            <label for="slope">Slope (Slope of the Peak Exercise ST Segment):</label>
+            <input type="number" id="slope" name="slope" required>
+
+            <label for="ca">Ca (Number of Major Vessels):</label>
+            <input type="number" id="ca" name="ca" required>
+
+            <label for="thal">Thal (Thalassemia):</label>
+            <input type="number" id="thal" name="thal" required>
+
+            <button type="submit" id="predictBtn">Predict Risk</button>
+        </form>
+        <div id="predictionResult"></div>
+    </div>
+
+    <!-- TensorFlow.js script and custom JavaScript for the application logic -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let model;
+            const predictionResultDiv = document.getElementById('predictionResult');
+            const form = document.getElementById('predictionForm');
+
+            // Asynchronously load the TensorFlow.js model
+            async function loadModel() {
+                // The model files are assumed to be in a subdirectory named 'tfjs_model'
+                const modelPath = './tfjs_model/model.json';
+                try {
+                    // Load the model from the specified path
+                    model = await tf.loadLayersModel(modelPath);
+                    predictionResultDiv.innerText = "Model loaded successfully! Enter patient data to predict risk.";
+                } catch (error) {
+                    predictionResultDiv.innerText = "Error loading model. Please check the console for details.";
+                    console.error("Failed to load model:", error);
+                }
+            }
+
+            // Call the function to load the model when the page loads
+            loadModel();
+
+            // Event listener for the form submission
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault(); // Prevent the default form submission behavior
+
+                if (!model) {
+                    predictionResultDiv.innerText = "Model is not loaded yet. Please wait.";
+                    return;
+                }
+
+                // Retrieve values from the input fields and create an array of numbers
+                const inputValues = [
+                    parseFloat(document.getElementById('age').value),
+                    parseFloat(document.getElementById('sex').value),
+                    parseFloat(document.getElementById('cp').value),
+                    parseFloat(document.getElementById('trestbps').value),
+                    parseFloat(document.getElementById('chol').value),
+                    parseFloat(document.getElementById('fbs').value),
+                    parseFloat(document.getElementById('restecg').value),
+                    parseFloat(document.getElementById('thalach').value),
+                    parseFloat(document.getElementById('exang').value),
+                    parseFloat(document.getElementById('oldpeak').value),
+                    parseFloat(document.getElementById('slope').value),
+                    parseFloat(document.getElementById('ca').value),
+                    parseFloat(document.getElementById('thal').value)
+                ];
+
+                // Convert the array to a TensorFlow.js tensor
+                // The shape is [1, 13] for a single prediction with 13 features
+                const inputTensor = tf.tensor2d([inputValues], [1, 13], 'float32');
+
+                // Use the model to make a prediction
+                const prediction = model.predict(inputTensor);
+
+                // Get the prediction value from the tensor
+                const predictionValue = (await prediction.data())[0];
+
+                // Determine the risk level based on the probability threshold of 0.5
+                let riskLabel;
+                if (predictionValue >= 0.5) {
+                    riskLabel = 'High Risk 🚨';
+                } else {
+                    riskLabel = 'Low Risk ✅';
+                }
+
+                // Display the prediction result and the raw probability
+                predictionResultDiv.innerHTML = `
+                    <h2>Prediction Result:</h2>
+                    <p><strong>Predicted Risk:</strong> ${riskLabel}</p>
+                    <p><strong>Probability:</strong> ${predictionValue.toFixed(4)}</p>
+                `;
+
+                // Clean up the tensors to free up memory
+                inputTensor.dispose();
+                prediction.dispose();
+            });
+        });
+    </script>
+</body>
+</html>
+
