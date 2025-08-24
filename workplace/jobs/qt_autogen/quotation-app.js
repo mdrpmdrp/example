@@ -2,7 +2,7 @@
 // Handles reading two Excel files, generating a placeholder quotation, and previewing/downloading it
 
 let file1Data = file1Workbook = null;
-let templteData = templateWorkbook = null;
+let templateData = templateWorkbook = null;
 let quotationData = [];
 let template_file = null;
 // Style storage
@@ -16,6 +16,8 @@ let columnSettings = {
     lab: 5,
     remark: 28
 };
+
+let setting = null;
 
 
 $(document).ready(function () {
@@ -69,7 +71,7 @@ $(document).ready(function () {
                         if (window.ExcelJS) {
                             return readExcelXlsxWithStyles(file).then(res => {
                                 console.log('Template file data:', res);
-                                templteData = res.rows;
+                                templateData = res.rows;
                                 templateWorkbook = res.workbook;
                             });
                         }
@@ -78,7 +80,7 @@ $(document).ready(function () {
                         return readExcel(file, data => {
                             if (data) {
                                 console.log('Template file data:', data);
-                                templteData = data?.json || [];
+                                templateData = data?.json || [];
                                 templateWorkbook = data?.workbook || null;
                             } else {
                                 throw new Error('Failed to read template file');
@@ -114,7 +116,7 @@ $(document).ready(function () {
                 return;
             }
             // Find site settings
-            let setting = siteSettings.find(s => s.name === site);
+            setting = siteSettings.find(s => s.name === site);
             if (setting) {
                 col_type = convertLetterToColumnNumber(setting.col_type);
                 col_filter = convertLetterToColumnNumber(setting.col_filter);
@@ -168,35 +170,8 @@ $(document).ready(function () {
         }
     });
 
-    $('#file2').on('change', function (e) {
-        const file = e.target.files[0];
-        if (file) {
-            readExcel(file, data => { file2Data = data; });
-        }
-    });
 
-    $('#generateBtn').on('click', function () {
-        if (!file1Data || !file2Data) {
-            alert('Please select both Excel files.');
-            return;
-        }
-        quotationData = [
-            ['Quotation Placeholder'],
-            ['File 1 Headers:', ...header1],
-            ['File 2 Headers:', ...header2],
-            // Add more rows as needed in the future
-        ];
-        renderPreview();
-        $('#downloadBtn').show();
-    });
 
-    $('#downloadBtn').on('click', function () {
-        if (!quotationData.length) return;
-        const ws = XLSX.utils.aoa_to_sheet(quotationData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Quotation');
-        XLSX.writeFile(wb, 'quotation.xlsx');
-    });
 });
 
 function convertLetterToColumnNumber(input) {
@@ -304,6 +279,10 @@ async function readExcelXlsxWithStyles(file) {
                     const v = [];
                     row.eachCell({ includeEmpty: true }, (cell, cIdx) => {
                         v[cIdx - 1] = cell.value;
+                        if (!quotationData.length) {
+                            if (!quotationFills[rIdx - 1]) quotationFills[rIdx - 1] = [];
+                            quotationFills[rIdx - 1][cIdx - 1] = cell.fill || null;
+                        }
                     });
                     rows.push(v);
                 });
@@ -317,16 +296,12 @@ async function readExcelXlsxWithStyles(file) {
     });
 }
 
-let col_filter, col_his, col_nhs, col_lab, col_remark;
+let col_filter, col_his, col_nhs, col_lab, col_remark, col_type;
 function renderPreview() {
-    console.log("🚀 ~ col_remark:", col_remark)
-    console.log("🚀 ~ col_lab:", col_lab)
-    console.log("🚀 ~ col_nhs:", col_nhs)
-    console.log("🚀 ~ col_his:", col_his)
-    console.log("🚀 ~ col_filter:", col_filter)
+    quotationData = Object.groupBy(quotationData, row => row[col_type]);
     console.log('Rendering preview with data:', quotationData);
     const preview = document.getElementById('preview');
-    if (!quotationData.length) {
+    if (!quotationData || !Object.keys(quotationData).length) {
         preview.innerHTML = '<em>No data to preview.</em>';
         return;
     }
@@ -334,20 +309,64 @@ function renderPreview() {
     let thead = $('<thead>');
     let tbody = $('<tbody>');
     thead.append('<tr><th class="text-center text-nowrap">No</th><th class="text-center text-nowrap">HIS code</th><th class="text-center text-nowrap">NH code</th><th class="text-center text-nowrap">Test Name</th><th>Item Group</th><th>Subcontract Price</th><th>Service Fee</th><th>Total Price</th><th class="text-center text-nowrap">Remark</th></tr>');
-    quotationData.forEach((row, i) => {
-        console.log('Row data:', row);
-        let tr = $('<tr>');
-        tr.append('<td class="text-left">' + (i + 1) + '</td>');
-        tr.append('<td class="text-left">' + (row[col_his] || '') + '</td>');
-        tr.append('<td class="text-left">' + (row[col_nhs] || '<input type="text" class="form-control rounded-3" style="width: 100%;" />') + '</td>');
-        tr.append('<td class="text-left">' + (row[col_lab] || '') + '</td>');
-        for (let j = 0; j < 4; j++) {
-            tr.append('<td class="text-left"></td>'); // Placeholder for extra columns
-        }
-        // Editable remark
-        tr.append('<td class="text-left"><textarea rows="3" style="min-width:300px;" class="form-control rounded-3 remark-input" data-row="' + i + '">' + (row[col_remark] || '') + '</textarea></td>');
-        tbody.append(tr);
+    Object.entries(quotationData).forEach(([type, rows]) => {
+        rows.forEach((row, i) => {
+            const getText = (cell, valueDefault) => {
+                if (!cell) return valueDefault || '';
+                if (typeof cell === 'string' || typeof cell === 'number') return cell;
+                if (cell.richText && Array.isArray(cell.richText)) {
+                    return cell.richText.map(rt => rt.text).join('');
+                }
+                if (cell.text) return cell.text;
+                return valueDefault || '';
+            }
+            let col_his_text = getText(row[col_his], '');
+            let col_nhs_text = getText(row[col_nhs], '<input type="text" class="form-control rounded-3" style="width: 100%; min-width:120px;" />');
+            let col_lab_text = getText(row[col_lab], '') === "" ? getText(row[col_lab - 2], '') : getText(row[col_lab], '');
+            let col_remark_text = getText(row[col_remark], '');
+            let tr = $('<tr>');
+            tr.append('<td class="text-left">' + (i + 1) + '</td>');
+            tr.append('<td class="text-left">' + col_his_text + '</td>');
+            tr.append('<td class="text-left">' + col_nhs_text + '</td>');
+            tr.append('<td class="text-left">' + col_lab_text + '</td>');
+            for (let j = 0; j < 4; j++) {
+                tr.append('<td class="text-left"></td>'); // Placeholder for extra columns
+            }
+            // Editable remark
+            tr.append('<td class="text-left"><textarea rows="3" style="min-width:300px;" class="form-control rounded-3 remark-input" data-row="' + i + '">' + col_remark_text + '</textarea></td>');
+            tr.append('<td class="text-left" style="display:none;">' + row[col_type] + '</td>'); // Hidden Item Group for grouping
+            tbody.append(tr);
+        });
     });
+    // quotationData.forEach((row, i) => {
+    //     const getText = (cell, valueDefault) => {
+    //         if (!cell) return valueDefault || '';
+    //         if (typeof cell === 'string' || typeof cell === 'number') return cell;
+    //         if (cell.richText && Array.isArray(cell.richText)) {
+    //             return cell.richText.map(rt => rt.text).join('');
+    //         }
+    //         if (cell.text) return cell.text;
+    //         return valueDefault || '';
+    //     }
+
+
+    //     let col_his_text = getText(row[col_his], '');
+    //     let col_nhs_text = getText(row[col_nhs], '<input type="text" class="form-control rounded-3" style="width: 100%;" />');
+    //     let col_lab_text = getText(row[col_lab], '') === "" ? getText(row[col_lab - 2], '') : getText(row[col_lab], '');
+    //     let col_remark_text = getText(row[col_remark], '');
+    //     let tr = $('<tr>');
+    //     tr.append('<td class="text-left">' + (i + 1) + '</td>');
+    //     tr.append('<td class="text-left">' + col_his_text + '</td>');
+    //     tr.append('<td class="text-left">' + col_nhs_text + '</td>');
+    //     tr.append('<td class="text-left">' + col_lab_text + '</td>');
+    //     for (let j = 0; j < 4; j++) {
+    //         tr.append('<td class="text-left"></td>'); // Placeholder for extra columns
+    //     }
+    //     // Editable remark
+    //     tr.append('<td class="text-left"><textarea rows="3" style="min-width:300px;" class="form-control rounded-3 remark-input" data-row="' + i + '">' + col_remark_text + '</textarea></td>');
+    //     tr.append('<td class="text-left">' + row[col_type] + '</td>');
+    //     tbody.append(tr);
+    // });
     table.append(thead).append(tbody);
     preview.innerHTML = '';
     preview.appendChild(table[0]);
@@ -367,58 +386,105 @@ function renderPreview() {
             { targets: 5, className: 'text-left', visible: false },
             { targets: 6, className: 'text-left', visible: false },
             { targets: 7, className: 'text-left', visible: false },
-            { targets: 4, className: 'text-left' }
+            { targets: 8, className: 'text-left' },
+            { targets: 9, className: 'text-left', visible: false } // Item Group hidden
         ],
         dom: 'Bfrtip',
+        rowGroup: {
+            dataSrc: 9 // Group by Item Group column
+        },
         buttons: [
+            // {
+            //     text: '<i class="fa fa-file-excel"></i> Export to Excel',
+            //     className: 'btn btn-primary mb-2',
+            //     action: function (e, dt, node, config) {
+            //         generateQuatationExcel();
+            //     }
+            // },
+            // copy csv to clipboard button
             {
-                text: '<i class="fa fa-file-excel"></i> Export to Excel',
-                className: 'btn btn-primary mb-2',
-                action: function (e, dt, node, config) {
-                    generateQuatationExcel();
+                text: '<i class="fa fa-copy"></i> Copy',
+                className: 'btn btn-secondary mb-2',
+                extend: 'copy',
+                exportOptions: {
+                    columns: ':visible,:hidden'
                 }
-            },
+            }
         ],
     });
     $('#preview').removeClass('d-none');
 }
 
 function generateQuatationExcel() {
-    if (!quotationData.length) return;
+    if (!quotationData || !Object.keys(quotationData).length) return;
     console.log('Quatation data:', quotationData);
     if (quotationFills.length && window.ExcelJS) {
+        if (!templateWorkbook) {
+            Swal.fire({
+                title: 'Template Missing',
+                text: 'Cannot export without template workbook.',
+                icon: 'error',
+                customClass: { popup: 'rounded-4' },
+                confirmButtonColor: '#3085d6',
+                confirmButton: 'OK'
+            });
+            return;
+        }
         console.log('Generating Excel with styles using ExcelJS');
         // Use ExcelJS to create a new workbook and apply styles
-        const wb_template = templateWorkbook || new ExcelJS.Workbook();
-        const ws = templateWorkbook ? wb_template.worksheets[0] : wb_template.addWorksheet('Quotation');
+        const wb_template = templateWorkbook;
+        const ws = wb_template.worksheets[0] || wb_template.addWorksheet('Quotation');
+        console.log('Using template workbook:', wb_template);
         // Zero-based column indexes
         // Prepare data for export
-        const quotationDataForExport = quotationData.map((row, i) => {
-            return [
-                i + 1, // No
-                row[col_his] || '', // HIS code
-                row[col_nhs] || '', // NHS code
-                row[col_lab] || '', // Lab code
-                '', '', '', '', // These will be filled later if needed
-                row[col_remark] || '' // Remark
-            ]
+        // const quotationDataForExport = quotationData.map((row, i) => {
+        //     return [
+        //         i + 1, // No
+        //         row[col_his] || '', // HIS code
+        //         row[col_nhs] || '', // NHS code
+        //         row[col_lab] || '', // Lab code
+        //         '', '', '', '', // These will be filled later if needed
+        //         row[col_remark] || '' // Remark
+        //     ]
+        // });
+        // console.log('Quotation data for export:', quotationDataForExport);
+        let quotationDataForExport = [];
+        Object.entries(quotationData).forEach(([type, rows]) => {
+            quotationDataForExport.push([
+                '', // Empty cell for type group row
+                '', '', '', '', '', '', '', '', ''
+            ]);
+            quotationDataForExport.push([
+                type, // Insert the type as a group header
+                '', '', '', '', '', '', '', '', ''
+            ]);
+            rows.forEach((row, i) => {
+                quotationDataForExport.push([
+                    quotationDataForExport.length + 1, // No
+                    row[col_his] || '', // HIS code
+                    row[col_nhs] || '', // NHS code
+                    row[col_lab] || '', // Lab code
+                    '', '', '', '', // These will be filled later if needed
+                    row[col_remark] || '' // Remark
+                ]);
+            });
         });
         console.log('Quotation data for export:', quotationDataForExport);
         ws.insertRows(15, quotationDataForExport, 'i+'); // Insert at row 14 to keep headers intact
         // quotationFills = [
         //     ...quotationFills.slice(0, 15), // Ensure fills match the new data length
-        //     ...new Array(quotationDataForExport.length).fill(quotationData.at(15)),    // Fill with empty arrays if needed
+        //     ...new Array(quotationDataForExport.length).fill(new Array(30).fill(null)), // New rows with no fills
         //     ...quotationFills.slice(15) // Keep existing fills after row 14
         // ]
         // console.log('Quotation fills after adjustment:', quotationFills);
 
 
-        // // Apply styles from file1Fills to quotationFills
+        // // // Apply styles from file1Fills to quotationFills
         // quotationFills.forEach((fills, i) => {
         //     if (fills && fills.length) {
         //         fills.forEach((fill, j) => {
         //             if (fill && fill.fgColor) {
-        //                 const cell = ws.getCell(i + 15, j + 1); // +14 because we inserted at row 14
+        //                 const cell = ws.getCell(i+1, j+1); // ExcelJS is 1-based
         //                 cell.fill = fill;
         //             }
         //         });
