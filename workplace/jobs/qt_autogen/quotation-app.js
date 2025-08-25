@@ -275,14 +275,11 @@ async function readExcelXlsxWithStyles(file) {
                 const ws = wb.worksheets[0];
                 const rows = [];
                 // Collect rows and fills
-                ws.eachRow({ includeEmpty: true }, (row, rIdx) => {
+                ws.eachRow({ includeEmpty: true, }, (row, rIdx) => {
                     const v = [];
+                    if(rIdx > 200) return; // Limit to first 200 rows only
                     row.eachCell({ includeEmpty: true }, (cell, cIdx) => {
                         v[cIdx - 1] = cell.value;
-                        if (!quotationData.length) {
-                            if (!quotationFills[rIdx - 1]) quotationFills[rIdx - 1] = [];
-                            quotationFills[rIdx - 1][cIdx - 1] = cell.fill || null;
-                        }
                     });
                     rows.push(v);
                 });
@@ -394,20 +391,54 @@ function renderPreview() {
             dataSrc: 9 // Group by Item Group column
         },
         buttons: [
-            // {
-            //     text: '<i class="fa fa-file-excel"></i> Export to Excel',
-            //     className: 'btn btn-primary mb-2',
-            //     action: function (e, dt, node, config) {
-            //         generateQuatationExcel();
-            //     }
-            // },
-            // copy csv to clipboard button
+            {
+                text: '<i class="fa fa-file-excel"></i> Export to Excel',
+                className: 'btn btn-success mb-2',
+                action: function (e, dt, node, config) {
+                    generateQuatationExcel();
+                }
+            },
             {
                 text: '<i class="fa fa-copy"></i> Copy',
                 className: 'btn btn-secondary mb-2',
-                extend: 'copy',
-                exportOptions: {
-                    columns: ':visible,:hidden'
+                action: function (e, dt, node, config) {
+                    // Copy with row group headers, only text (no HTML)
+                    let data = '';
+                    let lastGroup = null;
+                    dt.rows({ search: 'applied' }).every(function (rowIdx, tableLoop, rowLoop) {
+                        const rowData = this.data();
+                        const group = rowData[9];
+                        if (group !== lastGroup) {
+                            data += `${group}\n`;
+                            lastGroup = group;
+                        }
+                        // Only copy visible columns, extract text only
+                        let rowText = '';
+                        dt.columns(':visible,:hidden').every(function (colIdx) {
+                            if (colIdx === 9) return; // Skip column 9 (Item Group)
+                            let cell = rowData[colIdx];
+                            // Remove HTML tags if present
+                            if (typeof cell === 'string') {
+                                cell = cell.replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim();
+                            }
+                            rowText += (cell !== undefined ? cell : '') + '\t';
+                        });
+                        data += rowText.trimEnd() + '\n';
+                    });
+                    // Copy to clipboard
+                    const temp = $('<textarea>');
+                    $('body').append(temp);
+                    temp.val(data.trim()).select();
+                    document.execCommand('copy');
+                    temp.remove();
+                    Swal.fire({
+                        title: 'Copied!',
+                        text: 'Table data (with groups) copied to clipboard.',
+                        icon: 'success',
+                        customClass: { popup: 'rounded-4' },
+                        confirmButtonColor: '#3085d6',
+                        confirmButton: 'OK'
+                    });
                 }
             }
         ],
@@ -418,7 +449,7 @@ function renderPreview() {
 function generateQuatationExcel() {
     if (!quotationData || !Object.keys(quotationData).length) return;
     console.log('Quatation data:', quotationData);
-    if (quotationFills.length && window.ExcelJS) {
+    if (window.ExcelJS) {
         if (!templateWorkbook) {
             Swal.fire({
                 title: 'Template Missing',
@@ -451,16 +482,12 @@ function generateQuatationExcel() {
         let quotationDataForExport = [];
         Object.entries(quotationData).forEach(([type, rows]) => {
             quotationDataForExport.push([
-                '', // Empty cell for type group row
-                '', '', '', '', '', '', '', '', ''
-            ]);
-            quotationDataForExport.push([
-                type, // Insert the type as a group header
+                `รายการ ${type}`, // Insert the type as a group header
                 '', '', '', '', '', '', '', '', ''
             ]);
             rows.forEach((row, i) => {
                 quotationDataForExport.push([
-                    quotationDataForExport.length + 1, // No
+                    i + 1, // No
                     row[col_his] || '', // HIS code
                     row[col_nhs] || '', // NHS code
                     row[col_lab] || '', // Lab code
@@ -470,29 +497,106 @@ function generateQuatationExcel() {
             });
         });
         console.log('Quotation data for export:', quotationDataForExport);
-        ws.insertRows(15, quotationDataForExport, 'i+'); // Insert at row 14 to keep headers intact
-        // quotationFills = [
-        //     ...quotationFills.slice(0, 15), // Ensure fills match the new data length
-        //     ...new Array(quotationDataForExport.length).fill(new Array(30).fill(null)), // New rows with no fills
-        //     ...quotationFills.slice(15) // Keep existing fills after row 14
-        // ]
-        // console.log('Quotation fills after adjustment:', quotationFills);
+        ws.insertRows(14, quotationDataForExport, 'i+'); // Insert at row 14 to keep headers intact
 
+        ws.mergeCells('A' + (14 + quotationDataForExport.length + 8) + ':K' + (14 + quotationDataForExport.length + 8));
+        ws.mergeCells('A' + (14 + quotationDataForExport.length + 9) + ':K' + (14 + quotationDataForExport.length + 9));
+        Object.entries(quotationData).forEach(([type, rows], groupIndex) => {
+            const startRow = 14 + groupIndex * (rows.length + 1); // +1 for the header row
+            ws.mergeCells('A' + startRow + ':K' + startRow); // Merge columns A to I for the group header
+            const headerCell = ws.getCell('A' + startRow);
+            headerCell.value = type;
+            headerCell.font = { bold: true, size: 28 };
+            headerCell.alignment = { vertical: 'middle', horizontal: 'left' };
+            // Optionally apply a fill color to the header row
+            headerCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'C0C0C0C0' } // Light gray background
+            };
+        });
+        console.log('Inserted group headers into Excel sheet.');
+        const newWb = new ExcelJS.Workbook();
+        const newWs = newWb.addWorksheet('Quotation');
 
-        // // // Apply styles from file1Fills to quotationFills
-        // quotationFills.forEach((fills, i) => {
-        //     if (fills && fills.length) {
-        //         fills.forEach((fill, j) => {
-        //             if (fill && fill.fgColor) {
-        //                 const cell = ws.getCell(i+1, j+1); // ExcelJS is 1-based
-        //                 cell.fill = fill;
-        //             }
-        //         });
-        //     }
-        // });
-        if (ws.rowCount > 200) {
-            ws.spliceRows(201, ws.rowCount - 200);
+        // Copy rows and cell styles/values
+        for (let i = 1; i <= Math.min(214, ws.rowCount); i++) {
+            const srcRow = ws.getRow(i);
+            const newRow = newWs.getRow(i);
+            srcRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                const newCell = newRow.getCell(colNumber);
+                newCell.value = cell.value;
+                if (cell.style) newCell.style = { ...cell.style };
+                if (cell.fill) newCell.fill = { ...cell.fill };
+                if (cell.font) newCell.font = { ...cell.font };
+                if (cell.border) newCell.border = { ...cell.border };
+                if (cell.alignment) newCell.alignment = { ...cell.alignment };
+                if (cell.numFmt) newCell.numFmt = cell.numFmt;
+            });
+            newRow.commit();
         }
+
+        
+         /**
+         * Extract images from the template workbook and add them to the new worksheet.
+         * This works only if the templateWorkbook was loaded with ExcelJS and contains images.
+         */
+        if (wb_template && wb_template.model && Array.isArray(wb_template.model.media)) {
+            const images = wb_template.model.media.filter(m => m.type === 'image');
+            console.log('Found images in template:', images);
+            let ws_images = ws.getImages()
+            console.log('Found images in worksheet:', ws_images);
+            images.forEach((img, idx) => {
+                // Find all image positions in the template
+                if (ws && ws.getImages) {
+                    const imgPositions = ws_images.filter(im => im.imageId == img.index);
+                    console.log('Image positions for image', idx, imgPositions);
+                    imgPositions.forEach(pos => {
+                        // Add image to new workbook
+                        const newImgId = newWb.addImage({
+                            buffer: img.buffer,
+                            extension: img.extension
+                        });
+                        // newWs.addImage(newImgId, 'B30:E35');
+                        newWs.addImage(newImgId, pos.range);
+                    });
+                }
+            });
+        }
+
+        // Copy merged cells
+        if (ws._merges && ws._merges.size) {
+            ws._merges.forEach((mergeRange) => {
+                newWs.mergeCells(mergeRange);
+            });
+        } else if (ws._merges && Array.isArray(ws._merges)) {
+            ws._merges.forEach((mergeRange) => {
+                newWs.mergeCells(mergeRange);
+            });
+        } else if (ws.model && ws.model.merges) {
+            ws.model.merges.forEach((mergeRange) => {
+                newWs.mergeCells(mergeRange);
+            });
+        }
+        newWs.columns = ws.columns.map(col => ({ ...col }));
+        // Write the new workbook to a buffer and trigger download
+        newWb.xlsx.writeBuffer().then(buf => {
+            const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'quotation_first_200.xlsx';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            Swal.fire({
+                title: 'Success',
+                text: 'Quotation Exported',
+                icon: 'success',
+                customClass: { popup: 'rounded-4' },
+                confirmButtonColor: '#3085d6',
+                confirmButton: 'OK'
+            });
+        });
+        return;
         // // Set column widths based on template
         // ws.columns.forEach((col, idx) => {
         //     if (col.width) {
