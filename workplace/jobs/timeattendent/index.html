@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบลงเวลาเข้า-ออกงาน</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        * {
+            font-family: 'Noto Sans Thai', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f8f9fa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 420px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .card-header {
+            background: #007bff;
+            color: white;
+            border-radius: 20px 20px 0 0 !important;
+            padding: 25px;
+            text-align: center;
+            border: none;
+        }
+
+        .card-body {
+            padding: 30px;
+        }
+
+        .form-control {
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+            padding: 15px 20px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        .btn-primary {
+            background: #007bff;
+            border: none;
+            border-radius: 15px;
+            padding: 15px 30px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 123, 255, 0.4);
+        }
+
+        .btn-success {
+            background: #28a745;
+            border: none;
+            border-radius: 15px;
+            padding: 15px 30px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-success:hover {
+            background: #1e7e34;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            border: none;
+            border-radius: 15px;
+            padding: 15px 30px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(220, 53, 69, 0.4);
+        }
+
+        .attendance-card {
+            background: #6c757d;
+            color: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .status-in {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-out {
+            background: #dc3545;
+            color: white;
+        }
+
+        .time-display {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 20px 0;
+            color: #2c3e50;
+        }
+
+        .date-display {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        .location-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            background: rgba(0, 123, 255, 0.05);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+        }
+
+        .upload-area:hover {
+            background: rgba(0, 123, 255, 0.1);
+            border-color: #0056b3;
+        }
+
+        .upload-area.dragover {
+            background: rgba(0, 123, 255, 0.15);
+            border-color: #0056b3;
+            transform: scale(1.02);
+        }
+
+        #map {
+            height: 200px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .icon-large {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+
+        .employee-info {
+            background: #17a2b8;
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .floating-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #007bff;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0, 123, 255, 0.4);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .floating-btn:hover {
+            background: #0056b3;
+            transform: scale(1.1) translateY(-2px);
+            box-shadow: 0 15px 40px rgba(0, 123, 255, 0.6);
+        }
+
+        .progress-ring {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+        }
+
+        .progress-ring circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        .pin-input-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .pin-digit {
+            width: 50px;
+            height: 50px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .pin-digit:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            outline: none;
+        }
+
+        .pin-digit.filled {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card-body {
+                padding: 20px;
+            }
+            
+            .time-display {
+                font-size: 2rem;
+            }
+            
+            .pin-digit {
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="container">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0">
+                    <i class="bi bi-person-check-fill me-2"></i>
+                    ระบบลงเวลาเข้า-ออกงาน
+                </h3>
+                <small>กรุณาเข้าสู่ระบบ</small>
+            </div>
+            <div class="card-body">
+                <form id="loginForm">
+                    <div class="mb-4">
+                        <label for="employeeId" class="form-label">
+                            <i class="bi bi-person-badge me-2"></i>รหัสพนักงาน
+                        </label>
+                        <input type="text" class="form-control" id="employeeId" placeholder="กรอกรหัสพนักงาน" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="pin" class="form-label">
+                            <i class="bi bi-key me-2"></i>PIN 4 หลัก
+                        </label>
+                        <div class="pin-input-container">
+                            <input type="text" class="pin-digit" id="pin1" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                            <input type="text" class="pin-digit" id="pin2" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                            <input type="text" class="pin-digit" id="pin3" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                            <input type="text" class="pin-digit" id="pin4" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                        </div>
+                        <input type="hidden" id="pin" name="pin" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>เข้าสู่ระบบ
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Attendance Screen -->
+    <div id="attendanceScreen" class="container hidden">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-clock-history me-2"></i>
+                    ระบบลงเวลาเข้า-ออกงาน
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Employee Info -->
+                <div class="employee-info">
+                    <h5 id="employeeName">พนักงาน: <span id="empName">-</span></h5>
+                    <small id="employeeCode">รหัส: <span id="empCode">-</span></small>
+                </div>
+
+                <!-- Current Time -->
+                <div class="text-center mb-4">
+                    <div class="time-display" id="currentTime"></div>
+                    <div class="date-display" id="currentDate"></div>
+                </div>
+
+                <!-- Attendance Status -->
+                <div class="attendance-card">
+                    <div class="status-badge" id="statusBadge">ยังไม่ได้ลงเวลา</div>
+                    <h5 id="statusText">ยังไม่ได้ลงเวลาเข้างาน</h5>
+                    <div class="location-info">
+                        <i class="bi bi-geo-alt-fill icon-large"></i>
+                        <div>
+                            <strong>ตำแหน่งปัจจุบัน:</strong>
+                            <div id="locationText">กำลังค้นหาตำแหน่ง...</div>
+                            <small id="coordinates"></small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map -->
+                <div id="map"></div>
+
+                <!-- Attendance Buttons -->
+                <div class="text-center mb-4">
+                    <button id="checkInBtn" class="btn btn-success w-100 mb-3">
+                        <i class="bi bi-box-arrow-in-down me-2"></i>ลงเวลาเข้างาน
+                    </button>
+                    <button id="checkOutBtn" class="btn btn-danger w-100 hidden">
+                        <i class="bi bi-box-arrow-up me-2"></i>ลงเวลาออกงาน
+                    </button>
+                </div>
+
+                <!-- Photo Upload for Check Out -->
+                <div id="photoUploadSection" class="hidden">
+                    <div class="upload-area" id="uploadArea">
+                        <i class="bi bi-camera-fill icon-large"></i>
+                        <h6>อัพโหลดภาพยืนยัน</h6>
+                        <p class="text-muted mb-0">คลิกหรือลากไฟล์มาวางที่นี่</p>
+                        <input type="file" id="photoInput" accept="image/*" class="d-none">
+                    </div>
+                    <div id="photoPreview" class="text-center mt-3 hidden">
+                        <img id="previewImage" src="" alt="Preview" class="img-fluid" style="max-height: 200px; border-radius: 15px;">
+                        <div class="mt-2">
+                            <small class="text-success">
+                                <i class="bi bi-check-circle-fill me-1"></i>
+                                ภาพถูกเลือกแล้ว
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logout Button -->
+                <div class="text-center mt-4">
+                    <button id="logoutBtn" class="btn btn-outline-secondary">
+                        <i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Help Button -->
+    <button class="floating-btn" id="helpBtn" title="ช่วยเหลือ">
+        <i class="bi bi-question-lg"></i>
+    </button>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Leaflet JS for Maps -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Application State
+        let currentUser = null;
+        let userLocation = null;
+        let map = null;
+        let locationMarker = null;
+        let attendanceStatus = 'none'; // none, checked-in, checked-out
+        let checkInTime = null;
+        let checkOutTime = null;
+        let uploadedPhoto = null;
+
+        // Telegram Bot Configuration (ใส่ Token และ Chat ID ของคุณ)
+        const TELEGRAM_BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN';
+        const TELEGRAM_CHAT_ID = 'YOUR_TELEGRAM_CHAT_ID';
+
+
+        // DOM Elements
+        const loginScreen = document.getElementById('loginScreen');
+        const attendanceScreen = document.getElementById('attendanceScreen');
+        const loginForm = document.getElementById('loginForm');
+        const employeeIdInput = document.getElementById('employeeId');
+        const pinInput = document.getElementById('pin');
+        const pin1 = document.getElementById('pin1');
+        const pin2 = document.getElementById('pin2');
+        const pin3 = document.getElementById('pin3');
+        const pin4 = document.getElementById('pin4');
+        const pinInputs = [pin1, pin2, pin3, pin4];
+        const currentTimeElement = document.getElementById('currentTime');
+        const currentDateElement = document.getElementById('currentDate');
+        const statusBadge = document.getElementById('statusBadge');
+        const statusText = document.getElementById('statusText');
+        const locationText = document.getElementById('locationText');
+        const coordinatesElement = document.getElementById('coordinates');
+        const checkInBtn = document.getElementById('checkInBtn');
+        const checkOutBtn = document.getElementById('checkOutBtn');
+        const photoUploadSection = document.getElementById('photoUploadSection');
+        const uploadArea = document.getElementById('uploadArea');
+        const photoInput = document.getElementById('photoInput');
+        const photoPreview = document.getElementById('photoPreview');
+        const previewImage = document.getElementById('previewImage');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const helpBtn = document.getElementById('helpBtn');
+        const empNameElement = document.getElementById('empName');
+        const empCodeElement = document.getElementById('empCode');
+
+        // Initialize Application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            // Update time and date
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+
+            // Get user location
+            getUserLocation();
+
+            // Event listeners
+            loginForm.addEventListener('submit', handleLogin);
+            checkInBtn.addEventListener('click', handleCheckIn);
+            checkOutBtn.addEventListener('click', handleCheckOut);
+            logoutBtn.addEventListener('click', handleLogout);
+            helpBtn.addEventListener('click', showHelp);
+
+            // Photo upload
+            uploadArea.addEventListener('click', () => photoInput.click());
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleDrop);
+            photoInput.addEventListener('change', handlePhotoSelect);
+
+            // PIN input events
+            pinInputs.forEach((input, index) => {
+                input.addEventListener('input', function(e) {
+                    // Only allow numbers
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                    
+                    // Add filled class if has value
+                    if (e.target.value) {
+                        e.target.classList.add('filled');
+                        // Move to next input
+                        if (index < pinInputs.length - 1) {
+                            pinInputs[index + 1].focus();
+                        }
+                    } else {
+                        e.target.classList.remove('filled');
+                    }
+                    
+                    // Update hidden pin input
+                    updatePinValue();
+                });
+
+                input.addEventListener('keydown', function(e) {
+                    // Handle backspace
+                    if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                        pinInputs[index - 1].focus();
+                        pinInputs[index - 1].value = '';
+                        pinInputs[index - 1].classList.remove('filled');
+                        updatePinValue();
+                    }
+                    
+                    // Handle arrow keys
+                    if (e.key === 'ArrowLeft' && index > 0) {
+                        pinInputs[index - 1].focus();
+                    }
+                    if (e.key === 'ArrowRight' && index < pinInputs.length - 1) {
+                        pinInputs[index + 1].focus();
+                    }
+                });
+
+                input.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '');
+                    
+                    for (let i = 0; i < Math.min(pastedData.length, pinInputs.length - index); i++) {
+                        if (pinInputs[index + i]) {
+                            pinInputs[index + i].value = pastedData[i];
+                            pinInputs[index + i].classList.add('filled');
+                        }
+                    }
+                    
+                    updatePinValue();
+                    
+                    // Focus next empty input or last input
+                    const nextEmptyIndex = pinInputs.findIndex(input => !input.value);
+                    if (nextEmptyIndex !== -1) {
+                        pinInputs[nextEmptyIndex].focus();
+                    } else {
+                        pinInputs[pinInputs.length - 1].focus();
+                    }
+                });
+            });
+
+            function updatePinValue() {
+                const pin = pinInputs.map(input => input.value).join('');
+                pinInput.value = pin;
+            }
+
+            // Restrict PIN input to numbers only
+            pinInput.addEventListener('input', function(e) {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            });
+        }
+
+        function updateDateTime() {
+            const now = new Date();
+            const timeOptions = { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: false
+            };
+            const dateOptions = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+
+            currentTimeElement.textContent = now.toLocaleTimeString('th-TH', timeOptions);
+            currentDateElement.textContent = now.toLocaleDateString('th-TH', dateOptions);
+        }
+
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                locationText.textContent = 'กำลังค้นหาตำแหน่ง...';
+                
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        userLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        };
+                        
+                        coordinatesElement.textContent = userLocation.latitude.toFixed(6) + ', ' + userLocation.longitude.toFixed(6);
+                        
+                        // Reverse geocoding to get address
+                        reverseGeocode(userLocation.latitude, userLocation.longitude);
+                        
+                        // Initialize map
+                        initializeMap();
+                    },
+                    function(error) {
+                        console.error('Error getting location:', error);
+                        locationText.textContent = 'ไม่สามารถระบุตำแหน่งได้';
+                        coordinatesElement.textContent = 'กรุณาเปิดการใช้งาน GPS';
+                        
+                        // Show default location on map (Bangkok)
+                        userLocation = { latitude: 13.7563, longitude: 100.5018 };
+                        initializeMap();
+                    }
+                );
+            } else {
+                locationText.textContent = 'เบราว์เซอร์ไม่รองรับการระบุตำแหน่ง';
+            }
+        }
+
+        function reverseGeocode(lat, lng) {
+            // Using a simple reverse geocoding service
+            fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lng + '&localityLanguage=th')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.locality || data.city) {
+                        locationText.textContent = (data.locality || data.city) + ', ' + (data.countryName || 'ไทย');
+                    } else {
+                        locationText.textContent = (data.countryName || 'ไทย');
+                    }
+                })
+                .catch(error => {
+                    console.error('Reverse geocoding error:', error);
+                    locationText.textContent = 'ไม่สามารถระบุชื่อสถานที่ได้';
+                });
+        }
+
+        function initializeMap() {
+            if (map) {
+                map.remove();
+            }
+
+            map = L.map('map').setView([userLocation.latitude, userLocation.longitude], 16);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: ' OpenStreetMap contributors'
+            }).addTo(map);
+
+            locationMarker = L.marker([userLocation.latitude, userLocation.longitude])
+                .addTo(map)
+                .bindPopup('ตำแหน่งของคุณ')
+                .openPopup();
+
+            // Add a circle to show accuracy
+            L.circle([userLocation.latitude, userLocation.longitude], {
+                color: '#007bff',
+                fillColor: '#007bff',
+                fillOpacity: 0.1,
+                radius: 50
+            }).addTo(map);
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+
+            const employeeId = employeeIdInput.value.trim();
+            const pin = pinInput.value.trim();
+
+            if (!employeeId || !pin) {
+                showAlert('error', 'กรุณากรอกข้อมูลให้ครบถ้วน');
+                return;
+            }
+            if (pin.length !== 4) {
+                showAlert('error', 'PIN ต้องเป็นตัวเลข 4 หลัก');
+                return;
+            }
+
+            showAlert('info', 'กำลังตรวจสอบข้อมูล...', { allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+            google.script.run
+                .withSuccessHandler((res) => {
+                    let response;
+                    try {
+                        response = typeof res === 'string' ? JSON.parse(res) : res;
+                    } catch {
+                        showAlert('error', 'ข้อมูลตอบกลับไม่ถูกต้อง');
+                        return;
+                    }
+                    if (!response.success) {
+                        showAlert('error', response.message || 'รหัสพนักงานหรือ PIN ไม่ถูกต้อง');
+                        return;
+                    }
+                    if (!response.isAssigned) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'ไม่พบการกำหนดงานสำหรับคุณในวันนี้',
+                            text: 'กรุณาติดต่อผู้ดูแลระบบหากมีข้อสงสัย',
+                            confirmButtonText: 'ตกลง',
+                            showCancelButton: true,
+                            cancelButtonText: 'งาน OT',
+                        }).then((result) => {
+                             if (result.dismiss === Swal.DismissReason.cancel) {
+                                attendanceScreen.classList.remove('hidden');
+                                loginScreen.classList.add('hidden');
+                                currentUser = response.user;
+                                empNameElement.textContent = currentUser.name;
+                                empCodeElement.textContent = currentUser.empCode;
+                            }
+                        });
+                        return;
+                    }
+                    Swal.close();
+                    currentUser = response.user;
+                    empNameElement.textContent = currentUser.name;
+                    empCodeElement.textContent = currentUser.empCode;
+                    attendanceScreen.classList.remove('hidden');
+                    loginScreen.classList.add('hidden');
+                })
+                .withFailureHandler((error) => {
+                    Swal.close();
+                    console.error('Login error:', error);
+                    showAlert('error', 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+                })
+                .authenticateUser(employeeId, pin);
+        }
+
+        function handleCheckIn() {
+            if (!userLocation) {
+                showAlert('error', 'ไม่สามารถระบุตำแหน่งได้ กรุณาเปิดการใช้งาน GPS');
+                return;
+            }
+
+            Swal.fire({
+                title: 'ยืนยันการลงเวลาเข้างาน',
+                text: 'คุณต้องการลงเวลาเข้างานหรือไม่?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#28a745'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    performCheckIn();
+                }
+            });
+        }
+
+        function performCheckIn() {
+            checkInTime = new Date();
+            attendanceStatus = 'checked-in';
+
+            // Update UI
+            statusBadge.textContent = 'เข้างานแล้ว';
+            statusBadge.className = 'status-badge status-in';
+            statusText.textContent = 'เข้างานเมื่อ: ' + checkInTime.toLocaleTimeString('th-TH');
+            
+            checkInBtn.classList.add('hidden');
+            checkOutBtn.classList.remove('hidden');
+
+            // Send Telegram notification
+            sendTelegramNotification('เข้างาน', checkInTime);
+
+            showAlert('success', 'ลงเวลาเข้างานสำเร็จ!');
+        }
+
+        function handleCheckOut() {
+            if (attendanceStatus !== 'checked-in') {
+                showAlert('error', 'คุณยังไม่ได้ลงเวลาเข้างาน');
+                return;
+            }
+
+            // Show photo upload section
+            photoUploadSection.classList.remove('hidden');
+            
+            Swal.fire({
+                title: 'ยืนยันการลงเวลาออกงาน',
+                text: 'กรุณาอัพโหลดภาพยืนยันก่อนลงเวลาออกงาน',
+                icon: 'info',
+                confirmButtonText: 'ตกลง'
+            });
+        }
+
+        function performCheckOut() {
+            if (!uploadedPhoto) {
+                showAlert('error', 'กรุณาอัพโหลดภาพยืนยันก่อน');
+                return;
+            }
+
+            Swal.fire({
+                title: 'ยืนยันการลงเวลาออกงาน',
+                text: 'คุณต้องการลงเวลาออกงานหรือไม่?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#dc3545'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    checkOutTime = new Date();
+                    attendanceStatus = 'checked-out';
+
+                    // Calculate work duration
+                    const duration = Math.floor((checkOutTime - checkInTime) / (1000 * 60)); // minutes
+                    const hours = Math.floor(duration / 60);
+                    const minutes = duration % 60;
+
+                    // Update UI
+                    statusBadge.textContent = 'ออกงานแล้ว';
+                    statusBadge.className = 'status-badge status-out';
+                    statusText.innerHTML = 
+                        'เข้างาน: ' + checkInTime.toLocaleTimeString('th-TH') + '<br>' +
+                        'ออกงาน: ' + checkOutTime.toLocaleTimeString('th-TH') + '<br>' +
+                        'ระยะเวลาทำงาน: ' + hours + ' ชั่วโมง ' + minutes + ' นาที';
+                    
+                    checkOutBtn.classList.add('hidden');
+                    photoUploadSection.classList.add('hidden');
+
+                    // Send Telegram notification
+                    sendTelegramNotification('ออกงาน', checkOutTime, { hours, minutes });
+
+                    showAlert('success', 'ลงเวลาออกงานสำเร็จ!');
+                }
+            });
+        }
+
+        function handleLogout() {
+            Swal.fire({
+                title: 'ออกจากระบบ',
+                text: 'คุณต้องการออกจากระบบหรือไม่?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'ออกจากระบบ',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Reset application state
+                    currentUser = null;
+                    attendanceStatus = 'none';
+                    checkInTime = null;
+                    checkOutTime = null;
+                    uploadedPhoto = null;
+
+                    // Reset form
+                    loginForm.reset();
+                    pinInputs.forEach(input => {
+                        input.value = '';
+                        input.classList.remove('filled');
+                    });
+
+                    // Reset UI
+                    statusBadge.textContent = 'ยังไม่ได้ลงเวลา';
+                    statusBadge.className = 'status-badge';
+                    statusText.textContent = 'ยังไม่ได้ลงเวลาเข้างาน';
+                    checkInBtn.classList.remove('hidden');
+                    checkOutBtn.classList.add('hidden');
+                    photoUploadSection.classList.add('hidden');
+                    photoPreview.classList.add('hidden');
+
+                    // Switch screen
+                    attendanceScreen.classList.add('hidden');
+                    loginScreen.classList.remove('hidden');
+
+                    showAlert('success', 'ออกจากระบบสำเร็จ');
+                }
+            });
+        }
+
+        function showHelp() {
+            const helpContent = document.createElement('div');
+            helpContent.className = 'text-start';
+            
+            const step1 = document.createElement('div');
+            step1.innerHTML = '<h6><i class="bi bi-1-circle-fill me-2"></i>เข้าสู่ระบบ</h6><p class="small mb-3">กรอกรหัสพนักงานและ PIN 4 หลัก</p>';
+            
+            const step2 = document.createElement('div');
+            step2.innerHTML = '<h6><i class="bi bi-2-circle-fill me-2"></i>ลงเวลาเข้างาน</h6><p class="small mb-3">กดปุ่ม "ลงเวลาเข้างาน" เพื่อบันทึกเวลาเข้างาน</p>';
+            
+            const step3 = document.createElement('div');
+            step3.innerHTML = '<h6><i class="bi bi-3-circle-fill me-2"></i>ลงเวลาออกงาน</h6><p class="small mb-3">อัพโหลดภาพยืนยันและกดปุ่ม "ลงเวลาออกงาน"</p>';
+            
+            const step4 = document.createElement('div');
+            step4.innerHTML = '<h6><i class="bi bi-geo-alt-fill me-2"></i>ตำแหน่ง</h6><p class="small mb-0">ระบบจะบันทึกตำแหน่ง GPS อัตโนมัติ</p>';
+            
+            helpContent.appendChild(step1);
+            helpContent.appendChild(step2);
+            helpContent.appendChild(step3);
+            helpContent.appendChild(step4);
+            
+            Swal.fire({
+                title: 'วิธีใช้งาน',
+                html: helpContent,
+                confirmButtonText: 'เข้าใจแล้ว',
+                width: 400
+            });
+        }
+
+        // Photo upload functions
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handlePhotoSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showAlert('error', 'กรุณาเลือกไฟล์รูปภาพ');
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) { // 5MB
+                showAlert('error', 'ขนาดไฟล์ต้องไม่เกิน 5MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedPhoto = e.target.result;
+                previewImage.src = e.target.result;
+                photoPreview.classList.remove('hidden');
+                
+                // Auto check out if photo is uploaded
+                setTimeout(() => {
+                    performCheckOut();
+                }, 500);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Telegram notification function
+        function sendTelegramNotification(action, time, duration = null) {
+            if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID || 
+                TELEGRAM_BOT_TOKEN === 'YOUR_TELEGRAM_BOT_TOKEN') {
+                console.log('Telegram notification not configured');
+                return;
+            }
+
+            const locationInfo = userLocation ? 
+                '📍 ตำแหน่ง: ' + userLocation.latitude.toFixed(6) + ', ' + userLocation.longitude.toFixed(6) : 
+                '📍 ตำแหน่ง: ไม่สามารถระบุได้';
+
+            let message = 
+                '🔔 แจ้งเตือนลงเวลา' + action + '\n\n' +
+                '👤 พนักงาน: ' + currentUser.name + '\n' +
+                '🆔 รหัส: ' + currentUser.empCode + '\n' +
+                '⏰ เวลา: ' + time.toLocaleString('th-TH') + '\n' +
+                locationInfo;
+
+            if (duration) {
+                message += '\n⏱️ ระยะเวลาทำงาน: ' + duration.hours + ' ชั่วโมง ' + duration.minutes + ' นาที';
+            }
+
+            fetch('https://api.telegram.org/bot' + TELEGRAM_BOT_TOKEN + '/sendMessage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chat_id: TELEGRAM_CHAT_ID,
+                    text: message,
+                    parse_mode: 'HTML'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.ok) {
+                    console.log('Telegram notification sent successfully');
+                } else {
+                    console.error('Telegram notification failed:', data);
+                }
+            })
+            .catch(error => {
+                console.error('Telegram notification error:', error);
+            });
+        }
+
+        function showAlert(type, message, callback = null) {
+            const config = {
+                title: type === 'success' ? 'สำเร็จ!' : type === 'error' ? 'เกิดข้อผิดพลาด!' : 'แจ้งเตือน',
+                text: message,
+                icon: type,
+                confirmButtonText: 'ตกลง',
+                timer: type === 'success' ? 2000 : null,
+                showConfirmButton: type !== 'success',
+                customClass: {
+                    popup: 'rounded-4',
+                    confirmButton: 'rounded-3'
+                }
+            };
+
+            if (type === 'success') {
+                config.confirmButtonColor = '#28a745';
+            } else if (type === 'error') {
+                config.confirmButtonColor = '#dc3545';
+            }
+
+            Swal.fire(config).then(() => {
+                if (callback) callback();
+            });
+        }
+    </script>
+</body>
+
+</html>
