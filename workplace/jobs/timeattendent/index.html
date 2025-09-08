@@ -43,6 +43,14 @@
             max-width: 420px;
             margin: 0 auto;
             padding: 20px;
+            width: 100%;
+        }
+
+        .container-attendance {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
         }
 
         .card {
@@ -201,7 +209,7 @@
         #map {
             border-radius: 15px;
             margin: 20px 0;
-            aspect-ratio: 1;
+            aspect-ratio: 4/3;
         }
 
         .hidden {
@@ -361,6 +369,25 @@
                 height: 45px;
             }
         }
+
+        .img-grid-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 0 4px;
+        }
+
+        .img-grid-col {
+            flex: 33.33%;
+            max-width: 33.33%;
+            padding: 0 8px;
+        }
+
+        .img-grid-col img {
+            /* margin-top: 8px; */
+            vertical-align: middle;
+            width: 100%;
+        }
     </style>
 </head>
 
@@ -414,7 +441,7 @@
     </div>
 
     <!-- Main Attendance Screen -->
-    <div id="attendanceScreen" class="container hidden">
+    <div id="attendanceScreen" class="container-attendance hidden">
         <div class="card">
             <div class="card-header">
                 <div class="mb-2">
@@ -475,13 +502,52 @@
 
                 <!-- Photo Upload for Check Out -->
                 <div id="photoUploadSection" class="hidden">
-                    <input type="file" id="photoInput" accept="image/*" class="d-none">
-                    <button class="btn rounded-3 btn-warning w-100 mb-2" id="openFileSelectBtn">
-                        <i class="bi bi-camera-fill me-2"></i>อัพโหลดภาพยืนยัน
-                    </button>
-                    <div id="photoPreview" class="text-center mt-3">
-                        <img id="previewImage" src="https://placehold.co/400?text=Upload%20Photo&font=notosans"
-                            alt="Preview" class="img-fluid" style="max-height: 300px; border-radius: 15px;">
+                    <div class="row mb-3 g-3">
+                        <div class="col-12">
+                            <template id="img-template">
+                                <div
+                                    class="d-flex justify-content-center align-items-center position-relative border rounded-3 mt-3">
+                                    <span
+                                        class="position-absolute top-0 start-100 translate-middle badge rounded-circle bg-danger"
+                                        style="cursor: pointer;">
+                                        x
+                                    </span>
+                                    <img src="https://getbootstrap.com/docs/5.3/assets/brand/bootstrap-logo-shadow.png"
+                                        alt="" class="img-fluid rounded-3" style="cursor: pointer;">
+                                </div>
+                            </template>
+                            <label for="cowImage">
+                                <i class="bi bi-image-fill"></i>
+                                รูปภาพส่งงาน
+                            </label>
+                            <div class="rounded-3 border bg-secondary-subtle p-2 text-center" style="cursor: pointer;"
+                                id="image-label">
+                                คลิกเพื่อเลือกรูปภาพ
+                            </div>
+                            <input type="file" class="form-control rounded-3" id="selectImages" name="selectImages"
+                                accept="image/*" multiple hidden>
+                            <input type="file" name="temp-imgs" id="temp-imgs" class="d-none" multiple hidden>
+                            </label>
+                        </div>
+                        <div class="col-12">
+                            <div class="img-grid-row d-flex flex-wrap mb-4">
+                                <div class="img-grid-col">
+
+                                </div>
+                                <div class="img-grid-col"></div>
+                                <div class="img-grid-col"></div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label for="remark"><i class="fas fa-comment"></i> หมายเหตุ</label>
+                            <textarea class="form-control" id="remark" name="remark" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6 d-none" id="purchasePriceContainer">
+                            <label for="purchasePrice"><i class="fas fa-tag me-1"></i>
+                                ราคาซื้อเข้า (บาท)</label>
+                            <input type="number" class="form-control" id="purchasePrice" name="purchasePrice" min="0"
+                                step="1">
+                        </div>
                     </div>
                     <div class="my-3">
                         <button id="checkOutBtn" class="btn btn-danger w-100">
@@ -511,6 +577,10 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Leaflet JS for Maps -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Resumable Upload for Google Drive -->
+    <script
+        src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js">
+        </script>
 
     <script>
         const SwalCustomClass = {
@@ -715,9 +785,128 @@
             });
 
             // Get user location
+
             await initializeMap();
 
 
+        }
+
+        $('#image-label').click(function () {
+            $('#selectImages').click();
+        });
+
+        // Handle image selection
+        $('#selectImages').change(function (e) {
+            let MAX_IMAGES = 10;
+            let files = e.target.files;
+            let tempFiles = $('#temp-imgs')[0].files;
+            let newFiles = Array.from(files);
+            let allFiles = [...tempFiles, ...newFiles];
+
+            // Check for duplicate files
+            let fileNames = new Set();
+            allFiles = allFiles.filter(file => {
+                if (fileNames.has(file.name)) {
+                    return false;
+                } else {
+                    fileNames.add(file.name);
+                    return true;
+                }
+            });
+
+            
+            if (allFiles.length > MAX_IMAGES - $('.img-grid-col img').not('.isNew').length) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เลือกได้สูงสุด ' + MAX_IMAGES + ' รูป',
+                    customClass: {
+                        icon: 'text-danger',
+                        title: 'text-danger',
+                        content: 'text-dark',
+                        popup: 'rounded-4'
+                    },
+                    showConfirmButton: false,
+                    timer: 2000,
+                    allowOutsideClick: false,
+                    timerProgressBar: true
+                })
+                return false;
+            }
+
+            Swal.fire({
+                iconHtml: '<i class="bi bi-hourglass-split text-danger"></i>',
+                title: 'Loading..',
+                customClass: {
+                    icon: 'border-0',
+                    title: 'text-danger',
+                    content: 'text-dark',
+                    popup: 'rounded-4'
+                },
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                },
+            })
+
+            let datatransfer = new DataTransfer();
+            allFiles.forEach(file => {
+                datatransfer.items.add(file);
+            });
+            $('#temp-imgs')[0].files = datatransfer.files;
+
+            renderImagePreview(allFiles);
+        });
+
+        // Render image previews
+        function renderImagePreview(allFiles) {
+            $('.img-grid-col .isNew').parent().remove()
+            allFiles.forEach((file, i) => {
+                let eq = (i + $('.img-grid-col img').not('.isNew').length) % 3;
+                let reader = new FileReader();
+                reader.onload = function (e) {
+                    let img = $($('#img-template').html());
+                    img.find('img').attr('src', e.target.result).addClass('isNew')
+                    img.find('span').on('click', function () {
+                        let datatransfer = new DataTransfer();
+                        let files = $('#temp-imgs')[0].files;
+                        for (let i = 0; i < files.length; i++) {
+                            if (files[i].name != file.name) {
+                                datatransfer.items.add(files[i]);
+                            }
+                        }
+                        $('#temp-imgs')[0].files = datatransfer.files;
+                        renderImagePreview([...datatransfer.files]);
+                    });
+                    img.find('img').on('click', function () {
+                        showImagePreview(e.target.result);
+                    });
+                    let div = $('.img-grid-col').eq(eq)
+                    div.append(img)
+                    if (i == allFiles.length - 1) {
+                        Swal.close();
+                    }
+                    $('#image-label').text('เลือกแล้ว (' + $('.img-grid-col img').length + ') รูป')
+                }
+                reader.readAsDataURL(file);
+            });
+
+        }
+
+        // Show image in SweetAlert2 modal
+        function showImagePreview(src) {
+            Swal.fire({
+                imageUrl: src,
+                imageWidth: '100%',
+                imageHeight: '100%',
+                showCloseButton: true,
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                customClass: {
+                    popup: 'rounded-4',
+                    image: 'rounded-4',
+                    htmlContainer: 'p-0 rounded-4',
+                },
+            });
         }
         // Hide spinner on login response (success/failure)
         function hideLoadingSpinner() {
@@ -746,7 +935,6 @@
             };
 
             $currentTimeElement.text(now.toLocaleTimeString('th-TH', timeOptions));
-            $currentDateElement.text(now.toLocaleDateString('th-TH', dateOptions));
         }
 
         async function getUserLocation() {
@@ -754,25 +942,47 @@
                 let options = {
                     enableHighAccuracy: true,
                     timeout: 10000,
-                    maximumAge: 30000, // Accept a cached position up to 10 seconds old
+                    maximumAge: 0, // Accept a cached position up to 10 seconds old
                 };
                 if (!navigator.geolocation) {
                     $locationText.text('เบราว์เซอร์ไม่รองรับการระบุตำแหน่ง');
                     reject(new Error('Geolocation is not supported by this browser.'));
                     return;
                 }
-                navigator.geolocation.getCurrentPosition(
+                // navigator.geolocation.getCurrentPosition(
+                //     (position) => {
+                //         userLocation = {
+                //             latitude: position.coords.latitude,
+                //             longitude: position.coords.longitude
+                //         };
+                //         $coordinatesElement.text(userLocation.latitude.toFixed(6) + ', ' + userLocation.longitude.toFixed(6));
+                //         reverseGeocode(userLocation.latitude, userLocation.longitude);
+                //         resolve({
+                //             latitude: position.coords.latitude,
+                //             longitude: position.coords.longitude,
+                //         });
+                //     },
+                //     (error) => {
+                //         reject(error);
+                //     },
+                //     options
+                // );
+                if (window._geoWatchId !== undefined) {
+                    navigator.geolocation.clearWatch(window._geoWatchId);
+                    window._geoWatchId = undefined;
+                }
+                window._geoWatchId = navigator.geolocation.watchPosition(
                     (position) => {
                         userLocation = {
                             latitude: position.coords.latitude,
-                            longitude: position.coords.longitude
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy
                         };
+                        
                         $coordinatesElement.text(userLocation.latitude.toFixed(6) + ', ' + userLocation.longitude.toFixed(6));
                         reverseGeocode(userLocation.latitude, userLocation.longitude);
-                        resolve({
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                        });
+                        updateMap();
+                        resolve();
                     },
                     (error) => {
                         reject(error);
@@ -821,6 +1031,7 @@
             locationMarker.setPopupContent('กำลังค้นหา...').openPopup();
 
             await getUserLocation().then(() => {
+                
                 $coordinatesElement.text(userLocation.latitude.toFixed(6) + ', ' + userLocation.longitude.toFixed(6));
 
                 // Reverse geocoding to get address
@@ -915,7 +1126,27 @@
             if (map) {
                 map.remove();
             }
+            await getUserLocation().catch(err => {
+                console.error('Error getting location:', err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่สามารถระบุตำแหน่งได้',
+                    text: 'กรุณาเปิดการใช้งาน GPS และรีเฟรชหน้าใหม่อีกครั้ง',
+                    confirmButtonText: 'ตกลง',
+                    customClass: SwalCustomClass
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.open("<?= site_url ?>", "_top");
 
+                    }
+                });
+                $locationText.text('ไม่สามารถระบุตำแหน่งได้');
+                $coordinatesElement.text('');
+                userLocation = {
+                    latitude: 0,
+                    longitude: 0
+                };
+            });
             map = L.map('map', {
                 zoom: 16,
                 zoomControl: false,
@@ -928,44 +1159,57 @@
                 touchZoom: false
             });
             map.setView([0, 0], 1); // Default view before getting location
-            await getUserLocation().then(coords => {
-                map.setView([coords.latitude, coords.longitude], 16);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: ' OpenStreetMap contributors'
-                }).addTo(map);
+            map.setView([userLocation.latitude, userLocation.longitude], 16);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: ' OpenStreetMap contributors'
+            }).addTo(map);
 
-                locationMarker = L.marker([coords.latitude, coords.longitude])
-                    .addTo(map)
-                    .bindPopup('ตำแหน่งของคุณ')
+            locationMarker = L.marker([userLocation.latitude, userLocation.longitude])
+                .addTo(map)
+                .bindPopup('ตำแหน่งของคุณ')
+                .openPopup();
+
+            // Add a circle to show accuracy
+            L.circle([userLocation.latitude, userLocation.longitude], {
+                color: '#007bff',
+                fillColor: '#007bff',
+                fillOpacity: 0.1,
+                radius: 50
+            }).addTo(map);
+
+            // Fix: Ensure map renders correctly after being shown
+            setTimeout(function () {
+                map.invalidateSize();
+            }, 700)
+        }
+
+
+        function updateMap() {
+            if (map && locationMarker && userLocation) {
+                // Update marker position
+                locationMarker.setLatLng([userLocation.latitude, userLocation.longitude])
+                    .setPopupContent('ตำแหน่งของคุณ')
                     .openPopup();
+                // Center map on new location
+                map.setView([userLocation.latitude, userLocation.longitude], 16);
 
-                // Add a circle to show accuracy
-                L.circle([coords.latitude, coords.longitude], {
+                // Remove old circle and add new one
+                map.eachLayer(function (layer) {
+                    if (layer instanceof L.Circle) {
+                        map.removeLayer(layer);
+                    }
+                });
+
+                L.circle([userLocation.latitude, userLocation.longitude], {
                     color: '#007bff',
                     fillColor: '#007bff',
                     fillOpacity: 0.1,
                     radius: 50
                 }).addTo(map);
 
-                // Fix: Ensure map renders correctly after being shown
-                setTimeout(function () {
-                    map.invalidateSize();
-                }, 700)
-            }).catch(err => {
-                console.error('Error getting location for map:', err);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'ไม่สามารถระบุตำแหน่งได้',
-                    text: 'กรุณาเปิดการใช้งาน GPS และรีเฟรชตำแหน่ง',
-                    confirmButtonText: 'ตกลง',
-                    customClass: SwalCustomClass
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.open("<?= site_url ?>", "_top");
-
-                    }
-                });
-            });
+                map.invalidateSize();
+                
+            }
         }
 
         async function handleLogin(e) {
@@ -1000,7 +1244,7 @@
 
             google.script.run.withSuccessHandler(async function (response) {
                 response = JSON.parse(response);
-                console.log(response)
+                
                 hideLoadingSpinner();
                 $loginForm.data('submitting', false);
                 if (!response.success) {
@@ -1031,7 +1275,6 @@
                 $attendanceScreen.removeClass('hidden');
                 $loginScreen.addClass('hidden');
                 hideLoadingSpinner();
-                await refreshUserLocation();
                 attendanceStatus = currentUser.lastStatus || 'none';
                 if (attendanceStatus === 'IN') {
                     $statusBadge.text('เข้างานแล้ว');
@@ -1045,6 +1288,9 @@
                     $statusText.text('ยังไม่ได้ลงเวลาเข้างาน');
                     $checkInBtn.removeClass('hidden');
                     $photoUploadSection.addClass('hidden');
+                }
+                if (map) {
+                    map.invalidateSize();
                 }
                 let distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.punchInCoords.lat, currentUser.punchInCoords.lng));
                 $currentAccuracy = distance;
@@ -1060,14 +1306,12 @@
                         confirmButtonText: 'ตกลง',
                         allowOutsideClick: false,
                         customClass: SwalCustomClass
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.open("<?= site_url ?>", "_top");
-                        } else {
-                            // User canceled, handle accordingly
-                        }
                     })
-                    return;
+                    $checkInBtn.prop('disabled', true);
+                    $checkOutBtn.prop('disabled', true);
+                } else {
+                    $checkInBtn.prop('disabled', false);
+                    $checkOutBtn.prop('disabled', false);
                 }
             })
                 .withFailureHandler(function (error) {
@@ -1126,43 +1370,29 @@
                     Swal.showLoading();
                 }
             })
-            await getUserLocation().then(() => {
-                let distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.punchInCoords.lat, currentUser.punchInCoords.lng));
-                $currentAccuracy = distance;
-                console.log('Distance to site on check-in:', distance, 'meters');
-                if (distance > currentUser.punchInAllowedRadius) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'คุณอยู่ห่างจากไซต์งานเกินระยะที่กำหนด',
-                        html: 'โปรดตรวจสอบตำแหน่งของคุณอีกครั้ง<br>ระยะที่อนุญาต: ' + currentUser.punchInAllowedRadius + ' เมตร' +
-                            '<br><span style="color: red; font-size: 0.7rem">ระยะที่คุณอยู่: ' + Math.round(distance) + ' เมตร</span>',
-                        confirmButtonText: 'ตกลง',
-                        customClass: SwalCustomClass
-                    });
-                    $checkInBtn.prop('disabled', false);
-                    return;
-                }
-                proceedCheckIn();
-            })
-                .catch(err => {
-                    console.error('Error getting location for check-in:', err);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'ไม่สามารถระบุตำแหน่งได้',
-                        text: 'กรุณาเปิดการใช้งาน GPS แล้วลองใหม่อีกครั้ง',
-                        confirmButtonText: 'ตกลง',
-                        customClass: SwalCustomClass
-                    });
-                    $checkInBtn.prop('disabled', false);
-                    return;
+            let distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.punchInCoords.lat, currentUser.punchInCoords.lng));
+            $currentAccuracy = distance;
+            console.log('Distance to site on check-in:', distance, 'meters');
+            if (distance > currentUser.punchInAllowedRadius) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'คุณอยู่ห่างจากไซต์งานเกินระยะที่กำหนด',
+                    html: 'โปรดตรวจสอบตำแหน่งของคุณอีกครั้ง<br>ระยะที่อนุญาต: ' + currentUser.punchInAllowedRadius + ' เมตร' +
+                        '<br><span style="color: red; font-size: 0.7rem">ระยะที่คุณอยู่: ' + Math.round(distance) + ' เมตร</span>',
+                    confirmButtonText: 'ตกลง',
+                    customClass: SwalCustomClass
                 });
+                $checkInBtn.prop('disabled', false);
+                return;
+            }
+            proceedCheckIn();
         }
 
         function proceedCheckIn() {
             checkInTime = new Date();
             google.script.run.withSuccessHandler(function (response) {
                 response = JSON.parse(response);
-                console.log(response)
+                
                 if (!response.success) {
                     Swal.fire({
                         icon: 'error',
@@ -1209,7 +1439,7 @@
                     currentUser: currentUser,
                     accuracy: $currentAccuracy
                 });
-                console.log(currentUser)
+            
             console.log('Checking in user:', currentUser.empCode, checkInTime.toISOString(), userLocation)
         }
 
@@ -1224,7 +1454,7 @@
                 return;
             }
 
-            if (!$photoInput[0].files[0] || !$photoInput[0].files[0].length === 0) {
+            if ($('#temp-imgs')[0].files.length === 0) {
                 Swal.fire({
                     icon: 'error',
                     title: 'กรุณาอัพโหลดภาพยืนยันก่อนลงเวลาออกงาน',
@@ -1246,41 +1476,39 @@
                 didOpen: () => {
                     Swal.showLoading();
                 }
-            })
-            await getUserLocation().then(() => {
-                let distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.coords.lat, currentUser.coords.lng));
-                $currentAccuracy = distance;
-                console.log('Distance to site on check-out:', distance, 'meters');
-                if (distance > currentUser.allowedRadius) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'คุณอยู่ห่างจากไซต์งานเกินระยะที่กำหนด',
-                        html: 'โปรดตรวจสอบตำแหน่งของคุณอีกครั้ง<br>ระยะที่อนุญาต: ' + currentUser.allowedRadius + ' เมตร' +
-                            '<br><span style="color: red; font-size: 0.7rem">ระยะที่คุณอยู่: ' + Math.round(distance) + ' เมตร</span>',
-                    });
-                    $checkOutBtn.prop('disabled', false);
-                    return;
-                }
-                proceedCheckOut();
-            }).catch(err => {
-                console.error('Error getting location for check-in:', err);
+            });
+            let distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.coords.lat, currentUser.coords.lng));
+            $currentAccuracy = distance;
+            console.log('Distance to site on check-out:', distance, 'meters');
+            if (distance > currentUser.allowedRadius) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'ไม่สามารถระบุตำแหน่งได้',
-                    text: 'กรุณาเปิดการใช้งาน GPS แล้วลองใหม่อีกครั้ง',
-                    confirmButtonText: 'ตกลง',
-                    customClass: SwalCustomClass
+                    title: 'คุณอยู่ห่างจากไซต์งานเกินระยะที่กำหนด',
+                    html: 'โปรดตรวจสอบตำแหน่งของคุณอีกครั้ง<br>ระยะที่อนุญาต: ' + currentUser.allowedRadius + ' เมตร' +
+                        '<br><span style="color: red; font-size: 0.7rem">ระยะที่คุณอยู่: ' + Math.round(distance) + ' เมตร</span>',
                 });
                 $checkOutBtn.prop('disabled', false);
                 return;
-                
-            });
+            }
+            proceedCheckOut();
 
         }
-        function proceedCheckOut() {
+        async function proceedCheckOut() {
+            let { uploaded_files, folder } = await uploadFiles()
+
+            Swal.fire({
+                iconHtml: '<i class="bi bi-hourglass-split"></i>',
+                title: 'กำลังลงเวลาออกงาน...',
+                text: 'กรุณาอย่า่ปิดหน้าต่างนี้',
+                allowOutsideClick: false,
+                customClass: Object.assign({}, SwalCustomClass, { icon: 'border-0' }),
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
             google.script.run.withSuccessHandler(function (response) {
                 response = JSON.parse(response);
-                console.log(response)
+                
                 if (!response.success) {
                     Swal.fire({
                         icon: 'error',
@@ -1301,7 +1529,7 @@
                 attendanceStatus = 'OUT'
 
                 const checkOutTime = new Date();
-                currentUser.photo = response.photoUrl; // Update photo URL if returned from server
+                currentUser.photos = uploaded_files.map(id => 'https://lh3.googleusercontent.com/d/' + id);
                 sendTelegramNotification(attendanceStatus, checkOutTime);
 
                 $checkOutBtn.hide();
@@ -1453,7 +1681,7 @@
             };
             google.script.run
                 .withSuccessHandler(function (response) {
-                    console.log('Telegram notification sent via server:', response);
+                    console.log('Telegram notification sent via server:');
                 })
                 .withFailureHandler(function (error) {
                     console.error('Error sending notification via server:', error);
@@ -1462,6 +1690,112 @@
 
         }
 
+    </script>
+    <script>
+        async function uploadFiles() {
+            const f = document.getElementById("temp-imgs");
+            if (f.files.length == 0) {
+                return []
+            }
+            Swal.fire({
+                iconHtml: '<i class="bi bi-cloud-arrow-up-fill text-primary"></i>',
+                title: 'กำลังอัพโหลดไฟล์',
+                customClass: {
+                    icon: 'border-0',
+                    title: 'text-primary',
+                    content: 'text-light',
+                    popup: 'rounded-4'
+                },
+                allowOutsideClick: false,
+                html: '<div class="container-fluid"><div class="row" id="progress"></div></div>',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                },
+            })
+            const { token, folder_id } = await getDownloadToken();
+            let file = await new Promise((resolve, reject) => {
+                let length = f.files.length;
+                let count = 0;
+                let uploadfiles = [];
+                [...f.files].forEach((file, i) => {
+                    let fr = new FileReader();
+                    fr.fileName = file.name;
+                    fr.fileSize = file.size;
+                    fr.fileType = file.type;
+                    fr.readAsArrayBuffer(file);
+                    fr.onload = e => {
+                        var id = "p" + ++i;
+                        var div = $("<div>", { class: 'col-12 text-truncate text-start' });
+                        div.attr("id", id);
+                        $("#progress").append(div);
+                        $('#' + id).text('Initialising (' + fr.fileName + ')')
+                        const f = e.target;
+                        const resource = {
+                            fileName: f.fileName,
+                            fileSize: f.fileSize,
+                            fileType: f.fileType,
+                            fileBuffer: f.result,
+                            accessToken: token,
+                            folderId: folder_id,
+                            fields: "id",
+                        };
+                        const ru = new ResumableUploadToGoogleDrive();
+                        ru.Do(resource, function (res, err) {
+                            if (err) {
+                                console.log(err);
+                                return;
+                            }
+                            console.log(res);
+                            let msg = "";
+                            if (res.status == 'start' || res.status == 'getLocation' || res.status == 'initialize') {
+                                msg = '<i class="bi bi-cloud-arrow-up-fill"></i> กำลังเตรียมอัพโหลด ' + f.fileName;
+                            }
+                            else if (res.status == "Uploading") {
+                                msg =
+                                    '<i class="bi bi-hourglass-split text-start text-primary"></i> กำลังอัพโหลด ' +
+                                    Math.round(
+                                        (res.progressNumber.current / res.progressNumber.end) * 100
+                                    ) +
+                                    "% (" +
+                                    f.fileName +
+                                    ")";
+                            } else {
+                                msg = '<i class="bi bi-check-circle-fill text-start text-success"></i> อัพโหลดสำเร็จ  (' + f.fileName + ")";
+                            }
+
+                            // If you want to put the uploaded file information to the active Spreadsheet,
+                            // please use the following function.
+                            if (res.status == "Done") {
+                                uploadfiles.push(res.result.id);
+                                if (uploadfiles.length == length) {
+                                    resolve(uploadfiles);
+                                }
+                            }
+
+                            $('#' + id).html(msg)
+                        });
+                    };
+                });
+            });
+            return {
+                uploaded_files: file,
+                folder: 'https://drive.google.com/drive/folders/' + folder_id
+            }
+        }
+
+        function getDownloadToken() {
+            return new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler((res) => {
+                    res = JSON.parse(res);
+                    if (res.success) {
+                        resolve(res);
+                    } else {
+                        reject(res.message);
+                    }
+                }).getDownloadToken(currentUser.siteName || 'ทั่วไป', currentUser.empCode, currentUser.name);
+            });
+        }
     </script>
 </body>
 
