@@ -78,7 +78,6 @@ function checkOutUser(data) {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Punches');
     let timestamp = new Date();
-    let uploadPhoto = uploadPhotoFile(photoFile, empCode, currentUser.name, currentUser.siteName, timestamp);
     let newRow = [
         timestamp,
         empCode,
@@ -89,10 +88,10 @@ function checkOutUser(data) {
         location.latitude || '',
         location.longitude || '',
         accuracy,
-        uploadPhoto ? 'https://lh3.googleusercontent.com/d/' + uploadPhoto.getId() : ''
+        currentUser.photoFolder || ''
     ]
     sheet.appendRow(newRow);
-    return JSON.stringify({ success: true, timestamp: timestamp, photoUrl: uploadPhoto ? 'https://lh3.googleusercontent.com/d/' + uploadPhoto.getId() : '' });
+    return JSON.stringify({ success: true, timestamp: timestamp });
 }
 
 function uploadPhotoFile(photoFile, empCode, empName, siteName, timestamp) {
@@ -131,21 +130,23 @@ function sendTelegramNotification(data) {
     (ความแม่นยำ: ${data.accuracy.toFixed(2)} เมตร)` :
         '📍 ตำแหน่ง: ไม่สามารถระบุได้';
 
-    let message = `🔔 แจ้งเตือนลงเวลา <b>${data.action == "IN" ? "เข้า" : "ออก"}งาน</b>\n\n` +
-        `👤 พนักงาน: <b>${data.currentUser.name}</b>\n\n` +
-        `🆔 รหัส: <b>${data.currentUser.empCode}</b>\n\n` +
-        `🏢 ไซต์: <b>${data.currentUser.siteName}</b>\n\n` +
-        `⏰ เวลา: <b>${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}</b>\n\n` +
+    let message = `🔔 แจ้งเตือนลงเวลา${data.action == "IN" ? "เข้า" : "ออก"}งาน\n\n` +
+        `👤 พนักงาน: ${data.currentUser.name}\n\n` +
+        `🆔 รหัส: ${data.currentUser.empCode}\n\n` +
+        `🏢 ไซต์: ${data.currentUser.siteName}\n\n` +
+        `⏰ เวลา: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}\n` +
         locationInfo;
-    let photoUrl = data.currentUser.photo || false;
-    if(photoUrl){
-        const response = UrlFetchApp.fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+    let photoUrls = data.currentUser.photos || false;
+    if(photoUrls && photoUrls.length > 0){
+        photoUrls = photoUrls.map(url => ({ type: 'photo', media: url }))
+        photoUrls.at(-1).caption = message;
+        photoUrls.at(-1).parse_mode = 'HTML';
+        const response = UrlFetchApp.fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             payload: JSON.stringify({
                 chat_id: CHAT_ID,
-                photo: photoUrl,
-                caption: message,
+                media: photoUrls,
                 parse_mode: 'HTML'
             })
         });
@@ -165,3 +166,19 @@ function sendTelegramNotification(data) {
     }
 }
 
+function getDownloadToken(siteName = 'ทั่วไป', empCode = '00000', empName = 'ไม่ระบุ') {
+    const getFolder = function (root, f_name) {
+        let folder = root.getFoldersByName(f_name);
+        if (!folder.hasNext()) {
+            folder = root.createFolder(f_name);
+        } else {
+            folder = folder.next();
+        }
+        return folder;
+    }
+    let main_folder = DriveApp.getFolderById(MAIN_FOLDER_ID);
+    let site_folder = getFolder(main_folder, siteName);
+    let date_folder = getFolder(site_folder, Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'));
+    let user_folder = getFolder(date_folder, empCode + '_' + empName);
+    return JSON.stringify({ success: true, token: ScriptApp.getOAuthToken(), folder_id: user_folder.getId() });
+}
