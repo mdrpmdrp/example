@@ -136,7 +136,7 @@
         }
 
         .attendance-card {
-            background: #6c757d;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border-radius: 20px;
             padding: 30px;
@@ -332,8 +332,8 @@
         }
 
         .pin-digit.filled {
-            border-color: #28a745;
-            background: #f8fff9;
+            border-color: #667eea;
+            background: #f4f6ff;
         }
 
         .logo-img {
@@ -814,7 +814,7 @@
                 }
             });
 
-            
+
             if (allFiles.length > MAX_IMAGES - $('.img-grid-col img').not('.isNew').length) {
                 Swal.fire({
                     icon: 'error',
@@ -978,7 +978,9 @@
                             longitude: position.coords.longitude,
                             accuracy: position.coords.accuracy
                         };
-                        
+
+                        console.log('User location getUserLocation:', userLocation);
+
                         $coordinatesElement.text(userLocation.latitude.toFixed(6) + ', ' + userLocation.longitude.toFixed(6));
                         reverseGeocode(userLocation.latitude, userLocation.longitude);
                         updateMap();
@@ -1031,20 +1033,22 @@
             locationMarker.setPopupContent('กำลังค้นหา...').openPopup();
 
             await getUserLocation().then(() => {
-                
-                $coordinatesElement.text(userLocation.latitude.toFixed(6) + ', ' + userLocation.longitude.toFixed(6));
+                let currentLat = userLocation.latitude;
+                let currentLng = userLocation.longitude;
+
+                $coordinatesElement.text(currentLat.toFixed(6) + ', ' + currentLng.toFixed(6));
 
                 // Reverse geocoding to get address
-                reverseGeocode(userLocation.latitude, userLocation.longitude);
+                reverseGeocode(currentLat, currentLng);
 
                 // Update map with new location
                 if (map && locationMarker) {
                     // Update marker position
-                    locationMarker.setLatLng([userLocation.latitude, userLocation.longitude])
+                    locationMarker.setLatLng([currentLat, currentLng])
                         .setPopupContent('ตำแหน่งของคุณ')
                         .openPopup();
                     // Center map on new location
-                    map.setView([userLocation.latitude, userLocation.longitude], 16);
+                    map.setView([currentLat, currentLng], 16);
 
                     // Remove old circle and add new one
                     map.eachLayer(function (layer) {
@@ -1053,11 +1057,11 @@
                         }
                     });
 
-                    L.circle([userLocation.latitude, userLocation.longitude], {
+                    L.circle([currentLat, currentLng], {
                         color: '#007bff',
                         fillColor: '#007bff',
                         fillOpacity: 0.1,
-                        radius: 50
+                        radius: userLocation.accuracy || 50
                     }).addTo(map);
                 } else {
                     // Reinitialize map if it doesn't exist
@@ -1066,12 +1070,17 @@
 
                 // Check distance from site if user is logged in
                 if (currentUser && currentUser.coords) {
-                    let distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.punchInCoords.lat, currentUser.punchInCoords.lng));
+                    let distance
+                    if(currentUser.lastStatus == 'IN'){
+                        distance = map.distance(L.latLng(currentLat, currentLng), L.latLng(currentUser.coords.lat, currentUser.coords.lng));
+                    }else if(currentUser.lastStatus == 'OUT' && currentUser.punchInCoords){
+                        distance = map.distance(L.latLng(currentLat, currentLng), L.latLng(currentUser.punchInCoords.lat, currentUser.punchInCoords.lng));
+                    }
 
                     if (distance > currentUser.allowedRadius) {
                         Swal.fire({
                             icon: 'warning',
-                            title: 'คุณอยู่ห่างจากไซต์งานเกินระยะที่กำหนด',
+                            title: 'คุณอยู่ห่างเกินระยะที่กำหนด',
                             html: 'โปรดตรวจสอบตำแหน่งของคุณอีกครั้ง<br>ระยะที่อนุญาต: ' + currentUser.allowedRadius + ' เมตร' +
                                 '<br><span style="color: red; font-size: 0.7rem">ระยะที่คุณอยู่: ' + Math.round(distance) + ' เมตร</span>',
                             confirmButtonText: 'ตกลง',
@@ -1126,6 +1135,18 @@
             if (map) {
                 map.remove();
             }
+            map = L.map('map', {
+                zoom: 16,
+                zoomControl: false,
+                attributionControl: false,
+                dragging: false,
+                scrollWheelZoom: false,
+                doubleClickZoom: false,
+                boxZoom: false,
+                keyboard: false, tap: false,
+                touchZoom: false
+            });
+            map.setView([0, 0], 1); // Default view before getting location
             await getUserLocation().catch(err => {
                 console.error('Error getting location:', err);
                 Swal.fire({
@@ -1147,34 +1168,25 @@
                     longitude: 0
                 };
             });
-            map = L.map('map', {
-                zoom: 16,
-                zoomControl: false,
-                attributionControl: false,
-                dragging: false,
-                scrollWheelZoom: false,
-                doubleClickZoom: false,
-                boxZoom: false,
-                keyboard: false, tap: false,
-                touchZoom: false
-            });
-            map.setView([0, 0], 1); // Default view before getting location
-            map.setView([userLocation.latitude, userLocation.longitude], 16);
+            console.log('userLocation:', userLocation);
+            let currentLat = userLocation ? userLocation.latitude : 0;
+            let currentLng = userLocation ? userLocation.longitude : 0;
+            map.setView([currentLat, currentLng], 16);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: ' OpenStreetMap contributors'
             }).addTo(map);
 
-            locationMarker = L.marker([userLocation.latitude, userLocation.longitude])
+            locationMarker = L.marker([currentLat, currentLng])
                 .addTo(map)
                 .bindPopup('ตำแหน่งของคุณ')
                 .openPopup();
 
             // Add a circle to show accuracy
-            L.circle([userLocation.latitude, userLocation.longitude], {
+            L.circle([currentLat, currentLng], {
                 color: '#007bff',
                 fillColor: '#007bff',
                 fillOpacity: 0.1,
-                radius: 50
+                radius: userLocation.accuracy || 50
             }).addTo(map);
 
             // Fix: Ensure map renders correctly after being shown
@@ -1186,12 +1198,14 @@
 
         function updateMap() {
             if (map && locationMarker && userLocation) {
+                let currentLat = userLocation.latitude;
+                let currentLng = userLocation.longitude;
                 // Update marker position
-                locationMarker.setLatLng([userLocation.latitude, userLocation.longitude])
+                locationMarker.setLatLng([currentLat, currentLng])
                     .setPopupContent('ตำแหน่งของคุณ')
                     .openPopup();
                 // Center map on new location
-                map.setView([userLocation.latitude, userLocation.longitude], 16);
+                map.setView([currentLat, currentLng], 16);
 
                 // Remove old circle and add new one
                 map.eachLayer(function (layer) {
@@ -1200,15 +1214,18 @@
                     }
                 });
 
-                L.circle([userLocation.latitude, userLocation.longitude], {
+                L.circle([currentLat, currentLng], {
                     color: '#007bff',
                     fillColor: '#007bff',
                     fillOpacity: 0.1,
-                    radius: 50
+                    radius: userLocation.accuracy || 50
                 }).addTo(map);
 
-                map.invalidateSize();
-                
+
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 500);
+
             }
         }
 
@@ -1244,7 +1261,7 @@
 
             google.script.run.withSuccessHandler(async function (response) {
                 response = JSON.parse(response);
-                
+
                 hideLoadingSpinner();
                 $loginForm.data('submitting', false);
                 if (!response.success) {
@@ -1286,20 +1303,23 @@
                     $statusBadge.text('ยังไม่ได้ลงเวลา');
                     $statusBadge.removeClass().addClass('status-badge status-none');
                     $statusText.text('ยังไม่ได้ลงเวลาเข้างาน');
-                    $checkInBtn.removeClass('hidden');
+                    $checkInBtn.removeClass('hidden')
                     $photoUploadSection.addClass('hidden');
                 }
-                if (map) {
-                    map.invalidateSize();
+                updateMap();
+                let distance;
+                if (currentUser.lastStatus == 'IN') {
+                    distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.coords.lat, currentUser.coords.lng));
+                } else if (currentUser.lastStatus == 'OUT' && currentUser.punchInCoords) {
+                    distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.punchInCoords.lat, currentUser.punchInCoords.lng));
                 }
-                let distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.punchInCoords.lat, currentUser.punchInCoords.lng));
                 $currentAccuracy = distance;
-                console.log('Distance to site:', distance, 'meters');
                 if (distance > currentUser.punchInAllowedRadius) {
-                    $checkInBtn.hide();
+                    console.log('Distance to site:', distance, 'meters');
+                    // $checkInBtn.addClass('hidden');
                     Swal.fire({
                         icon: 'warning',
-                        title: 'คุณอยู่ห่างจากสำนักงานเกินระยะที่กำหนด',
+                        title: 'คุณอยู่ห่างเกินระยะที่กำหนด',
                         html: 'ชื่อไซต์: <strong>' + (currentUser.siteName || '-') + '</strong><br>' +
                             'โปรดตรวจสอบตำแหน่งของคุณอีกครั้ง<br>ระยะที่อนุญาต: ' + currentUser.punchInAllowedRadius + ' เมตร' +
                             '<br><span style="color: red; font-size: 0.7rem">ระยะที่คุณอยู่: ' + Math.round(distance) + ' เมตร</span>',
@@ -1313,6 +1333,9 @@
                     $checkInBtn.prop('disabled', false);
                     $checkOutBtn.prop('disabled', false);
                 }
+                setTimeout(() => {
+                    if (map) map.invalidateSize();
+                }, 500);
             })
                 .withFailureHandler(function (error) {
                     console.error('Error during authentication:', error);
@@ -1359,21 +1382,11 @@
                 return;
             }
             $checkInBtn.prop('disabled', true);
-
-            Swal.fire({
-                iconHtml: '<i class="bi bi-hourglass-split"></i>',
-                title: 'กำลังลงเวลาเข้างาน...',
-                text: 'กรุณาอย่า่ปิดหน้าต่างนี้',
-                allowOutsideClick: false,
-                customClass: Object.assign({}, SwalCustomClass, { icon: 'border-0' }),
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            })
             let distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.punchInCoords.lat, currentUser.punchInCoords.lng));
             $currentAccuracy = distance;
             console.log('Distance to site on check-in:', distance, 'meters');
             if (distance > currentUser.punchInAllowedRadius) {
+                Swal.hideLoading()
                 Swal.fire({
                     icon: 'error',
                     title: 'คุณอยู่ห่างจากไซต์งานเกินระยะที่กำหนด',
@@ -1385,6 +1398,16 @@
                 $checkInBtn.prop('disabled', false);
                 return;
             }
+            Swal.fire({
+                iconHtml: '<i class="bi bi-hourglass-split"></i>',
+                title: 'กำลังลงเวลาเข้างาน...',
+                text: 'กรุณาอย่า่ปิดหน้าต่างนี้',
+                allowOutsideClick: false,
+                customClass: Object.assign({}, SwalCustomClass, { icon: 'border-0' }),
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            })
             proceedCheckIn();
         }
 
@@ -1392,7 +1415,7 @@
             checkInTime = new Date();
             google.script.run.withSuccessHandler(function (response) {
                 response = JSON.parse(response);
-                
+
                 if (!response.success) {
                     Swal.fire({
                         icon: 'error',
@@ -1411,8 +1434,7 @@
                 Swal.fire({
                     icon: 'success',
                     title: 'ลงเวลาเข้างานสำเร็จ!',
-                    showConfirmButton: false,
-                    timer: 2000,
+                    confirmButtonText: 'ตกลง',
                     customClass: SwalCustomClass
                 });
                 // Update UI using jQuery
@@ -1439,7 +1461,7 @@
                     currentUser: currentUser,
                     accuracy: $currentAccuracy
                 });
-            
+
             console.log('Checking in user:', currentUser.empCode, checkInTime.toISOString(), userLocation)
         }
 
@@ -1467,6 +1489,23 @@
                 return;
             }
             $checkOutBtn.prop('disabled', true);
+            let distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.coords.lat, currentUser.coords.lng));
+            $currentAccuracy = distance;
+            console.log('Distance to site on check-out:', distance, 'meters');
+            if (distance > currentUser.allowedRadius) {
+                if (Swal.isLoading()) Swal.hideLoading()
+                Swal.fire({
+                    icon: 'error',
+                    title: 'คุณอยู่ห่างเกินระยะที่กำหนด',
+                    html: 'โปรดตรวจสอบตำแหน่งของคุณอีกครั้ง<br>ระยะที่อนุญาต: ' + currentUser.allowedRadius + ' เมตร' +
+                        '<br><span style="color: red; font-size: 0.7rem">ระยะที่คุณอยู่: ' + Math.round(distance) + ' เมตร</span>',
+                    confirmButtonText: 'ตกลง',
+                    customClass: SwalCustomClass,
+                    allowOutsideClick: false
+                });
+                $checkOutBtn.prop('disabled', false);
+                return;
+            }
             Swal.fire({
                 iconHtml: '<i class="bi bi-hourglass-split"></i>',
                 title: 'กำลังลงเวลาออกงาน...',
@@ -1477,19 +1516,7 @@
                     Swal.showLoading();
                 }
             });
-            let distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.coords.lat, currentUser.coords.lng));
-            $currentAccuracy = distance;
-            console.log('Distance to site on check-out:', distance, 'meters');
-            if (distance > currentUser.allowedRadius) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'คุณอยู่ห่างจากไซต์งานเกินระยะที่กำหนด',
-                    html: 'โปรดตรวจสอบตำแหน่งของคุณอีกครั้ง<br>ระยะที่อนุญาต: ' + currentUser.allowedRadius + ' เมตร' +
-                        '<br><span style="color: red; font-size: 0.7rem">ระยะที่คุณอยู่: ' + Math.round(distance) + ' เมตร</span>',
-                });
-                $checkOutBtn.prop('disabled', false);
-                return;
-            }
+
             proceedCheckOut();
 
         }
@@ -1508,7 +1535,7 @@
             });
             google.script.run.withSuccessHandler(function (response) {
                 response = JSON.parse(response);
-                
+
                 if (!response.success) {
                     Swal.fire({
                         icon: 'error',
@@ -1522,14 +1549,14 @@
                 Swal.fire({
                     icon: 'success',
                     title: 'ลงเวลาออกงานสำเร็จ!',
-                    showConfirmButton: false,
-                    timer: 2000,
+                    confirmButtonText: 'ตกลง',
                     customClass: SwalCustomClass
                 })
                 attendanceStatus = 'OUT'
 
                 const checkOutTime = new Date();
                 currentUser.photos = uploaded_files.map(id => 'https://lh3.googleusercontent.com/d/' + id);
+                currentUser.photoFolder = folder;
                 sendTelegramNotification(attendanceStatus, checkOutTime);
 
                 $checkOutBtn.hide();
@@ -1566,16 +1593,6 @@
 
 
         function handleLogout() {
-            if (!$photoInput[0].files[0] || !$photoInput[0].files[0].length === 0) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'กรุณาอัพโหลดภาพยืนยันก่อนลงเวลาออกงาน',
-                    confirmButtonText: 'ตกลง',
-                    customClass: SwalCustomClass
-                });
-                return;
-            }
-
             Swal.fire({
                 title: 'ออกจากระบบ',
                 text: 'คุณต้องการออกจากระบบหรือไม่?',
@@ -1620,8 +1637,6 @@
                     });
                 }
             });
-
-
         }
 
         function showHelp() {

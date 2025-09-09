@@ -134,7 +134,7 @@ function sendTelegramNotification(data) {
         `👤 พนักงาน: ${data.currentUser.name}\n\n` +
         `🆔 รหัส: ${data.currentUser.empCode}\n\n` +
         `🏢 ไซต์: ${data.currentUser.siteName}\n\n` +
-        `⏰ เวลา: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}\n` +
+        `⏰ เวลา: ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}\n\n` +
         locationInfo;
     let photoUrls = data.currentUser.photos || false;
     if(photoUrls && photoUrls.length > 0){
