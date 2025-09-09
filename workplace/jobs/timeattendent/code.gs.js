@@ -54,7 +54,7 @@ function authenticateUser(empId = '11111', pin = '1234') {
 }
 
 function checkInUser(data) {
-    let { empCode, checkInTime, location, currentUser, accuracy } = data
+    let { empCode, checkInTime, location, currentUser, accuracy, remark } = data
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Punches');
     let timestamp = new Date();
@@ -67,14 +67,15 @@ function checkInUser(data) {
         currentUser.siteId || '',
         location.latitude || '',
         location.longitude || '',
-        accuracy
+        accuracy,
+        remark || ''
     ]
     sheet.appendRow(newRow);
     return JSON.stringify({ success: true, timestamp: timestamp });
 }
 
 function checkOutUser(data) {
-    let { empCode, photoFile, checkOutTime, location, currentUser, accuracy } = data
+    let { empCode, photoFile, checkOutTime, location, currentUser, accuracy, remark } = data
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Punches');
     let timestamp = new Date();
@@ -88,6 +89,7 @@ function checkOutUser(data) {
         location.latitude || '',
         location.longitude || '',
         accuracy,
+        remark || '',
         currentUser.photoFolder || ''
     ]
     sheet.appendRow(newRow);
@@ -121,8 +123,8 @@ function uploadPhotoFile(photoFile, empCode, empName, siteName, timestamp) {
 }
 
 function sendTelegramNotification(data) {
-    const BOT_TOKEN = '7372234796:AAHP2Wxs3jAZggbEG4K7glvFBhojDq-MSck'; // Store securely
-    const CHAT_ID = '1354847893';
+    const BOT_TOKEN = '8193175611:AAE7Z6dy4vHy1ePP7Q5XlvZFqDKmqZGbAL8'; // Store securely
+    const CHAT_ID = '-1002762751580';
 
     const locationInfo = data.location ?
         // `📍 ตำแหน่ง: ${data.location.latitude.toFixed(6)}, ${data.location.longitude.toFixed(6)}` :
@@ -147,7 +149,8 @@ function sendTelegramNotification(data) {
             payload: JSON.stringify({
                 chat_id: CHAT_ID,
                 media: photoUrls,
-                parse_mode: 'HTML'
+                parse_mode: 'HTML',
+                muteHttpExceptions: true
             })
         });
         return JSON.stringify({ success: true, response: response.getContentText() });

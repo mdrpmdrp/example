@@ -35,7 +35,6 @@
         body {
             min-height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
         }
 
@@ -558,7 +557,7 @@
 
                 <!-- Logout Button -->
                 <div class="text-center mt-4">
-                    <button id="logoutBtn" class="btn btn-outline-secondary">
+                    <button id="logoutBtn" class="btn btn-outline-secondary rounded-3">
                         <i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ
                     </button>
                 </div>
@@ -1071,9 +1070,9 @@
                 // Check distance from site if user is logged in
                 if (currentUser && currentUser.coords) {
                     let distance
-                    if(currentUser.lastStatus == 'IN'){
+                    if (currentUser.lastStatus == 'IN') {
                         distance = map.distance(L.latLng(currentLat, currentLng), L.latLng(currentUser.coords.lat, currentUser.coords.lng));
-                    }else if(currentUser.lastStatus == 'OUT' && currentUser.punchInCoords){
+                    } else if (currentUser.lastStatus == 'OUT' && currentUser.punchInCoords) {
                         distance = map.distance(L.latLng(currentLat, currentLng), L.latLng(currentUser.punchInCoords.lat, currentUser.punchInCoords.lng));
                     }
 
@@ -1307,6 +1306,17 @@
                     $photoUploadSection.addClass('hidden');
                 }
                 updateMap();
+                if (!currentUser) {
+                    Swal.fire({
+                        title: 'กำลังระบุตำแหน่ง...',
+                        allowOutsideClick: false,
+                        customClass: Object.assign({}, SwalCustomClass, { icon: 'border-0' }),
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                        iconHtml: '<i class="bi bi-geo-alt-fill text-primary"></i>'
+                    })
+                }
                 let distance;
                 if (currentUser.lastStatus == 'IN') {
                     distance = map.distance(L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(currentUser.coords.lat, currentUser.coords.lng));
@@ -1399,9 +1409,9 @@
                 return;
             }
             Swal.fire({
-                iconHtml: '<i class="bi bi-hourglass-split"></i>',
+                iconHtml: '<i class="bi bi-hourglass-split text-danger"></i>',
                 title: 'กำลังลงเวลาเข้างาน...',
-                text: 'กรุณาอย่า่ปิดหน้าต่างนี้',
+                text: 'กรุณาอย่าปิดหน้าต่างนี้',
                 allowOutsideClick: false,
                 customClass: Object.assign({}, SwalCustomClass, { icon: 'border-0' }),
                 didOpen: () => {
@@ -1459,7 +1469,8 @@
                     checkInTime: checkInTime.toISOString(),
                     location: userLocation,
                     currentUser: currentUser,
-                    accuracy: $currentAccuracy
+                    accuracy: $currentAccuracy,
+                    remark: $('#remark').val().trim()
                 });
 
             console.log('Checking in user:', currentUser.empCode, checkInTime.toISOString(), userLocation)
@@ -1507,9 +1518,9 @@
                 return;
             }
             Swal.fire({
-                iconHtml: '<i class="bi bi-hourglass-split"></i>',
+                iconHtml: '<i class="bi bi-hourglass-split text-primary"></i>',
                 title: 'กำลังลงเวลาออกงาน...',
-                text: 'กรุณาอย่า่ปิดหน้าต่างนี้',
+                text: 'กรุณาอย่าปิดหน้าต่างนี้',
                 allowOutsideClick: false,
                 customClass: Object.assign({}, SwalCustomClass, { icon: 'border-0' }),
                 didOpen: () => {
@@ -1521,74 +1532,71 @@
 
         }
         async function proceedCheckOut() {
-            let { uploaded_files, folder } = await uploadFiles()
-
-            Swal.fire({
-                iconHtml: '<i class="bi bi-hourglass-split"></i>',
-                title: 'กำลังลงเวลาออกงาน...',
-                text: 'กรุณาอย่า่ปิดหน้าต่างนี้',
-                allowOutsideClick: false,
-                customClass: Object.assign({}, SwalCustomClass, { icon: 'border-0' }),
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-            google.script.run.withSuccessHandler(function (response) {
-                response = JSON.parse(response);
-
-                if (!response.success) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'ออกจากระบบไม่สำเร็จ',
-                        text: response.message || 'กรุณาลองใหม่อีกครั้ง',
-                        confirmButtonText: 'ตกลง',
-                        customClass: SwalCustomClass
-                    });
-                    return;
-                }
+            await uploadFiles().then(result => {
+                let { uploaded_files, folder } = result
                 Swal.fire({
-                    icon: 'success',
-                    title: 'ลงเวลาออกงานสำเร็จ!',
-                    confirmButtonText: 'ตกลง',
-                    customClass: SwalCustomClass
-                })
-                attendanceStatus = 'OUT'
-
-                const checkOutTime = new Date();
-                currentUser.photos = uploaded_files.map(id => 'https://lh3.googleusercontent.com/d/' + id);
+                    iconHtml: '<i class="bi bi-hourglass-split text-primary"></i>',
+                    title: 'กำลังลงเวลาออกงาน...',
+                    text: 'กรุณาอย่าปิดหน้าต่างนี้',
+                    allowOutsideClick: false,
+                    customClass: Object.assign({}, SwalCustomClass, { icon: 'border-0' }),
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
                 currentUser.photoFolder = folder;
-                sendTelegramNotification(attendanceStatus, checkOutTime);
+                google.script.run.withSuccessHandler(function (response) {
+                    response = JSON.parse(response);
 
-                $checkOutBtn.hide();
-                $openFileSelectBtn.hide();
-                $refreshLocationBtn.hide();
-                $statusBadge.text('ออกงานแล้ว');
-                $statusBadge.removeClass().addClass('status-badge status-out');
-                $statusText.html($statusText.html() + '<br>ออกงานเมื่อ: ' + (new Date()).toLocaleTimeString('th-TH'));
-            })
-                .withFailureHandler(function (error) {
-                    console.error('Error during logout:', error);
+                    if (!response.success) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'ออกจากระบบไม่สำเร็จ',
+                            text: response.message || 'กรุณาลองใหม่อีกครั้ง',
+                            confirmButtonText: 'ตกลง',
+                            customClass: SwalCustomClass
+                        });
+                        return;
+                    }
                     Swal.fire({
-                        icon: 'error',
-                        title: 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
-                        text: 'กรุณาลองใหม่อีกครั้ง',
+                        icon: 'success',
+                        title: 'ลงเวลาออกงานสำเร็จ!',
                         confirmButtonText: 'ตกลง',
                         customClass: SwalCustomClass
-                    });
+                    })
+                    attendanceStatus = 'OUT'
+                    const checkOutTime = new Date();
+                    currentUser.photos = uploaded_files.map(id => 'https://lh3.googleusercontent.com/d/' + id);
+                    sendTelegramNotification(attendanceStatus, checkOutTime);
+
+                    $checkOutBtn.hide();
+                    $openFileSelectBtn.hide();
+                    $refreshLocationBtn.hide();
+                    $statusBadge.text('ออกงานแล้ว');
+                    $statusBadge.removeClass().addClass('status-badge status-out');
+                    $statusText.html($statusText.html() + '<br>ออกงานเมื่อ: ' + (new Date()).toLocaleTimeString('th-TH'));
                 })
-                .checkOutUser({
-                    empCode: currentUser.empCode,
-                    photoFile: {
-                        name: $previewImage.attr('data-filename'),
-                        type: $previewImage.attr('data-filetype'),
-                        dataUrl: $previewImage.attr('src')
-                    },
-                    checkOutTime: new Date().toISOString(),
-                    location: userLocation,
-                    currentUser: currentUser,
-                    accuracy: $currentAccuracy
-                });
-            console.log('Logging out user:', currentUser.empCode)
+                    .withFailureHandler(function (error) {
+                        console.error('Error during logout:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
+                            text: 'กรุณาลองใหม่อีกครั้ง',
+                            confirmButtonText: 'ตกลง',
+                            customClass: SwalCustomClass
+                        });
+                    })
+                    .checkOutUser({
+                        empCode: currentUser.empCode,
+                        checkOutTime: new Date().toISOString(),
+                        location: userLocation,
+                        currentUser: currentUser,
+                        accuracy: $currentAccuracy,
+                        remark: $('#remark').val().trim()
+                    });
+                console.log('Logging out user:', currentUser.empCode)
+            })
+
         }
 
 
@@ -1600,41 +1608,20 @@
                 showCancelButton: true,
                 confirmButtonText: 'ออกจากระบบ',
                 cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#6c757d'
+                customClass: SwalCustomClass
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Reset application state
-                    currentUser = null;
-                    attendanceStatus = 'none';
-                    checkInTime = null;
-                    checkOutTime = null;
-                    uploadedPhoto = null;
-
-                    // Reset form using jQuery
-                    $loginForm[0].reset();
-                    actualPinValues = ['', '', '', '']; // Reset actual PIN values
-                    $pinInputs.forEach($input => {
-                        $input.val('');
-                        $input.removeClass('filled masked');
-                    });
-
-                    // Reset UI using jQuery
-                    $statusBadge.text('ยังไม่ได้ลงเวลา');
-                    $statusBadge.removeClass().addClass('status-badge');
-                    $statusText.text('ยังไม่ได้ลงเวลาเข้างาน');
-                    $checkInBtn.removeClass('hidden');
-                    $photoUploadSection.addClass('hidden');
-
-                    // Switch screen using jQuery
-                    $attendanceScreen.addClass('hidden');
-                    $loginScreen.removeClass('hidden');
-
+                    window.open("<?= site_url ?>", "_top");
                     Swal.fire({
-                        icon: 'success',
-                        title: 'ออกจากระบบสำเร็จ',
-                        confirmButtonText: 'ตกลง',
-                        customClass: SwalCustomClass
-                    });
+                        iconHtml: '<i class="bi bi-box-arrow-right text-danger"></i>',
+                        title: 'กำลังออกจากระบบ...',
+                        allowOutsideClick: false,
+                        customClass: Object.assign({}, SwalCustomClass, { icon: 'border-0', title: 'text-danger' }),
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    })
+
                 }
             });
         }
@@ -1694,6 +1681,7 @@
                 accuracy: $currentAccuracy,
                 location: userLocation
             };
+
             google.script.run
                 .withSuccessHandler(function (response) {
                     console.log('Telegram notification sent via server:');
