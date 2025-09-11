@@ -31,9 +31,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/themes/dark.min.css"
         integrity="sha512-9j8LE+fuBZgXOsSyiXCw0LmM4LSLIo94AYem4pQzyqlbw5wC4qK2ytHjOLy9pGH3DbvoXawLPuiVfr8gXOKXWw=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link href="https://cdn.datatables.net/v/bs5/moment-2.29.4/dt-2.3.2/date-1.5.6/r-3.0.5/datatables.min.css"
-        rel="stylesheet" integrity="sha384-g0oloLK74xcQRricIumqtIsduu+rbd99qhw8i5tH9wmlmVs+qbGMfVvC/ry8OrG0"
+    <link
+        href="https://cdn.datatables.net/v/bs5/moment-2.29.4/jszip-3.10.1/dt-2.3.2/b-3.2.4/b-html5-3.2.4/b-print-3.2.4/date-1.5.6/fh-4.0.3/r-3.0.5/sl-3.0.1/datatables.min.css"
+        rel="stylesheet" integrity="sha384-XcE5dWMyuiPqvfsce+3Zmw+ioxmDKgsQcuGaKM5Uq907HUoW7g+JefVqJFyJep9X"
         crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css">
     <style>
         * {
             font-family: 'Noto Sans Thai', sans-serif !important;
@@ -151,16 +153,180 @@
             border: 1.5px solid #d4af37 !important;
             border-radius: 8px !important;
         }
+
+        .simple-popout {
+            border-radius: 6px;
+            font-size: 1.05rem;
+        }
+
+        .simple-popout:hover,
+        .simple-popout:focus {
+
+            color: #b8860b !important;
+            text-decoration: none !important;
+            transform: scale(1.05);
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #printArea,
+            #printArea * {
+                visibility: visible;
+            }
+
+            #printArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+
+            .table {
+                page-break-inside: auto;
+            }
+
+            .table tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+
+            .account-balance-report {
+                page-break-before: auto;
+                page-break-after: auto;
+                margin-bottom: 30px !important;
+            }
+
+            .gold-table-report,
+            .transaction-income-report,
+            .transaction-expense-report {
+                page-break-before: auto;
+                page-break-after: auto;
+                margin-bottom: 30px !important;
+            }
+
+            /* Only show tfoot on the last page when printing */
+            tfoot {
+                display: table-footer-group;
+            }
+
+            @media print {
+                tfoot {
+                    display: table-footer-group;
+                }
+            }
+
+            th {
+                background-color: #f8f9fa !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .bg-primary {
+                background-color: #0d6efd !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .text-white {
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .text-success {
+                color: #198754 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .text-danger {
+                color: #dc3545 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .text-warning {
+                color: #fd7e14 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
     </style>
+
 </head>
 
 <body>
-    <div class="text-center my-4">
-        <img src="https://img5.pic.in.th/file/secure-sv1/b6ea3192-e74b-4483-a7a5-ac5f86a81191.png" alt="โลโก้"
-            class="logo-img mb-2">
-        <h2 class="fw-bold gold-title mt-3">HENG MONEY 4289</h2>
-    </div>
-    <section id="main-sec" class="container-fluid my-4">
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand gold-title fw-bold" href="#">HENG MONEY</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#goldNavbar"
+                    aria-controls="goldNavbar" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse d-none" id="goldNavbar">
+                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0 gap-2">
+                        <li class="nav-item">
+                            <button class="nav-link px-3 fw-semibold text-secondary simple-popout"
+                                id="showSellSectionBtn">
+                                บันทึกซื้อ
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link px-3 fw-semibold text-secondary simple-popout"
+                                id="showTransactionSectionBtn">
+                                บันทึกรับจ่าย
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link px-3 fw-semibold text-secondary simple-popout"
+                                id="createSummaryReportBtn">
+                                สรุปรายงานประจำวัน
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link px-3 fw-semibold text-secondary simple-popout"
+                                id="showBuySummarySectionBtn">
+                                สรุปจำนวนบิลซื้อ
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link px-3 fw-semibold text-secondary simple-popout" id="logoutBtn">
+                                ออกจากระบบ
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        <div class="text-center my-4">
+            <img src="https://img5.pic.in.th/file/secure-sv1/b6ea3192-e74b-4483-a7a5-ac5f86a81191.png" alt="โลโก้"
+                class="logo-img mb-2">
+            <h2 class="fw-bold gold-title mt-3">HENG MONEY 4289</h2>
+        </div>
+    </header>
+    <section id="login-section" class="container my-5" style="max-width: 400px;">
+        <div class="card gold-form-card shadow  rounded-4">
+            <div class="card-body">
+                <h3 class="gold-title text-center mb-4">เข้าสู่ระบบ</h3>
+                <form id="loginForm" autocomplete="off">
+                    <div class="mb-3">
+                        <label for="loginUser" class="form-label text-dark">ชื่อผู้ใช้</label>
+                        <input type="text" class="form-control" id="loginUser" name="loginUser" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label for="loginPassword" class="form-label text-dark">รหัสผ่าน</label>
+                        <input type="password" class="form-control" id="loginPassword" name="loginPassword" required>
+                    </div>
+                    <button type="submit" class="btn gold-btn w-100 py-2 fw-bold border">เข้าสู่ระบบ</button>
+                </form>
+            </div>
+        </div>
+    </section>
+    <section id="main-sec" class="container-fluid my-4" style="display: none;">
         <div class="row">
             <div class="col-12">
                 <!-- กรุณาคลิกที่สถานะ เพื่อยกเลิก -->
@@ -174,10 +340,45 @@
             </div>
         </div>
     </section>
+    <section id="transaction-sec" class="container-fluid my-4" style="display: none;">
+        <div class="row">
+            <div class="col-12">
+                <!-- กรุณาคลิกที่สถานะ เพื่อยกเลิก -->
+                <p class="mb-3">คลิกที่ปุ่ม "สำเร็จ" เพื่อยกเลิกข้อมูลการซื้อ</p>
+            </div>
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table id="transactionTable" class="table table-striped table-bordered table-hover"
+                        style="width: 100%;">
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section id="buy-summary-sec" class="container-fluid my-4" style="display: none;">
+        <div class="row">
+            <div class="col-12">
+                <h3 class="gold-title text-center mb-4">สรุปจำนวนบิลซื้อ</h3>
+                <div class="table-responsive">
+                    <table id="buySummaryTable" class="table table-striped table-bordered table-hover"
+                        style="width: 100%;">
+                        <thead>
+                            <!-- Data will be inserted here -->
+                        </thead>
+                        <tbody id="buySummaryTableBody">
+                            <!-- Data will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
     <!-- Modal for gold table -->
-    <div class="modal fade" id="addSellDataModal" tabindex="-1" aria-labelledby="addSellDataModalLabel" aria-hidden="true">
+    <div class="modal fade" id="addSellDataModal" tabindex="-1" aria-labelledby="addSellDataModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content gold-form-card" style="background: #fff; border: 2px solid #d4af37; color: #232526;">
+            <div class="modal-content gold-form-card"
+                style="background: #fff; border: 2px solid #d4af37; color: #232526;">
                 <div class="modal-header border-0 bg-light">
                     <h3 class="modal-title gold-title w-100 text-center" id="addSellDataModalLabel">บันทึกซื้อ</h3>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -193,13 +394,15 @@
                                     <i class="bi bi-calendar"></i>
                                 </button>
                             </div> -->
-                            <input type="text" class="form-control bg-primary-subtle" id="date" name="date" placeholder="เลือกวันที่"
-                                required style="border: 1.5px solid #d4af37; background: #fff; color: #232526;" readonly>
+                            <input type="text" class="form-control bg-primary-subtle" id="date" name="date"
+                                placeholder="เลือกวันที่" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;" readonly>
                         </div>
 
                         <div class="mb-3">
                             <label for="category" class="form-label text-dark">หมวดหมู่</label>
-                            <select class="form-select" id="category" name="category" required style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                            <select class="form-select" id="category" name="category" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
                                 <option value="" disabled selected></option>
                                 <? lists.category.forEach(function (item) { ?>
                                 <option value="<?= item ?>">
@@ -210,8 +413,10 @@
                         </div>
                         <div class="mb-3">
                             <label for="product" class="form-label text-dark">สินค้า (คีย์%)</label>
-                            <input type="number" class="form-control" id="product" name="product" placeholder="เช่น ทอง71"
-                                required style="border: 1.5px solid #d4af37; background: #fff; color: #232526;" min="0" max="100" step="0.1" onkeyup="handlePercentage(this)">
+                            <input type="number" class="form-control" id="product" name="product"
+                                placeholder="เช่น ทอง71" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;" min="0" max="100"
+                                step="0.1" onkeyup="handlePercentage(this)">
                         </div>
                         <div class="mb-3">
                             <label for="weight" class="form-label text-dark">น้ำหนัก (กรัม)</label>
@@ -225,7 +430,8 @@
                         </div>
                         <div class="mb-3">
                             <label for="bank" class="form-label text-dark">ธนาคาร</label>
-                            <select class="form-select" id="bank" name="bank" required style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                            <select class="form-select" id="bank" name="bank" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
                                 <option value="" disabled selected></option>
                                 <? lists.bank.forEach(function (item) { ?>
                                 <option value="<?= item ?>">
@@ -236,7 +442,8 @@
                         </div>
                         <div class="mb-4">
                             <label for="staff" class="form-label text-dark">พนักงาน</label>
-                            <select class="form-select" id="staff" name="staff" required style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                            <select class="form-select" id="staff" name="staff" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
                                 <option value="" disabled selected></option>
                                 <? lists.staff.forEach(function (item) { ?>
                                 <option value="<?= item ?>">
@@ -251,211 +458,849 @@
             </div>
         </div>
     </div>
+    <!-- Modal for Melt Bill -->
+    <div class="modal fade" id="meltBillModal" tabindex="-1" aria-labelledby="meltBillModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content gold-form-card">
+                <div class="modal-header border-0 bg-light">
+                    <h3 class="modal-title gold-title w-100 text-center" id="meltBillModalLabel">สร้างบิลหลอม</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                </div>
+                <div class="modal-body" style="background: #fff; color: #232526;">
+                    <div class="mb-4">
+                        <!-- Table for selected data -->
+                        <div class="mb-4">
+                            <h6 class="gold-title mb-2">รายการที่เลือก</h6>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm table-light" id="selectedRowsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>สินค้า (คีย์%)</th>
+                                            <th>น้ำหนัก (กรัม)</th>
+                                            <th>ยอดซื้อ (บาท)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Filled by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <h5 class="gold-title mb-3">สรุปข้อมูล</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="border rounded p-2 mb-2 bg-light text-center">
+                                    <span class="fw-semibold text-dark">น้ำหนักก่อนหลอม:</span>
+                                    <span id="summaryWeight" class="fw-bold text-primary">0.00</span> <span
+                                        class="text-secondary">กรัม</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="border rounded p-2 mb-2 bg-light text-center">
+                                    <span class="fw-semibold text-dark">ยอดซื้อ:</span>
+                                    <span id="summaryPrice" class="fw-bold text-success">0</span> <span
+                                        class="text-secondary">บาท</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <form id="meltBillForm">
+                        <div class="mb-3">
+                            <label for="meltWeight" class="form-label text-dark">น้ำหนักหลังหลอม (กรัม)
+                                (ไม่บังคับ)</label>
+                            <input type="number" class="form-control" id="meltWeight" name="meltWeight"
+                                placeholder="กรอกน้ำหนักหลังหลอม" min="0" step="0.01">
+                        </div>
+                        <div class="mb-3">
+                            <label for="meltSellPrice" class="form-label text-dark">ยอดขาย (บาท) (ไม่บังคับ)</label>
+                            <input type="number" class="form-control" id="meltSellPrice" name="meltSellPrice"
+                                placeholder="กรอกยอดขายหลังหลอม" min="0" step="0.01">
+                        </div>
+                        <div class="mb-3">
+                            <label for="recorder" class="form-label text-dark">ผู้บันทึกข้อมูล</label>
+                            <select class="form-select" id="recorder" name="recorder" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                                <option value="" disabled selected></option>
+                                <? lists.staff.forEach(function (item) { ?>
+                                <option value="<?= item ?>">
+                                    <?= item ?>
+                                </option>
+                                <? }) ?>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn gold-btn w-100 py-2 fw-bold">บันทึกบิลหลอม</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Transaction Form -->
+    <div class="modal fade" id="addTransactionModal" tabindex="-1" aria-labelledby="addTransactionModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content gold-form-card">
+                <div class="modal-header border-0 bg-light">
+                    <h3 class="modal-title gold-title w-100 text-center" id="addTransactionModalLabel">
+                        เพิ่มข้อมูลรับจ่าย</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                </div>
+                <div class="modal-body" style="background: #fff; color: #232526;">
+                    <form id="transactionForm" onsubmit="submitTransactionForm(event)">
+                        <div class="mb-3">
+                            <label for="transactionDate" class="form-label text-dark">วันที่</label>
+                            <input type="text" class="form-control bg-primary-subtle" id="transactionDate"
+                                name="transactionDate" placeholder="เลือกวันที่" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transactionType" class="form-label text-dark">ประเภท</label>
+                            <select class="form-select" id="transactionType" name="transactionType" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                                <option value="" disabled selected></option>
+                                <option value="รับ">รับ</option>
+                                <option value="จ่าย">จ่าย</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transactionItem" class="form-label text-dark">รายการ</label>
+                            <textarea type="text" class="form-control" id="transactionItem" name="transactionItem"
+                                rows="3" placeholder="กรอกรายการ" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transactionBank" class="form-label text-dark">ธนาคาร</label>
+                            <select class="form-select" id="transactionBank" name="transactionBank" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                                <option value="" disabled selected></option>
+                                <? lists.bank.forEach(function (item) { ?>
+                                <option value="<?= item ?>">
+                                    <?= item ?>
+                                </option>
+                                <? }) ?>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transactionAmount" class="form-label text-dark">ยอดเงิน</label>
+                            <input type="number" class="form-control" id="transactionAmount" name="transactionAmount"
+                                placeholder="กรอกยอดเงิน" min="0" step="0.01" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                        </div>
+                        <div class="mb-3">
+                            <label for="transactionNote" class="form-label text-dark">หมายเหตุ</label>
+                            <input type="text" class="form-control" id="transactionNote" name="transactionNote"
+                                placeholder="หมายเหตุ (ถ้ามี)"
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                        </div>
+                        <div class="mb-4">
+                            <label for="transactionStaff" class="form-label text-dark">พนักงานบันทึก</label>
+                            <select class="form-select" id="transactionStaff" name="transactionStaff" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                                <option value="" disabled selected></option>
+                                <? lists.staff.forEach(function (item) { ?>
+                                <option value="<?= item ?>">
+                                    <?= item ?>
+                                </option>
+                                <? }) ?>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn gold-btn w-100 py-2 fw-bold">บันทึกข้อมูล</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- template for reports -->
+    <template id="goldTableReport_template">
+        <div class="gold-table-report">
+            <!-- <h3 class="gold-title text-center mb-4">รายงานการซื้อทอง</h3> -->
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th colspan="6" class="text-center" id="goldTableReportTitle"></th>
+                    </tr>
+                    <tr>
+                        <th class="text-center">#</th>
+                        <th class="text-center">สินค้า (คีย์%)</th>
+                        <th class="text-center">น้ำหนัก (กรัม)</th>
+                        <th class="text-center">ยอดซื้อ (บาท)</th>
+                        <th class="text-center">พนักงาน</th>
+                        <th class="text-center">ธนาคาร</th>
+                    </tr>
+                </thead>
+                <tbody id="goldTableReportBody"></tbody>
+            </table>
+        </div>
+    </template>
+    <template id="transactionReport_template">
+        <div class="transaction-combined-report mt-3">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th colspan="8" class="text-center" id="transactionCombinedReportTitle"></th>
+                    </tr>
+                    <tr>
+                        <th class="text-center">#</th>
+                        <th class="text-center">เวลา</th>
+                        <th class="text-center">ประเภท</th>
+                        <th class="text-center">รายการ</th>
+                        <th class="text-center">ยอดเงิน (บาท)</th>
+                        <th class="text-center">ธนาคาร</th>
+                        <th class="text-center">พนักงาน</th>
+                        <th class="text-center">หมายเหตุ</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionCombinedReportBody">
+                    <!-- Data will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+    <template id="accountsRemainingReport_template">
+        <div class="accounts-remaining-report my-3">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th colspan="4" class="text-center" id="accountsRemainingReportTitle"></th>
+                    </tr>
+                    <tr>
+                        <th class="text-center">#</th>
+                        <th class="text-center">ธนาคาร</th>
+                        <th class="text-center">ยอดเงิน (บาท)</th>
+                    </tr>
+                </thead>
+                <tbody id="accountsRemainingReportBody">
+                    <!-- Data will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </template>
+    <div id="printArea" style="display: none;"></div>
+
+
+    <script>
+
+        function submitTransactionForm(e) {
+            e.preventDefault();
+            const form = document.getElementById('transactionForm');
+            const data = {
+                date: $('#transactionDate').data('date') || moment().format('YYYY-MM-DD'),
+                type: form.transactionType.value,
+                item: form.transactionItem.value,
+                bank: form.transactionBank.value,
+                amount: form.transactionAmount.value,
+                note: form.transactionNote.value,
+                staff: form.transactionStaff.value
+            };
+            NProgress.start();
+            goldSwal({
+                title: 'กำลังบันทึกข้อมูล...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            google.script.run.withSuccessHandler(function () {
+                NProgress.done();
+                reloadTable('#transactionTable');
+                goldSwal({
+                    icon: 'success',
+                    title: 'บันทึกข้อมูลสำเร็จ',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+                $('#addTransactionModal').modal('hide');
+            }).withFailureHandler(function (error) {
+                NProgress.done();
+                goldSwal({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    html: error.message || error,
+                });
+            }).saveTransactionData(data);
+        }
+
+        // Show modal when addTransaction is called
+        function addTransaction() {
+            $('#addTransactionModal').modal('show');
+        }
+    </script>
+
     <script>
         $(document).ready(function () {
             moment.locale('th');
-            // flatpickr("#date", {
-            //     locale: "th",
-            //     dateFormat: "Y-m-d",
-            //     theme: "light",
-            //     allowInput: true,
-            //     altFormat: "d/m/Y",
-            //     altInput: true,
-            // });
-            // $("#calendarBtn").on("click", function () {
-            //     $("#date").flatpickr().open();
-            // });
             $('#date').val(moment().format('DD/MM/YYYY')).data('date', moment().format('YYYY-MM-DD'));
-            initDataTable();
+            $('#transactionDate').val(moment().format('DD/MM/YYYY')).data('date', moment().format('YYYY-MM-DD'));
+            initDataTable('#goldTable');
             $('#addSellDataModal').on('hidden.bs.modal', function () {
                 $('#goldForm')[0].reset();
                 $('#date').val(moment().format('DD/MM/YYYY')).data('date', moment().format('YYYY-MM-DD'));
+            });
+            $('#addTransactionModal').on('hidden.bs.modal', function () {
+                $('#transactionForm')[0].reset();
+                $('#transactionDate').val(moment().format('DD/MM/YYYY')).data('date', moment().format('YYYY-MM-DD'));
+            });
+
+            $('#category').change(function () {
+                if ($(this).val() === 'ค่าบริการ') {
+                    $('#product, #weight').val("").removeAttr('required').parent('.mb-3').hide()
+                } else {
+                    $('#product, #weight').attr('required', true).parent('.mb-3').show();
+                }
+            })
+
+            $('#showSellSectionBtn').on('click', function () {
+                if (!$('#main-sec').is(':visible')) {
+                    let currentShow = $('section:visible');
+                    currentShow.addClass('animate__animated animate__fadeOut animate__faster');
+                    setTimeout(function () {
+                        $('#main-sec').addClass('animate__animated animate__fadeIn animate__faster').show();
+                        currentShow.hide().removeClass('animate__fadeOut animate__fadeIn animate__faster');
+                        setTimeout(function () {
+                            $('#main-sec').removeClass('animate__fadeIn');
+                        }, 500);
+                        reloadTable('#goldTable');
+                    }, 500);
+                } else {
+                    reloadTable('#goldTable');
+                }
+            });
+            $('#showTransactionSectionBtn').on('click', function () {
+                if (!$('#transaction-sec').is(':visible')) {
+                    let currentShow = $('section:visible');
+                    currentShow.addClass('animate__animated animate__fadeOut animate__faster');
+                    setTimeout(function () {
+                        $('#transaction-sec').addClass('animate__animated animate__fadeIn animate__faster').show();
+                        currentShow.hide().removeClass('animate__fadeOut animate__fadeIn animate__faster');
+                        setTimeout(function () {
+                            $('#transaction-sec').removeClass('animate__fadeIn animate__faster');
+                        }, 500);
+                        reloadTable('#transactionTable');
+                    }, 500);
+                } else {
+                    reloadTable('#transactionTable');
+                }
+            });
+            $('#showBuySummarySectionBtn').on('click', function () {
+                if (!$('#buy-summary-sec').is(':visible')) {
+                    let currentShow = $('section:visible');
+                    currentShow.addClass('animate__animated animate__fadeOut animate__faster');
+                    setTimeout(function () {
+                        $('#buy-summary-sec').addClass('animate__animated animate__fadeIn animate__faster').show();
+                        currentShow.hide().removeClass('animate__fadeOut animate__fadeIn animate__faster');
+                        setTimeout(function () {
+                            $('#buy-summary-sec').removeClass('animate__fadeIn animate__faster');
+                        }, 500);
+                        reloadTable('#buySummaryTable');
+                    }, 500);
+                } else {
+                    reloadTable('#buySummaryTable');
+                }
+            });
+            $('#createSummaryReportBtn').on('click', function () {
+                const bankList = $('#transactionBank option').toArray().map(x => x.innerHTML.trim()).filter(x => x != "")
+                goldSwal({
+                    title: 'เลือกรายงานที่ต้องการสรุป',
+                    html: `
+                        <div class="text-start">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="summaryBuyTable" checked>
+                                <label class="form-check-label" for="summaryBuyTable">รายงานซื้อเข้า</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="summaryTransactionTable" checked>
+                                <label class="form-check-label" for="summaryTransactionTable">รายงานรับ-จ่าย</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="summaryAccount" checked>
+                                <label class="form-check-label" for="summaryAccount">รายงานสรุปยอดบัญชี</label>
+                            </div>
+                            <div id="bankCheckboxes" class="ps-4 mt-2">
+                                ${bankList.filter(bank => !bank.includes('เฮีย')).map(bank => `
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="bank_${bank}" value="${bank}" checked>
+                                        <label class="form-check-label" for="bank_${bank}">${bank}</label>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'สร้างรายงาน',
+                    cancelButtonText: 'ยกเลิก',
+                    didOpen: () => {
+                        $('#summaryAccount').on('change', function () {
+                            const checked = $(this).is(':checked');
+                            $('#bankCheckboxes input[type="checkbox"]').prop('checked', checked);
+                        });
+                    },
+                    preConfirm: () => {
+                        return {
+                            buy: $('#summaryBuyTable').is(':checked'),
+                            trans: $('#summaryTransactionTable').is(':checked'),
+                            acc: $('#summaryAccount').is(':checked'),
+                            banks: $('#bankCheckboxes input[type="checkbox"]:checked').map(function () { return this.value; }).get()
+                        };
+                    }
+                }).then(result => {
+                    if (result.isConfirmed && result.value) {
+                        generateSummaryReport(result.value)
+                    }
+                });
             });
         });
 
         function handlePercentage(input) {
             let value = parseFloat(input.value);
-            if(value > 100){
+            if (value > 100) {
                 value = (value / 10).toFixed(1);
                 input.value = value;
             }
         }
-        function initDataTable() {
-            $('#goldTable').DataTable({
-                processing: true,
-                serverSide: false,
-                responsive: true,
-                scrollX: true,
-                dom: "<'row justify-content-between'<'col-md-auto buttons-sec'><'col-md-auto'f>>" +
-                    "<'row mt-2'<'col-12't>>" +
-                    "<'row justify-content-between mt-2'<'col-md-auto'i><'col-md-auto'p>>",
-                language: {
-                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/Thai.json'
-                },
-                language: {
-                    url: 'https://cdn.datatables.net/plug-ins/2.3.2/i18n/th.json'
-                },
-                pageLength: 30,
-                ajax: function (data, callback, settings) {
-                    NProgress.start();
-                    try {
-                        google.script.run.withSuccessHandler(function (response) {
-                            response = JSON.parse(response);
-                            console.log(response);
+
+        let datatable, transactionTable;
+        async function initDataTable(selector) {
+            if (selector === '#goldTable') {
+                datatable = $(selector).DataTable({
+                    processing: true,
+                    serverSide: false,
+                    responsive: true,
+                    scrollX: true,
+                    dom: "<'row justify-content-between'<'col-md-auto buttons-sec1'><'col-md-auto'f>>" +
+                        "<'row mt-2'<'col-12't>>" +
+                        "<'row justify-content-between mt-2'<'col-md-auto'i><'col-md-auto'p>>",
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/2.3.2/i18n/th.json',
+                        emptyTable: "ยังไม่มีข้อมูลของวันที่ <b>" + moment().format('DD/MM/YYYY') + "</b> กรุณาเพิ่มข้อมูลการซื้อ",
+                        processing: 'กำลังโหลดข้อมูล...',
+                    },
+                    select: {
+                        style: 'multi+shift',
+                        selector: 'td:nth-child(2)'
+                    },
+                    pageLength: 30,
+                    ajax: function (data, callback, settings) {
+                        NProgress.start();
+                        try {
+                            google.script.run.withSuccessHandler(function (response) {
+                                response = JSON.parse(response);
+                                NProgress.done();
+                                isLoadAll = false
+                                console.log('Response:', response);
+                                callback({
+                                    data: response,
+                                    recordsTotal: response.length,
+                                    recordsFiltered: response.length
+                                });
+                            }).withFailureHandler(function (error) {
+                                NProgress.done();
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'เกิดข้อผิดพลาด',
+                                    text: error.message || error,
+                                });
+                            }).getBuyData(isLoadAll, false, window.branch);
+                        } catch {
                             NProgress.done();
                             callback({
-                                data: response,
-                                recordsTotal: response.length,
-                                recordsFiltered: response.length
-                            });
-                        }).withFailureHandler(function (error) {
-                            NProgress.done();
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'เกิดข้อผิดพลาด',
-                                text: error.message || error,
-                            });
-                        }).getSellData();
-                    } catch {
-                        NProgress.done();
-                        callback({
-                            data: [],
-                            recordsTotal: 0,
-                            recordsFiltered: 0
-                        })
-                    }
+                                data: [],
+                                recordsTotal: 0,
+                                recordsFiltered: 0
+                            })
+                        }
 
-                },
-                columns: [
-                    {
-                        data: null,
-                        title: '#',
-                        orderable: false,
-                        searchable: false,
-                        className: 'text-center text-nowrap',
-                        render: function (data, type, row, meta) {
-                            return meta.row + 1;
-                        }
                     },
-                    {
-                        data: 'date',
-                        title: 'วันที่',
-                        render: function (data) {
-                            return moment(data).format('DD/MM/YYYY');
-                        }
-                    },
-                    {
-                        data: 'date',
-                        title: 'เวลา',
-                        render: function (data) {
-                            return moment(data).format('HH:mm');
-                        }
-                    },
-                    {
-                        data: 'category',
-                        title: 'หมวดหมู่',
-                        visible: false,
-                        render: function (data) {
-                            return data || 'ไม่ระบุ';
-                        }
-                    },
-                    {
-                        data: 'product',
-                        title: 'สินค้า (คีย์%)',
-                        render: function (data) {
-                            return data || 'ไม่ระบุ';
-                        }
-                    },
-                    {
-                        data: 'weight',
-                        title: 'น้ำหนัก (กรัม)',
-                        render: function (data) {
-                            return data ? parseFloat(data).toFixed(2) : '0.00';
-                        }
-                    },
-                    {
-                        data: 'price',
-                        title: 'ยอดซื้อ (บาท)',
-                        render: function (data) {
-                            return data ? parseInt(data).toLocaleString('th-TH') : '0';
-                        }
-                    },
-                    {
-                        data: 'bank',
-                        title: 'ธนาคาร',
-                        render: function (data) {
-                            return data || 'ไม่ระบุ';
-                        }
-                    },
-                    {
-                        data: 'seller',
-                        title: 'พนักงาน',
-                        render: function (data) {
-                            return data || 'ไม่ระบุ';
-                        }
-                    },
-                    {
-                        data: 'status',
-                        title: 'สถานะ',
-                        render: function (data) {
-                            if (data === 'ยกเลิก') {
-                                return `<button type="button" class="w-100 btn btn-sm btn-secondary text-nowrap" style="pointer-events: none;">
+                    columns: [
+                        {
+                            data: null,
+                            title: '#',
+                            orderable: false,
+                            searchable: false,
+                            className: 'text-center text-nowrap',
+                            render: function (data, type, row, meta) {
+                                return meta.row + 1;
+                            }
+                        },
+                        {
+                            data: null,
+                            title: 'เลือก',
+                            visible: false,
+                            orderable: false,
+                            searchable: false,
+                            className: 'text-center text-nowrap select-checkbox',
+                            render: function (data, type, row) {
+                                return '';
+                            }
+                        },
+                        {
+                            data: 'date',
+                            title: 'วันที่',
+                            render: function (data) {
+                                return moment(data).format('DD/MM/YYYY');
+                            }
+                        },
+                        {
+                            data: 'date',
+                            title: 'เวลา',
+                            render: function (data) {
+                                return moment(data).format('HH:mm');
+                            }
+                        },
+                        {
+                            data: 'category',
+                            title: 'หมวดหมู่',
+                            visible: false,
+                            render: function (data) {
+                                return data || 'ไม่ระบุ';
+                            }
+                        },
+                        {
+                            data: 'product',
+                            title: 'สินค้า (คีย์%)',
+                            render: function (data) {
+                                return data || 'ไม่ระบุ';
+                            }
+                        },
+                        {
+                            data: 'weight',
+                            title: 'น้ำหนัก (กรัม)',
+                            render: function (data) {
+                                return data ? parseFloat(data).toFixed(2) : '0.00';
+                            }
+                        },
+                        {
+                            data: 'price',
+                            title: 'ยอดซื้อ (บาท)',
+                            render: function (data) {
+                                return data ? parseInt(data).toLocaleString('th-TH') : '0';
+                            }
+                        },
+                        {
+                            data: 'bank',
+                            title: 'ธนาคาร',
+                            render: function (data) {
+                                return data || 'ไม่ระบุ';
+                            }
+                        },
+                        {
+                            data: 'seller',
+                            title: 'พนักงาน',
+                            render: function (data) {
+                                return data || 'ไม่ระบุ';
+                            }
+                        },
+                        {
+                            data: 'status',
+                            title: 'สถานะ',
+                            render: function (data, type, row) {
+                                if (data === 'ยกเลิก') {
+                                    return `<button type="button" class="w-100 btn btn-sm text-black-50 text-nowrap" style="pointer-events: none;">
                                             <i class="bi bi-x-circle-fill"></i> ยกเลิก
                                         </button>`;
-                            } else if (data === 'เสร็จสิ้น') {
-                                return '<button type="button" class="w-100 btn btn-sm btn-success text-nowrap" onclick="cancelRow(this);"><i class="bi bi-check-circle-fill"></i> สำเร็จ</button>';
-                            } else {
-                                return '<button type="button" class="w-100 btn btn-sm btn-secondary text-nowrap" style="pointer-events: none;"><i class="bi bi-question-circle-fill"></i> ไม่ระบุ</button>';
+                                }
+                                else if (data === 'เสร็จสิ้น') {
+                                    if (row.enableEdit) return '<button type="button" class="w-100 btn btn-sm btn-success text-nowrap" onclick="cancelRow(this);"><i class="bi bi-check-circle-fill"></i> สำเร็จ</button>';
+                                    return '<button type="button" class="w-100 btn btn-sm btn-secondary text-nowrap" style="cursor: not-allowed; pointer-events: none;"><i class="bi bi-check-circle-fill"></i> สำเร็จ</button>';
+                                } else {
+                                    return '<button type="button" class="w-100 btn btn-sm bg-secondary-subtle text-dark text-nowrap" style="cursor: not-allowed; pointer-events: none;"><i class="bi bi-question-circle-fill"></i> ไม่ระบุ</button>';
+                                }
+                            }
+                        },
+                        {
+                            data: 'billNo',
+                            title: 'เลขบิลหลอม',
+                            visible: false,
+                            render: function (data) {
+                                return data || 'ไม่ระบุ';
+                            }
+                        },
+                        {
+                            data: 'monthYear',
+                            title: 'เดือน/ปี',
+                            visible: false,
+                            render: function (data) {
+                                return data || 'ไม่ระบุ';
+                            }
+                        },
+                        {
+                            data: 'uuid',
+                            title: 'เลขอ้างอิง',
+                            className: 'text-nowrap none text-black-50',
+                            render: function (data) {
+                                return data || 'ไม่ระบุ';
                             }
                         }
-                    },
-                    {
-                        data: 'billNo',
-                        title: 'หมายเลขบิล',
-                        visible: false,
-                        render: function (data) {
-                            return data || 'ไม่ระบุ';
-                        }
-                    },
-                    {
-                        data: 'monthYear',
-                        title: 'เดือน/ปี',
-                        visible: false,
-                        render: function (data) {
-                            return data || 'ไม่ระบุ';
-                        }
-                    },
-                    {
-                        data: 'uuid',
-                        title: 'เลขอ้างอิง',
-                        className: 'text-nowrap none text-black-50',
-                        render: function (data) {
-                            return data || 'ไม่ระบุ';
-                        }
-                    }
 
-                ],
-                createdRow: function (row, data, dataIndex) {
-                    $(row).addClass('text-nowrap');
-                    if (data.status === 'ยกเลิก') {
-                        $(row).find('td').css('font-weight', 300).css('color', '#ff0000');
-                    }
-                },
-                initComplete: function (settings, json) {
-                    NProgress.done();
-                    $('.buttons-sec').html(`
-                        <button class="btn gold-btn btn-sm w-100" data-bs-toggle="modal" data-bs-target="#addSellDataModal">
-                            <i class="bi bi-plus-circle-fill"></i> เพิ่มข้อมูลการซื้อ
-                        </button>
+                    ],
+                    createdRow: function (row, data, dataIndex) {
+                        $(row).addClass('text-nowrap');
+                        if (data.status === 'ยกเลิก') {
+                            $(row).find('td').css('font-weight', 300).css('color', '#ff0000');
+                        }
+                    },
+                    initComplete: function (settings, json) {
+                        NProgress.done();
+                        $('.buttons-sec1').html(`
+                        <div class="d-flex flex-wrap gap-2 w-100 mb-2 align-items-center" id="addSellDataActions" role="group">
+                            <button class="btn btn-warning flex-fill text-nowrap d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#addSellDataModal" id="addSellDataBtn">
+                                <i class="bi bi-plus-circle-fill me-2"></i> เพิ่มข้อมูลการซื้อ
+                            </button>
+                            <button class="btn btn-warning flex-fill text-nowrap d-flex align-items-center justify-content-center" id="createMeltBillBtn">
+                                <i class="bi bi-file-earmark-plus-fill me-2"></i> บันทึกบิลหลอม
+                            </button>
+                        </div>
+                        <div class="d-none flex-wrap gap-2 w-100 mb-2 align-items-center" id="meltBillActions" role="group">
+                            <button class="btn btn-primary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="createMeltBillBtn" data-bs-toggle="modal" data-bs-target="#meltBillModal">
+                                <i class="bi bi-file-earmark-plus-fill me-2"></i> สร้างบิลหลอม
+                            </button>
+                            <button class="btn btn-outline-secondary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="cancelMeltBillSelectionBtn" onclick="datatable.rows({ selected: true }).deselect(); showTableButtons('add');datatable.column(1).visible(false);reloadTable('#goldTable');">
+                                <i class="bi bi-x-circle me-2"></i> ยกเลิกการเลือก
+                            </button>
+                        </div>
                     `);
-                },
-                columnDefs: [
-                    {
-                        targets: '_all',
-                        className: 'dt-head-center dt-head-nowrap text-center dt-body-center all',
+                        $('#createMeltBillBtn').on('click', function () {
+                            createMeltBillBtn();
+                        });
+                    },
+                    columnDefs: [
+                        {
+                            targets: '_all',
+                            className: 'dt-head-center dt-head-nowrap text-center dt-body-center all',
+                        }
+                    ]
+                });
+
+                datatable.on('select deselect', function (e, dt, type, indexes) {
+                    let selectedRows = datatable.rows({ selected: true }).count()
+                    if (type === 'row') {
+                        indexes.forEach(function (idx) {
+                            const rowData = datatable.row(idx).data();
+                            if (rowData && rowData.status === 'ยกเลิก') {
+                                datatable.row(idx).deselect();
+                            }
+                        });
                     }
-                ]
-            });
+                    console.log(`Selected rows: ${selectedRows}`);
+                })
+
+            }
+            else if (selector === '#transactionTable') {
+                transactionTable = $(selector).DataTable({
+                    processing: true,
+                    serverSide: false,
+                    responsive: true,
+                    scrollX: true,
+                    dom: "<'row justify-content-between'<'col-md-auto buttons-sec2'><'col-md-auto'f>>" +
+                        "<'row mt-2'<'col-12't>>" +
+                        "<'row justify-content-between mt-2'<'col-md-auto'i><'col-md-auto'p>>",
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/2.3.2/i18n/th.json',
+                        emptyTable: "ยังไม่มีข้อมูลของวันที่ <b>" + moment().format('DD/MM/YYYY') + "</b> กรุณาเพิ่มข้อมูลการรับจ่าย",
+                        processing: 'กำลังโหลดข้อมูล...',
+                    },
+                    pageLength: 30,
+                    ajax: function (data, callback, settings) {
+                        NProgress.start();
+                        try {
+                            google.script.run.withSuccessHandler(function (response) {
+                                response = JSON.parse(response);
+                                console.log(response);
+                                NProgress.done();
+                                callback({
+                                    data: response,
+                                    recordsTotal: response.length,
+                                    recordsFiltered: response.length
+                                });
+                            }).withFailureHandler(function (error) {
+                                NProgress.done();
+                                isLoadAll = false;
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'เกิดข้อผิดพลาด',
+                                    text: error.message || error,
+                                });
+                            }).getTransactionData(isLoadAll);
+                        } catch {
+                            NProgress.done();
+                            callback({
+                                data: [],
+                                recordsTotal: 0,
+                                recordsFiltered: 0
+                            })
+                        }
+
+                    },
+                    columns: [
+                        {
+                            data: null,
+                            title: '#',
+                            orderable: false,
+                            searchable: false,
+                            className: 'text-center text-nowrap',
+                            render: function (data, type, row, meta) {
+                                return meta.row + 1;
+                            }
+                        },
+                        {
+                            data: 'date',
+                            title: 'วันที่',
+                            render: function (data) {
+                                return moment(data).format('DD/MM/YYYY');
+                            }
+                        },
+                        {
+                            data: 'date',
+                            title: 'เวลา',
+                            render: function (data) {
+                                return moment(data).format('HH:mm');
+                            }
+                        },
+                        {
+                            data: 'type',
+                            title: 'ประเภท',
+                            render: function (data) {
+                                return data || 'ไม่ระบุ';
+                            }
+                        },
+                        {
+                            data: 'item',
+                            title: 'รายการ',
+                            render: function (data) {
+                                return data || 'ไม่ระบุ';
+                            }
+                        },
+                        {
+                            data: 'bank',
+                            title: 'ธนาคาร',
+                            render: function (data) {
+                                return data || 'ไม่ระบุ';
+                            }
+                        },
+                        {
+                            data: 'amount',
+                            title: 'ยอดเงิน',
+                            render: function (data) {
+                                return data ? parseFloat(data).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
+                            }
+                        },
+                        {
+                            data: 'note',
+                            title: 'หมายเหตุ',
+                            render: function (data) {
+                                return data || '';
+                            }
+                        },
+                        {
+                            data: 'staff',
+                            title: 'พนักงานบันทึก',
+                            render: function (data) {
+                                return data || 'ไม่ระบุ';
+                            }
+                        },
+                        {
+                            data: 'status',
+                            title: 'สถานะ',
+                            render: function (data, type, row) {
+                                if (data === 'ยกเลิก') {
+                                    return `<button type="button" class="w-100 btn btn-sm text-blexk-50 text-nowrap" style="pointer-events: none;">
+                                                <i class="bi bi-x-circle-fill"></i> ยกเลิก
+                                            </button>`;
+                                } else {
+                                    if (row.enableEdit) {
+                                        return `<button type="button" class="w-100 btn btn-sm btn-success text-nowrap" onclick="cancelRow(this);">
+                                                <i class="bi bi-check-circle-fill"></i> เสร็จสิ้น
+                                            </button>`;
+                                    }
+                                    return `<button type="button" class="w-100 btn btn-sm btn-secondary text-nowrap" style="cursor: not-allowed; pointer-events: none;">
+                                                <i class="bi bi-check-circle-fill"></i> เสร็จสิ้น
+                                            </button>`;
+                                }
+                            }
+                        }
+                    ],
+                    createdRow: function (row, data, dataIndex) {
+                        $(row).addClass('text-nowrap');
+                        if (data.status === 'ยกเลิก') {
+                            $(row).find('td').css('font-weight', 300).css('color', '#ff0000');
+                        }
+                    },
+                    initComplete: function (settings, json) {
+                        NProgress.done();
+                        $('.buttons-sec2').html(`
+                        <div class="d-flex flex-wrap gap-2 w-100 mb-2 align-items-center" id="addSellDataActions" role="group">
+                            <button class="btn btn-warning flex-fill text-nowrap d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#addTransactionModal" id="addTransactionBtn">
+                                <i class="bi bi-plus-circle-fill me-2"></i> เพิ่มข้อมูลการรับจ่าย
+                            </button>
+                        </div>
+                    `);
+                        $('#addTransactionBtn').on('click', function () {
+                            addTransaction();
+                        });
+                    },
+                    columnDefs: [
+                        {
+                            targets: '_all',
+                            className: 'dt-head-center dt-head-nowrap text-center dt-body-center all',
+                        }
+                    ]
+                });
+            } else if (selector === '#buySummaryTable') {
+                let table = $(selector)
+                let tbody = table.find('tbody')
+                let thead = table.find('thead')
+                tbody.empty()
+                thead.empty()
+                goldSwal({
+                    icon: 'info',
+                    title: 'กำลังโหลดข้อมูล...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading()
+                    }
+                });
+                let data = await new Promise((resolve, reject) => {
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getBuySummaryData();
+                });
+                data = JSON.parse(data);
+                console.log('Buy Summary Data:', data);
+                let { buyData, allSellers } = data;
+                allSellers = allSellers.map(seller => seller || 'ไม่ระบุ').sort((a, b) => a.localeCompare(b, 'th', { sensitivity: 'base' }));
+                thead.append($('<tr><th class="text-center">#</th><th class="text-center">เดือน/ปี</th></tr>').append(
+                    allSellers.map(seller => `<th class="text-center">${seller}</th>`).join('') + `<th class="text-end">รวม</th>`
+                ));
+                thead
+                tbody.append(
+                    buyData.map((item, index) => {
+                        return $('<tr>').append(
+                            `<td class="text-center">${index + 1}</td>`,
+                            `<td class="text-center">${item.monthYear}</td>`,
+                            allSellers.map(seller => {
+                                let value = item.sellers[seller] || 0;
+                                return `<td class="text-end">${parseInt(value)}</td>`;
+                            }).join(''),
+                            `<td class="text-end">${parseInt(Object.values(item.sellers || {}).reduce((a, b) => a + b, 0))}</td>`
+                        );
+                    })
+                );
+                Swal.close();
+            }
+        }
+
+        function showTableButtons(buttonsToShow) {
+            const addActions = $('#addSellDataActions');
+            const meltActions = $('#meltBillActions');
+            addActions.removeClass('d-flex').addClass('d-none');
+            meltActions.removeClass('d-flex').addClass('d-none');
+            if (buttonsToShow === 'add') {
+                addActions.addClass('d-flex').removeClass('d-none');
+            } else if (buttonsToShow === 'melt') {
+                meltActions.addClass('d-flex').removeClass('d-none');
+            } else if (buttonsToShow === 'both') {
+                addActions.addClass('d-flex').removeClass('d-none');
+                meltActions.addClass('d-flex').removeClass('d-none');
+            }
         }
 
         function submitForm(e) {
@@ -481,7 +1326,7 @@
             });
             google.script.run.withSuccessHandler(function () {
                 NProgress.done();
-                reloadTable();
+                reloadTable('#goldTable', false);
                 goldSwal({
                     icon: 'success',
                     title: 'บันทึกข้อมูลสำเร็จ',
@@ -489,6 +1334,7 @@
                     timer: 1500
                 });
                 $('#addSellDataModal').modal('hide');
+
             }).withFailureHandler(function (error) {
                 NProgress.done();
                 goldSwal({
@@ -501,12 +1347,13 @@
 
         function cancelRow(button) {
             const row = $(button).closest('tr');
-            const data = $('#goldTable').DataTable().row(row).data();
+            let table = $(button).closest('table');
+            let table_id = table.attr('id')
+            const data = table.DataTable().row(row).data();
             if (!data) return;
-
-            goldSwal({
-                title: 'ยืนยันการยกเลิก',
-                html: `
+            let html
+            if (table_id === 'goldTable') {
+                html = `
                     <div class="container-fluid">
                         <p>คุณต้องการยกเลิกข้อมูลนี้ใช่หรือไม่?</p>
                         <table class="table table-bordered table-sm mb-4 table-light" style="border-color:#d4af37;">
@@ -539,7 +1386,60 @@
                             </select>
                         </div>
                     </div>
-                `,
+                `
+            } else if (table_id === 'transactionTable') {
+                html = `
+                    <div class="container-fluid">
+                        <p>คุณต้องการยกเลิกข้อมูลนี้ใช่หรือไม่?</p>
+                        <table class="table table-bordered table-sm mb-4 table-light" style="border-color:#d4af37;">
+                            <tbody>
+                                <tr>
+                                    <th style="width:120px;color:#d4af37;">วันที่</th>
+                                    <td>${moment(data.date).format('DD/MM/YYYY')}</td>
+                                </tr>
+                                <tr>
+                                    <th style="color:#d4af37;">ประเภท</th>
+                                    <td>${data.type || ''}</td>
+                                </tr>
+                                <tr>
+                                    <th style="color:#d4af37;">รายการ</th>
+                                    <td>${data.item || ''}</td>
+                                </tr>
+                                <tr>
+                                    <th style="color:#d4af37;">ยอดเงิน</th>
+                                    <td>
+                                        ${data.type === 'รับ'
+                        ? '+'
+                        : data.type === 'จ่าย'
+                            ? '-'
+                            : ''
+                    }
+                                        ${data.amount ? parseFloat(data.amount).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'} บาท
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th style="color:#d4af37;">หมายเหตุ</th>
+                                    <td>${data.note || ''}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="form-group">
+                            <label for="cancelStaff" class="form-label">กรุณากรอกชื่อพนักงานที่ยกเลิก</label>
+                            <select id="cancelStaff" class="form-select text-center bg-light text-dark" required>
+                                <option value="" disabled selected>เลือกชื่อพนักงานที่ยกเลิก</option>
+                                <? lists.staff.forEach(function (item) { ?>
+                                    <option value="<?!= item ?>"><?!= item ?></option>
+                                <? }) ?>
+                            </select>
+                        </div>
+                    </div>
+                `
+
+            }
+
+            goldSwal({
+                title: 'ยืนยันการยกเลิก',
+                html: html,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'ยืนยัน',
@@ -574,7 +1474,7 @@
                             });
                             return;
                         }
-                        reloadTable();
+                        reloadTable('#' + table_id);
                         goldSwal({
                             icon: 'success',
                             title: 'ยกเลิกข้อมูลสำเร็จ',
@@ -589,19 +1489,379 @@
                             title: 'เกิดข้อผิดพลาด',
                             html: error.message || error,
                         });
-                    }).cancelSellData(data.uuid, result.value);
+                    })[table_id === 'goldTable' ? 'cancelSellData' : 'cancelTransaction'](data.uuid, result.value);
+                }
+            });
+        }
+        let isLoadAll = false;
+        function reloadTable(selector, isAll = false) {
+            isLoadAll = isAll || false;
+            if (DataTable.isDataTable(selector)) {
+                // clear the table before reloading
+                $(selector).DataTable().clear().draw();
+                $(selector).DataTable().ajax.reload();
+            } else {
+                initDataTable(selector);
+            }
+        }
+
+    </script>
+    <script>
+        function createMeltBillBtn() {
+            goldSwal({
+                title: 'กรุณาใส่รหัสผ่าน',
+                input: 'password',
+                inputPlaceholder: 'รหัสผ่าน',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก',
+                preConfirm: async (password) => {
+                    if (!password) {
+                        Swal.showValidationMessage('กรุณากรอกรหัสผ่าน');
+                    }
+                    Swal.showLoading();
+                    let validPassword = await new Promise((resolve, reject) => {
+                        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).validatePassword(password);
+                    });
+                    if (!validPassword) {
+                        Swal.showValidationMessage('รหัสผ่านไม่ถูกต้อง');
+                        return false;
+                    }
+                    return true;
+                }
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    reloadTable('#goldTable', true);
+                    goldSwal({
+                        icon: 'success',
+                        html: 'กรุณาเลือกแถวที่ต้องการสร้างบิลหลอม<br>และคลิกปุ่ม <span class="text-primary fw-bold">สร้างบิลหลอม</span>',
+                        confirmButtonText: 'ตกลง',
+                        showCancelButton: true,
+                        cancelButtonText: 'ยกเลิก',
+                    }).then((res) => {
+                        if (res.isConfirmed) {
+                            datatable.column(1).visible(true);
+                            showTableButtons('melt');
+                        }
+                    });
                 }
             });
         }
 
-        function reloadTable() {
-            if (DataTable.isDataTable('#goldTable')) {
-                $('#goldTable').DataTable().ajax.reload();
-            } else {
-                initDataTable();
+        // Fill selected rows table when modal is shown
+        $('#meltBillModal').on('shown.bs.modal', function () {
+            let selectedRows = datatable ? datatable.rows({ selected: true }).data().toArray() : [];
+            console.log('selectedRows', selectedRows);
+            let $tbody = $('#selectedRowsTable tbody');
+            let tbodyHtml = ''
+            selectedRows.forEach(row => {
+                console.log('row', row);
+                tbodyHtml += `
+                                <tr>
+                                    <td>${row.product || ''}</td>
+                                    <td>${row.weight ? parseFloat(row.weight).toFixed(2) : '0.00'}</td>
+                                    <td>${row.price ? parseInt(row.price).toLocaleString('th-TH') : '0'}</td>
+                                </tr>
+                            `;
+            });
+            $tbody.html(tbodyHtml);
+            // Update summary
+            let totalWeight = 0, totalPrice = 0;
+            selectedRows.forEach(row => {
+                totalWeight += parseFloat(row.weight) || 0;
+                totalPrice += parseFloat(row.price) || 0;
+            });
+            $('#summaryWeight').text(totalWeight.toFixed(2));
+            $('#summaryPrice').text(totalPrice.toLocaleString('th-TH', { maximumFractionDigits: 2 }));
+        })
+            .on('hidden.bs.modal', function () {
+                $('#selectedRowsTable tbody').empty();
+                $('#summaryWeight').text('0.00');
+                $('#summaryPrice').text('0');
+            });
+
+        $('#meltBillForm').on('submit', function (e) {
+            e.preventDefault();
+            const form = $(this);
+            const meltData = {
+                meltWeight: form.find('#meltWeight').val(),
+                beforeMeltWeight: parseFloat($('#summaryWeight').text()),
+                buyPrice: parseFloat($('#summaryPrice').text().replace(/,/g, '')),
+                meltSellPrice: form.find('#meltSellPrice').val(),
+                recorder: form.find('#recorder').val(),
+                selectedRows: datatable ? datatable.rows({ selected: true }).data().toArray().map(row => row.uuid) : []
+            };
+            if (meltData.selectedRows.length === 0) {
+                goldSwal({
+                    icon: 'warning',
+                    title: 'ไม่มีข้อมูลที่เลือก',
+                    text: 'กรุณาเลือกแถวที่ต้องการสร้างบิลหลอมก่อน',
+                });
+                return;
             }
+            NProgress.start();
+            goldSwal({
+                title: 'กำลังบันทึกบิลหลอม...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            console.log('meltData', meltData);
+            google.script.run.withSuccessHandler(function (res) {
+                NProgress.done();
+                res = JSON.parse(res);
+                if (!res.success) {
+                    goldSwal({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        html: res.message || 'ไม่สามารถบันทึกบิลหลอมได้',
+                    });
+                    return;
+                }
+                reloadTable();
+                goldSwal({
+                    icon: 'success',
+                    title: 'บันทึกบิลหลอมสำเร็จ',
+                    html: (res.message || 'บิลหลอมถูกบันทึกเรียบร้อยแล้ว') +
+                        `<br> <span class="text-danger">หากต้องการแก้ไขข้อมูลกรณาติด่อผู้ดูแลระบบ</span>`,
+                    confirmButtonText: 'ตกลง',
+                });
+                $('#meltBillModal').modal('hide');
+                reloadTable('#goldTable', true);
+            }).withFailureHandler(function (error) {
+                NProgress.done();
+                goldSwal({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    html: error.message || error,
+                });
+            }).saveMeltBill(meltData);
+        });
+    </script>
+    <script>
+        async function generateSummaryReport(reports) {
+            console.log('reports', reports);
+            goldSwal({
+                icon: 'info',
+                title: 'กำลังสร้างรายงาน...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                }
+            })
+            let summaryData = await new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler(e => {
+                    resolve(JSON.parse(e));
+                }).withFailureHandler(reject).getSummaryData(reports);
+            });
+            console.log('summaryData', summaryData);
+            // Clear print area
+            const printArea = document.getElementById('printArea');
+            printArea.innerHTML = '';
+
+            let reportContent = '';
+
+            // Generate Gold Purchase Report
+            if (reports.buy && summaryData.buy && summaryData.buy.length > 0) {
+                reportContent += generateGoldTableReport(summaryData.buy);
+            }
+
+            // Generate Transaction Reports
+            if (reports.trans && summaryData.trans && summaryData.trans.length > 0) {
+                const incomeTransactions = summaryData.trans.filter(t => t.type === 'รับ');
+                const expenseTransactions = summaryData.trans.filter(t => t.type === 'จ่าย');
+
+                if (incomeTransactions.length > 0 || expenseTransactions.length > 0) {
+                    reportContent += generateTransactionReport(summaryData.trans);
+                }
+
+            }
+
+            // Generate Account Balance Reports
+            if (reports.acc && summaryData.acc && reports.banks && reports.banks.length > 0) {
+                reportContent += generateAccountBalanceReports(summaryData.acc, reports.banks);
+            }
+
+            // Add all reports to print area
+            printArea.innerHTML = reportContent;
+
+            Swal.close();
+
+            // Print the content of the print area
+            const printWindow = window.open('', '', 'width=800,height=600');
+            printWindow.document.write('<html><head><title>รายงานประจำวันที่ ' + moment().format('DD/MM/YYYY') + '</title>');
+            printWindow.document.write('<meta charset="UTF-8">');
+            printWindow.document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css">');
+            printWindow.document.write('<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">');
+            printWindow.document.write('<style>body{font-family:"Noto Sans Thai",sans-serif;} .container, .account-balance-report, .gold-table-report, .transaction-income-report, .transaction-expense-report { margin: 24px auto; padding: 16px; } table { margin-bottom: 24px !important; }</style>');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(printArea.innerHTML);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.onload = function () {
+                printWindow.print();
+                // printWindow.close();
+            };
         }
 
+        function generateGoldTableReport(buyData) {
+            buyData = buyData.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+            const template = document.getElementById('goldTableReport_template');
+            const clone = template.content.cloneNode(true);
+
+            // Set title
+            const today = moment().format('ddddที่ DD/MM/YYYY');
+
+            const tbody = clone.getElementById('goldTableReportBody');
+            $(clone).find('#goldTableReportTitle').text(`รายงานการซื้อทอง ประจำวัน${today}`);
+            let totalWeight = 0;
+
+            buyData.forEach((item, index) => {
+                const row = document.createElement('tr');
+                const weight = parseFloat(item.weight) || 0;
+                const price = parseInt(item.price) || 0;
+
+                totalWeight += weight;
+
+                row.innerHTML = `
+                    <td class="text-center">${index + 1}</td>
+                    <td>${item.product || 'ไม่ระบุ'}</td>
+                    <td class="text-end">${weight.toFixed(2)}</td>
+                    <td class="text-end">
+                        ${price > 0 ? '-' : '+'} ${price.toLocaleString('th-TH')}</td>
+                    <td class="text-center">${item.seller || 'ไม่ระบุ'}</td>
+                    <td class="text-center">${item.bank || 'ไม่ระบุ'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            $(tbody).append('<tr><td colspan="2" class="text-end fw-bold">รวมน้ำหนัก</td><td id="goldTableReportTotalWeight" class="text-end fw-bold text-primary">0.00</td><td colspan="3"></td></tr>');
+            $(tbody).find('#goldTableReportTotalWeight').text(totalWeight.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+            return clone.firstElementChild.outerHTML;
+        }
+
+        function generateTransactionReport(transactionData) {
+            transactionData = transactionData.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+            const template = document.getElementById('transactionReport_template');
+            const clone = template.content.cloneNode(true);
+
+            // Set title
+            const today = moment().format('ddddที่ DD/MM/YYYY');
+            clone.getElementById('transactionCombinedReportTitle').textContent = `รายงานการรับจ่าย ประจำวัน ${today}`;
+            const tbody = clone.getElementById('transactionCombinedReportBody');
+            let totalIncome = 0, totalExpense = 0;
+            transactionData.forEach((item, index) => {
+                const row = document.createElement('tr');
+                const amount = parseFloat(item.amount) || 0;
+                if (item.type === 'รับ') {
+                    totalIncome += amount;
+                } else if (item.type === 'จ่าย') {
+                    totalExpense += amount;
+                }
+                row.innerHTML = `
+                    <td class="text-center">${index + 1}</td>
+                    <td>${moment(item.date).format('HH:mm')}</td>
+                    <td>${item.type || 'ไม่ระบุ'}</td>
+                    <td>${item.item || 'ไม่ระบุ'}</td>
+                    <td>${item.bank || 'ไม่ระบุ'}</td>
+                    <td class="text-end ${item.type == 'รับ' ? '' : 'text-danger'}">${amount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>${item.staff || 'ไม่ระบุ'}</td>
+                    <td>${item.note || ''}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            // Add summary row
+            const summaryRow = document.createElement('tr');
+            summaryRow.innerHTML = `
+                <td colspan="5" class="text-end fw-bold">รวมรับ</td>
+                <td class="text-end fw-bold text-success">+${totalIncome.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td colspan="2"></td>
+            `;
+            tbody.appendChild(summaryRow);
+            // Add expense summary row
+            const expenseRow = document.createElement('tr');
+            expenseRow.innerHTML = `
+                <td colspan="5" class="text-end fw-bold">รวมจ่าย</td>
+                <td class="text-end fw-bold text-danger">${totalExpense.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td colspan="2"></td>
+            `;
+            tbody.appendChild(expenseRow);
+            return clone.firstElementChild.outerHTML;
+        }
+
+        function generateAccountBalanceReports(accountData, selectedBanks) {
+            Object.keys(accountData).forEach(bank => {
+                const bankData = accountData[bank];
+                if (bankData.in.length === 0 && bankData.out.length === 0 && bankData.buy.length === 0) {
+                    delete accountData[bank];
+                }
+                let summary = {
+                    income: bankData.in.reduce((a, b) => {
+                        a += b.amount;
+                        return a;
+                    }, 0),
+                    expense: bankData.out.reduce((a, b) => {
+                        a += b.amount;
+                        return a;
+                    }, 0),
+                    buy: bankData.buy.reduce((a, b) => {
+                        a += b.price;
+                        return a;
+                    }, 0),
+                };
+                bankData.summary = summary
+            });
+            console.log('accountData', accountData);
+            const template = document.getElementById('accountsRemainingReport_template');
+            const clone = template.content.cloneNode(true);
+
+            const today = moment().format('DD/MM/YYYY');
+            clone.getElementById('accountsRemainingReportTitle').textContent = `รายงานสรุปยอดบัญชี ประจำวันที่ ${today}`;
+
+            const tbody = clone.getElementById('accountsRemainingReportBody');
+            let totalBalance = 0;
+            Object.keys(accountData).forEach((bank, idx) => {
+                // Find account data for this bank
+                const acc = accountData[bank] || {};
+                const income = parseFloat(acc.summary.income) || 0;
+                const expense = parseFloat(acc.summary.expense) || 0;
+                const buy = parseFloat(acc.summary.buy) || 0;
+                const balance = income - (expense < 0 ? -expense : expense) - buy
+                totalBalance += balance;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="text-center">${idx + 1}</td>
+                    <td>${bank}</td>
+                    <td class="text-end fw-bold ${balance < 0 ? 'text-danger' : ''}">${balance.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // selectedBanks.forEach((bank, idx) => {
+            //     // Find account data for this bank
+            //     const acc = accountData.find(a => a.bank === bank) || {};
+            //     const income = parseFloat(acc.income) || 0;
+            //     const expense = parseFloat(acc.expense) || 0;
+            //     const buy = parseFloat(acc.buy) || 0;
+            //     const balance = income - expense - buy;
+            //     totalBalance += balance;
+
+            //     const row = document.createElement('tr');
+            //     row.innerHTML = `
+            //         <td class="text-center">${idx + 1}</td>
+            //         <td>${bank}</td>
+            //         <td class="text-end fw-bold">${balance.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            //     `;
+            //     tbody.appendChild(row);
+            // });
+
+
+            return clone.firstElementChild.outerHTML;
+        }
     </script>
     <script>
         // Helper for gold-styled SweetAlert2
@@ -621,12 +1881,103 @@
             return Swal.fire(Object.assign({}, goldSwalOptions, options));
         }
     </script>
+    <script>
+        $(function () {
+            // Check if user is already logged in
+            const storedUser = localStorage.getItem('goldshop_user');
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                if (user && user.expires && user.expires > Date.now()) {
+                    $('#login-section').hide();
+                    $('#main-sec').show();
+                    reloadTable('#goldTable');
+                    // Set user info in local storage
+                    localStorage.setItem('goldshop_user', JSON.stringify(Object.assign({}, user, {
+                        expires: Date.now() + 4 * 60 * 60 * 1000  // 4 hours expiration
+                    })));
+                } else {
+                    localStorage.removeItem('goldshop_user');
+                }
+            }
+            $('#loginForm').on('submit', function (e) {
+                e.preventDefault();
+                const username = $('#loginUser').val().trim();
+                const password = $('#loginPassword').val();
+                if (!username || !password) return;
+
+                NProgress.start();
+                goldSwal({
+                    title: 'กำลังเข้าสู่ระบบ...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                google.script.run
+                    .withSuccessHandler(function (res) {
+                        NProgress.done();
+                        res = JSON.parse(res);
+                        if (res.success) {
+                            $('#login-section').hide();
+                            $('#main-sec').show();
+                            localStorage.setItem('goldshop_user', JSON.stringify(Object.assign({}, res.user, {
+                                expires: Date.now() + 4 * 60 * 60 * 1000  // 4 hours expiration
+                            })));
+                            window.role = res.user.role;
+                            window.branch = res.user.branch;
+                            goldSwal({
+                                icon: 'success',
+                                title: 'เข้าสู่ระบบสำเร็จ',
+                                showConfirmButton: false,
+                                timer: 1200
+                            });
+                            reloadTable('#goldTable');
+                        } else {
+                            goldSwal({
+                                icon: 'error',
+                                title: 'เข้าสู่ระบบไม่สำเร็จ',
+                                text: res && res.message ? res.message : 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
+                            });
+                        }
+                    })
+                    .withFailureHandler(function (err) {
+                        NProgress.done();
+                        goldSwal({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: err.message || err
+                        });
+                    })
+                    .loginUser({ username, password });
+            });
+
+            $('#logoutBtn').on('click', function () {
+                goldSwal({
+                    title: 'คุณต้องการออกจากระบบใช่หรือไม่?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'ออกจากระบบ',
+                    cancelButtonText: 'ยกเลิก',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        goldSwal({
+                            icon: 'info',
+                            title: 'กำลังออกจากระบบ...',
+                            didOpen: () => Swal.showLoading()
+                        })
+                        localStorage.removeItem('goldshop_user');
+                        setTimeout(() => {
+                            $('#main-sec').hide();
+                            $('#login-section').show();
+                        }, 1500);
+                    }
+                });
+            });
+        });
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q"
         crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/locale/th.js"></script>
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"
@@ -636,9 +1987,16 @@
         integrity="sha512-0XU8EDwsRqhnSukLw3KIQoRvFJs3SGlsoLpX1RpRAjmYrc7w56F6J5pwJ0p0p+v23qg14VPRQe9OhPRfbhVzdw=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    <script src="https://cdn.datatables.net/v/bs5/moment-2.29.4/dt-2.3.2/date-1.5.6/r-3.0.5/datatables.min.js"
-        integrity="sha384-F3T/anccpuD+tGZ5UGTEAOJtJLvpPX297Nw0Hdszm40Bf3AxlRa135uEORYCRHpv"
+    <script
+        src="https://cdn.datatables.net/v/bs5/moment-2.29.4/jszip-3.10.1/dt-2.3.2/b-3.2.4/b-html5-3.2.4/b-print-3.2.4/date-1.5.6/fh-4.0.3/r-3.0.5/sl-3.0.1/datatables.min.js"
+        integrity="sha384-BvB5KPqUtYKoiQg8KOTVI81Manq4YXileOPV/+spSTqAuJ6g4b6sLjmOMJBCFuzk"
         crossorigin="anonymous"></script>
+    <!-- jsPDF library for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+    <!-- jsPDF AutoTable plugin for table formatting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
     <script>
         AOS.init();
         document.addEventListener("DOMContentLoaded", function () {
