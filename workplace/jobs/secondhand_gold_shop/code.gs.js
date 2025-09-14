@@ -29,7 +29,7 @@ function getBuyData(isAll = false, reports = false, branch = '') {
     })
 
     data = data.filter(row => {
-        return (row[10] === "" || row[10] === 'รอหลอม') && (branch === 'all' || row[5] === branch)
+        return (row[10] === "" || row[10] === 'รอหลอม') && (branch === 'all' || row[6] === branch)
     })
 
     let last32Days = new Date();
@@ -124,6 +124,7 @@ function saveSellData(data) {
         data.weight,
         data.price,
         data.seller,
+        data.branch,
         data.bank,
         Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'MM-yyyy'),
         "เสร็จสิ้น",
@@ -156,16 +157,16 @@ function cancelSellData(uuid, canceler) {
     }
     let row = finder.getRow();
     let data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
-    if (data[8] !== "เสร็จสิ้น") {
+    if (data[9] !== "เสร็จสิ้น") {
         lock.releaseLock();
         return JSON.stringify({
             success: false,
             message: 'รายการนี้ถูกยกเลิกไปแล้ว'
         });
     }
-    data[8] = "ยกเลิก";
+    data[9] = "ยกเลิก";
     sheet.getRange(row, 1, 1, data.length).setValues([data]);
-    data.splice(8, 1); // Remove the YM column
+    data.splice(9, 1); // Remove the YM column
     eventLog('ยกเลิกข้อมูลการขาย\n' + data.join(', ') + '\nโดย ' + canceler);
     lock.releaseLock();
     return JSON.stringify({
@@ -194,16 +195,16 @@ function cancelTransaction(uuid, canceler) {
     }
     let row = finder.getRow();
     let data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
-    if (data[7] !== "เสร็จสิ้น") {
+    if (data[8] !== "เสร็จสิ้น") {
         lock.releaseLock();
         return JSON.stringify({
             success: false,
             message: 'รายการนี้ถูกยกเลิกไปแล้ว'
         });
     }
-    data[7] = "ยกเลิก";
+    data[8] = "ยกเลิก";
     sheet.getRange(row, 1, 1, data.length).setValues([data]);
-    data.splice(7, 1); // Remove the YM column
+    data.splice(8, 1); // Remove the YM column
     eventLog('ยกเลิกข้อมูลการขาย\n' + data.join(', ') + '\nโดย ' + canceler);
     lock.releaseLock();
     return JSON.stringify({
@@ -232,7 +233,7 @@ function generateUUID() {
     }
     try {
         let lastRow = SuperScript.getRealLastRow('A', sheet)
-        let uuidRange = sheet.getRange('K2:K' + lastRow).getValues();
+        let uuidRange = sheet.getRange('L2:L' + lastRow).getValues();
 
         for (let i = 0; i < lastRow - 1; i++) {
             // Check if the cell is empty
@@ -241,7 +242,7 @@ function generateUUID() {
                 uuidRange[i][0] = newUuid;
             }
         }
-        sheet.getRange('K2:K' + lastRow).setValues(uuidRange);
+        sheet.getRange('L2:L' + lastRow).setValues(uuidRange);
         eventLog('สร้าง UUID สำหรับรายการขายใหม่');
     } finally {
         lock.releaseLock();
@@ -275,6 +276,7 @@ function saveMeltBill(meltData) {
         meltData.meltWeight || '',
         meltData.meltSellPrice || '',
         meltData.recorder || '',
+        meltData.branch || '',
         'เสร็จสิ้น'
     ];
     sheet.getRange(lastRow + 1, 1, 1, newRow.length).setValues([newRow]);
@@ -282,10 +284,10 @@ function saveMeltBill(meltData) {
     lastRow = SuperScript.getRealLastRow('A', buySheet);
     let dataRange = buySheet.getRange(2, 1, lastRow - 1, buySheet.getLastColumn()).getValues();
     meltData.selectedRows.forEach(uuid => {
-        let rowIndex = dataRange.findIndex(row => row[10] === uuid); // Assuming UUID is in column K (index 10)
+        let rowIndex = dataRange.findIndex(row => row[11] === uuid); // Assuming UUID is in column K (index 10)
         if (rowIndex !== -1) {
             let row = dataRange[rowIndex];
-            row[9] = meltBillNo; // Update bill number
+            row[10] = meltBillNo; // Update bill number
             buySheet.getRange(rowIndex + 2, 1, 1, row.length).setValues([row]); // +2 because of header and zero-based index
         }
     });
@@ -312,7 +314,7 @@ function generateMeltBillNo(sheet) {
     return prefix + String(lastNumber + 1)
 }
 
-function getTransactionData(report = true) {
+function getTransactionData(report = true, branch = null) {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('บันทึกการรับจ่าย');
     let lastRow = SuperScript.getRealLastRow('A', sheet);
@@ -322,11 +324,11 @@ function getTransactionData(report = true) {
     let timezone = Session.getScriptTimeZone()
     let today = Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd');
     let data = sheet.getDataRange().getValues().slice(1).filter(row => {
-        return row[0] && row[0] instanceof Date
+        return row[0] && row[0] instanceof Date && (branch === 'all' || row[7] === branch)
     })
     if (report) {
         data = data.filter(row => {
-            return row[7] === 'เสร็จสิ้น' && Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today;
+            return row[8] === 'เสร็จสิ้น' && Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today;
         })
     } else {
         let last32Days = new Date();
@@ -349,8 +351,9 @@ function getTransactionData(report = true) {
             amount: row[4],
             note: row[5],
             staff: row[6],
-            status: row[7],
-            uuid: row[8],
+            branch: row[7],
+            status: row[8],
+            uuid: row[9],
             enableEdit: Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today,
         }
     }));
@@ -375,6 +378,7 @@ function saveTransactionData(transactionData) {
         transactionData.type === 'รับ' ? transactionData.amount : -transactionData.amount,
         transactionData.note,
         transactionData.staff,
+        transactionData.branch || 'สาขาหลัก',
         'เสร็จสิ้น',
         Utilities.getUuid()
     ];
@@ -387,13 +391,13 @@ function saveTransactionData(transactionData) {
     })
 }
 
-function getSummaryData(reports) {
+function getSummaryData(reports, branch) {
     let result = {}
     if (reports.buy) {
-        result.buy = JSON.parse(getBuyData(false, true)).filter(row => row.status === 'เสร็จสิ้น');
+        result.buy = JSON.parse(getBuyData(false, true, branch)).filter(row => row.status === 'เสร็จสิ้น');
     }
     if (reports.trans) {
-        result.trans = JSON.parse(getTransactionData(true)).filter(row => row.status === 'เสร็จสิ้น');
+        result.trans = JSON.parse(getTransactionData(true, branch)).filter(row => row.status === 'เสร็จสิ้น');
     }
     if (reports.acc && reports.banks && reports.banks.length > 0) {
         reports.banks.push('ไม่ระบุ')
@@ -428,7 +432,7 @@ function onEdit(e) {
     let sheet = e.range.getSheet();
     let col = e.range.getColumn();
     let row = e.range.getRow();
-    if (sheet.getName() === 'บันทึกหลอม' && col === 8 && e.value === 'ยกเลิก') {
+    if (sheet.getName() === 'บันทึกหลอม' && col === 9 && e.value === 'ยกเลิก') {
         let lock = LockService.getScriptLock();
         if (!lock.tryLock(10000)) {
             throw new Error('ไม่สามารถยกเลิกการหลอมได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง');
@@ -439,8 +443,8 @@ function onEdit(e) {
         let lastRow = SuperScript.getRealLastRow('A', buySheet);
         let dataRange = buySheet.getRange(2, 1, lastRow - 1, buySheet.getLastColumn()).getValues();
         dataRange.forEach((row, index) => {
-            if (row[9] == meltBillNo) { // Assuming bill number is in column J (index 9)
-                row[9] = ''; // Reset bill number to ''
+            if (row[10] == meltBillNo) { // Assuming bill number is in column K (index 10)
+                row[10] = ''; // Reset bill number to ''
                 buySheet.getRange(index + 2, 1, 1, row.length).setValues([row]); // +2 because of header and zero-based index
             }
         });
@@ -488,4 +492,10 @@ function loginUser(formObj) {
         allowAccounts: userData[5] ? userData[5].split(',').map(s => s.trim()) : [],
     }
     return JSON.stringify({ success: true, message: 'เข้าสู่ระบบสำเร็จ', user: userObj });
+}
+
+function getBranch() {
+    let branch = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('สาขา').getDataRange().getValues().filter(v => v[0]).map(branch => branch[0].trim()).slice(1);
+    branch.unshift('all');
+    return branch;
 }
