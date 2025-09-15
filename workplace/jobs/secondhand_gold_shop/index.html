@@ -22,9 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css"
         integrity="sha512-MQXduO8IQnJVq1qmySpN87QQkiR1bZHtorbJBD0tzy7/0U9+YIC93QWHeGTEoojMVHWWNkoCp8V6OzVSYrX0oQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -267,7 +265,7 @@
                     aria-controls="goldNavbar" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="collapse navbar-collapse d-none" id="goldNavbar">
+                <div class="collapse navbar-collapse" id="goldNavbar">
                     <ul class="navbar-nav ms-auto mb-2 mb-lg-0 gap-2">
                         <li class="nav-item">
                             <button class="nav-link px-3 fw-semibold text-secondary simple-popout"
@@ -293,7 +291,7 @@
                                 สรุปจำนวนบิลซื้อ
                             </button>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item d-none" id="logoutNavItem">
                             <button class="nav-link px-3 fw-semibold text-secondary simple-popout" id="logoutBtn">
                                 ออกจากระบบ
                             </button>
@@ -816,8 +814,8 @@
                             </div>
                             <div id="bankCheckboxes" class="ps-4 mt-2">
                                 ${window.user.allowAccounts
-                                .filter(bank => !bank.includes('เฮียเจี๋ย'))
-                                .map(bank => `
+                            .filter(bank => !bank.includes('เฮียเจี๋ย'))
+                            .map(bank => `
                                     <div class="form-check mb-1">
                                         <input class="form-check-input" type="checkbox" value="${bank}" checked>
                                         <label class="form-check-label">${bank}</label>
@@ -1522,19 +1520,19 @@
             //     }
             // }).then((result) => {
             //     if (result.isConfirmed && result.value) {
-                    reloadTable('#goldTable', true);
-                    goldSwal({
-                        icon: 'success',
-                        html: 'กรุณาเลือกแถวที่ต้องการสร้างบิลหลอม<br>และคลิกปุ่ม <span class="text-primary fw-bold">สร้างบิลหลอม</span>',
-                        confirmButtonText: 'ตกลง',
-                        showCancelButton: true,
-                        cancelButtonText: 'ยกเลิก',
-                    }).then((res) => {
-                        if (res.isConfirmed) {
-                            datatable.column(1).visible(true);
-                            showTableButtons('melt');
-                        }
-                    });
+            reloadTable('#goldTable', true);
+            goldSwal({
+                icon: 'success',
+                html: 'กรุณาเลือกแถวที่ต้องการสร้างบิลหลอม<br>และคลิกปุ่ม <span class="text-primary fw-bold">สร้างบิลหลอม</span>',
+                confirmButtonText: 'ตกลง',
+                showCancelButton: true,
+                cancelButtonText: 'ยกเลิก',
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    datatable.column(1).visible(true);
+                    showTableButtons('melt');
+                }
+            });
             //     }
             // });
         }
@@ -1879,6 +1877,7 @@
             const setUserData = (user) => {
                 if (!user) return;
                 window.user = user;
+                $('#logoutNavItem').removeClass('d-none')
                 $('.userBranch').text(user.branch || '-');
                 $('.userRole').text(user.role || '-');
                 $('.userName').text(user.name || '-');
@@ -1889,40 +1888,40 @@
                 localStorage.setItem('goldshop_user', JSON.stringify(Object.assign({}, user, {
                     expires: Date.now() + 4 * 60 * 60 * 1000  // 4 hours expiration
                 })));
-                if(user.role === 'admin'){
+                if (user.role === 'admin') {
                     let branches = <?!= JSON.stringify(getBranch()) ?>;
                     $('.userBranch')
-                    .html(user.branch + ' <i class="bi bi-pencil-square ms-2"></i>')
-                    .css('cursor', 'pointer').attr('title', 'คลิกเพื่อเปลี่ยนสาขา').off('click').on('click', function(){
-                        goldSwal({
-                            title: 'เลือกสาขา',
-                            input: 'select',
-                            inputOptions: branches.reduce((obj, branch) => {
-                                obj[branch] = branch;
-                                return obj;
-                            }, {}),
-                            inputValue: user.branch || branches[0],
-                            showCancelButton: true,
-                            confirmButtonText: 'ยืนยัน',
-                            cancelButtonText: 'ยกเลิก',
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                const newBranch = result.value;
-                                window.user.branch = newBranch;
-                                $('.userBranch').html(newBranch + ' <i class="bi bi-pencil-square ms-2"></i>');
-                                localStorage.setItem('goldshop_user', JSON.stringify(Object.assign({}, window.user, {
-                                    expires: Date.now() + 4 * 60 * 60 * 1000  // 4 hours expiration
-                                })));
-                                reloadTable($('#goldTable').is(':visible') ? '#goldTable' : '#transactionTable');
-                            }
+                        .html(user.branch + ' <i class="bi bi-pencil-square ms-2"></i>')
+                        .css('cursor', 'pointer').attr('title', 'คลิกเพื่อเปลี่ยนสาขา').off('click').on('click', function () {
+                            goldSwal({
+                                title: 'เลือกสาขา',
+                                input: 'select',
+                                inputOptions: branches.reduce((obj, branch) => {
+                                    obj[branch] = branch;
+                                    return obj;
+                                }, {}),
+                                inputValue: user.branch || branches[0],
+                                showCancelButton: true,
+                                confirmButtonText: 'ยืนยัน',
+                                cancelButtonText: 'ยกเลิก',
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    const newBranch = result.value;
+                                    window.user.branch = newBranch;
+                                    $('.userBranch').html(newBranch + ' <i class="bi bi-pencil-square ms-2"></i>');
+                                    localStorage.setItem('goldshop_user', JSON.stringify(Object.assign({}, window.user, {
+                                        expires: Date.now() + 4 * 60 * 60 * 1000  // 4 hours expiration
+                                    })));
+                                    reloadTable($('#goldTable').is(':visible') ? '#goldTable' : '#transactionTable');
+                                }
+                            });
                         });
-                    });
                     // console.log('branches', branches);
                     // $('.userBranch').replaceWith($('<select class="form-select form-select-sm userBranch" id="userBranchSelect" aria-label="สาขา"></select>'))
                     branches.forEach(branch => {
                         $('#userBranchSelect').append(new Option(branch, branch));
                     });
-                    $('#userBranchSelect').val(user.branch).on('change', function(){
+                    $('#userBranchSelect').val(user.branch).on('change', function () {
                         const newBranch = $(this).val();
                         window.user.branch = newBranch;
                         localStorage.setItem('goldshop_user', JSON.stringify(Object.assign({}, window.user, {
@@ -2011,6 +2010,14 @@
                         setTimeout(() => {
                             $('#main-sec').hide();
                             $('#login-section').show();
+                            $('#loginForm')[0].reset(); 
+                             $('#logoutNavItem').addClass('d-none')
+                            if ($('.navbar-collapse.show').length) {
+                                $('.navbar-toggler').trigger('click');
+                            }
+                            setTimeout(() => {
+                                $('#loginUser').focus();
+                            }, 200);
                             Swal.close();
                         }, 1500);
                     }
