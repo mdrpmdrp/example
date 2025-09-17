@@ -60,7 +60,7 @@ function getBuyData(isAll = false, reports = false, branch = '') {
             weight: row[3],
             price: row[4],
             seller: row[5],
-            branch: branch,
+            branch: row[6],
             bank: row[7] || 'ไม่ระบุ',
             monthYear: row[8],
             status: row[9],
@@ -71,7 +71,7 @@ function getBuyData(isAll = false, reports = false, branch = '') {
     }));
 }
 
-function getBuySummaryData(isAll = true) {
+function getBuySummaryData(isAll = true, branch = 'all') {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('บันทึกซื้อ');
     let lastRow = SuperScript.getRealLastRow('A', sheet);
@@ -83,8 +83,8 @@ function getBuySummaryData(isAll = true) {
     })
 
     let allSellers = [...new Set(data.map(r => r[5]))]
-    data = data.filter(row => row[8] !== 'ยกเลิก' && row[8] !== '');
-    let groupByMonthYear = Object.groupBy(data, (row) => row[7]); // Group by monthYear
+    data = data.filter(row => row[9] !== 'ยกเลิก' && row[9] !== '' && (branch === 'all' || row[6] === branch));
+    let groupByMonthYear = Object.groupBy(data, (row) => row[8]); // Group by monthYear
     Object.keys(groupByMonthYear).forEach(monthYear => {
         let groupBySeller = Object.groupBy(groupByMonthYear[monthYear], (row) => row[5]); // Group by seller
         Object.keys(groupBySeller).forEach(seller => {

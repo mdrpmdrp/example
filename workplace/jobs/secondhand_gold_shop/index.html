@@ -22,7 +22,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css"
         integrity="sha512-MQXduO8IQnJVq1qmySpN87QQkiR1bZHtorbJBD0tzy7/0U9+YIC93QWHeGTEoojMVHWWNkoCp8V6OzVSYrX0oQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -266,7 +268,7 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="goldNavbar">
-                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0 gap-2">
+                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0 gap-2 d-none">
                         <li class="nav-item">
                             <button class="nav-link px-3 fw-semibold text-secondary simple-popout"
                                 id="showSellSectionBtn">
@@ -394,7 +396,7 @@
     <section id="buy-summary-sec" class="container-fluid my-4" style="display: none;">
         <div class="row">
             <div class="col-12">
-                <h3 class="gold-title text-center mb-4">สรุปจำนวนบิลซื้อ</h3>
+                <h3 class="gold-title text-center mb-4">สรุปจำนวนบิลซื้อ <span id="bill-branch"></span></h3>
                 <div class="table-responsive">
                     <table id="buySummaryTable" class="table table-striped table-bordered table-hover"
                         style="width: 100%;">
@@ -1273,7 +1275,7 @@
                     }
                 });
                 let data = await new Promise((resolve, reject) => {
-                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getBuySummaryData();
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getBuySummaryData(true, window.user.branch);
                 });
                 data = JSON.parse(data);
                 console.log('Buy Summary Data:', data);
@@ -1284,11 +1286,13 @@
                 ));
                 thead
                 tbody.append(
-                    buyData.map((item, index) => {
-                        return $('<tr>').append(
-                            `<td class="text-center">${index + 1}</td>`,
-                            `<td class="text-center">${item.monthYear}</td>`,
-                            allSellers.map(seller => {
+                    buyData.length === 0
+                        ? $('<tr>').append($('<td colspan="' + (allSellers.length + 3) + '" class="text-center">ไม่มีข้อมูล</td>'))
+                        : buyData.map((item, index) => {
+                            return $('<tr>').append(
+                                `<td class="text-center">${index + 1}</td>`,
+                                `<td class="text-center">${item.monthYear}</td>`,
+                                allSellers.map(seller => {
                                 let value = item.sellers[seller] || 0;
                                 return `<td class="text-end">${parseInt(value)}</td>`;
                             }).join(''),
@@ -1877,11 +1881,14 @@
             const setUserData = (user) => {
                 if (!user) return;
                 window.user = user;
+                if(user.role === 'admin') user.branch = 'all';
                 $('#logoutNavItem').removeClass('d-none')
                 $('.userBranch').text(user.branch || '-');
                 $('.userRole').text(user.role || '-');
                 $('.userName').text(user.name || '-');
+                $('#goldNavbar .navbar-nav').removeClass('d-none');
                 $('#bank, #transactionBank').empty().append(new Option('เลือกบัญชี', '', true, true));
+                $('#bill-branch').text(user.branch || '-');
                 user.allowAccounts.forEach(bank => {
                     $('#bank, #transactionBank').append(new Option(bank, bank));
                 });
@@ -1908,6 +1915,7 @@
                                 if (result.isConfirmed) {
                                     const newBranch = result.value;
                                     window.user.branch = newBranch;
+                                    $('#bill-branch').text(newBranch);
                                     $('.userBranch').html(newBranch + ' <i class="bi bi-pencil-square ms-2"></i>');
                                     localStorage.setItem('goldshop_user', JSON.stringify(Object.assign({}, window.user, {
                                         expires: Date.now() + 4 * 60 * 60 * 1000  // 4 hours expiration
@@ -1934,7 +1942,8 @@
             const storedUser = localStorage.getItem('goldshop_user');
             if (storedUser) {
                 const user = JSON.parse(storedUser);
-                if (user && user.expires && user.expires > Date.now()) {
+                // if (user && user.expires && user.expires > Date.now()) {
+                if(user) {
                     $('#login-section').hide();
                     $('#main-sec').show();
                     reloadTable('#goldTable');
@@ -2010,8 +2019,9 @@
                         setTimeout(() => {
                             $('#main-sec').hide();
                             $('#login-section').show();
-                            $('#loginForm')[0].reset(); 
-                             $('#logoutNavItem').addClass('d-none')
+                            $('#loginForm')[0].reset();
+                            $('#logoutNavItem').addClass('d-none')
+                            $('#goldNavbar .navbar-nav').addClass('d-none');
                             if ($('.navbar-collapse.show').length) {
                                 $('.navbar-toggler').trigger('click');
                             }
