@@ -181,6 +181,22 @@
                     }
                 }
 
+                tr.status-inactive {
+                    td {
+                        color: rgba(0, 0, 0, 0.4);
+                    }
+
+                    span.status-btn {
+                        background-color: #ccc !important;
+                        color: #666 !important;
+                        border-color: #999 !important;
+                        cursor: not-allowed !important;
+                    }
+
+                    button.edit-row-btn {
+                        cursor: not-allowed !important;
+                    }
+                }
             }
         }
     </style>
@@ -271,6 +287,10 @@
                     <form id="editDataForm" class="needs-validation mb-3" novalidate>
                         <input type="hidden" id="editKey" name="key" value="">
                         <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="editHN" class="form-label">HN</label>
+                                <input type="text" class="form-control rounded-3" id="editHN" name="hn" required>
+                            </div>
                             <div class="col-md-6">
                                 <label for="editCompany" class="form-label">บริษัท</label>
                                 <input type="text" class="form-control rounded-3" id="editCompany" name="company">
@@ -409,7 +429,7 @@
                 </div>
                 <div class="modal-body">
                     <form id="updateStatusForm">
-                        <input type="hidden" id="updateCitizenId" name="citizenId" value="">
+                        <input type="hidden" id="statusHn" name="hn" value="">
                         <div class="mb-3">
                             <label for="statusSelect" class="form-label">เลือกสถานะ</label>
                             <select class="form-select" id="statusSelect" name="status">
@@ -561,7 +581,7 @@
                             recordsFiltered: data.length,  // Filtered records
                             data: data  // Data for the current page
                         });
-                    }).getContractData();
+                    }).getContractData(role);
                 },
                 responsive: true,
                 // scrollX: true,
@@ -584,6 +604,7 @@
                         }
                     },
                     { title: 'บริษัท', data: 'company', className: 'all' },
+                    { title: 'HN', data: 'hn', className: 'dt-head-center dt-head-nowrap text-nowrap all' },
                     { title: 'รหัสพนักงาน', data: 'employeeId', className: 'dt-head-center dt-head-nowrap text-nowrap all' },
                     { title: 'คำนำหน้า', data: 'prefix' },
                     { title: 'ชื่อนามสกุล', data: 'fullName', className: 'dt-head-center dt-head-nowrap text-nowrap all' },
@@ -649,7 +670,7 @@
                             if (type === 'sort' || type === 'type') {
                                 return '';
                             }
-                            const isRegistered = statusOptions.indexOf(row.serviceStatus) >= 0;
+                            const isRegistered = statusOptions.indexOf(row.serviceStatus) > 0;
                             if (role === 'เวชระเบียน') {
                                 return isRegistered
                                     ? `<small class="text-black-50 btn text-decoration-underline" onclick="viewData(this)">ลงทะเบียนแล้ว</small>`
@@ -670,8 +691,38 @@
                                     : `<small class="text-black-50">ยังไม่ลงทะเบียน</small>`
                             }
                         }
+                    },
+                    {
+                        title: 'Active',
+                        data: 'dataStatus',
+                        orderable: false,
+                        searchable: false,
+                        visible: role === 'admin',
+                        className: 'dt-body-center dt-head-nowrap dt-head-center text-nowrap text-center all',
+                        render: function (data, type, row, meta) {
+                            if (type === 'sort' || type === 'type') {
+                                return '';
+                            }
+                            if (data == 'Active') {
+                                return `<div class="form-check form-switch d-flex justify-content-center align-items-center">
+                                            <input class="form-check-input status-toggle" type="checkbox" role="switch" checked>
+                                        </div>`;
+                            } else if (data == 'Inactive') {
+                                return `<div class="form-check form-switch d-flex justify-content-center align-items-center">
+                                            <input class="form-check-input status-toggle" type="checkbox" role="switch">
+                                        </div>`;
+                            } else if (data === 'Locked') {
+                                return '<i class="bi bi-lock-fill" style="font-size: 1.5rem; color: gray;" title="Locked"></i>';
+                            }
+                            return '';
+                        }
                     }
                 ],
+                rowCallback: function (row, data) {
+                    if (data.dataStatus === 'Inactive') {
+                        $(row).addClass('status-inactive');
+                    }
+                },
                 columnDefs: [
                     {
                         targets: '_all',
@@ -761,23 +812,36 @@
                     row = row.prev(); // If it's a child row, get the parent row
                 }
                 const rowData = window.MainTable.row(row).data();
+                if(rowData.dataStatus === "Inactive" || rowData.dataStatus === "Locked") {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'ไม่สามารถแก้ไขได้',
+                        html: 'ข้อมูลนี้ถูกระงับการใช้งานหรือถูกล็อกไว้<br>กรุณาติดต่อผู้ดูแลระบบ',
+                        confirmButtonText: 'ตกลง',
+                        customClass: SwalCustomClasses
+                    });
+                    return;
+                }
                 console.log("🚀 ~ editData ~ rowData:", rowData)
-                $('#updateCitizenId').val(rowData.citizenId);
+                $('#statusHn').val(rowData.hn);
                 $('#statusSelect').val(rowData.serviceStatus);
                 $('#statusOpdNote').val(rowData.opdNote || '');
                 window._editModalOriginalData = {
                     status: rowData.serviceStatus,
                     opdNote: rowData.opdNote || ''
                 }
+                console.log("🚀 ~ editData ~ window._editModalOriginalData:", window._editModalOriginalData)
+                console.log($('#statusSelect').val(), rowData.serviceStatus)
+                console.log($('#statusOpdNote').val() || '', rowData.opdNote || '')
                 $('#updateStatusModal').modal('show');
                 $(document).off('click', 'button.dismiss-update-modal').on('click', 'button.dismiss-update-modal', function (e) {
                     e.preventDefault();
                     let change = false;
 
-                    if (window._editModalOriginalData.status !== $('#statusSelect').val()) {
+                    if ($('#statusSelect').val() !== null && window._editModalOriginalData.status !== $('#statusSelect').val()) {
                         change = true;
                     }
-                    if (window._editModalOriginalData.opdNote !== $('#statusOpdNote').val()) {
+                    if (window._editModalOriginalData.opdNote !== ($('#statusOpdNote').val() || '')) {
                         change = true;
                     }
 
@@ -800,6 +864,43 @@
                     }
                     $('#updateStatusModal').modal('hide');
                 });
+            });
+
+            $(document).off('change', '.status-toggle').on('change', '.status-toggle', function (e) {
+                e.preventDefault();
+                let checkbox = $(this);
+                let isChecked = checkbox.is(':checked');
+                let row = $(this).closest('tr');
+                if (row.hasClass('child')) {
+                    row = row.prev(); // If it's a child row, get the parent row
+                }
+                const rowData = window.MainTable.row(row).data();
+                console.log("🚀 ~ editData ~ rowData:", rowData)
+                // Update row appearance immediately
+                if (!isChecked) {
+                    row.addClass('status-inactive');
+                    rowData.dataStatus = 'Inactive';
+                    window.MainTable.row(row).data(rowData).draw(false);
+                } else {
+                    row.removeClass('status-inactive');
+                    rowData.dataStatus = 'Active';
+                    window.MainTable.row(row).data(rowData).draw(false);
+                }
+
+                // Make the API call
+                google.script.run
+                    .withFailureHandler(e => {
+                        console.log(e);
+                        checkbox.prop('checked', !isChecked); // Revert checkbox state
+                        Swal.fire({
+                            title: 'เกิดข้อผิดพลาด',
+                            text: e.message || 'ไม่สามารถเปลี่ยนสถานะได้ในขณะนี้',
+                            icon: 'error',
+                            confirmButtonText: 'ตกลง',
+                            customClass: SwalCustomClasses
+                        });
+                    })
+                [isChecked ? 'setDataActive' : 'setDataInactive'](rowData.hn)
             });
             // Initialize flatpickr for date fields
             flatpickr("#editBirthDate", {
@@ -870,7 +971,7 @@
             $.fn.dataTable.ext.search.push(
                 function (settings, data, dataIndex) {
                     if (_start == "" && _end == "") return true; // No filter if both dates are empty
-                    let rowDate = data[16]
+                    let rowDate = data[17]
                     if (rowDate == "") return false
                     console.log("🚀 ~ filterDateRange ~ data", data)
                     rowDate = moment(rowDate, 'DD/MM/YYYY').toDate();
@@ -909,13 +1010,14 @@
                     let field_name = $(this).attr('name');
                     $(this).replaceWith(`<input type="text" id="${field_id}" name="${field_name}" class="form-control rounded-3 select-replacement" />`);
                 }
-                $('#'+field_id).prop('readonly', true).addClass('bg-success-subtle').css('cursor', 'not-allowed');
+                $('#' + field_id).prop('readonly', true).addClass('bg-success-subtle').css('cursor', 'not-allowed');
             });
             $('#editDataModal').find('.modal-title').html('ข้อมูลลงทะเบียน');
             $('#editDataModal').find('.modal-footer').hide();
             $('#editServiceDateContainer').removeClass('d-none');
             // Populate modal fields
-            $('#editKey').val(rowData.citizenId || '');
+            $('#editKey').val(rowData.hn || '');
+            $('#editHN').val(rowData.hn || '');
             $('#editCompany').val(rowData.company || '');
             $('#editEmployeeId').val(rowData.employeeId || '');
             $('#editPrefix').val(rowData.prefix || '');
@@ -956,6 +1058,16 @@
                 row = row.prev(); // If it's a child row, get the parent row
             }
             const rowData = window.MainTable.row(row).data();
+            if(rowData.dataStatus === "Inactive" || rowData.dataStatus === "Locked") {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ไม่สามารถแก้ไขได้',
+                    html: 'ข้อมูลนี้ถูกระงับการใช้งานหรือถูกล็อกไว้<br>'+ role === 'admin' ? 'กรุณาเปิดใช้งานข้อมูลก่อนทำการแก้ไข' : 'กรุณาติดต่อผู้ดูแลระบบ',
+                    confirmButtonText: 'ตกลง',
+                    customClass: SwalCustomClasses
+                });
+                return;
+            }
             console.log("🚀 ~ editData ~ rowData:", rowData)
             if (rowData.birthDate.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/)) {
                 rowData.birthDate = moment(rowData.birthDate, 'YYYY-MM-DDTHH:mm:ssZ').format('DD/MM/YYYY');
@@ -1000,7 +1112,7 @@
             }
 
             else {
-                readOnlyFields.push('editCompany', 'editEmployeeId', 'editPrefix', 'editFullName', 'editBirthDate', 'editCitizenId', 'editCheckupProgram', 'editAdditionalCheckupProgram', 'editEntitlementDocument', 'editStartDate', 'editEndDate', 'editServiceDate', 'editRegisterNote', 'editPhoneNumber')
+                readOnlyFields.push('editHN', 'editCompany', 'editEmployeeId', 'editPrefix', 'editFullName', 'editBirthDate', 'editCitizenId', 'editCheckupProgram', 'editAdditionalCheckupProgram', 'editEntitlementDocument', 'editStartDate', 'editEndDate', 'editServiceDate', 'editRegisterNote', 'editPhoneNumber')
                 $('#editDataModal').find('.modal-title').html('แก้ไขข้อมูลลงทะเบียน');
                 $('#saveEditBtn').html('<i class="bi bi-check-circle"></i> บันทึกการแก้ไข');
                 $('#editServiceDateContainer').removeClass('d-none');
@@ -1019,7 +1131,8 @@
                 $(`#${field}`).prop('readonly', true).addClass('bg-success-subtle').css('cursor', 'not-allowed');
             });
             // Populate modal fields
-            $('#editKey').val(rowData.citizenId || '');
+            $('#editKey').val(rowData.hn || '');
+            $('#editHN').val(rowData.hn || '');
             $('#editCompany').val(rowData.company || '');
             $('#editEmployeeId').val(rowData.employeeId || '');
             $('#editPrefix').val(rowData.prefix || '');
@@ -1251,7 +1364,7 @@
             let formData = {
                 serviceStatus: selectedStatus,
                 opdNote: $('#statusOpdNote').val(),
-                citizenId: $('#updateCitizenId').val()
+                hn: $('#statusHn').val()
             };
             console.log("🚀 ~ formData:", formData)
             Swal.fire({
