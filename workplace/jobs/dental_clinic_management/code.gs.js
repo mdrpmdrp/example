@@ -226,6 +226,7 @@ function getAllPatients() {
     try {
         const patientsSheet = getSheet(SHEET_NAMES.PATIENTS);
         const data = patientsSheet.getDataRange().getValues();
+        SpreadsheetApp.flush()
 
         if (data.length <= 1) {
             return JSON.stringify({ success: true, patients: [] });
@@ -256,10 +257,6 @@ function getAllPatients() {
  * Add new patient
  */
 function addPatient(patientData) {
-    let lock = LockService.getScriptLock();
-    if(!lock.tryLock(10000)) {
-        return { success: false, message: 'ไม่สามารถล็อคสคริปต์ได้' };
-    }
     try {
         const patientsSheet = getSheet(SHEET_NAMES.PATIENTS);
         const lastRow = patientsSheet.getLastRow();
@@ -299,10 +296,9 @@ function addPatient(patientData) {
         ];
 
         patientsSheet.getRange(lastRow + 1, 1, 1, newPatient.length).setValues([newPatient]);
-        lock.releaseLock();
+
         return { success: true, message: 'เพิ่มคนไข้เรียบร้อย', patientId: newId };
     } catch (error) {
-        lock.releaseLock();
         console.error('Error adding patient:', error);
         return { success: false, message: error.toString() };
     }
@@ -312,10 +308,6 @@ function addPatient(patientData) {
  * Update patient information
  */
 function updatePatient(patientId, patientData) {
-    let lock = LockService.getScriptLock();
-    if(!lock.tryLock(10000)) {
-        return { success: false, message: 'ไม่สามารถล็อคสคริปต์ได้' };
-    }
     try {
         const patientsSheet = getSheet(SHEET_NAMES.PATIENTS);
         const data = patientsSheet.getDataRange().getValues();
@@ -350,10 +342,9 @@ function updatePatient(patientId, patientData) {
         ];
 
         patientsSheet.getRange(rowIndex, 1, 1, updatedPatient.length).setValues([updatedPatient]);
-        lock.releaseLock();
+
         return { success: true, message: 'อัปเดตข้อมูลคนไข้เรียบร้อย' };
     } catch (error) {
-        lock.releaseLock();
         console.error('Error updating patient:', error);
         return { success: false, message: error.toString() };
     }
@@ -363,10 +354,6 @@ function updatePatient(patientId, patientData) {
  * Delete patient
  */
 function deletePatient(patientId) {
-    let lock = LockService.getScriptLock();
-    if(!lock.tryLock(10000)) {
-        return { success: false, message: 'ไม่สามารถล็อคสคริปต์ได้' };
-    }
     try {
         const patientsSheet = getSheet(SHEET_NAMES.PATIENTS);
         const data = patientsSheet.getDataRange().getValues();
@@ -391,10 +378,9 @@ function deletePatient(patientId) {
         }
 
         patientsSheet.deleteRow(rowIndex);
-        lock.releaseLock();
+
         return { success: true, message: 'ลบข้อมูลคนไข้เรียบร้อย' };
     } catch (error) {
-        lock.releaseLock();
         console.error('Error deleting patient:', error);
         return { success: false, message: error.toString() };
     }
@@ -414,7 +400,7 @@ function getPatientById(patientId) {
             if (data[i][0] === patientId) {
                 const patient = {};
                 headers.forEach((header, index) => {
-                    patient[header.replace(/\s+/g, '_').toLowerCase()] = data[i][index];
+                    patient[toCamelCase(header)] = data[i][index];
                 });
                 return { success: true, patient: patient };
             }
@@ -451,7 +437,7 @@ function getAllAppointments() {
             const appointment = {};
 
             headers.forEach((header, index) => {
-                appointment[header.replace(/\s+/g, '_').toLowerCase()] = row[index];
+                appointment[toCamelCase(header)] = row[index];
             });
 
             appointments.push(appointment);
@@ -471,13 +457,31 @@ function addAppointment(appointmentData) {
     try {
         const appointmentsSheet = getSheet(SHEET_NAMES.APPOINTMENTS);
         const lastRow = appointmentsSheet.getLastRow();
-        const newId = 'A' + String(lastRow).padStart(3, '0');
+        const getNewAppointmentId = () => {
+            let today = new Date();
+            let month = String(today.getMonth() + 1).padStart(2, '0');
+            let year = String(today.getFullYear() < 2400 ? today.getFullYear() + 543 : today.getFullYear()).slice(-2);
+            if (lastRow === 1) {
+                return 'A' + year + month + '0001';
+            }
+            let last_id = patientsSheet.getRange(lastRow, 1).getValue();
+            let last_id_num = parseInt(last_id.slice(5))
+            let last_id_prefix = last_id.slice(0, 5);
+            let new_id_num = String(last_id_num + 1).padStart(4, '0');
+            let new_id = last_id_prefix + new_id_num;
+            let current_prefix = 'A' + year + month;
+            if (new_id.startsWith(current_prefix)) {
+                return new_id;
+            }
+            return current_prefix + '0001';
+        }
 
         // Validate patient exists
         const patientResult = getPatientById(appointmentData.patientId);
         if (!patientResult.success) {
-            return { success: false, message: 'ไม่พบข้อมูลคนไข้' };
+            return JSON.stringify({ success: false, message: 'ไม่พบข้อมูลคนไข้' });
         }
+        const newId = getNewAppointmentId()
 
         const newAppointment = [
             newId,
@@ -650,7 +654,7 @@ function getAllRevenues() {
             const revenue = {};
 
             headers.forEach((header, index) => {
-                revenue[header.replace(/\s+/g, '_').toLowerCase()] = row[index];
+                revenue[toCamelCase(header)] = row[index];
             });
 
             revenues.push(revenue);
@@ -924,6 +928,15 @@ function generateMonthlyRevenueReport(year, month) {
 // ===========================================
 // UTILITY FUNCTIONS
 // ===========================================
+
+/**
+ * Convert string to camelCase
+ */
+function toCamelCase(str) {
+    return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function (word, index) {
+        return index === 0 ? word.toLowerCase() : word.toUpperCase();
+    }).replace(/\s+/g, '');
+}
 
 /**
  * Generate unique ID
