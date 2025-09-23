@@ -9,7 +9,9 @@ const SHEET_NAMES = {
     PATIENTS: 'Patients',
     APPOINTMENTS: 'Appointments',
     REVENUE: 'Revenue',
-    USERS: 'Users'
+    USERS: 'Users',
+    DOCTORS: 'Doctors',
+    OPTION_LIST: 'Option List'
 };
 
 /**
@@ -25,12 +27,16 @@ function initializeSystem() {
         const appointmentsSheet = getOrCreateSheetInSpreadsheet(spreadsheet, SHEET_NAMES.APPOINTMENTS);
         const revenueSheet = getOrCreateSheetInSpreadsheet(spreadsheet, SHEET_NAMES.REVENUE);
         const usersSheet = getOrCreateSheetInSpreadsheet(spreadsheet, SHEET_NAMES.USERS);
+        const doctorsSheet = getOrCreateSheetInSpreadsheet(spreadsheet, SHEET_NAMES.DOCTORS);
+        const optionListSheet = getOrCreateSheetInSpreadsheet(spreadsheet, SHEET_NAMES.OPTION_LIST);
 
         // Setup headers if sheets are empty
         setupPatientsSheet(patientsSheet);
         setupAppointmentsSheet(appointmentsSheet);
         setupRevenueSheet(revenueSheet);
         setupUsersSheet(usersSheet);
+        setupDoctorsSheet(doctorsSheet);
+        setupOptionListSheet(optionListSheet);
 
         return { success: true, message: 'System initialized successfully' };
     } catch (error) {
@@ -82,7 +88,7 @@ function getSheet(sheetName) {
 function setupPatientsSheet(sheet) {
     if (sheet.getLastRow() === 0) {
         const headers = [
-            'ID', 'First Name', 'Last Name', 'Phone', 'Birth Date',
+            'ID', 'Title Prefix', 'First Name', 'Last Name', 'Phone', 'Birth Date',
             'Address', 'Allergies', 'Medical History', 'Notes', 'Registration Date', 'Created At', 'Updated At'
         ];
         sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -96,8 +102,8 @@ function setupPatientsSheet(sheet) {
 function setupAppointmentsSheet(sheet) {
     if (sheet.getLastRow() === 0) {
         const headers = [
-            'ID', 'Patient ID', 'Appointment Date', 'Appointment Time',
-            'Treatment', 'Cost', 'Status', 'Notes', 'Created At', 'Updated At'
+            'ID', 'Patient ID', 'Doctor ID', 'Appointment Date', 'Appointment Time',
+            'Case Type', 'Case Details', 'Cost', 'Status', 'Notes', 'Created At', 'Updated At'
         ];
         sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
         sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
@@ -142,6 +148,82 @@ function setupUsersSheet(sheet) {
             '082-345-6789', 'active', new Date(), new Date()
         ];
         sheet.getRange(3, 1, 1, defaultUser.length).setValues([defaultUser]);
+    }
+}
+
+/**
+ * Setup Doctors sheet with headers
+ */
+function setupDoctorsSheet(sheet) {
+    if (sheet.getLastRow() === 0) {
+        const headers = [
+            'ID', 'First Name', 'Last Name', 'Specialty', 'Phone', 'Email',
+            'License Number', 'Notes', 'Status', 'Created At', 'Updated At'
+        ];
+        sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+
+        // Add sample doctors data
+        const sampleDoctors = [
+            ['DR001', 'สมชาย', 'ใจดี', 'จัดฟัน', '081-234-5678', 'somchai@clinic.com', 'D12345', 'ชำนาญการจัดฟันเด็กและผู้ใหญ่', 'active', new Date(), new Date()],
+            ['DR002', 'สุดา', 'ปรีชา', 'ทันตกรรมทั่วไป', '082-345-6789', 'suda@clinic.com', 'D23456', 'เชี่ยวชาญด้านการรักษาฟันผุและถอนฟัน', 'active', new Date(), new Date()],
+            ['DR003', 'วิชัย', 'สุขใส', 'ทันตกรรมเด็ก', '083-456-7890', 'wichai@clinic.com', 'D34567', 'ผู้เชี่ยวชาญด้านทันตกรรมเด็กและการป้องกัน', 'active', new Date(), new Date()]
+        ];
+        sheet.getRange(2, 1, sampleDoctors.length, sampleDoctors[0].length).setValues(sampleDoctors);
+    }
+}
+
+/**
+ * Setup Option List sheet with headers and default options
+ */
+function setupOptionListSheet(sheet) {
+    if (sheet.getLastRow() === 0) {
+        // Simple two-column structure
+        const headers = ['Case Type', 'Case Details'];
+        sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+
+        // Add default case types in column A and case details in column B
+        const caseTypes = [
+            'จัดฟัน',
+            'GP1', 
+            'GP2',
+            'GP3',
+            'รักษาราก',
+            'ซื้อผลิตภัณฑ์'
+        ];
+
+        const caseDetails = [
+            'จัดฟัน',
+            'ปรับลวด',
+            'ถอดเครื่องมือ',
+            'ทำรีเทนเนอร์',
+            'อุดฟัน',
+            'ถอนฟัน',
+            'ถอนฟันน้ำนม',
+            'ขูดหินปูน',
+            'ผ่าฟันคุด',
+            'รักษารากฟัน',
+            'เกลารากฟัน',
+            'ทำครอบฟัน',
+            'เคลือบฟลูออไรด์',
+            'ตรวจและปรึกษา'
+        ];
+
+        // Add case types to column A (starting from A2)
+        for (let i = 0; i < caseTypes.length; i++) {
+            sheet.getRange(i + 2, 1).setValue(caseTypes[i]);
+        }
+
+        // Add case details to column B (starting from B2)
+        for (let i = 0; i < caseDetails.length; i++) {
+            sheet.getRange(i + 2, 2).setValue(caseDetails[i]);
+        }
+        
+        // Format the sheet
+        sheet.getRange(1, 1, 1, headers.length).setBackground('#30308b').setFontColor('white');
+        sheet.setFrozenRows(1);
+        sheet.autoResizeColumns(1, headers.length);
     }
 }
 
@@ -282,6 +364,7 @@ function addPatient(patientData) {
 
         const newPatient = [
             newId,
+            patientData.titlePrefix || '',
             patientData.firstName,
             patientData.lastName,
             "'" + patientData.phone,
@@ -328,16 +411,17 @@ function updatePatient(patientId, patientData) {
         // Update patient data
         const updatedPatient = [
             patientId,
+            patientData.titlePrefix || '',
             patientData.firstName,
             patientData.lastName,
-            patientData.phone,
+            "'"+ patientData.phone,
             patientData.birthDate,
             patientData.address || '',
             patientData.allergies || '',
             patientData.medicalHistory || '',
             patientData.notes || '',
-            data[rowIndex - 1][9], // Keep original registration date
-            data[rowIndex - 1][10], // Keep original created date
+            data[rowIndex - 1][10], // Keep original registration date (index adjusted for titlePrefix)
+            data[rowIndex - 1][11], // Keep original created date (index adjusted for titlePrefix)
             new Date() // Update modified date
         ];
 
@@ -400,7 +484,7 @@ function getPatientById(patientId) {
             if (data[i][0] === patientId) {
                 const patient = {};
                 headers.forEach((header, index) => {
-                    patient[toCamelCase(header)] = data[i][index];
+                    patient[header.replace(/\s+/g, '_').toLowerCase()] = data[i][index];
                 });
                 return { success: true, patient: patient };
             }
@@ -413,7 +497,193 @@ function getPatientById(patientId) {
     }
 }
 
-// ===========================================
+// DOCTOR MANAGEMENT FUNCTIONS
+
+/**
+ * Get all doctors
+ */
+function getAllDoctors() {
+    try {
+        const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
+        const data = doctorsSheet.getDataRange().getValues();
+        SpreadsheetApp.flush()
+
+        if (data.length <= 1) {
+            return JSON.stringify({ success: true, doctors: [] });
+        }
+
+        const doctors = [];
+        const headers = data[0];
+
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            const doctor = {};
+
+            headers.forEach((header, index) => {
+                doctor[header.replace(/\s+/g, '_').toLowerCase()] = row[index];
+            });
+
+            doctors.push(doctor);
+        }
+
+        return JSON.stringify({ success: true, doctors: doctors });
+    } catch (error) {
+        console.error('Error getting doctors:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
+/**
+ * Add new doctor
+ */
+function addDoctor(doctorData) {
+    try {
+        const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
+        const lastRow = doctorsSheet.getLastRow();
+        const getNewDoctorId = () => {
+            if (lastRow === 1) {
+                return 'DR001';
+            }
+            let last_id = doctorsSheet.getRange(lastRow, 1).getValue();
+            let last_id_num = parseInt(last_id.slice(2));
+            let new_id_num = String(last_id_num + 1).padStart(3, '0');
+            return 'DR' + new_id_num;
+        }
+        const newId = getNewDoctorId();
+
+        const newDoctor = [
+            newId,
+            doctorData.firstName,
+            doctorData.lastName,
+            doctorData.specialty,
+            "'" + doctorData.phone,
+            doctorData.email || '',
+            doctorData.licenseNumber || '',
+            doctorData.notes || '',
+            'active',
+            new Date(),
+            new Date()
+        ];
+
+        doctorsSheet.getRange(lastRow + 1, 1, 1, newDoctor.length).setValues([newDoctor]);
+
+        return { success: true, message: 'เพิ่มข้อมูลหมอเรียบร้อย', doctorId: newId };
+    } catch (error) {
+        console.error('Error adding doctor:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Update doctor information
+ */
+function updateDoctor(doctorId, doctorData) {
+    try {
+        const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
+        const data = doctorsSheet.getDataRange().getValues();
+
+        // Find doctor row
+        let rowIndex = -1;
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === doctorId) {
+                rowIndex = i + 1; // Sheets are 1-indexed
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return { success: false, message: 'ไม่พบข้อมูลหมอ' };
+        }
+
+        const updatedDoctor = [
+            doctorId,
+            doctorData.firstName,
+            doctorData.lastName,
+            doctorData.specialty,
+            "'" + doctorData.phone,
+            doctorData.email || '',
+            doctorData.licenseNumber || '',
+            doctorData.notes || '',
+            doctorData.status || 'active',
+            data[rowIndex - 1][9], // Keep original created_at
+            new Date() // Update updated_at
+        ];
+
+        doctorsSheet.getRange(rowIndex, 1, 1, updatedDoctor.length).setValues([updatedDoctor]);
+
+        return { success: true, message: 'อัปเดตข้อมูลหมอเรียบร้อย' };
+    } catch (error) {
+        console.error('Error updating doctor:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Delete doctor
+ */
+function deleteDoctor(doctorId) {
+    try {
+        const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
+        const data = doctorsSheet.getDataRange().getValues();
+
+        // Find doctor row
+        let rowIndex = -1;
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === doctorId) {
+                rowIndex = i + 1; // Sheets are 1-indexed
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return { success: false, message: 'ไม่พบข้อมูลหมอ' };
+        }
+
+        // Check if doctor has appointments
+        const appointmentsResult = getAppointmentsByDoctor(doctorId);
+        if (appointmentsResult.success && appointmentsResult.appointments.length > 0) {
+            return { success: false, message: 'ไม่สามารถลบหมอที่มีการนัดหมาย กรุณาอัปเดตการนัดหมายก่อน' };
+        }
+
+        doctorsSheet.deleteRow(rowIndex);
+
+        return { success: true, message: 'ลบข้อมูลหมอเรียบร้อย' };
+    } catch (error) {
+        console.error('Error deleting doctor:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Get doctor by ID
+ */
+function getDoctorById(doctorId) {
+    try {
+        const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
+        const data = doctorsSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            return { success: false, message: 'ไม่พบข้อมูลหมอ' };
+        }
+
+        const headers = data[0];
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === doctorId) {
+                const doctor = {};
+                headers.forEach((header, index) => {
+                    doctor[header.replace(/\s+/g, '_').toLowerCase()] = data[i][index];
+                });
+                return { success: true, doctor: doctor };
+            }
+        }
+
+        return { success: false, message: 'ไม่พบข้อมูลหมอ' };
+    } catch (error) {
+        console.error('Error getting doctor:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
 // APPOINTMENT MANAGEMENT FUNCTIONS
 // ===========================================
 
@@ -426,7 +696,7 @@ function getAllAppointments() {
         const data = appointmentsSheet.getDataRange().getValues();
 
         if (data.length <= 1) {
-            return { success: true, appointments: [] };
+            return JSON.stringify({ success: true, appointments: [] });
         }
 
         const appointments = [];
@@ -437,16 +707,16 @@ function getAllAppointments() {
             const appointment = {};
 
             headers.forEach((header, index) => {
-                appointment[toCamelCase(header)] = row[index];
+                appointment[header.replace(/\s+/g, '_').toLowerCase()] = row[index];
             });
 
             appointments.push(appointment);
         }
 
-        return { success: true, appointments: appointments };
+        return JSON.stringify({ success: true, appointments: appointments });
     } catch (error) {
         console.error('Error getting appointments:', error);
-        return { success: false, message: error.toString() };
+        return JSON.stringify({ success: false, message: error.toString() });
     }
 }
 
@@ -464,7 +734,7 @@ function addAppointment(appointmentData) {
             if (lastRow === 1) {
                 return 'A' + year + month + '0001';
             }
-            let last_id = patientsSheet.getRange(lastRow, 1).getValue();
+            let last_id = appointmentsSheet.getRange(lastRow, 1).getValue();
             let last_id_num = parseInt(last_id.slice(5))
             let last_id_prefix = last_id.slice(0, 5);
             let new_id_num = String(last_id_num + 1).padStart(4, '0');
@@ -481,14 +751,25 @@ function addAppointment(appointmentData) {
         if (!patientResult.success) {
             return JSON.stringify({ success: false, message: 'ไม่พบข้อมูลคนไข้' });
         }
+
+        // Validate doctor exists if provided
+        if (appointmentData.doctorId) {
+            const doctorResult = getDoctorById(appointmentData.doctorId);
+            if (!doctorResult.success) {
+                return JSON.stringify({ success: false, message: 'ไม่พบข้อมูลหมอ' });
+            }
+        }
+
         const newId = getNewAppointmentId()
 
         const newAppointment = [
             newId,
             appointmentData.patientId,
+            appointmentData.doctorId || '',
             appointmentData.appointmentDate,
             appointmentData.appointmentTime,
-            appointmentData.treatment,
+            appointmentData.caseType || '',
+            appointmentData.caseDetails || '',
             appointmentData.cost || 0,
             appointmentData.status || 'scheduled',
             appointmentData.notes || '',
@@ -532,16 +813,26 @@ function updateAppointment(appointmentId, appointmentData) {
             return { success: false, message: 'ไม่พบข้อมูลคนไข้' };
         }
 
+        // Validate doctor exists if provided
+        if (appointmentData.doctorId) {
+            const doctorResult = getDoctorById(appointmentData.doctorId);
+            if (!doctorResult.success) {
+                return { success: false, message: 'ไม่พบข้อมูลหมอ' };
+            }
+        }
+
         const updatedAppointment = [
             appointmentId,
             appointmentData.patientId,
+            appointmentData.doctorId || '',
             appointmentData.appointmentDate,
             appointmentData.appointmentTime,
-            appointmentData.treatment,
+            appointmentData.caseType || '',
+            appointmentData.caseDetails || '',
             appointmentData.cost || 0,
             appointmentData.status || 'scheduled',
             appointmentData.notes || '',
-            data[rowIndex - 1][8], // Keep original created date
+            data[rowIndex - 1][10], // Keep original created date (index adjusted for removed treatment column)
             new Date() // Update modified date
         ];
 
@@ -606,6 +897,27 @@ function getAppointmentsByPatient(patientId) {
 }
 
 /**
+ * Get appointments by doctor
+ */
+function getAppointmentsByDoctor(doctorId) {
+    try {
+        const allAppointments = getAllAppointments();
+        if (!allAppointments.success) {
+            return allAppointments;
+        }
+
+        const doctorAppointments = allAppointments.appointments.filter(
+            appointment => appointment.doctor_id === doctorId
+        );
+
+        return { success: true, appointments: doctorAppointments };
+    } catch (error) {
+        console.error('Error getting appointments by doctor:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
  * Get appointments by date range
  */
 function getAppointmentsByDateRange(startDate, endDate) {
@@ -654,7 +966,7 @@ function getAllRevenues() {
             const revenue = {};
 
             headers.forEach((header, index) => {
-                revenue[toCamelCase(header)] = row[index];
+                revenue[header.replace(/\s+/g, '_').toLowerCase()] = row[index];
             });
 
             revenues.push(revenue);
@@ -930,15 +1242,6 @@ function generateMonthlyRevenueReport(year, month) {
 // ===========================================
 
 /**
- * Convert string to camelCase
- */
-function toCamelCase(str) {
-    return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function (word, index) {
-        return index === 0 ? word.toLowerCase() : word.toUpperCase();
-    }).replace(/\s+/g, '');
-}
-
-/**
  * Generate unique ID
  */
 function generateId(prefix, existingIds) {
@@ -982,6 +1285,98 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
+// ===========================================
+// OPTION LIST FUNCTIONS
+// ===========================================
+
+/**
+ * Get case types from Option List sheet (Column A)
+ */
+function getCaseTypes() {
+    try {
+        const optionListSheet = getSheet(SHEET_NAMES.OPTION_LIST);
+        const data = optionListSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            return JSON.stringify({ success: true, options: [] });
+        }
+
+        const caseTypes = [];
+        for (let i = 1; i < data.length; i++) {
+            const caseType = data[i][0]; // Column A (Case Type)
+            if (caseType && caseType.toString().trim() !== '') {
+                caseTypes.push({
+                    value: caseType.toString().trim(),
+                    displayOrder: i,
+                    description: caseType.toString().trim()
+                });
+            }
+        }
+
+        return JSON.stringify({ success: true, options: caseTypes });
+    } catch (error) {
+        console.error('Error getting case types:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
+/**
+ * Get case details from Option List sheet (Column B)
+ */
+function getCaseDetails() {
+    try {
+        const optionListSheet = getSheet(SHEET_NAMES.OPTION_LIST);
+        const data = optionListSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            return JSON.stringify({ success: true, options: [] });
+        }
+
+        const caseDetails = [];
+        for (let i = 1; i < data.length; i++) {
+            const caseDetail = data[i][1]; // Column B (Case Details)
+            if (caseDetail && caseDetail.toString().trim() !== '') {
+                caseDetails.push({
+                    value: caseDetail.toString().trim(),
+                    displayOrder: i,
+                    description: caseDetail.toString().trim()
+                });
+            }
+        }
+
+        return JSON.stringify({ success: true, options: caseDetails });
+    } catch (error) {
+        console.error('Error getting case details:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
+/**
+ * Get all options from Option List sheet
+ */
+function getAllOptions() {
+    try {
+        const caseTypesResult = JSON.parse(getCaseTypes());
+        const caseDetailsResult = JSON.parse(getCaseDetails());
+
+        if (!caseTypesResult.success || !caseDetailsResult.success) {
+            return JSON.stringify({ 
+                success: false, 
+                message: 'Error retrieving options' 
+            });
+        }
+
+        return JSON.stringify({
+            success: true,
+            caseTypes: caseTypesResult.options,
+            caseDetails: caseDetailsResult.options
+        });
+    } catch (error) {
+        console.error('Error getting all options:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
 /**
  * Test function to verify all functionality
  */
@@ -1022,11 +1417,53 @@ function include(filename) {
 }
 
 /**
+ * Migration function to remove treatment column from existing appointments sheet
+ * Run this once if you have existing data with treatment column
+ */
+function migrateTreatmentColumn() {
+    try {
+        const appointmentsSheet = getSheet(SHEET_NAMES.APPOINTMENTS);
+        const data = appointmentsSheet.getDataRange().getValues();
+        
+        if (data.length === 0) {
+            return { success: true, message: 'No data to migrate' };
+        }
+        
+        const headers = data[0];
+        const treatmentIndex = headers.indexOf('Treatment');
+        
+        if (treatmentIndex === -1) {
+            return { success: true, message: 'Treatment column not found, no migration needed' };
+        }
+        
+        // Remove treatment column from all rows
+        const migratedData = data.map(row => {
+            const newRow = [...row];
+            newRow.splice(treatmentIndex, 1);
+            return newRow;
+        });
+        
+        // Clear the sheet and write migrated data
+        appointmentsSheet.clear();
+        appointmentsSheet.getRange(1, 1, migratedData.length, migratedData[0].length).setValues(migratedData);
+        appointmentsSheet.getRange(1, 1, 1, migratedData[0].length).setFontWeight('bold');
+        
+        return { success: true, message: `Migrated ${data.length - 1} appointments, removed treatment column` };
+    } catch (error) {
+        console.error('Error migrating treatment column:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
  * Main doGet function for web app deployment
  */
 function doGet() {
     return HtmlService.createTemplateFromFile('index')
         .evaluate()
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1')
         .setTitle('ระบบจัดการคลินิคทันตกรรม')
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+        .setFaviconUrl('https://img2.pic.in.th/pic/Screenshot-2025-09-22-215301.png'); // Replace with actual favicon URL
 }
