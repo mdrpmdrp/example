@@ -1,0 +1,2723 @@
+/**
+ * Dental Clinic Management System - Google Apps Script Backend
+ * This file contains all the backend functions for managing patients, appointments, and revenue
+ * using Google Sheets as the database
+ * 
+ * GOOGLE CHAT NOTIFICATIONS SETUP:
+ * 1. Create or open a Google Chat space
+ * 2. Click on the space name at the top
+ * 3. Select "Manage webhooks"
+ * 4. Click "Add webhook"
+ * 5. Give it a name and copy the webhook URL
+ * 6. Run: setGoogleChatWebhook('YOUR_WEBHOOK_URL') in the Apps Script editor
+ * 7. The system will automatically send notifications for all form submissions
+ */
+
+// Sheet names
+const SHEET_NAMES = {
+    PATIENTS: 'Patients',
+    APPOINTMENTS: 'Appointments',
+    REVENUE: 'Revenue',
+    USERS: 'Users',
+    DOCTORS: 'Doctors',
+    OPTION_LIST: 'Option List'
+};
+
+// Cache for spreadsheet and sheets to avoid repeated API calls
+let spreadsheetCache = null;
+let sheetCache = {};
+
+/**
+ * Get cached spreadsheet instance
+ */
+function getCachedSpreadsheet() {
+    if (!spreadsheetCache) {
+        spreadsheetCache = SpreadsheetApp.getActiveSpreadsheet();
+    }
+    return spreadsheetCache;
+}
+
+/**
+ * Get cached sheet instance
+ */
+function getCachedSheet(sheetName) {
+    if (!sheetCache[sheetName]) {
+        const spreadsheet = getCachedSpreadsheet();
+        sheetCache[sheetName] = spreadsheet.getSheetByName(sheetName);
+        
+        if (!sheetCache[sheetName]) {
+            throw new Error(`Sheet '${sheetName}' not found. Please run initializeSystem() first.`);
+        }
+    }
+    return sheetCache[sheetName];
+}
+
+/**
+ * Clear cache when sheets are modified
+ */
+function clearCache() {
+    spreadsheetCache = null;
+    sheetCache = {};
+}
+
+/**
+ * Initialize the system by creating necessary sheets and headers
+ */
+function initializeSystem() {
+    try {
+        // Clear cache to ensure fresh data
+        clearCache();
+        
+        // Get the main spreadsheet
+        const spreadsheet = getCachedSpreadsheet();
+
+        // Create or get sheets in batch
+        const sheetNames = Object.values(SHEET_NAMES);
+        const sheets = {};
+        
+        sheetNames.forEach(sheetName => {
+            sheets[sheetName] = getOrCreateSheetInSpreadsheet(spreadsheet, sheetName);
+        });
+
+        // Setup headers if sheets are empty - batch operations
+        setupPatientsSheet(sheets[SHEET_NAMES.PATIENTS]);
+        setupAppointmentsSheet(sheets[SHEET_NAMES.APPOINTMENTS]);
+        setupRevenueSheet(sheets[SHEET_NAMES.REVENUE]);
+        setupUsersSheet(sheets[SHEET_NAMES.USERS]);
+        setupDoctorsSheet(sheets[SHEET_NAMES.DOCTORS]);
+        setupOptionListSheet(sheets[SHEET_NAMES.OPTION_LIST]);
+
+        // Force execution of all pending operations
+        SpreadsheetApp.flush();
+
+        return { success: true, message: 'System initialized successfully' };
+    } catch (error) {
+        console.error('Error initializing system:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Get or create a sheet within the main spreadsheet
+ */
+function getOrCreateSheetInSpreadsheet(spreadsheet, sheetName) {
+    try {
+        let sheet = spreadsheet.getSheetByName(sheetName);
+
+        if (!sheet) {
+            sheet = spreadsheet.insertSheet(sheetName);
+            // Update cache with new sheet
+            sheetCache[sheetName] = sheet;
+        }
+
+        return sheet;
+    } catch (error) {
+        console.error(`Error getting/creating sheet ${sheetName}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Get a specific sheet from the main spreadsheet (optimized with cache)
+ */
+function getSheet(sheetName) {
+    try {
+        return getCachedSheet(sheetName);
+    } catch (error) {
+        console.error(`Error getting sheet ${sheetName}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Setup Patients sheet with headers
+ */
+function setupPatientsSheet(sheet) {
+    if (sheet.getLastRow() === 0) {
+        const headers = [
+            'ID', 'Title Prefix', 'First Name', 'Last Name', 'Phone', 'Birth Date', 'Gender',
+            'Address', 'Allergies', 'Medical History', 'Notes', 'Branch', 'Registration Date', 'Created At', 'Updated At'
+        ];
+        const range = sheet.getRange(1, 1, 1, headers.length);
+        range.setValues([headers]);
+        range.setFontWeight('bold');
+    }
+}
+
+/**
+ * Setup Appointments sheet with headers
+ */
+function setupAppointmentsSheet(sheet) {
+    if (sheet.getLastRow() === 0) {
+        const headers = [
+            'ID', 'Patient ID', 'Doctor ID', 'Appointment Date', 'Appointment Time',
+            'Case Type', 'Case Details', 'Contact Channel', 'Cost', 'Status', 'Notes', 'Branch', 'Created At', 'Updated At'
+        ];
+        const range = sheet.getRange(1, 1, 1, headers.length);
+        range.setValues([headers]);
+        range.setFontWeight('bold');
+    }
+}
+
+/**
+ * Setup Revenue sheet with headers
+ */
+function setupRevenueSheet(sheet) {
+    if (sheet.getLastRow() === 0) {
+        const headers = [
+            'ID', 'Date', 'Description', 'Amount', 'Type', 'Notes', 'Branch', 'Created At', 'Updated At'
+        ];
+        const range = sheet.getRange(1, 1, 1, headers.length);
+        range.setValues([headers]);
+        range.setFontWeight('bold');
+    }
+}
+
+/**
+ * Setup Users sheet with headers
+ */
+function setupUsersSheet(sheet) {
+    if (sheet.getLastRow() === 0) {
+        const headers = [
+            'ID', 'Username', 'Password Hash', 'User Type', 'Full Name', 'Email',
+            'Phone', 'Branch', 'Role', 'Status', 'Created At', 'Updated At'
+        ];
+        const range = sheet.getRange(1, 1, 1, headers.length);
+        range.setValues([headers]);
+        range.setFontWeight('bold');
+
+        // Add default users in batch with branch and role information
+        const defaultUsers = [
+            ['U001', 'superadmin', 'superadmin123', 'super_admin', 'ผู้ดูแลระบบหลัก', 'superadmin@clinic.com',
+             '081-000-0000', 'HEAD_OFFICE', 'super_admin', 'active', new Date(), new Date()],
+            ['U002', 'admin', 'admin123', 'admin', 'ผู้ดูแลระบบสาขา', 'admin@clinic.com',
+             '081-234-5678', 'BRANCH_01', 'admin', 'active', new Date(), new Date()],
+            ['U003', 'user', 'user123', 'user', 'ผู้ใช้ทั่วไป', 'user@clinic.com',
+             '082-345-6789', 'BRANCH_01', 'user', 'active', new Date(), new Date()]
+        ];
+        
+        if (defaultUsers.length > 0) {
+            sheet.getRange(2, 1, defaultUsers.length, defaultUsers[0].length).setValues(defaultUsers);
+        }
+    }
+}
+
+/**
+ * Setup Doctors sheet with headers
+ */
+function setupDoctorsSheet(sheet) {
+    if (sheet.getLastRow() === 0) {
+        const headers = [
+            'ID', 'First Name', 'Last Name', 'Specialty', 'Phone', 'Email',
+            'License Number', 'Notes', 'Status', 'Created At', 'Updated At'
+        ];
+        const range = sheet.getRange(1, 1, 1, headers.length);
+        range.setValues([headers]);
+        range.setFontWeight('bold');
+
+        // Add sample doctors data in batch (shared across all branches)
+        const sampleDoctors = [
+            ['DR001', 'สมชาย', 'ใจดี', 'จัดฟัน', '081-234-5678', 'somchai@clinic.com', 'D12345', 'ชำนาญการจัดฟันเด็กและผู้ใหญ่', 'active', new Date(), new Date()],
+            ['DR002', 'สุดา', 'ปรีชา', 'ทันตกรรมทั่วไป', '082-345-6789', 'suda@clinic.com', 'D23456', 'เชี่ยวชาญด้านการรักษาฟันผุและถอนฟัน', 'active', new Date(), new Date()],
+            ['DR003', 'วิชัย', 'สุขใส', 'ทันตกรรมเด็ก', '083-456-7890', 'wichai@clinic.com', 'D34567', 'ผู้เชี่ยวชาญด้านทันตกรรมเด็กและการป้องกัน', 'active', new Date(), new Date()]
+        ];
+        
+        if (sampleDoctors.length > 0) {
+            sheet.getRange(2, 1, sampleDoctors.length, sampleDoctors[0].length).setValues(sampleDoctors);
+        }
+    }
+}
+
+/**
+ * Setup Option List sheet with headers and default options
+ */
+function setupOptionListSheet(sheet) {
+    if (sheet.getLastRow() === 0) {
+        // Four-column structure: Case Type, Case Details, Contact Channel, Branch
+        const headers = ['Case Type', 'Case Details', 'Contact Channel', 'Branch'];
+        sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+
+        // Add default case types in column A
+        const caseTypes = [
+            'จัดฟัน',
+            'GP1', 
+            'GP2',
+            'GP3',
+            'รักษาราก',
+            'ซื้อผลิตภัณฑ์'
+        ];
+
+        // Add default case details in column B
+        const caseDetails = [
+            'จัดฟัน',
+            'ปรับลวด',
+            'ถอดเครื่องมือ',
+            'ทำรีเทนเนอร์',
+            'อุดฟัน',
+            'ถอนฟัน',
+            'ถอนฟันน้ำนม',
+            'ขูดหินปูน',
+            'ผ่าฟันคุด',
+            'รักษารากฟัน',
+            'เกลารากฟัน',
+            'ทำครอบฟัน',
+            'เคลือบฟลูออไรด์',
+            'ตรวจและปรึกษา'
+        ];
+
+        // Add default contact channels in column C
+        const contactChannels = [
+            'โทรศัพท์',
+            'Facebook',
+            'Line',
+            'Walk in',
+            'นัดต่อเนื่อง',
+            'อื่นๆ'
+        ];
+
+        // Add default branches in column D
+        const branches = [
+            'HEAD_OFFICE',
+            'BRANCH_01',
+            'BRANCH_02',
+            'BRANCH_03',
+            'BRANCH_04',
+            'BRANCH_05'
+        ];
+
+        // Add case types to column A (starting from A2)
+        for (let i = 0; i < caseTypes.length; i++) {
+            sheet.getRange(i + 2, 1).setValue(caseTypes[i]);
+        }
+
+        // Add case details to column B (starting from B2)
+        for (let i = 0; i < caseDetails.length; i++) {
+            sheet.getRange(i + 2, 2).setValue(caseDetails[i]);
+        }
+        
+        // Add contact channels to column C (starting from C2)
+        for (let i = 0; i < contactChannels.length; i++) {
+            sheet.getRange(i + 2, 3).setValue(contactChannels[i]);
+        }
+        
+        // Add branches to column D (starting from D2)
+        for (let i = 0; i < branches.length; i++) {
+            sheet.getRange(i + 2, 4).setValue(branches[i]);
+        }
+        
+        // Format the sheet
+        sheet.getRange(1, 1, 1, headers.length).setBackground('#30308b').setFontColor('white');
+        sheet.setFrozenRows(1);
+        sheet.autoResizeColumns(1, headers.length);
+    }
+}
+
+// ===========================================
+// USER AUTHENTICATION FUNCTIONS
+// ===========================================
+
+// ===========================================
+// ROLE-BASED ACCESS CONTROL FUNCTIONS
+// ===========================================
+
+/**
+ * Check if user has permission to access a function
+ */
+function checkPermission(userRole, action) {
+    const permissions = {
+        'super_admin': {
+            canManageUsers: true,
+            canManageBranches: true,
+            canViewAllBranches: true,
+            canAccessSettings: true,
+            canAccessReports: true,
+            canManagePatients: true,
+            canManageAppointments: true,
+            canManageDoctors: true,
+            canManageRevenue: true
+        },
+        'admin': {
+            canManageUsers: true, // Only for same branch
+            canManageBranches: false,
+            canViewAllBranches: false,
+            canAccessSettings: false,
+            canAccessReports: true,
+            canManagePatients: true,
+            canManageAppointments: true,
+            canManageDoctors: true,
+            canManageRevenue: true
+        },
+        'user': {
+            canManageUsers: false,
+            canManageBranches: false,
+            canViewAllBranches: false,
+            canAccessSettings: false,
+            canAccessReports: false,
+            canManagePatients: true,
+            canManageAppointments: true,
+            canManageDoctors: false,
+            canManageRevenue: false
+        }
+    };
+
+    return permissions[userRole] && permissions[userRole][action] === true;
+}
+
+/**
+ * Filter data based on user's branch access
+ */
+function filterDataByBranch(data, userBranch, userRole) {
+    // Super admin can see all data
+    if (userRole === 'super_admin') {
+        return data;
+    }
+    
+    // Admin and User can only see data from their branch
+    return data.filter(item => {
+        return item.branch === userBranch || !item.branch; // Include items without branch for backward compatibility
+    });
+}
+
+/**
+ * Check if user can access specific branch data
+ */
+function canAccessBranch(userBranch, userRole, targetBranch) {
+    if (userRole === 'super_admin') {
+        return true; // Super admin can access all branches
+    }
+    
+    return userBranch === targetBranch; // Others can only access their own branch
+}
+
+/**
+ * Get user's accessible branches
+ */
+function getUserAccessibleBranches(userBranch, userRole) {
+    if (userRole === 'super_admin') {
+        try {
+            // Get all available branches from Option List sheet
+            const branchesResult = JSON.parse(getBranches());
+            if (branchesResult.success) {
+                return branchesResult.options.map(branch => branch.value);
+            }
+        } catch (error) {
+            console.warn('Error getting branches from sheet, using defaults:', error);
+        }
+        
+        // Fallback to default branches if there's an error
+        return ['HEAD_OFFICE', 'BRANCH_01', 'BRANCH_02', 'BRANCH_03'];
+    }
+    
+    return [userBranch]; // Return only user's branch
+}
+
+/**
+ * Validate user permissions for specific action
+ */
+function validateUserAccess(currentUser, action, targetBranch = null) {
+    if (!currentUser) {
+        return { success: false, message: 'กรุณาเข้าสู่ระบบก่อน' };
+    }
+
+    // Check role permission
+    if (!checkPermission(currentUser.role, action)) {
+        return { success: false, message: 'คุณไม่มีสิทธิ์ในการเข้าถึงฟังก์ชันนี้' };
+    }
+
+    // Check branch access if target branch is specified
+    if (targetBranch && !canAccessBranch(currentUser.branch, currentUser.role, targetBranch)) {
+        return { success: false, message: 'คุณไม่มีสิทธิ์เข้าถึงข้อมูลสาขานี้' };
+    }
+
+    return { success: true, message: 'มีสิทธิ์เข้าถึง' };
+}
+
+// ===========================================
+
+/**
+ * Authenticate user login
+ */
+function authenticateUser(username, password) {
+    try {
+        const usersSheet = getSheet(SHEET_NAMES.USERS);
+        const data = usersSheet.getDataRange().getValues();
+
+        // Skip header row
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            // Updated destructuring to match new column structure: Branch and Role added
+            const [id, dbUsername, dbPassword, dbUserType, fullName, email, phone, branch, role, status] = row;
+
+            if (dbUsername === username && dbPassword === password && status === 'active') {
+                return {
+                    success: true,
+                    message: 'เข้าสู่ระบบสำเร็จ',
+                    user: {
+                        id: id,
+                        username: dbUsername,
+                        userType: dbUserType,
+                        fullName: fullName,
+                        email: email,
+                        phone: phone,
+                        branch: branch || 'BRANCH_01', // Default branch if not specified
+                        role: role || dbUserType // Use role if available, otherwise fall back to userType
+                    }
+                };
+            }
+        }
+
+        return { success: false, message: 'ชื่อผู้ใช้ รหัสผ่าน หรือประเภทผู้ใช้ไม่ถูกต้อง' };
+    } catch (error) {
+        console.error('Error authenticating user:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Create new user account
+ */
+function createUser(userData) {
+    try {
+        const usersSheet = getSheet(SHEET_NAMES.USERS);
+        const lastRow = usersSheet.getLastRow();
+        const newId = 'U' + String(lastRow).padStart(3, '0');
+
+        const newUser = [
+            newId,
+            userData.username,
+            userData.password, // In production, this should be hashed
+            userData.userType,
+            userData.fullName,
+            userData.email,
+            userData.phone,
+            userData.branch || 'BRANCH_01', // Default branch
+            userData.role || userData.userType, // Default role to userType if not specified
+            'active',
+            new Date(),
+            new Date()
+        ];
+
+        usersSheet.getRange(lastRow + 1, 1, 1, newUser.length).setValues([newUser]);
+
+        return { success: true, message: 'สร้างบัญชีผู้ใช้เรียบร้อย', userId: newId };
+    } catch (error) {
+        console.error('Error creating user:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+// ===========================================
+// OPTIMIZED DATA RETRIEVAL FUNCTIONS
+// ===========================================
+
+// Data cache for improved performance - optimized for multi-user environment
+let dataCache = {
+    patients: null,
+    appointments: null,
+    doctors: null,
+    revenues: null,
+    users: null,
+    lastUpdated: {
+        patients: 0,
+        appointments: 0,
+        doctors: 0,
+        revenues: 0,
+        users: 0
+    },
+    // Multi-user optimization flags
+    isWarming: false,
+    warmingStartTime: 0,
+    lastWarmingUser: null
+};
+
+const CACHE_DURATION = 30000; // 30 seconds cache
+const CACHE_WARMING_COOLDOWN = 10000; // 10 seconds cooldown between warming attempts
+const CACHE_WARMING_TIMEOUT = 5000; // 5 seconds max for cache warming
+
+/**
+ * Check if cached data is still valid
+ */
+function isCacheValid(dataType) {
+    return dataCache.lastUpdated[dataType] && 
+           (Date.now() - dataCache.lastUpdated[dataType]) < CACHE_DURATION;
+}
+
+/**
+ * Check if cache warming is needed and safe to perform
+ */
+function shouldWarmCache() {
+    const now = Date.now();
+    
+    // Don't warm if already warming
+    if (dataCache.isWarming) {
+        // Check if warming has been stuck for too long
+        if (now - dataCache.warmingStartTime > CACHE_WARMING_TIMEOUT) {
+            console.warn('Cache warming timeout detected, resetting warming state');
+            dataCache.isWarming = false;
+            return true;
+        }
+        return false;
+    }
+    
+    // Don't warm if recently warmed by another user
+    if (dataCache.warmingStartTime && 
+        (now - dataCache.warmingStartTime) < CACHE_WARMING_COOLDOWN) {
+        return false;
+    }
+    
+    // Check if any cache is invalid
+    const cacheTypes = ['patients', 'appointments', 'doctors', 'revenues', 'users'];
+    return cacheTypes.some(type => !isCacheValid(type));
+}
+
+/**
+ * Invalidate specific cache - thread-safe
+ */
+function invalidateCache(dataType) {
+    if (dataType) {
+        dataCache[dataType] = null;
+        dataCache.lastUpdated[dataType] = 0;
+    } else {
+        // Clear all cache
+        Object.keys(dataCache.lastUpdated).forEach(key => {
+            dataCache[key] = null;
+            dataCache.lastUpdated[key] = 0;
+        });
+    }
+    
+    // Reset warming state when cache is invalidated
+    dataCache.isWarming = false;
+    dataCache.warmingStartTime = 0;
+}
+
+/**
+ * Convert sheet data to objects efficiently
+ */
+function convertSheetDataToObjects(data, skipEmptyRows = true) {
+    if (!data || data.length <= 1) {
+        return [];
+    }
+
+    const headers = data[0];
+    const objects = [];
+    
+    // Pre-process headers for performance
+    const processedHeaders = headers.map(header => 
+        header.toString().replace(/\s+/g, '_').toLowerCase()
+    );
+
+    for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        
+        // Skip empty rows if requested
+        if (skipEmptyRows && row.every(cell => !cell)) {
+            continue;
+        }
+
+        const obj = {};
+        for (let j = 0; j < headers.length; j++) {
+            obj[processedHeaders[j]] = row[j];
+        }
+        objects.push(obj);
+    }
+
+    return objects;
+}
+
+// ===========================================
+// PATIENT MANAGEMENT FUNCTIONS
+// ===========================================
+
+/**
+ * Get all patients (optimized with caching and role-based access control)
+ */
+function getAllPatients(currentUser = null) {
+    try {
+        // Check cache first
+        if (isCacheValid('patients') && dataCache.patients) {
+            let patients = dataCache.patients;
+            
+            // Apply role-based filtering
+            if (currentUser && currentUser.role !== 'super_admin') {
+                patients = filterDataByBranch(patients, currentUser.branch, currentUser.role);
+            }
+            
+            return JSON.stringify({ success: true, patients: patients });
+        }
+
+        const patientsSheet = getSheet(SHEET_NAMES.PATIENTS);
+        const data = patientsSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            dataCache.patients = [];
+            dataCache.lastUpdated.patients = Date.now();
+            return JSON.stringify({ success: true, patients: [] });
+        }
+
+        let patients = convertSheetDataToObjects(data);
+        
+        // Apply role-based filtering
+        if (currentUser && currentUser.role !== 'super_admin') {
+            patients = filterDataByBranch(patients, currentUser.branch, currentUser.role);
+        }
+        
+        // Update cache with unfiltered data for performance
+        dataCache.patients = convertSheetDataToObjects(data);
+        dataCache.lastUpdated.patients = Date.now();
+
+        return JSON.stringify({ success: true, patients: patients });
+    } catch (error) {
+        console.error('Error getting patients:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
+/**
+ * Add new patient (optimized with role-based access control)
+ */
+function addPatient(patientData, currentUser = null) {
+    try {
+        // Check permissions
+        if (currentUser && !checkPermission(currentUser.role, 'canManagePatients')) {
+            return { success: false, message: 'คุณไม่มีสิทธิ์ในการเพิ่มข้อมูลคนไข้' };
+        }
+
+        const patientsSheet = getSheet(SHEET_NAMES.PATIENTS);
+        const lastRow = patientsSheet.getLastRow();
+        
+        // Optimized ID generation
+        const getNewPatientId = () => {
+            const today = new Date();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = String(today.getFullYear() < 2400 ? today.getFullYear() + 543 : today.getFullYear()).slice(-2);
+            
+            if (lastRow === 1) {
+                return 'P' + year + month + '0001';
+            }
+
+            // Get last patient ID more efficiently
+            const lastId = patientsSheet.getRange(lastRow, 1).getValue();
+            if (lastId && lastId.toString().startsWith('P' + year + month)) {
+                const lastNumber = parseInt(lastId.toString().slice(-4));
+                return 'P' + year + month + String(lastNumber + 1).padStart(4, '0');
+            } else {
+                return 'P' + year + month + '0001';
+            }
+        };
+
+        const newId = getNewPatientId();
+        const timestamp = new Date();
+
+        const newPatient = [
+            newId,
+            patientData.titlePrefix || '',
+            patientData.firstName,
+            patientData.lastName,
+            "'" + patientData.phone,
+            patientData.birthDate,
+            patientData.gender || '',
+            patientData.address || '',
+            patientData.allergies || '',
+            patientData.medicalHistory || '',
+            patientData.notes || '',
+            currentUser ? currentUser.branch : 'BRANCH_01', // Add user's branch
+            timestamp, // Registration Date
+            timestamp, // Created At
+            timestamp  // Updated At
+        ];
+
+        patientsSheet.getRange(lastRow + 1, 1, 1, newPatient.length).setValues([newPatient]);
+        
+        // Invalidate cache since data changed
+        invalidateCache('patients');
+
+        // Send notification to Google Chat
+        try {
+            sendFormSubmissionNotification('คนไข้', patientData, 'เพิ่ม');
+        } catch (notificationError) {
+            console.warn('Failed to send notification:', notificationError);
+        }
+
+        return { success: true, message: 'เพิ่มคนไข้เรียบร้อย', patientId: newId };
+    } catch (error) {
+        console.error('Error adding patient:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Update patient information (optimized with role-based access control)
+ */
+function updatePatient(patientId, patientData, currentUser = null) {
+    try {
+        // Check permissions
+        if (currentUser && !checkPermission(currentUser.role, 'canManagePatients')) {
+            return { success: false, message: 'คุณไม่มีสิทธิ์ในการแก้ไขข้อมูลคนไข้' };
+        }
+
+        const patientsSheet = getSheet(SHEET_NAMES.PATIENTS);
+        const data = patientsSheet.getDataRange().getValues();
+
+        // Find patient row more efficiently
+        let rowIndex = -1;
+        let existingPatient = null;
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === patientId) {
+                rowIndex = i + 1; // Sheets are 1-indexed
+                existingPatient = data[i];
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return { success: false, message: 'ไม่พบข้อมูลคนไข้' };
+        }
+
+        // Check branch access - patient's branch should be in column 11 (0-indexed)
+        const patientBranch = existingPatient[11];
+        if (currentUser && currentUser.role !== 'super_admin' && patientBranch && patientBranch !== currentUser.branch) {
+            return { success: false, message: 'คุณไม่มีสิทธิ์แก้ไขข้อมูลคนไข้ของสาขาอื่น' };
+        }
+
+        // Prepare updated patient data
+        const updatedPatient = [
+            patientId,
+            patientData.titlePrefix || '',
+            patientData.firstName,
+            patientData.lastName,
+            "'" + patientData.phone,
+            patientData.birthDate,
+            patientData.gender || '',
+            patientData.address || '',
+            patientData.allergies || '',
+            patientData.medicalHistory || '',
+            patientData.notes || '',
+            existingPatient[11] || (currentUser ? currentUser.branch : 'BRANCH_01'), // Keep original branch or set user's branch
+            existingPatient[12], // Keep original registration date
+            existingPatient[13], // Keep original created date
+            new Date() // Update modified date
+        ];
+
+        patientsSheet.getRange(rowIndex, 1, 1, updatedPatient.length).setValues([updatedPatient]);
+        
+        // Invalidate cache since data changed
+        invalidateCache('patients');
+
+        // Send notification to Google Chat
+        try {
+            sendFormSubmissionNotification('คนไข้', patientData, 'อัปเดต');
+        } catch (notificationError) {
+            console.warn('Failed to send notification:', notificationError);
+        }
+
+        return { success: true, message: 'อัปเดตข้อมูลคนไข้เรียบร้อย' };
+    } catch (error) {
+        console.error('Error updating patient:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Delete patient (optimized)
+ */
+function deletePatient(patientId) {
+    try {
+        const patientsSheet = getSheet(SHEET_NAMES.PATIENTS);
+        
+        // Use more efficient method to find row
+        const idColumn = patientsSheet.getRange(1, 1, patientsSheet.getLastRow(), 1).getValues().flat();
+        const rowIndex = idColumn.findIndex(id => id === patientId);
+
+        if (rowIndex === -1 || rowIndex === 0) { // 0 is header row
+            return { success: false, message: 'ไม่พบข้อมูลคนไข้' };
+        }
+
+        // Check if patient has appointments (use cache if available)
+        const appointmentsResult = getAppointmentsByPatient(patientId);
+        if (appointmentsResult.success && appointmentsResult.appointments.length > 0) {
+            return { success: false, message: 'ไม่สามารถลบคนไข้ที่มีการนัดหมาย กรุณาลบการนัดหมายก่อน' };
+        }
+
+        patientsSheet.deleteRow(rowIndex + 1); // Convert to 1-indexed
+        
+        // Invalidate cache since data changed
+        invalidateCache('patients');
+
+        return { success: true, message: 'ลบข้อมูลคนไข้เรียบร้อย' };
+    } catch (error) {
+        console.error('Error deleting patient:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Get patient by ID
+ */
+function getPatientById(patientId) {
+    try {
+        const patientsSheet = getSheet(SHEET_NAMES.PATIENTS);
+        const data = patientsSheet.getDataRange().getValues();
+
+        const headers = data[0];
+
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === patientId) {
+                const patient = {};
+                headers.forEach((header, index) => {
+                    patient[header.replace(/\s+/g, '_').toLowerCase()] = data[i][index];
+                });
+                return { success: true, patient: patient };
+            }
+        }
+
+        return { success: false, message: 'ไม่พบข้อมูลคนไข้' };
+    } catch (error) {
+        console.error('Error getting patient by ID:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+// DOCTOR MANAGEMENT FUNCTIONS
+
+/**
+ * Get all doctors (optimized with caching and role-based access control)
+ */
+function getAllDoctors(currentUser = null) {
+    try {
+        // Check cache first
+        if (isCacheValid('doctors') && dataCache.doctors) {
+            // Return all doctors since they are shared across branches
+            return JSON.stringify({ success: true, doctors: dataCache.doctors });
+        }
+
+        const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
+        const data = doctorsSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            dataCache.doctors = [];
+            dataCache.lastUpdated.doctors = Date.now();
+            return JSON.stringify({ success: true, doctors: [] });
+        }
+
+        let doctors = convertSheetDataToObjects(data);
+        
+        // Update cache with doctor data (no branch filtering for doctors)
+        dataCache.doctors = doctors;
+        dataCache.lastUpdated.doctors = Date.now();
+
+        return JSON.stringify({ success: true, doctors: doctors });
+    } catch (error) {
+        console.error('Error getting doctors:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
+/**
+ * Add new doctor (optimized with role-based access control)
+ */
+function addDoctor(doctorData, currentUser = null) {
+    try {
+        // Check permissions
+        if (currentUser && !checkPermission(currentUser.role, 'canManageDoctors')) {
+            return { success: false, message: 'คุณไม่มีสิทธิ์ในการเพิ่มข้อมูลหมอ' };
+        }
+
+        const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
+        const lastRow = doctorsSheet.getLastRow();
+        
+        // Optimized ID generation
+        const getNewDoctorId = () => {
+            if (lastRow === 1) {
+                return 'DR001';
+            }
+            const lastId = doctorsSheet.getRange(lastRow, 1).getValue();
+            const lastIdNum = parseInt(lastId.toString().slice(2));
+            const newIdNum = String(lastIdNum + 1).padStart(3, '0');
+            return 'DR' + newIdNum;
+        };
+        
+        const newId = getNewDoctorId();
+        const timestamp = new Date();
+
+        const newDoctor = [
+            newId,
+            doctorData.firstName,
+            doctorData.lastName,
+            doctorData.specialty,
+            "'" + doctorData.phone,
+            doctorData.email || '',
+            doctorData.licenseNumber || '',
+            doctorData.notes || '',
+            'active',
+            timestamp,
+            timestamp
+        ];
+
+        doctorsSheet.getRange(lastRow + 1, 1, 1, newDoctor.length).setValues([newDoctor]);
+        
+        // Invalidate cache since data changed
+        invalidateCache('doctors');
+
+        // Send notification to Google Chat
+        try {
+            sendFormSubmissionNotification('หมอ', doctorData, 'เพิ่ม');
+        } catch (notificationError) {
+            console.warn('Failed to send notification:', notificationError);
+        }
+
+        return { success: true, message: 'เพิ่มข้อมูลหมอเรียบร้อย', doctorId: newId };
+    } catch (error) {
+        console.error('Error adding doctor:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Update doctor information
+ */
+function updateDoctor(doctorId, doctorData) {
+    try {
+        const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
+        const data = doctorsSheet.getDataRange().getValues();
+
+        // Find doctor row
+        let rowIndex = -1;
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === doctorId) {
+                rowIndex = i + 1; // Sheets are 1-indexed
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return { success: false, message: 'ไม่พบข้อมูลหมอ' };
+        }
+
+        const updatedDoctor = [
+            doctorId,
+            doctorData.firstName,
+            doctorData.lastName,
+            doctorData.specialty,
+            "'" + doctorData.phone,
+            doctorData.email || '',
+            doctorData.licenseNumber || '',
+            doctorData.notes || '',
+            doctorData.status || 'active',
+            data[rowIndex - 1][9], // Keep original created_at
+            new Date() // Update updated_at
+        ];
+
+        doctorsSheet.getRange(rowIndex, 1, 1, updatedDoctor.length).setValues([updatedDoctor]);
+
+        return { success: true, message: 'อัปเดตข้อมูลหมอเรียบร้อย' };
+    } catch (error) {
+        console.error('Error updating doctor:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Delete doctor
+ */
+function deleteDoctor(doctorId) {
+    try {
+        const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
+        const data = doctorsSheet.getDataRange().getValues();
+
+        // Find doctor row
+        let rowIndex = -1;
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === doctorId) {
+                rowIndex = i + 1; // Sheets are 1-indexed
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return { success: false, message: 'ไม่พบข้อมูลหมอ' };
+        }
+
+        // Check if doctor has appointments
+        const appointmentsResult = getAppointmentsByDoctor(doctorId);
+        if (appointmentsResult.success && appointmentsResult.appointments.length > 0) {
+            return { success: false, message: 'ไม่สามารถลบหมอที่มีการนัดหมาย กรุณาอัปเดตการนัดหมายก่อน' };
+        }
+
+        doctorsSheet.deleteRow(rowIndex);
+
+        return { success: true, message: 'ลบข้อมูลหมอเรียบร้อย' };
+    } catch (error) {
+        console.error('Error deleting doctor:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Get doctor by ID
+ */
+function getDoctorById(doctorId) {
+    try {
+        const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
+        const data = doctorsSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            return { success: false, message: 'ไม่พบข้อมูลหมอ' };
+        }
+
+        const headers = data[0];
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === doctorId) {
+                const doctor = {};
+                headers.forEach((header, index) => {
+                    doctor[header.replace(/\s+/g, '_').toLowerCase()] = data[i][index];
+                });
+                return { success: true, doctor: doctor };
+            }
+        }
+
+        return { success: false, message: 'ไม่พบข้อมูลหมอ' };
+    } catch (error) {
+        console.error('Error getting doctor:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+// APPOINTMENT MANAGEMENT FUNCTIONS
+// ===========================================
+
+/**
+ * Get all appointments (optimized with caching and role-based access control)
+ */
+function getAllAppointments(currentUser = null) {
+    try {
+        // Check cache first
+        if (isCacheValid('appointments') && dataCache.appointments) {
+            let appointments = dataCache.appointments;
+            
+            // Apply role-based filtering
+            if (currentUser && currentUser.role !== 'super_admin') {
+                appointments = filterDataByBranch(appointments, currentUser.branch, currentUser.role);
+            }
+            
+            return JSON.stringify({ success: true, appointments: appointments });
+        }
+
+        const appointmentsSheet = getSheet(SHEET_NAMES.APPOINTMENTS);
+        const data = appointmentsSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            dataCache.appointments = [];
+            dataCache.lastUpdated.appointments = Date.now();
+            return JSON.stringify({ success: true, appointments: [] });
+        }
+
+        let appointments = convertSheetDataToObjects(data);
+        
+        // Apply role-based filtering
+        if (currentUser && currentUser.role !== 'super_admin') {
+            appointments = filterDataByBranch(appointments, currentUser.branch, currentUser.role);
+        }
+        
+        // Update cache with unfiltered data for performance
+        dataCache.appointments = convertSheetDataToObjects(data);
+        dataCache.lastUpdated.appointments = Date.now();
+
+        return JSON.stringify({ success: true, appointments: appointments });
+    } catch (error) {
+        console.error('Error getting appointments:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
+/**
+ * Add new appointment (optimized with role-based access control)
+ */
+function addAppointment(appointmentData, currentUser = null) {
+    try {
+        // Check permissions
+        if (currentUser && !checkPermission(currentUser.role, 'canManageAppointments')) {
+            return { success: false, message: 'คุณไม่มีสิทธิ์ในการเพิ่มการนัดหมาย' };
+        }
+
+        const appointmentsSheet = getSheet(SHEET_NAMES.APPOINTMENTS);
+        const lastRow = appointmentsSheet.getLastRow();
+        
+        // Optimized ID generation
+        const getNewAppointmentId = () => {
+            const today = new Date();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = String(today.getFullYear() < 2400 ? today.getFullYear() + 543 : today.getFullYear()).slice(-2);
+            
+            if (lastRow === 1) {
+                return 'A' + year + month + '0001';
+            }
+
+            const lastId = appointmentsSheet.getRange(lastRow, 1).getValue();
+            if (lastId && lastId.toString().startsWith('A' + year + month)) {
+                const lastNumber = parseInt(lastId.toString().slice(-4));
+                return 'A' + year + month + String(lastNumber + 1).padStart(4, '0');
+            } else {
+                return 'A' + year + month + '0001';
+            }
+        };
+
+        // Validate patient exists and check branch access
+        const patientResult = getPatientById(appointmentData.patientId);
+        if (!patientResult.success) {
+            return { success: false, message: 'ไม่พบข้อมูลคนไข้' };
+        }
+
+        // Check if user has access to patient's branch
+        if (currentUser && currentUser.role !== 'super_admin') {
+            const patientBranch = patientResult.patient.branch;
+            if (patientBranch && patientBranch !== currentUser.branch) {
+                return { success: false, message: 'คุณไม่สามารถนัดหมายให้คนไข้ของสาขาอื่นได้' };
+            }
+        }
+
+        // Validate doctor exists if provided
+        if (appointmentData.doctorId) {
+            const doctorResult = getDoctorById(appointmentData.doctorId);
+            if (!doctorResult.success) {
+                return { success: false, message: 'ไม่พบข้อมูลหมอ' };
+            }
+            // Doctors are shared across branches, no branch access check needed
+        }
+
+        const newId = getNewAppointmentId();
+        const timestamp = new Date();
+
+        const newAppointment = [
+            newId,
+            appointmentData.patientId,
+            appointmentData.doctorId || '',
+            appointmentData.appointmentDate,
+            appointmentData.appointmentTime,
+            appointmentData.caseType || '',
+            appointmentData.caseDetails || '',
+            appointmentData.contactChannel || '',
+            appointmentData.cost || 0,
+            appointmentData.status || 'scheduled',
+            appointmentData.notes || '',
+            currentUser ? currentUser.branch : 'BRANCH_01', // Add user's branch
+            timestamp, // Created At
+            timestamp  // Updated At
+        ];
+
+        appointmentsSheet.getRange(lastRow + 1, 1, 1, newAppointment.length).setValues([newAppointment]);
+        
+        // Invalidate cache since data changed
+        invalidateCache('appointments');
+
+        // Send notification to Google Chat
+        try {
+            sendFormSubmissionNotification('การนัดหมาย', appointmentData, 'เพิ่ม');
+        } catch (notificationError) {
+            console.warn('Failed to send notification:', notificationError);
+        }
+
+        return { success: true, message: 'เพิ่มการนัดหมายเรียบร้อย', appointmentId: newId };
+    } catch (error) {
+        console.error('Error adding appointment:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Update appointment
+ */
+function updateAppointment(appointmentId, appointmentData) {
+    try {
+        const appointmentsSheet = getSheet(SHEET_NAMES.APPOINTMENTS);
+        const data = appointmentsSheet.getDataRange().getValues();
+
+        // Find appointment row
+        let rowIndex = -1;
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === appointmentId) {
+                rowIndex = i + 1; // Sheets are 1-indexed
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return { success: false, message: 'ไม่พบข้อมูลการนัดหมาย' };
+        }
+
+        // Validate patient exists
+        const patientResult = getPatientById(appointmentData.patientId);
+        if (!patientResult.success) {
+            return { success: false, message: 'ไม่พบข้อมูลคนไข้' };
+        }
+
+        // Validate doctor exists if provided
+        if (appointmentData.doctorId) {
+            const doctorResult = getDoctorById(appointmentData.doctorId);
+            if (!doctorResult.success) {
+                return { success: false, message: 'ไม่พบข้อมูลหมอ' };
+            }
+        }
+
+        const updatedAppointment = [
+            appointmentId,
+            appointmentData.patientId,
+            appointmentData.doctorId || '',
+            appointmentData.appointmentDate,
+            appointmentData.appointmentTime,
+            appointmentData.caseType || '',
+            appointmentData.caseDetails || '',
+            appointmentData.contactChannel || '',
+            appointmentData.cost || 0,
+            appointmentData.status || 'scheduled',
+            appointmentData.notes || '',
+            data[rowIndex - 1][11], // Keep original created date (index adjusted for contact channel)
+            new Date() // Update modified date
+        ];
+
+        appointmentsSheet.getRange(rowIndex, 1, 1, updatedAppointment.length).setValues([updatedAppointment]);
+
+        // Send notification to Google Chat
+        try {
+            sendFormSubmissionNotification('การนัดหมาย', appointmentData, 'อัปเดต');
+        } catch (notificationError) {
+            console.warn('Failed to send notification:', notificationError);
+        }
+
+        return { success: true, message: 'อัปเดตการนัดหมายเรียบร้อย' };
+    } catch (error) {
+        console.error('Error updating appointment:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Delete appointment
+ */
+function deleteAppointment(appointmentId) {
+    try {
+        const appointmentsSheet = getSheet(SHEET_NAMES.APPOINTMENTS);
+        const data = appointmentsSheet.getDataRange().getValues();
+
+        // Find appointment row
+        let rowIndex = -1;
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === appointmentId) {
+                rowIndex = i + 1; // Sheets are 1-indexed
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return { success: false, message: 'ไม่พบข้อมูลการนัดหมาย' };
+        }
+
+        appointmentsSheet.deleteRow(rowIndex);
+
+        return { success: true, message: 'ลบการนัดหมายเรียบร้อย' };
+    } catch (error) {
+        console.error('Error deleting appointment:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Get appointments by patient ID
+ */
+function getAppointmentsByPatient(patientId) {
+    try {
+        const allAppointments = getAllAppointments();
+        if (!allAppointments.success) {
+            return allAppointments;
+        }
+
+        const patientAppointments = allAppointments.appointments.filter(
+            appointment => appointment.patientId === patientId
+        );
+
+        return { success: true, appointments: patientAppointments };
+    } catch (error) {
+        console.error('Error getting appointments by patient:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Get appointments by doctor
+ */
+function getAppointmentsByDoctor(doctorId) {
+    try {
+        const allAppointments = getAllAppointments();
+        if (!allAppointments.success) {
+            return allAppointments;
+        }
+
+        const doctorAppointments = allAppointments.appointments.filter(
+            appointment => appointment.doctor_id === doctorId
+        );
+
+        return { success: true, appointments: doctorAppointments };
+    } catch (error) {
+        console.error('Error getting appointments by doctor:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Get appointments by date range
+ */
+function getAppointmentsByDateRange(startDate, endDate) {
+    try {
+        const allAppointments = getAllAppointments();
+        if (!allAppointments.success) {
+            return allAppointments;
+        }
+
+        const filteredAppointments = allAppointments.appointments.filter(appointment => {
+            const appointmentDate = new Date(appointment.appointmentDate);
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+
+            return appointmentDate >= start && appointmentDate <= end;
+        });
+
+        return { success: true, appointments: filteredAppointments };
+    } catch (error) {
+        console.error('Error getting appointments by date range:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+// ===========================================
+// REVENUE MANAGEMENT FUNCTIONS
+// ===========================================
+
+/**
+ * Get all revenue records
+ */
+function getAllRevenues() {
+    try {
+        const revenueSheet = getSheet(SHEET_NAMES.REVENUE);
+        const data = revenueSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            return { success: true, revenues: [] };
+        }
+
+        const revenues = [];
+        const headers = data[0];
+
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            const revenue = {};
+
+            headers.forEach((header, index) => {
+                revenue[header.replace(/\s+/g, '_').toLowerCase()] = row[index];
+            });
+
+            revenues.push(revenue);
+        }
+
+        return { success: true, revenues: revenues };
+    } catch (error) {
+        console.error('Error getting revenues:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Add new revenue record (with role-based access control)
+ */
+function addRevenue(revenueData, currentUser = null) {
+    try {
+        // Check permissions
+        if (currentUser && !checkPermission(currentUser.role, 'canManageRevenue')) {
+            return { success: false, message: 'คุณไม่มีสิทธิ์ในการเพิ่มรายได้' };
+        }
+
+        const revenueSheet = getSheet(SHEET_NAMES.REVENUE);
+        const lastRow = revenueSheet.getLastRow();
+        const newId = 'R' + String(lastRow).padStart(3, '0');
+
+        const newRevenue = [
+            newId,
+            revenueData.date,
+            revenueData.description,
+            revenueData.amount,
+            revenueData.type || 'treatment',
+            revenueData.notes || '',
+            currentUser ? currentUser.branch : 'BRANCH_01', // Add user's branch
+            new Date(), // Created At
+            new Date()  // Updated At
+        ];
+
+        revenueSheet.getRange(lastRow + 1, 1, 1, newRevenue.length).setValues([newRevenue]);
+
+        // Send notification to Google Chat
+        try {
+            sendFormSubmissionNotification('รายได้', revenueData, 'เพิ่ม');
+        } catch (notificationError) {
+            console.warn('Failed to send notification:', notificationError);
+        }
+
+        return { success: true, message: 'เพิ่มรายได้เรียบร้อย', revenueId: newId };
+    } catch (error) {
+        console.error('Error adding revenue:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Update revenue record
+ */
+function updateRevenue(revenueId, revenueData) {
+    try {
+        const revenueSheet = getSheet(SHEET_NAMES.REVENUE);
+        const data = revenueSheet.getDataRange().getValues();
+
+        // Find revenue row
+        let rowIndex = -1;
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === revenueId) {
+                rowIndex = i + 1; // Sheets are 1-indexed
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return { success: false, message: 'ไม่พบข้อมูลรายได้' };
+        }
+
+        const updatedRevenue = [
+            revenueId,
+            revenueData.date,
+            revenueData.description,
+            revenueData.amount,
+            revenueData.type || 'treatment',
+            revenueData.notes || '',
+            data[rowIndex - 1][6], // Keep original created date
+            new Date() // Update modified date
+        ];
+
+        revenueSheet.getRange(rowIndex, 1, 1, updatedRevenue.length).setValues([updatedRevenue]);
+
+        return { success: true, message: 'อัปเดตรายได้เรียบร้อย' };
+    } catch (error) {
+        console.error('Error updating revenue:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Delete revenue record
+ */
+function deleteRevenue(revenueId) {
+    try {
+        const revenueSheet = getSheet(SHEET_NAMES.REVENUE);
+        const data = revenueSheet.getDataRange().getValues();
+
+        // Find revenue row
+        let rowIndex = -1;
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === revenueId) {
+                rowIndex = i + 1; // Sheets are 1-indexed
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return { success: false, message: 'ไม่พบข้อมูลรายได้' };
+        }
+
+        revenueSheet.deleteRow(rowIndex);
+
+        return { success: true, message: 'ลบรายได้เรียบร้อย' };
+    } catch (error) {
+        console.error('Error deleting revenue:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Get revenue by date range
+ */
+function getRevenueByDateRange(startDate, endDate) {
+    try {
+        const allRevenues = getAllRevenues();
+        if (!allRevenues.success) {
+            return allRevenues;
+        }
+
+        const filteredRevenues = allRevenues.revenues.filter(revenue => {
+            const revenueDate = new Date(revenue.date);
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+
+            return revenueDate >= start && revenueDate <= end;
+        });
+
+        return { success: true, revenues: filteredRevenues };
+    } catch (error) {
+        console.error('Error getting revenue by date range:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+// ===========================================
+// OPTIMIZED BATCH DATA OPERATIONS
+// ===========================================
+
+/**
+ * Load all data in batch for better performance - multi-user optimized
+ */
+function loadAllDataBatch() {
+    try {
+        const startTime = Date.now();
+        
+        // Check if another process is already loading
+        if (dataCache.isWarming) {
+            console.log('Cache warming already in progress, skipping...');
+            return {
+                success: true,
+                message: 'Cache warming already in progress',
+                loadTime: 0,
+                fromCache: true
+            };
+        }
+        
+        // Set warming state
+        dataCache.isWarming = true;
+        dataCache.warmingStartTime = startTime;
+        
+        try {
+            // Load all sheets data in parallel using batch operations
+            const spreadsheet = getCachedSpreadsheet();
+            const sheets = {
+                patients: spreadsheet.getSheetByName(SHEET_NAMES.PATIENTS),
+                appointments: spreadsheet.getSheetByName(SHEET_NAMES.APPOINTMENTS),
+                doctors: spreadsheet.getSheetByName(SHEET_NAMES.DOCTORS),
+                revenues: spreadsheet.getSheetByName(SHEET_NAMES.REVENUE),
+                users: spreadsheet.getSheetByName(SHEET_NAMES.USERS)
+            };
+
+            // Get all data ranges at once
+            const batchData = {};
+            Object.keys(sheets).forEach(key => {
+                if (sheets[key] && sheets[key].getLastRow() > 1) {
+                    batchData[key] = sheets[key].getDataRange().getValues();
+                } else {
+                    batchData[key] = [];
+                }
+            });
+
+            // Convert to objects and cache
+            const timestamp = Date.now();
+            Object.keys(batchData).forEach(key => {
+                if (batchData[key].length > 0) {
+                    dataCache[key] = convertSheetDataToObjects(batchData[key]);
+                } else {
+                    dataCache[key] = [];
+                }
+                dataCache.lastUpdated[key] = timestamp;
+            });
+
+            const endTime = Date.now();
+            console.log(`Batch data load completed in ${endTime - startTime}ms`);
+
+            return {
+                success: true,
+                message: 'All data loaded successfully',
+                loadTime: endTime - startTime,
+                cachedData: {
+                    patients: dataCache.patients.length,
+                    appointments: dataCache.appointments.length,
+                    doctors: dataCache.doctors.length,
+                    revenues: dataCache.revenues.length,
+                    users: dataCache.users.length
+                }
+            };
+        } finally {
+            // Always reset warming state
+            dataCache.isWarming = false;
+        }
+    } catch (error) {
+        // Reset warming state on error
+        dataCache.isWarming = false;
+        console.error('Error in batch data load:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Optimized search functions using cached data
+ */
+function findPatientById(patientId) {
+    // Use cached data if available
+    if (dataCache.patients) {
+        return dataCache.patients.find(patient => patient.id === patientId);
+    }
+    
+    // Fallback to direct sheet access
+    return getPatientById(patientId);
+}
+
+function findDoctorById(doctorId) {
+    // Use cached data if available
+    if (dataCache.doctors) {
+        return dataCache.doctors.find(doctor => doctor.id === doctorId);
+    }
+    
+    // Fallback to direct sheet access
+    return getDoctorById(doctorId);
+}
+
+function findAppointmentsByPatient(patientId) {
+    // Use cached data if available
+    if (dataCache.appointments) {
+        return dataCache.appointments.filter(apt => apt.patient_id === patientId);
+    }
+    
+    // Fallback to existing function
+    return getAppointmentsByPatient(patientId);
+}
+
+function findAppointmentsByDate(date) {
+    // Use cached data if available
+    if (dataCache.appointments) {
+        return dataCache.appointments.filter(apt => {
+            const aptDate = new Date(apt.appointment_date);
+            const searchDate = new Date(date);
+            return aptDate.toDateString() === searchDate.toDateString();
+        });
+    }
+    
+    // Fallback to existing function
+    return getAppointmentsByDateRange(date, date);
+}
+
+// ===========================================
+// NOTIFICATION FUNCTIONS
+// ===========================================
+
+/**
+ * Get upcoming appointments for notifications
+ */
+function getUpcomingAppointments(days = 1) {
+    try {
+        const today = new Date();
+        const futureDate = new Date();
+        futureDate.setDate(today.getDate() + days);
+
+        const appointments = getAppointmentsByDateRange(
+            today.toISOString().split('T')[0],
+            futureDate.toISOString().split('T')[0]
+        );
+
+        if (!appointments.success) {
+            return appointments;
+        }
+
+        // Get patient details for each appointment
+        const appointmentsWithPatients = [];
+
+        for (const appointment of appointments.appointments) {
+            const patient = getPatientById(appointment.patientId);
+            if (patient.success) {
+                appointmentsWithPatients.push({
+                    ...appointment,
+                    patient: patient.patient
+                });
+            }
+        }
+
+        return { success: true, appointments: appointmentsWithPatients };
+    } catch (error) {
+        console.error('Error getting upcoming appointments:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Send email notifications (requires Gmail API setup)
+ */
+function sendEmailNotification(to, subject, body) {
+    try {
+        // This requires Gmail API to be enabled in Google Apps Script
+        GmailApp.sendEmail(to, subject, body);
+        return { success: true, message: 'อีเมลส่งเรียบร้อย' };
+    } catch (error) {
+        console.error('Error sending email:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Send notification to Google Chat
+ * Requires Google Chat webhook URL to be set
+ */
+function sendGoogleChatNotification(message, title = 'ระบบจัดการคลินิคทันตกรรม') {
+    try {
+        // Get webhook URL from script properties
+        // let WEBHOOK_URL = getGoogleChatWebhook();
+        
+        // if (!WEBHOOK_URL) {
+        //     console.warn('Google Chat webhook URL not configured. Call setGoogleChatWebhook() first.');
+        //     return { success: false, message: 'Google Chat webhook URL ยังไม่ได้ตั้งค่า กรุณาเรียก setGoogleChatWebhook() ก่อน' };
+        // }
+        
+        const timestamp = new Date().toLocaleString('th-TH', {
+            timeZone: 'Asia/Bangkok',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
+        Logger.log(`🏥 *${title}*\n\n${message}\n\n⏰ เวลา: ${timestamp}`);
+        return; // Skip actual sending for testing
+        const payload = {
+            text: `🏥 *${title}*\n\n${message}\n\n⏰ เวลา: ${timestamp}`
+        };
+        
+        const options = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            payload: JSON.stringify(payload)
+        };
+        
+        const response = UrlFetchApp.fetch(WEBHOOK_URL, options);
+        
+        if (response.getResponseCode() === 200) {
+            return { success: true, message: 'ส่งการแจ้งเตือนไปยัง Google Chat เรียบร้อย' };
+        } else {
+            console.error('Google Chat notification failed:', response.getContentText());
+            return { success: false, message: 'ไม่สามารถส่งการแจ้งเตือนไปยัง Google Chat ได้' };
+        }
+        
+    } catch (error) {
+        console.error('Error sending Google Chat notification:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Send form submission notification to Google Chat
+ */
+function sendFormSubmissionNotification(formType, data, action = 'เพิ่ม') {
+    try {
+        // Check if notifications are enabled
+        if (!areNotificationsEnabled()) {
+            return { success: false, message: 'การแจ้งเตือนถูกปิดใช้งาน' };
+        }
+        
+        let message = '';
+        let title = `📋 ${action}${formType}ใหม่`;
+        
+        switch (formType) {
+            case 'คนไข้':
+                message = `👤 ชื่อ: ${data.titlePrefix || ''} ${data.firstName} ${data.lastName}\n` +
+                         `📞 เบอร์โทร: ${data.phone}\n` +
+                         `🎂 วันเกิด: ${data.birthDate}\n` +
+                         `👥 เพศ: ${data.gender || 'ไม่ระบุ'}`;
+                if (data.address) message += `\n🏠 ที่อยู่: ${data.address}`;
+                break;
+                
+            case 'การนัดหมาย':
+                // Get patient and doctor names
+                const patient = findPatientById(data.patientId);
+                const doctor = findDoctorById(data.doctorId);
+                const patientName = patient ? `${patient.title_prefix || ''} ${patient.first_name} ${patient.last_name}`.trim() : 'ไม่ระบุ';
+                const doctorName = doctor ? `${doctor.first_name} ${doctor.last_name}` : 'ไม่ระบุ';
+
+                message = `👤 คนไข้: ${patientName}\n` +
+                         `👨‍⚕️ หมอ: ${doctorName}\n` +
+                         `📅 วันนัด: ${data.appointmentDate}\n` +
+                         `⏰ เวลา: ${data.appointmentTime}`;
+                if (data.caseType) message += `\n🏥 ประเภทเคส: ${data.caseType}`;
+                if (data.contactChannel) message += `\n📞 ช่องทางติดต่อ: ${data.contactChannel}`;
+                if (data.cost) message += `\n💰 ค่าใช้จ่าย: ${parseFloat(data.cost).toLocaleString()} บาท`;
+                if (data.status) message += `\n📋 สถานะ: ${getStatusTextThai(data.status)}`;
+                break;
+                
+            case 'หมอ':
+                message = `👨‍⚕️ ชื่อ: ${data.firstName} ${data.lastName}\n` +
+                         `🏥 ความเชี่ยวชาญ: ${data.specialty}\n` +
+                         `📞 เบอร์โทร: ${data.phone}`;
+                if (data.email) message += `\n✉️ อีเมล: ${data.email}`;
+                if (data.licenseNumber) message += `\n📄 เลขใบอนุญาต: ${data.licenseNumber}`;
+                break;
+                
+            case 'รายได้':
+                message = `💰 จำนวน: ${parseFloat(data.amount).toLocaleString()} บาท\n` +
+                         `📝 รายละเอียด: ${data.description}\n` +
+                         `📅 วันที่: ${data.date}\n` +
+                         `📂 ประเภท: ${data.type === 'treatment' ? 'การรักษา' : data.type}`;
+                break;
+                
+            default:
+                message = `ข้อมูลใหม่ถูก${action}เรียบร้อย`;
+        }
+        
+        return sendGoogleChatNotification(message, title);
+        
+    } catch (error) {
+        console.error('Error sending form submission notification:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Helper function to get Thai status text
+ */
+function getStatusTextThai(status) {
+    const statusMap = {
+        'scheduled': 'นัดหมาย',
+        'completed': 'เสร็จสิ้น',
+        'cancelled': 'ยกเลิก'
+    };
+    return statusMap[status] || status;
+}
+
+// ===========================================
+// REPORTING FUNCTIONS  
+// ===========================================
+
+/**
+ * Generate monthly patient report
+ */
+function generateMonthlyPatientReport(year, month) {
+    try {
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0);
+
+        const allPatients = getAllPatients();
+        if (!allPatients.success) {
+            return allPatients;
+        }
+
+        const monthlyPatients = allPatients.patients.filter(patient => {
+            const regDate = new Date(patient.registrationDate);
+            return regDate >= startDate && regDate <= endDate;
+        });
+
+        return {
+            success: true,
+            report: {
+                month: month,
+                year: year,
+                totalNewPatients: monthlyPatients.length,
+                patients: monthlyPatients
+            }
+        };
+    } catch (error) {
+        console.error('Error generating monthly patient report:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Generate monthly revenue report
+ */
+function generateMonthlyRevenueReport(year, month) {
+    try {
+        const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+
+        const monthlyRevenues = getRevenueByDateRange(startDate, endDate);
+        if (!monthlyRevenues.success) {
+            return monthlyRevenues;
+        }
+
+        const totalRevenue = monthlyRevenues.revenues.reduce((sum, revenue) => sum + revenue.amount, 0);
+
+        // Group by type
+        const revenueByType = {};
+        monthlyRevenues.revenues.forEach(revenue => {
+            if (!revenueByType[revenue.type]) {
+                revenueByType[revenue.type] = 0;
+            }
+            revenueByType[revenue.type] += revenue.amount;
+        });
+
+        return {
+            success: true,
+            report: {
+                month: month,
+                year: year,
+                totalRevenue: totalRevenue,
+                revenueByType: revenueByType,
+                revenues: monthlyRevenues.revenues
+            }
+        };
+    } catch (error) {
+        console.error('Error generating monthly revenue report:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+// ===========================================
+// CONFIGURATION FUNCTIONS
+// ===========================================
+
+/**
+ * Set Google Chat webhook URL configuration
+ * Call this function once to configure your Google Chat integration
+ */
+function setGoogleChatWebhook(webhookUrl) {
+    try {
+        // Store webhook URL in script properties for security
+        PropertiesService.getScriptProperties().setProperty('GOOGLE_CHAT_WEBHOOK_URL', webhookUrl);
+        
+        // Test the webhook
+        const testResult = sendGoogleChatNotification(
+            '🎉 การตั้งค่า Google Chat สำเร็จ!\nระบบพร้อมส่งการแจ้งเตือนแล้ว',
+            '✅ การทดสอบระบบการแจ้งเตือน'
+        );
+        
+        if (testResult.success) {
+            return { success: true, message: 'ตั้งค่า Google Chat webhook เรียบร้อย และทดสอบการส่งข้อความสำเร็จ' };
+        } else {
+            return { success: false, message: `ตั้งค่า webhook เรียบร้อย แต่ทดสอบการส่งไม่สำเร็จ: ${testResult.message}` };
+        }
+    } catch (error) {
+        console.error('Error setting Google Chat webhook:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Get stored Google Chat webhook URL
+ */
+function getGoogleChatWebhook() {
+    try {
+        const webhookUrl = PropertiesService.getScriptProperties().getProperty('GOOGLE_CHAT_WEBHOOK_URL');
+        return webhookUrl || null;
+    } catch (error) {
+        console.error('Error getting Google Chat webhook:', error);
+        return null;
+    }
+}
+
+/**
+ * Test Google Chat notification
+ */
+function testGoogleChatNotification() {
+    return sendGoogleChatNotification(
+        '🔧 นี่คือข้อความทดสอบจากระบบจัดการคลินิคทันตกรรม\n✨ ระบบการแจ้งเตือนทำงานได้ปกติ',
+        '🧪 การทดสอบระบบการแจ้งเตือน'
+    );
+}
+
+/**
+ * Configure Google Chat webhook from web interface
+ */
+function configureGoogleChatWebhook(webhookUrl) {
+    return setGoogleChatWebhook(webhookUrl);
+}
+
+/**
+ * Get notification configuration status
+ */
+function getNotificationStatus() {
+    try {
+        const webhookUrl = getGoogleChatWebhook();
+        const isConfigured = !!webhookUrl;
+        
+        return {
+            success: true,
+            isConfigured: isConfigured,
+            webhookConfigured: isConfigured,
+            message: isConfigured ? 'Google Chat แจ้งเตือนพร้อมใช้งาน' : 'ยังไม่ได้ตั้งค่า Google Chat webhook'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            isConfigured: false,
+            message: error.toString()
+        };
+    }
+}
+
+/**
+ * Enable/Disable notifications (for future use)
+ */
+function toggleNotifications(enabled) {
+    try {
+        PropertiesService.getScriptProperties().setProperty('NOTIFICATIONS_ENABLED', enabled.toString());
+        return {
+            success: true,
+            message: enabled ? 'เปิดการแจ้งเตือนแล้ว' : 'ปิดการแจ้งเตือนแล้ว'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.toString()
+        };
+    }
+}
+
+/**
+ * Check if notifications are enabled
+ */
+function areNotificationsEnabled() {
+    try {
+        const enabled = PropertiesService.getScriptProperties().getProperty('NOTIFICATIONS_ENABLED');
+        return enabled !== 'false'; // Default to true if not set
+    } catch (error) {
+        console.error('Error checking notification status:', error);
+        return true; // Default to enabled
+    }
+}
+
+/**
+ * Get accessible patients with role-based filtering (for web interface)
+ */
+function getPatientsWithAccess(userInfo) {
+    const currentUser = {
+        branch: userInfo.branch,
+        role: userInfo.role
+    };
+    return getAllPatients(currentUser);
+}
+
+/**
+ * Get accessible appointments with role-based filtering (for web interface)
+ */
+function getAppointmentsWithAccess(userInfo) {
+    const currentUser = {
+        branch: userInfo.branch,
+        role: userInfo.role
+    };
+    return getAllAppointments(currentUser);
+}
+
+/**
+ * Get accessible doctors with role-based filtering (for web interface)
+ */
+function getDoctorsWithAccess(userInfo) {
+    const currentUser = {
+        branch: userInfo.branch,
+        role: userInfo.role
+    };
+    return getAllDoctors(currentUser);
+}
+
+/**
+ * Add patient with access control (for web interface)
+ */
+function addPatientWithAccess(patientData, userInfo) {
+    const currentUser = {
+        branch: userInfo.branch,
+        role: userInfo.role
+    };
+    return addPatient(patientData, currentUser);
+}
+
+/**
+ * Update patient with access control (for web interface)
+ */
+function updatePatientWithAccess(patientId, patientData, userInfo) {
+    const currentUser = {
+        branch: userInfo.branch,
+        role: userInfo.role
+    };
+    return updatePatient(patientId, patientData, currentUser);
+}
+
+/**
+ * Add appointment with access control (for web interface)
+ */
+function addAppointmentWithAccess(appointmentData, userInfo) {
+    const currentUser = {
+        branch: userInfo.branch,
+        role: userInfo.role
+    };
+    return addAppointment(appointmentData, currentUser);
+}
+
+/**
+ * Check user permissions (for web interface)
+ */
+function checkUserPermission(userInfo, action) {
+    return checkPermission(userInfo.role, action);
+}
+
+/**
+ * Get branch list accessible to user (for web interface)
+ */
+function getUserBranches(userInfo) {
+    return getUserAccessibleBranches(userInfo.branch, userInfo.role);
+}
+
+// ===========================================
+// UTILITY FUNCTIONS
+// ==========================================
+
+/**
+ * Generate unique ID
+ */
+function generateId(prefix, existingIds) {
+    let counter = 1;
+    let newId;
+
+    do {
+        newId = prefix + String(counter).padStart(3, '0');
+        counter++;
+    } while (existingIds.includes(newId));
+
+    return newId;
+}
+
+/**
+ * Validate date format (YYYY-MM-DD)
+ */
+function isValidDate(dateString) {
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateString)) return false;
+
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date);
+}
+
+/**
+ * Validate time format (HH:MM)
+ */
+function isValidTime(timeString) {
+    const regex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    return regex.test(timeString);
+}
+
+/**
+ * Format currency (Thai Baht)
+ */
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('th-TH', {
+        style: 'currency',
+        currency: 'THB'
+    }).format(amount);
+}
+
+// ===========================================
+// OPTION LIST FUNCTIONS
+// ===========================================
+
+/**
+ * Get case types from Option List sheet (Column A)
+ */
+function getCaseTypes() {
+    try {
+        const optionListSheet = getSheet(SHEET_NAMES.OPTION_LIST);
+        const data = optionListSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            return JSON.stringify({ success: true, options: [] });
+        }
+
+        const caseTypes = [];
+        for (let i = 1; i < data.length; i++) {
+            const caseType = data[i][0]; // Column A (Case Type)
+            if (caseType && caseType.toString().trim() !== '') {
+                caseTypes.push({
+                    value: caseType.toString().trim(),
+                    displayOrder: i,
+                    description: caseType.toString().trim()
+                });
+            }
+        }
+
+        return JSON.stringify({ success: true, options: caseTypes });
+    } catch (error) {
+        console.error('Error getting case types:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
+/**
+ * Get case details from Option List sheet (Column B)
+ */
+function getCaseDetails() {
+    try {
+        const optionListSheet = getSheet(SHEET_NAMES.OPTION_LIST);
+        const data = optionListSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            return JSON.stringify({ success: true, options: [] });
+        }
+
+        const caseDetails = [];
+        for (let i = 1; i < data.length; i++) {
+            const caseDetail = data[i][1]; // Column B (Case Details)
+            if (caseDetail && caseDetail.toString().trim() !== '') {
+                caseDetails.push({
+                    value: caseDetail.toString().trim(),
+                    displayOrder: i,
+                    description: caseDetail.toString().trim()
+                });
+            }
+        }
+
+        return JSON.stringify({ success: true, options: caseDetails });
+    } catch (error) {
+        console.error('Error getting case details:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
+/**
+ * Get contact channels from Option List sheet (Column C)
+ */
+function getContactChannels() {
+    try {
+        const optionListSheet = getSheet(SHEET_NAMES.OPTION_LIST);
+        const data = optionListSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            return JSON.stringify({ success: true, options: [] });
+        }
+
+        const contactChannels = [];
+        for (let i = 1; i < data.length; i++) {
+            const contactChannel = data[i][2]; // Column C (Contact Channel)
+            if (contactChannel && contactChannel.toString().trim() !== '') {
+                contactChannels.push({
+                    value: contactChannel.toString().trim(),
+                    displayOrder: i,
+                    description: contactChannel.toString().trim()
+                });
+            }
+        }
+
+        return JSON.stringify({ success: true, options: contactChannels });
+    } catch (error) {
+        console.error('Error getting contact channels:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
+/**
+ * Get branches from Option List sheet (Column D)
+ */
+function getBranches() {
+    try {
+        const optionListSheet = getSheet(SHEET_NAMES.OPTION_LIST);
+        const data = optionListSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            // Return default branches if sheet is empty
+            const defaultBranches = [
+                { value: 'HEAD_OFFICE', displayName: 'สำนักงานใหญ่', description: 'Head Office' },
+                { value: 'BRANCH_01', displayName: 'สาขาที่ 1', description: 'Branch 01' }
+            ];
+            return JSON.stringify({ success: true, options: defaultBranches });
+        }
+
+        const branches = [];
+        const seenBranches = new Set();
+        
+        for (let i = 1; i < data.length; i++) {
+            const branchValue = data[i][3]; // Column D (Branch)
+            if (branchValue && branchValue.toString().trim() !== '' && !seenBranches.has(branchValue.toString().trim())) {
+                const branchCode = branchValue.toString().trim();
+                seenBranches.add(branchCode);
+                
+                // Generate display name based on branch code
+                let displayName = branchCode;
+                if (branchCode === 'HEAD_OFFICE') {
+                    displayName = 'สำนักงานใหญ่';
+                } else if (branchCode.startsWith('BRANCH_')) {
+                    const branchNumber = branchCode.replace('BRANCH_', '');
+                    displayName = `สาขาที่ ${branchNumber}`;
+                }
+                
+                branches.push({
+                    value: branchCode,
+                    displayName: displayName,
+                    description: branchCode,
+                    displayOrder: i
+                });
+            }
+        }
+
+        // Ensure we have at least default branches
+        if (branches.length === 0) {
+            const defaultBranches = [
+                { value: 'HEAD_OFFICE', displayName: 'สำนักงานใหญ่', description: 'Head Office' },
+                { value: 'BRANCH_01', displayName: 'สาขาที่ 1', description: 'Branch 01' }
+            ];
+            return JSON.stringify({ success: true, options: defaultBranches });
+        }
+
+        return JSON.stringify({ success: true, options: branches });
+    } catch (error) {
+        console.error('Error getting branches:', error);
+        // Return default branches on error
+        const defaultBranches = [
+            { value: 'HEAD_OFFICE', displayName: 'สำนักงานใหญ่', description: 'Head Office' },
+            { value: 'BRANCH_01', displayName: 'สาขาที่ 1', description: 'Branch 01' }
+        ];
+        return JSON.stringify({ success: true, options: defaultBranches });
+    }
+}
+
+/**
+ * Get all options from Option List sheet
+ */
+function getAllOptions() {
+    try {
+        const caseTypesResult = JSON.parse(getCaseTypes());
+        const caseDetailsResult = JSON.parse(getCaseDetails());
+        const contactChannelsResult = JSON.parse(getContactChannels());
+        const branchesResult = JSON.parse(getBranches());
+
+        if (!caseTypesResult.success || !caseDetailsResult.success || !contactChannelsResult.success || !branchesResult.success) {
+            return JSON.stringify({ 
+                success: false, 
+                message: 'Error retrieving options' 
+            });
+        }
+
+        return JSON.stringify({
+            success: true,
+            caseTypes: caseTypesResult.options,
+            caseDetails: caseDetailsResult.options,
+            contactChannels: contactChannelsResult.options,
+            branches: branchesResult.options
+        });
+    } catch (error) {
+        console.error('Error getting all options:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
+/**
+ * Test function to verify all functionality
+ */
+function testAllFunctions() {
+    console.log('Testing Dental Clinic Management System...');
+
+    // Test initialization
+    const initResult = initializeSystem();
+    console.log('Init Result:', initResult);
+
+    // Test patient operations
+    const patientData = {
+        firstName: 'ทดสอบ',
+        lastName: 'ระบบ',
+        phone: '081-111-1111',
+        birthDate: '1990-01-01',
+        address: 'ที่อยู่ทดสอบ'
+    };
+
+    const addPatientResult = addPatient(patientData);
+    console.log('Add Patient Result:', addPatientResult);
+
+    const getAllPatientsResult = getAllPatients();
+    console.log('Get All Patients Result:', getAllPatientsResult);
+
+    console.log('All tests completed!');
+}
+
+// ===========================================
+// PERFORMANCE OPTIMIZATION UTILITIES
+// ===========================================
+
+/**
+ * Debounce function to prevent too frequent calls
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+/**
+ * Batch update operations to reduce API calls
+ */
+function batchUpdateRows(sheet, updates) {
+    try {
+        if (!updates || updates.length === 0) {
+            return { success: true, message: 'No updates to process' };
+        }
+
+        // Sort updates by row index for efficiency
+        updates.sort((a, b) => a.row - b.row);
+
+        // Process updates in batches
+        updates.forEach(update => {
+            sheet.getRange(update.row, 1, 1, update.values.length).setValues([update.values]);
+        });
+
+        // Force execution
+        SpreadsheetApp.flush();
+
+        return { success: true, message: `Updated ${updates.length} rows successfully` };
+    } catch (error) {
+        console.error('Error in batch update:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Memory-efficient data processing for large datasets
+ */
+function processLargeDataset(data, processingFunction, batchSize = 100) {
+    const results = [];
+    
+    for (let i = 0; i < data.length; i += batchSize) {
+        const batch = data.slice(i, i + batchSize);
+        const batchResults = batch.map(processingFunction);
+        results.push(...batchResults);
+        
+        // Allow other operations to run
+        if (i % (batchSize * 10) === 0) {
+            Utilities.sleep(1);
+        }
+    }
+    
+    return results;
+}
+
+/**
+ * Intelligent cache warming - multi-user optimized
+ */
+function warmCache(forceWarm = false) {
+    try {
+        // Check if warming is needed and safe
+        if (!forceWarm && !shouldWarmCache()) {
+            return { 
+                success: true, 
+                message: 'Cache warming skipped - recently warmed or in progress',
+                loadTime: 0,
+                skipped: true
+            };
+        }
+        
+        const startTime = Date.now();
+        
+        // Load critical data first
+        const batchResult = loadAllDataBatch();
+        
+        if (!batchResult.success) {
+            return batchResult;
+        }
+        
+        // Precompute common statistics only if data is available
+        let todayAppointmentsCount = 0;
+        if (dataCache.appointments && dataCache.patients) {
+            try {
+                // Pre-calculate today's appointments
+                const today = new Date().toISOString().split('T')[0];
+                const todayAppointments = findAppointmentsByDate(today);
+                todayAppointmentsCount = todayAppointments ? todayAppointments.length : 0;
+            } catch (error) {
+                console.warn('Error precomputing today\'s appointments:', error);
+            }
+        }
+        
+        const endTime = Date.now();
+        console.log(`Cache warming completed in ${endTime - startTime}ms with ${todayAppointmentsCount} today's appointments`);
+        
+        return { 
+            success: true, 
+            loadTime: endTime - startTime,
+            todayAppointments: todayAppointmentsCount,
+            cachedData: batchResult.cachedData
+        };
+    } catch (error) {
+        // Ensure warming state is reset on error
+        dataCache.isWarming = false;
+        console.error('Error warming cache:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Smart cache warming that only warms if needed
+ */
+function smartWarmCache() {
+    return warmCache(false);
+}
+
+/**
+ * Performance monitoring function
+ */
+function measurePerformance(functionName, func) {
+    return function(...args) {
+        const startTime = Date.now();
+        const result = func.apply(this, args);
+        const endTime = Date.now();
+        
+        console.log(`${functionName} executed in ${endTime - startTime}ms`);
+        
+        // Log slow operations
+        if (endTime - startTime > 1000) {
+            console.warn(`Slow operation detected: ${functionName} took ${endTime - startTime}ms`);
+        }
+        
+        return result;
+    };
+}
+
+// ===========================================
+// ENHANCED DATA VALIDATION
+// ===========================================
+
+/**
+ * Validate data before processing to prevent errors
+ */
+function validatePatientData(patientData) {
+    const errors = [];
+    
+    if (!patientData.firstName || patientData.firstName.trim() === '') {
+        errors.push('First name is required');
+    }
+    
+    if (!patientData.lastName || patientData.lastName.trim() === '') {
+        errors.push('Last name is required');
+    }
+    
+    if (!patientData.phone || patientData.phone.trim() === '') {
+        errors.push('Phone number is required');
+    }
+    
+    return {
+        isValid: errors.length === 0,
+        errors: errors
+    };
+}
+
+function validateAppointmentData(appointmentData) {
+    const errors = [];
+    
+    if (!appointmentData.patientId) {
+        errors.push('Patient ID is required');
+    }
+    
+    if (!appointmentData.appointmentDate) {
+        errors.push('Appointment date is required');
+    }
+    
+    if (!appointmentData.appointmentTime) {
+        errors.push('Appointment time is required');
+    }
+    
+    return {
+        isValid: errors.length === 0,
+        errors: errors
+    };
+}
+
+// ===========================================
+// WEB APP FUNCTIONS (for HTML service)
+// ===========================================
+
+/**
+ * Include HTML file content
+ */
+function include(filename) {
+    return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+/**
+ * Main doGet function for web app deployment (multi-user optimized)
+ */
+function doGet() {
+    try {
+        // Smart cache warming - only if needed and safe
+        smartWarmCache();
+        
+        const template = HtmlService.createTemplateFromFile('index');
+        
+        // Add performance optimizations to template
+        template.cacheEnabled = true;
+        template.loadTime = new Date().toISOString();
+        
+        return template
+            .evaluate()
+            .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+            .setTitle('ระบบจัดการคลินิคทันตกรรม - Multi-User Optimized')
+            .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+            .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+            .setFaviconUrl('https://img2.pic.in.th/pic/Screenshot-2025-09-22-215301.png');
+    } catch (error) {
+        console.error('Error in doGet:', error);
+        return HtmlService.createHtmlOutput(`
+            <h1>System Error</h1>
+            <p>Failed to load application: ${error.toString()}</p>
+            <p>Please try again later or contact support.</p>
+        `);
+    }
+}
+
+/**
+ * Enhanced initialization with performance monitoring - multi-user safe
+ */
+function initializeSystemWithPerformance() {
+    const performanceMonitor = measurePerformance('initializeSystem', initializeSystem);
+    const result = performanceMonitor();
+    
+    if (result.success) {
+        // Smart warm up the cache after initialization
+        smartWarmCache();
+    }
+    
+    return result;
+}
+
+/**
+ * Performance-optimized data retrieval for frontend - multi-user safe
+ */
+function getOptimizedDashboardData() {
+    try {
+        const startTime = Date.now();
+        
+        // Ensure cache is loaded, but don't force if another user is warming
+        if (!dataCache.patients || !dataCache.appointments || !dataCache.doctors) {
+            const warmResult = smartWarmCache();
+            if (!warmResult.success && !warmResult.skipped) {
+                console.warn('Cache warming failed, proceeding with individual queries');
+            }
+        }
+        
+        const today = new Date().toISOString().split('T')[0];
+        let todayAppointments = [];
+        
+        try {
+            todayAppointments = findAppointmentsByDate(today) || [];
+        } catch (error) {
+            console.warn('Error getting today\'s appointments:', error);
+        }
+        
+        const dashboardData = {
+            totalPatients: dataCache.patients ? dataCache.patients.length : 0,
+            totalDoctors: dataCache.doctors ? dataCache.doctors.length : 0,
+            todayAppointments: todayAppointments.length,
+            totalRevenue: dataCache.revenues ? 
+                dataCache.revenues.reduce((sum, rev) => sum + (parseFloat(rev.amount) || 0), 0) : 0,
+            lastUpdated: Math.min(...Object.values(dataCache.lastUpdated).filter(t => t > 0)) || 0,
+            loadTime: Date.now() - startTime,
+            cacheStatus: {
+                isWarming: dataCache.isWarming,
+                lastWarmingTime: dataCache.warmingStartTime
+            }
+        };
+        
+        return {
+            success: true,
+            data: dashboardData
+        };
+    } catch (error) {
+        console.error('Error getting optimized dashboard data:', error);
+        return { success: false, message: error.toString() };
+    }
+}

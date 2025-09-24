@@ -1,0 +1,462 @@
+<script>
+  let USER_DETAILS = {};
+  let SUPPLIERS = [];
+  let PAYMENT_TYPES = [];
+  let DISCOUNT_TYPES = [];
+  let itemRowCounter = 0;
+
+  // --- INITIALIZATION ---
+  document.addEventListener('DOMContentLoaded', () => {
+    showLoading();
+    google.script.run
+      .withSuccessHandler(initializeApp)
+      .withFailureHandler(showError)
+      .getUserDetails();
+  });
+
+  function initializeApp(userDetails) {
+    USER_DETAILS = userDetails;
+    document.getElementById('user-info').innerText = `สวัสดี, ${USER_DETAILS.name} (${USER_DETAILS.role})`;
+    
+    // Load dashboard and master data
+    loadDashboard();
+    loadMasterData();
+    
+    // Set role-based visibility for dashboard items
+    setupDashboardVisibility();
+  }
+
+  function loadMasterData() {
+    google.script.run.withSuccessHandler(data => SUPPLIERS = data).getSuppliers();
+    google.script.run.withSuccessHandler(data => {
+        PAYMENT_TYPES = data;
+        populateSummaries('payment', PAYMENT_TYPES, 'payment-summary-container');
+    }).getPaymentTypes();
+    google.script.run.withSuccessHandler(data => {
+        DISCOUNT_TYPES = data;
+        populateSummaries('discount', DISCOUNT_TYPES, 'discount-summary-container');
+    }).getDiscountTypes();
+  }
+
+  // --- NAVIGATION & UI ---
+
+  function showLoading() { 
+    // Implement a loading spinner if you want
+    console.log("Loading..."); 
+  }
+
+  function hideLoading() {
+    console.log("Loading complete.");
+  }
+
+  function showError(error) {
+    alert('Error: ' + error.message);
+    hideLoading();
+  }
+
+  function loadDashboard() {
+    google.script.run.withSuccessHandler(html => {
+        document.getElementById('app-container').innerHTML = html;
+        // Re-attach event listeners after loading new content
+        setupDashboardListeners();
+        setupDashboardVisibility();
+        hideLoading();
+    }).include('Web_Dashboard');
+  }
+//******************************************************
+  function setupDashboardListeners() {
+      const btnNewReport = document.getElementById('btn-new-report');
+      document.getElementById('btn-new-report')?.addEventListener('click', showDailyReportForm);
+
+      if (btnNewReport) {
+          btnNewReport.addEventListener('click', showDailyReportForm);
+      }
+      // Add listeners for other buttons here...
+      document.getElementById('btn-order-request')?.addEventListener('click', showOrderRequestForm);
+      document.getElementById('btn-order-approval')?.addEventListener('click', showOrderApprovalModule);
+      document.getElementById('btn-verify-reports')?.addEventListener('click', showVerifyReportsModule);
+  }
+
+//******************************************************
+  function setupDashboardVisibility() {
+      const isOffice = USER_DETAILS.role === 'ออฟฟิศ';
+      const isFront = USER_DETAILS.role === 'หน้าร้าน';
+
+      // Show/hide based on role
+      document.getElementById('btn-new-report').style.display = isFront ? 'block' : 'none';
+      document.getElementById('btn-new-order-request').style.display = isFront ? 'block' : 'none';
+      document.getElementById('btn-verify-reports').style.display = isOffice ? 'block' : 'none';
+      document.getElementById('btn-create-po').style.display = isOffice ? 'block' : 'none';
+      document.getElementById('btn-process-claims').style.display = isOffice ? 'block' : 'none';
+  }
+
+
+
+  let orderItemRowCounter = 0;
+
+function showOrderRequestForm() {
+    google.script.run.withSuccessHandler(html => {
+        document.getElementById('app-container').innerHTML = html;
+        openModule('order-request-module');
+        addOrderItemRow(); // Add one initial row
+    }).include('Web_OrderRequestForm');
+}
+
+function addOrderItemRow() {
+    orderItemRowCounter++;
+    const container = document.getElementById('order-item-rows-container');
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'item-row';
+    rowDiv.id = `order-item-row-${orderItemRowCounter}`;
+    rowDiv.style.gridTemplateColumns = '2fr 4fr 1fr auto';
+
+    let supplierOptions = '<option value="">เลือกซัพพลายเออร์</option>';
+    SUPPLIERS.forEach(s => supplierOptions += `<option value="${s.id}">${s.name}</option>`);
+
+    rowDiv.innerHTML = `
+      <select id="order-supplier-${orderItemRowCounter}" onchange="updateOrderProductDropdown(${orderItemRowCounter})">${supplierOptions}</select>
+      <select id="order-product-${orderItemRowCounter}"><option value="">เลือกสินค้า</option></select>
+      <input type="number" id="order-qty-${orderItemRowCounter}" placeholder="0" min="0">
+      <button onclick="removeRow('order-item-row-${orderItemRowCounter}')">X</button>
+    `;
+    container.appendChild(rowDiv);
+}
+
+function updateOrderProductDropdown(rowId) {
+    const supplierId = document.getElementById(`order-supplier-${rowId}`).value;
+    const productDropdown = document.getElementById(`order-product-${rowId}`);
+    productDropdown.innerHTML = '<option>Loading...</option>';
+    
+    if (supplierId) {
+      google.script.run
+        .withSuccessHandler(products => {
+          productDropdown.innerHTML = '<option value="">เลือกสินค้า</option>';
+          products.forEach(p => productDropdown.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+        })
+        .getProductsBySupplier(supplierId);
+    } else {
+      productDropdown.innerHTML = '<option value="">เลือกสินค้า</option>';
+    }
+}
+
+function submitOrderReq() {
+    showLoading();
+    const requestData = {
+        orderCycle: document.getElementById('order-cycle').value,
+        note: document.getElementById('order-note').value,
+        items: []
+    };
+    
+    const itemRows = document.querySelectorAll('#order-item-rows-container .item-row:not(.header-row)');
+    itemRows.forEach(row => {
+        const rowId = row.id.split('-')[3];
+        const productId = document.getElementById(`order-product-${rowId}`).value;
+        const quantity = document.getElementById(`order-qty-${rowId}`).value;
+        if(productId && quantity > 0) {
+            requestData.items.push({ productId, quantity });
+        }
+    });
+
+    google.script.run
+        .withSuccessHandler(response => {
+            const result = JSON.parse(response);
+            hideLoading();
+            alert(result.message);
+            if (result.status === 'success') {
+                closeModule('order-request-module');
+            }
+        })
+        .withFailureHandler(showError)
+        .submitOrderRequest(JSON.stringify(requestData));
+}
+
+
+function showOrderApprovalModule() {
+    google.script.run.withSuccessHandler(html => {
+        document.getElementById('app-container').innerHTML = html;
+        openModule('order-approval-module');
+        loadPendingOrders();
+    }).include('Web_OrderApproval');
+}
+
+function loadPendingOrders() {
+    google.script.run.withSuccessHandler(orders => {
+        const listDiv = document.getElementById('pending-orders-list');
+        if (orders.length === 0) {
+            listDiv.innerHTML = '<p>ไม่มีรายการที่รออนุมัติ</p>';
+            return;
+        }
+        let tableHtml = '<table style="width:100%;"><tr><th>Order ID</th><th>สาขา</th><th>วันที่</th><th></th></tr>';
+        orders.forEach(order => {
+            tableHtml += `<tr>
+                <td>${order.orderId}</td>
+                <td>${order.branchName}</td>
+                <td>${order.orderDate}</td>
+                <td><button onclick="loadOrderForApproval(${order.orderId})">ตรวจสอบ</button></td>
+            </tr>`;
+        });
+        tableHtml += '</table>';
+        listDiv.innerHTML = tableHtml;
+    }).getPendingOrders();
+}
+
+function loadOrderForApproval(orderId) {
+    showLoading();
+    google.script.run.withSuccessHandler(items => {
+        const container = document.getElementById('approval-items-container');
+        document.getElementById('approval-form-title').innerText = `รายละเอียด Order ID: ${orderId}`;
+        let html = `<div class="item-row header-row" style="grid-template-columns: 4fr 1fr 1fr;"><span>สินค้า</span><span>จำนวนที่ขอ</span><span>จำนวนอนุมัติ</span></div>`;
+        items.forEach(item => {
+            html += `<div class="item-row" style="grid-template-columns: 4fr 1fr 1fr;">
+                <span data-product-id="${item.productId}">${item.productName}</span>
+                <span>${item.requestedQty}</span>
+                <input type="number" class="approved-qty-input" value="${item.requestedQty}" min="0">
+            </div>`;
+        });
+        container.innerHTML = html;
+        document.getElementById('approval-form-section').style.display = 'block';
+
+        // Attach event listeners to new buttons
+        document.getElementById('btn-approve').onclick = () => processApproval(orderId, 'Approved');
+        document.getElementById('btn-reject').onclick = () => processApproval(orderId, 'Rejected');
+
+        hideLoading();
+    }).getOrderDetailsForApproval(orderId);
+}
+
+function processApproval(orderId, status) {
+    showLoading();
+    const approvalData = {
+        orderId: orderId,
+        newStatus: status,
+        rejectionReason: document.getElementById('rejection-reason').value,
+        items: []
+    };
+
+    if (status === 'Approved') {
+        document.querySelectorAll('#approval-items-container .item-row:not(.header-row)').forEach(row => {
+            approvalData.items.push({
+                productId: row.children[0].dataset.productId,
+                approvedQty: row.querySelector('.approved-qty-input').value
+            });
+        });
+    }
+
+    google.script.run.withSuccessHandler(response => {
+        const result = JSON.parse(response);
+        hideLoading();
+        alert(result.message);
+        if(result.status === 'success') {
+            document.getElementById('approval-form-section').style.display = 'none';
+            loadPendingOrders(); // Refresh list
+        }
+    }).withFailureHandler(showError)
+    .approveOrRejectOrder(JSON.stringify(approvalData));
+}
+
+// --- VERIFY REPORTS (OFFICE) ---
+function showVerifyReportsModule() {
+    google.script.run.withSuccessHandler(html => {
+        document.getElementById('app-container').innerHTML = html;
+        openModule('verify-reports-module');
+        loadUnverifiedReports();
+    }).include('Web_VerifyReports');
+}
+
+function loadUnverifiedReports() {
+    google.script.run.withSuccessHandler(reports => {
+        const listDiv = document.getElementById('unverified-reports-list');
+        if (reports.length === 0) {
+            listDiv.innerHTML = '<p>ไม่มีรายงานที่ต้องตรวจสอบ</p>';
+            return;
+        }
+        let tableHtml = '<table style="width:100%;"><tr><th>Report ID</th><th>สาขา</th><th>วันที่</th><th>รอบ</th><th></th></tr>';
+        reports.forEach(report => {
+            tableHtml += `<tr>
+                <td>${report.reportId}</td>
+                <td>${report.branchName}</td>
+                <td>${report.reportDate}</td>
+                <td>${report.timeSlot}</td>
+                <td><button onclick="confirmVerification(${report.reportId})">ยืนยัน</button></td>
+            </tr>`;
+        });
+        tableHtml += '</table>';
+        listDiv.innerHTML = tableHtml;
+    }).getUnverifiedReports();
+}
+
+function confirmVerification(reportId) {
+    if(confirm(`คุณต้องการยืนยัน Report ID: ${reportId} ใช่หรือไม่?`)) {
+        showLoading();
+        google.script.run.withSuccessHandler(response => {
+            const result = JSON.parse(response);
+            hideLoading();
+            alert(result.message);
+            if(result.status === 'success') {
+                loadUnverifiedReports(); // Refresh the list
+            }
+        }).withFailureHandler(showError)
+        .verifyDailyReport(reportId);
+    }
+}
+
+
+
+
+  function openModule(moduleId) {
+      const module = document.getElementById(moduleId);
+      if(module) {
+          module.style.display = 'block';
+      }
+  }
+
+  function closeModule(moduleId) {
+      const module = document.getElementById(moduleId);
+      if(module) {
+          module.style.display = 'none';
+      }
+      loadDashboard(); // Go back to dashboard after closing a module
+  }
+
+  // --- DAILY REPORT FORM LOGIC ---
+  
+  function showDailyReportForm() {
+    google.script.run.withSuccessHandler(html => {
+        document.getElementById('app-container').innerHTML = html;
+        openModule('daily-report-module');
+        
+        // **Requirement: กำหนดวันที่ปัจจุบันและห้ามแก้ไข**
+        const today = new Date();
+        const dateString = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('report-date').value = dateString;
+
+        // ดึงข้อมูลประเภทการชำระเงินและส่วนลดมาสร้างฟอร์ม
+        populateSummaries('payment', PAYMENT_TYPES, 'payment-summary-container');
+        populateSummaries('discount', DISCOUNT_TYPES, 'discount-summary-container');
+
+        // เพิ่มแถวสำหรับกรอกข้อมูลสินค้า 1 แถวเริ่มต้น
+        addReportItemRow();
+    }).include('Web_DailyReportForm');
+}
+
+  function addReportItemRow() {
+    itemRowCounter++;
+    const container = document.getElementById('item-rows-container');
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'item-row';
+    rowDiv.id = `item-row-${itemRowCounter}`;
+    
+    // สร้าง Dropdown สำหรับ Suppliers
+    let supplierOptions = '<option value="">เลือกซัพพลายเออร์</option>';
+    SUPPLIERS.forEach(s => { supplierOptions += `<option value="${s.id}">${s.name}</option>`; });
+
+    rowDiv.innerHTML = `
+      <select id="supplier-${itemRowCounter}" onchange="updateProductDropdown(${itemRowCounter})">${supplierOptions}</select>
+      <select id="product-${itemRowCounter}"><option value="">เลือกสินค้า</option></select>
+      <input type="number" id="sales-${itemRowCounter}" placeholder="0" min="0">
+      <input type="number" id="received-${itemRowCounter}" placeholder="0" min="0">
+      <input type="number" id="expired-${itemRowCounter}" placeholder="0" min="0">
+      <input type="number" id="stock-${itemRowCounter}" placeholder="0" min="0">
+      <input type="number" id="raw-${itemRowCounter}" placeholder="0" min="0">
+      <input type="number" id="transfer-${itemRowCounter}" placeholder="0" min="0">
+      <button onclick="removeRow('item-row-${itemRowCounter}')">X</button>
+    `;
+    container.appendChild(rowDiv);
+}
+  
+  function removeRow(rowId) {
+    document.getElementById(rowId).remove();
+  }
+
+  function updateProductDropdown(rowId) {
+    const supplierId = document.getElementById(`supplier-${rowId}`).value;
+    const productDropdown = document.getElementById(`product-${rowId}`);
+    productDropdown.innerHTML = '<option>Loading...</option>'; // แสดงข้อความว่ากำลังโหลด
+    
+    if (supplierId) {
+        // เรียกใช้ฟังก์ชันฝั่ง Backend เพื่อดึงรายการสินค้า
+        google.script.run
+            .withSuccessHandler(products => {
+                productDropdown.innerHTML = '<option value="">เลือกสินค้า</option>';
+                // **Requirement: แสดง ProductID และ ProductName**
+                products.forEach(p => {
+                    // p.name จาก Backend คือ "ProductID ชื่อสินค้า" อยู่แล้ว
+                    productDropdown.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+                });
+            })
+            .getProductsBySupplier(supplierId);
+    } else {
+        productDropdown.innerHTML = '<option value="">เลือกสินค้า</option>'; // ถ้าไม่เลือก Supplier ก็ให้ว่างไว้
+    }
+}
+
+  
+  function populateSummaries(type, data, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    data.forEach(item => {
+        const field = document.createElement('div');
+        field.className = 'form-field';
+        field.innerHTML = `
+            <label for="${type}-${item.id}">${item.name}</label>
+            <input type="number" id="${type}-${item.id}" data-type-id="${item.id}" class="${type}-summary-input" placeholder="0.00" step="0.01" min="0">
+        `;
+        container.appendChild(field);
+    });
+  }
+
+function submitForm() {
+    showLoading(); // แสดงสถานะกำลังโหลด
+
+    // 1. รวบรวมข้อมูลทั่วไป
+    const reportData = {
+        timeSlot: document.getElementById('time-slot').value,
+        note: document.getElementById('note').value,
+        items: [],
+        payments: [],
+        discounts: []
+    };
+
+    // 2. รวบรวมข้อมูลจากทุกแถวของรายการสินค้า
+    const itemRows = document.querySelectorAll('#item-rows-container .item-row:not(.header-row)');
+    itemRows.forEach(row => {
+        const rowId = row.id.split('-')[2];
+        const productId = document.getElementById(`product-${rowId}`).value;
+        if (productId) { // บันทึกเฉพาะแถวที่มีการเลือกสินค้าแล้ว
+            reportData.items.push({
+                productId: productId,
+                salesQuantity: document.getElementById(`sales-${rowId}`).value || 0,
+                receivedQuantity: document.getElementById(`received-${rowId}`).value || 0,
+                expiredQuantity: document.getElementById(`expired-${rowId}`).value || 0,
+                currentStock: document.getElementById(`stock-${rowId}`).value || 0,
+                rawMaterialUsed: document.getElementById(`raw-${rowId}`).value || 0,
+                transferredQuantity: document.getElementById(`transfer-${rowId}`).value || 0
+            });
+        }
+    });
+
+    // 3. รวบรวมข้อมูลสรุปยอดชำระเงิน
+    document.querySelectorAll('.payment-summary-input').forEach(input => {
+        reportData.payments.push({ typeId: input.dataset.typeId, amount: input.value || 0 });
+    });
+
+    // 4. รวบรวมข้อมูลสรุปยอดส่วนลด
+    document.querySelectorAll('.discount-summary-input').forEach(input => {
+        reportData.discounts.push({ typeId: input.dataset.typeId, amount: input.value || 0 });
+    });
+
+    // 5. ส่งข้อมูลทั้งหมดไปที่ Backend
+    google.script.run
+        .withSuccessHandler(response => {
+            const result = JSON.parse(response);
+            hideLoading();
+            alert(result.message);
+            if (result.status === 'success') {
+                closeModule('daily-report-module');
+            }
+        })
+        .withFailureHandler(showError)
+        .submitDailyReport(JSON.stringify(reportData));
+}
+</script>
