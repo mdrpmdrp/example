@@ -165,7 +165,10 @@ function setupAppointmentsSheet(sheet) {
 function setupRevenueSheet(sheet) {
     if (sheet.getLastRow() === 0) {
         const headers = [
-            'ID', 'Date', 'Description', 'Amount', 'Type', 'Notes', 'Branch', 'Created At', 'Updated At'
+            'ID', 'Date', 'Patient ID', 'Doctor ID', 'Case Type', 'Case Details', 'Payment Type', 
+            'Cash Amount', 'Transfer Amount', 'Social Security Amount', 'Visa Amount',
+            'X-ray Fee', 'Medicine Fee', 'Other Product Fee', 'Discount', 
+            'Notes', 'Branch', 'Created At', 'Updated At'
         ];
         const range = sheet.getRange(1, 1, 1, headers.length);
         range.setValues([headers]);
@@ -233,8 +236,8 @@ function setupDoctorsSheet(sheet) {
  */
 function setupOptionListSheet(sheet) {
     if (sheet.getLastRow() === 0) {
-        // Four-column structure: Case Type, Case Details, Contact Channel, Branch
-        const headers = ['Case Type', 'Case Details', 'Contact Channel', 'Branch'];
+        // Five-column structure: Case Type, Case Details, Contact Channel, Branch, Payment Method
+        const headers = ['Case Type', 'Case Details', 'Contact Channel', 'Branch', 'Payment Method'];
         sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
         sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
 
@@ -272,8 +275,7 @@ function setupOptionListSheet(sheet) {
             'Facebook',
             'Line',
             'Walk in',
-            'นัดต่อเนื่อง',
-            'อื่นๆ'
+            'นัดต่อเนื่อง'
         ];
 
         // Add default branches in column D
@@ -284,6 +286,17 @@ function setupOptionListSheet(sheet) {
             'BRANCH_03',
             'BRANCH_04',
             'BRANCH_05'
+        ];
+
+        // Add default payment methods in column E
+        const paymentMethods = [
+            'เงินสด',
+            'โอน',
+            'บัตรเครดิต',
+            'QR Code',
+            'เช็ค',
+            'ประกันสังคม',
+            'Visa'
         ];
 
         // Add case types to column A (starting from A2)
@@ -304,6 +317,11 @@ function setupOptionListSheet(sheet) {
         // Add branches to column D (starting from D2)
         for (let i = 0; i < branches.length; i++) {
             sheet.getRange(i + 2, 4).setValue(branches[i]);
+        }
+        
+        // Add payment methods to column E (starting from E2)
+        for (let i = 0; i < paymentMethods.length; i++) {
+            sheet.getRange(i + 2, 5).setValue(paymentMethods[i]);
         }
         
         // Format the sheet
@@ -357,7 +375,7 @@ function checkPermission(userRole, action) {
             canManagePatients: true,
             canManageAppointments: true,
             canManageDoctors: false,
-            canManageRevenue: false
+            canManageRevenue: true
         }
     };
 
@@ -1401,7 +1419,7 @@ function getAllRevenues() {
         const data = revenueSheet.getDataRange().getValues();
 
         if (data.length <= 1) {
-            return { success: true, revenues: [] };
+            return JSON.stringify({ success: true, revenues: [] });
         }
 
         const revenues = [];
@@ -1412,16 +1430,58 @@ function getAllRevenues() {
             const revenue = {};
 
             headers.forEach((header, index) => {
-                revenue[header.replace(/\s+/g, '_').toLowerCase()] = row[index];
+                const key = header.replace(/\s+/g, '_').toLowerCase();
+                revenue[key] = row[index];
             });
+
+            // Parse JSON fields (for backward compatibility with old data)
+            if (revenue.payment_amounts && typeof revenue.payment_amounts === 'string') {
+                try {
+                    revenue.paymentAmounts = JSON.parse(revenue.payment_amounts);
+                } catch (e) {
+                    revenue.paymentAmounts = {};
+                }
+            }
+
+            // Convert field names to match frontend expectations
+            revenue.patientId = revenue.patient_id || '';
+            revenue.doctorId = revenue.doctor_id || '';
+            revenue.caseType = revenue.case_type || '';
+            revenue.caseDetails = revenue.case_details || '';
+            revenue.paymentType = revenue.payment_type || '';
+            
+            // Handle individual payment amounts (new format)
+            revenue.cashAmount = parseFloat(revenue.cash_amount) || 0;
+            revenue.transferAmount = parseFloat(revenue.transfer_amount) || 0;
+            revenue.socialSecurityAmount = parseFloat(revenue.social_security_amount) || 0;
+            revenue.visaAmount = parseFloat(revenue.visa_amount) || 0;
+            
+            revenue.xrayFee = parseFloat(revenue.x_ray_fee) || 0;
+            revenue.medicineFee = parseFloat(revenue.medicine_fee) || 0;
+            revenue.otherProductFee = parseFloat(revenue.other_product_fee) || 0;
+            revenue.discount = parseFloat(revenue.discount) || 0;
+
+            // Calculate total amount using individual payment columns
+            let totalAmount = revenue.cashAmount + revenue.transferAmount + revenue.socialSecurityAmount + 
+                            revenue.visaAmount;
+            
+            // For backward compatibility, if individual amounts are all 0, try to use old format
+            if (totalAmount === 0 && revenue.paymentAmounts && typeof revenue.paymentAmounts === 'object') {
+                totalAmount = Object.values(revenue.paymentAmounts).reduce((sum, amount) => sum + (parseFloat(amount) || 0), 0);
+            }
+            
+            totalAmount += revenue.xrayFee + revenue.medicineFee + revenue.otherProductFee - revenue.discount;
+            
+            // Store calculated amount for backward compatibility
+            revenue.amount = totalAmount;
 
             revenues.push(revenue);
         }
 
-        return { success: true, revenues: revenues };
+        return JSON.stringify({ success: true, revenues: revenues });
     } catch (error) {
         console.error('Error getting revenues:', error);
-        return { success: false, message: error.toString() };
+        return JSON.stringify({ success: false, message: error.toString() });
     }
 }
 
@@ -1439,12 +1499,23 @@ function addRevenue(revenueData, currentUser = null) {
         const lastRow = revenueSheet.getLastRow();
         const newId = 'R' + String(lastRow).padStart(3, '0');
 
+        // Handle the new detailed revenue structure with individual payment columns
         const newRevenue = [
             newId,
             revenueData.date,
-            revenueData.description,
-            revenueData.amount,
-            revenueData.type || 'treatment',
+            revenueData.patientId || '',
+            revenueData.doctorId || '',
+            revenueData.caseType || '',
+            revenueData.caseDetails || '',
+            revenueData.paymentType || '',
+            revenueData.cashAmount || 0,
+            revenueData.transferAmount || 0,
+            revenueData.socialSecurityAmount || 0,
+            revenueData.visaAmount || 0,
+            revenueData.xrayFee || 0,
+            revenueData.medicineFee || 0,
+            revenueData.otherProductFee || 0,
+            revenueData.discount || 0,
             revenueData.notes || '',
             currentUser ? currentUser.branch : 'BRANCH_01', // Add user's branch
             new Date(), // Created At
@@ -1453,9 +1524,21 @@ function addRevenue(revenueData, currentUser = null) {
 
         revenueSheet.getRange(lastRow + 1, 1, 1, newRevenue.length).setValues([newRevenue]);
 
-        // Send notification to Google Chat
+        // Send notification to Google Chat with more detailed information
         try {
-            sendFormSubmissionNotification('รายได้', revenueData, 'เพิ่ม');
+            const notificationData = {
+                ...revenueData,
+                // Calculate total amount for notification using individual payment columns
+                totalAmount: ((parseFloat(revenueData.cashAmount) || 0) +
+                            (parseFloat(revenueData.transferAmount) || 0) +
+                            (parseFloat(revenueData.socialSecurityAmount) || 0) +
+                            (parseFloat(revenueData.visaAmount) || 0) +
+                            (parseFloat(revenueData.xrayFee) || 0) +
+                            (parseFloat(revenueData.medicineFee) || 0) +
+                            (parseFloat(revenueData.otherProductFee) || 0) -
+                            (parseFloat(revenueData.discount) || 0))
+            };
+            sendFormSubmissionNotification('รายได้', notificationData, 'เพิ่ม');
         } catch (notificationError) {
             console.warn('Failed to send notification:', notificationError);
         }
@@ -1488,14 +1571,26 @@ function updateRevenue(revenueId, revenueData) {
             return { success: false, message: 'ไม่พบข้อมูลรายได้' };
         }
 
+        // Handle the new detailed revenue structure with individual payment columns
         const updatedRevenue = [
             revenueId,
             revenueData.date,
-            revenueData.description,
-            revenueData.amount,
-            revenueData.type || 'treatment',
+            revenueData.patientId || '',
+            revenueData.doctorId || '',
+            revenueData.caseType || '',
+            revenueData.caseDetails || '',
+            revenueData.paymentType || '',
+            revenueData.cashAmount || 0,
+            revenueData.transferAmount || 0,
+            revenueData.socialSecurityAmount || 0,
+            revenueData.visaAmount || 0,
+            revenueData.xrayFee || 0,
+            revenueData.medicineFee || 0,
+            revenueData.otherProductFee || 0,
+            revenueData.discount || 0,
             revenueData.notes || '',
-            data[rowIndex - 1][6], // Keep original created date
+            data[rowIndex - 1][16], // Keep original branch (updated index)
+            data[rowIndex - 1][17], // Keep original created date (updated index)
             new Date() // Update modified date
         ];
 
@@ -1852,10 +1947,22 @@ function sendFormSubmissionNotification(formType, data, action = 'เพิ่�
                 break;
                 
             case 'รายได้':
-                message = `💰 จำนวน: ${parseFloat(data.amount).toLocaleString()} บาท\n` +
-                         `📝 รายละเอียด: ${data.description}\n` +
-                         `📅 วันที่: ${data.date}\n` +
-                         `📂 ประเภท: ${data.type === 'treatment' ? 'การรักษา' : data.type}`;
+                // Get patient and doctor names for revenue notification
+                const revenuePatient = findPatientById(data.patientId);
+                const revenueDoctor = findDoctorById(data.doctorId);
+                const revenuePatientName = revenuePatient ? `${revenuePatient.title_prefix || ''} ${revenuePatient.first_name} ${revenuePatient.last_name}`.trim() : 'ไม่ระบุ';
+                const revenueDoctorName = revenueDoctor ? `${revenueDoctor.first_name} ${revenueDoctor.last_name}` : 'ไม่ระบุ';
+
+                message = `💰 ยอดรวม: ${parseFloat(data.totalAmount || 0).toLocaleString()} บาท\n` +
+                         `� คนไข้: ${revenuePatientName}\n` +
+                         `👨‍⚕️ หมอ: ${revenueDoctorName}\n` +
+                         `📅 วันที่: ${data.date}`;
+                if (data.caseType) message += `\n🏥 ประเภทเคส: ${data.caseType}`;
+                if (data.paymentType) message += `\n� ประเภทการชำระ: ${data.paymentType}`;
+                if (data.xrayFee > 0) message += `\n📸 ค่าเอ็กซเรย์: ${parseFloat(data.xrayFee).toLocaleString()} บาท`;
+                if (data.medicineFee > 0) message += `\n💊 ค่ายา: ${parseFloat(data.medicineFee).toLocaleString()} บาท`;
+                if (data.otherProductFee > 0) message += `\n🛒 ค่าผลิตภัณฑ์อื่น: ${parseFloat(data.otherProductFee).toLocaleString()} บาท`;
+                if (data.discount > 0) message += `\n🏷️ ส่วนลด: ${parseFloat(data.discount).toLocaleString()} บาท`;
                 break;
                 
             default:
@@ -2363,6 +2470,39 @@ function getBranches() {
     }
 }
 
+function getpaymentTypes() {
+    try {
+        // Hardcoded payment types - no longer reading from sheet
+        const paymentTypes = [
+            {
+                value: 'เงินสด',
+                displayOrder: 1,
+                description: 'เงินสด'
+            },
+            {
+                value: 'เงินโอน',
+                displayOrder: 2,
+                description: 'เงินโอน'
+            },
+            {
+                value: 'ประกันสังคม',
+                displayOrder: 3,
+                description: 'ประกันสังคม'
+            },
+            {
+                value: 'Visa',
+                displayOrder: 4,
+                description: 'Visa'
+            }
+        ];
+
+        return JSON.stringify({ success: true, options: paymentTypes });
+    } catch (error) {
+        console.error('Error getting payment methods:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
 /**
  * Get all options from Option List sheet
  */
@@ -2372,11 +2512,12 @@ function getAllOptions() {
         const caseDetailsResult = JSON.parse(getCaseDetails());
         const contactChannelsResult = JSON.parse(getContactChannels());
         const branchesResult = JSON.parse(getBranches());
+        const paymentTypesResult = JSON.parse(getpaymentTypes());
 
-        if (!caseTypesResult.success || !caseDetailsResult.success || !contactChannelsResult.success || !branchesResult.success) {
-            return JSON.stringify({ 
-                success: false, 
-                message: 'Error retrieving options' 
+        if (!caseTypesResult.success || !caseDetailsResult.success || !contactChannelsResult.success || !branchesResult.success || !paymentTypesResult.success) {
+            return JSON.stringify({
+                success: false,
+                message: 'Error retrieving options'
             });
         }
 
@@ -2385,7 +2526,8 @@ function getAllOptions() {
             caseTypes: caseTypesResult.options,
             caseDetails: caseDetailsResult.options,
             contactChannels: contactChannelsResult.options,
-            branches: branchesResult.options
+            branches: branchesResult.options,
+            paymentTypes: paymentTypesResult.options
         });
     } catch (error) {
         console.error('Error getting all options:', error);
