@@ -488,7 +488,7 @@ function authenticateUser(username, password) {
             // Updated destructuring to match new column structure with First Name and Last Name
             const [id, dbUsername, dbPassword, dbUserType, firstName, lastName, email, phone, branch, role, status] = row;
 
-            if (dbUsername === username && dbPassword === password && status === 'active') {
+            if (dbUsername === username && dbPassword == password && status === 'active') {
                 return {
                     success: true,
                     message: 'เข้าสู่ระบบสำเร็จ',
@@ -501,7 +501,7 @@ function authenticateUser(username, password) {
                         fullName: firstName + ' ' + lastName, // Combine for compatibility
                         email: email,
                         phone: phone,
-                        branch: branch || 'BRANCH_01', // Default branch if not specified
+                        branch: branch || (dbUserType === 'super_admin' ? 'ทุกสาขา' : 'ไม่ระบุ'), // Default branch if missing
                         role: role || dbUserType // Use role if available, otherwise fall back to userType
                     }
                 };
@@ -711,12 +711,9 @@ function getAllUsers(currentUser = null) {
                 user.branch === currentUser.branch && 
                 user.role === 'user'
             );
-        } else if (currentUser.role === 'super_admin') {
-            // Super admin can see all users (including admins)
-            users = users.filter(user => 
-                user.role === 'user' || user.role === 'admin'
-            );
-        }
+        } 
+
+        // super_admin can see all users included other super_admins and own data
 
         return JSON.stringify({ success: true, users });
     } catch (error) {
@@ -770,7 +767,7 @@ function addUser(userData, currentUser = null) {
             userData.firstName,
             userData.lastName,
             userData.email || '',
-            userData.phone || '',
+            "'" + userData.phone || '',
             userData.branch,
             userData.role || 'user',
             userData.status || 'active',
@@ -843,7 +840,7 @@ function updateUser(username, userData, currentUser = null) {
             userData.firstName || existingUser[USER_COLUMNS.FIRST_NAME], // First Name
             userData.lastName || existingUser[USER_COLUMNS.LAST_NAME], // Last Name
             userData.email || existingUser[USER_COLUMNS.EMAIL],
-            userData.phone || existingUser[USER_COLUMNS.PHONE],
+            "'"+(userData.phone || existingUser[USER_COLUMNS.PHONE]),
             userData.branch || existingUser[USER_COLUMNS.BRANCH],
             userData.role || existingUser[USER_COLUMNS.ROLE],
             userData.status || existingUser[USER_COLUMNS.STATUS],

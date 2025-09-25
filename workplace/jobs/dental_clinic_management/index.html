@@ -470,6 +470,55 @@
             animation: spin 1s linear infinite;
         }
 
+        table.dataTable {
+
+            td,
+            th {
+                vertical-align: middle;
+            }
+        }
+
+        /* Modal styling for rounded corners */
+        .modal-content {
+            border-radius: 16px !important;
+            border: none !important;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .modal-header {
+            border-top-left-radius: 16px !important;
+            border-top-right-radius: 16px !important;
+            border-bottom: 1px solid #e9ecef !important;
+        }
+
+        .modal-footer {
+            border-bottom-left-radius: 16px !important;
+            border-bottom-right-radius: 16px !important;
+            border-top: 1px solid #e9ecef !important;
+        }
+
+        .modal-dialog {
+            margin: 1.75rem auto;
+        }
+
+        .modal-dialog-scrollable .modal-content {
+            border-radius: 16px !important;
+        }
+
+        /* Ensure backdrop doesn't interfere with rounded corners */
+        .modal {
+            --bs-modal-border-radius: 16px;
+        }
+
+        .user-info-icon {
+            width: 32px;
+            height: 32px;
+            align-content: center;
+            display: flex;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
         @keyframes pulse {
             0% {
                 transform: scale(1);
@@ -586,9 +635,22 @@
                                 <span class="visually-hidden">unread messages</span>
                             </span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end" id="notificationList">
+                        <ul class="dropdown-menu dropdown-menu-end" id="notificationList" style="min-width: 300px;">
                             <li>
                                 <h6 class="dropdown-header">การแจ้งเตือน</h6>
+                            </li>
+                            <!-- Branch Filter for Super Admin -->
+                            <li class="super-admin-only">
+                                <div class="dropdown-item-text">
+                                    <label class="form-label mb-1" style="font-size: 0.875rem;">กรองตามสาขา:</label>
+                                    <select class="form-select form-select-sm" id="notificationBranchFilter"
+                                        onchange="updateNotifications()">
+                                        <option value="">ทุกสาขา</option>
+                                    </select>
+                                </div>
+                            </li>
+                            <li class="super-admin-only">
+                                <hr class="dropdown-divider">
                             </li>
                             <li>
                                 <hr class="dropdown-divider">
@@ -622,7 +684,7 @@
                             </li>
                             <li class="px-3 py-2">
                                 <div class="d-flex align-items-center">
-                                    <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
+                                    <div class="bg-primary bg-opacity-10 user-info-icon p-2 me-3">
                                         <i class="fas fa-building text-primary" style="font-size: 0.875rem;"></i>
                                     </div>
                                     <div>
@@ -633,7 +695,7 @@
                             </li>
                             <li class="px-3 py-2">
                                 <div class="d-flex align-items-center">
-                                    <div class="bg-success bg-opacity-10 rounded-circle p-2 me-3">
+                                    <div class="bg-success bg-opacity-10 user-info-icon p-2 me-3">
                                         <i class="fas fa-user-tag text-success" style="font-size: 0.875rem;"></i>
                                     </div>
                                     <div>
@@ -648,7 +710,7 @@
                             <li class="px-2">
                                 <a class="dropdown-item d-flex align-items-center px-3 py-2 rounded-2 text-danger"
                                     href="javascript:void(0)" id="logoutBtn" style="transition: all 0.2s ease;">
-                                    <div class="bg-danger bg-opacity-10 rounded-circle p-2 me-3">
+                                    <div class="bg-danger bg-opacity-10 user-info-icon p-2 me-3">
                                         <i class="fas fa-sign-out-alt text-danger" style="font-size: 0.875rem;"></i>
                                     </div>
                                     <span class="fw-medium">ออกจากระบบ</span>
@@ -669,6 +731,12 @@
                             <a class="nav-link active" href="javascript:void(0)" data-page="dashboard">
                                 <i class="fas fa-tachometer-alt me-2"></i>หน้าหลัก
                             </a>
+                            <a class="nav-link" href="javascript:void(0)" data-page="appointments">
+                                <i class="fas fa-calendar-alt me-2"></i>การนัดหมาย
+                            </a>
+                            <a class="nav-link" href="javascript:void(0)" data-page="revenue">
+                                <i class="fas fa-chart-line me-2"></i>แจ้งยอดรายวัน
+                            </a>
                             <a class="nav-link" href="javascript:void(0)" data-page="patients">
                                 <i class="fas fa-users me-2"></i>จัดการลูกค้า
                             </a>
@@ -677,12 +745,6 @@
                             </a>
                             <a class="nav-link admin-only" href="javascript:void(0)" data-page="users">
                                 <i class="fas fa-users-cog me-2"></i>จัดการผู้ใช้
-                            </a>
-                            <a class="nav-link" href="javascript:void(0)" data-page="appointments">
-                                <i class="fas fa-calendar-alt me-2"></i>การนัดหมาย
-                            </a>
-                            <a class="nav-link" href="javascript:void(0)" data-page="revenue">
-                                <i class="fas fa-chart-line me-2"></i>รายงานรายได้
                             </a>
                             <a class="nav-link admin-only hidden" href="javascript:void(0)" data-page="reports">
                                 <i class="fas fa-chart-bar me-2"></i>รายงาน
@@ -927,9 +989,21 @@
                         <div id="revenuePage" class="page-content hidden">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h2>รายได้รายวัน</h2>
-                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#revenueModal">
-                                    <i class="fas fa-plus me-2"></i>บันทึกรายได้
-                                </button>
+                                <div class="d-flex gap-3 align-items-center">
+                                    <!-- Branch Filter for Super Admin -->
+                                    <div class="super-admin-only-filter d-flex align-items-center gap-2">
+                                        <label class="form-label mb-0 text-nowrap"
+                                            style="font-size: 0.9rem;">สาขา:</label>
+                                        <select class="form-select form-select-sm" id="revenueBranchFilter"
+                                            style="min-width: 150px;">
+                                            <option value="">ทุกสาขา</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-primary" data-bs-toggle="modal"
+                                        data-bs-target="#revenueModal">
+                                        <i class="fas fa-plus me-2"></i>บันทึกรายได้
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="row mb-4">
@@ -995,7 +1069,17 @@
 
                         <!-- Reports Page (Admin Only) -->
                         <div id="reportsPage" class="page-content hidden">
-                            <h2 class="mb-4">รายงาน</h2>
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2>รายงาน</h2>
+                                <!-- Branch Filter for Super Admin -->
+                                <div class="super-admin-only-filter d-flex align-items-center gap-2">
+                                    <label class="form-label mb-0 text-nowrap" style="font-size: 0.9rem;">สาขา:</label>
+                                    <select class="form-select form-select-sm" id="reportsBranchFilter"
+                                        style="min-width: 150px;">
+                                        <option value="">ทุกสาขา</option>
+                                    </select>
+                                </div>
+                            </div>
 
                             <div class="row">
                                 <div class="col-md-6">
@@ -1093,7 +1177,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-6 super-admin-only-filter">
+                            <div class="col-md-6 super-admin-only">
                                 <div class="mb-3">
                                     <label class="form-label">สาขา <span class="text-danger">*</span></label>
                                     <select class="form-select" name="branch">
@@ -1208,6 +1292,12 @@
                 </div>
                 <div class="modal-body">
                     <form id="appointmentForm">
+                        <div class="mb-3 super-admin-only">
+                            <label class="form-label">สาขา <span class="text-danger">*</span></label>
+                            <select class="form-select" name="branch">
+                                <option value="">เลือกสาขา</option>
+                            </select>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">เลือกลูกค้า</label>
                             <select class="form-select" name="patientId" required>
@@ -1222,12 +1312,6 @@
                             </select>
                         </div>
 
-                        <div class="mb-3 super-admin-only-filter">
-                            <label class="form-label">สาขา <span class="text-danger">*</span></label>
-                            <select class="form-select" name="branch">
-                                <option value="">เลือกสาขา</option>
-                            </select>
-                        </div>
 
                         <div class="row">
                             <div class="col-md-6">
@@ -1306,24 +1390,21 @@
                 <div class="modal-body">
                     <form id="revenueForm">
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <div class="mb-3">
                                     <label class="form-label">วันที่</label>
                                     <input type="date" class="form-control" name="date" required>
                                 </div>
                             </div>
-                            <div class="col-12">
+                            <div class="col-12 super-admin-only">
                                 <div class="mb-3">
-                                    <label class="form-label">ประเภทการชำระ</label>
-                                    <div class="form-check-container" id="revenuePaymentTypeContainer">
-                                        <!-- Payment type options will be rendered here -->
-                                    </div>
+                                    <label class="form-label">สาขา <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="branch">
+                                        <option value="">เลือกสาขา</option>
+                                    </select>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <div class="mb-3">
                                     <label class="form-label">ชื่อลูกค้า</label>
                                     <select class="form-select" name="patientId" required>
@@ -1331,19 +1412,11 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <div class="mb-3">
                                     <label class="form-label">ชื่อหมอ</label>
                                     <select class="form-select" name="doctorId" required>
                                         <option value="">เลือกหมอ</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6 super-admin-only-filter">
-                                <div class="mb-3">
-                                    <label class="form-label">สาขา <span class="text-danger">*</span></label>
-                                    <select class="form-select" name="branch">
-                                        <option value="">เลือกสาขา</option>
                                     </select>
                                 </div>
                             </div>
@@ -1360,6 +1433,13 @@
                             <label class="form-label">รายละเอียดเคส</label>
                             <div class="form-check-container" id="revenueCaseDetailsContainer">
                                 <!-- Case details options will be rendered here -->
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">ประเภทการชำระ</label>
+                            <div class="form-check-container" id="revenuePaymentTypeContainer">
+                                <!-- Payment type options will be rendered here -->
                             </div>
                         </div>
 
@@ -1505,10 +1585,13 @@
                             <div class="col-12">
                                 <div class="mb-3">
                                     <label class="form-label">สถานะ</label>
-                                    <select class="form-select" name="status">
-                                        <option value="active">เปิดใช้งาน</option>
-                                        <option value="inactive">ปิดใช้งาน</option>
-                                    </select>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="userStatus"
+                                            name="status" value="active" checked>
+                                        <label class="form-check-label" for="userStatus">
+                                            เปิดใช้งาน
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1827,9 +1910,9 @@
 
         function initializeApp() {
             checkLoginStatus();
-            setupEventListeners();
             updateCurrentDate();
             setupSelect2()
+            setupEventListeners();
         }
 
         function setupSelect2() {
@@ -2007,6 +2090,20 @@
                 } else if (branchSelect) {
                     branchSelect.disabled = false;
                 }
+
+                // Add event listener for status switch change
+                const statusSwitch = document.querySelector('#userStatus');
+                const statusLabel = document.querySelector('#userModal label[for="userStatus"]');
+
+                if (statusSwitch && statusLabel) {
+                    // Remove existing event listener to avoid duplicates
+                    statusSwitch.removeEventListener('change', handleUserStatusChange);
+                    // Add new event listener
+                    statusSwitch.addEventListener('change', handleUserStatusChange);
+
+                    // Set initial label based on current status
+                    statusLabel.textContent = statusSwitch.checked ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+                }
             });
 
             $('#userModal').on('hidden.bs.modal', function () {
@@ -2044,7 +2141,7 @@
                 renderPaymentTypeOptions();
 
                 // Load patients and doctors for revenue form
-                loadPatientsForRevenue();
+                loadPatientsForRevenue(); // Load all patients initially
                 loadDoctorsForRevenue();
 
                 // Small delay to ensure form is ready
@@ -2074,6 +2171,15 @@
                 // Ensure contact channel options are rendered
                 if (contactChannels.length > 0) {
                     renderContactChannelOptions();
+                }
+
+                // Reset patient filtering for new appointments (super_admin only)
+                if (currentUserRole === 'super_admin') {
+                    // If this is a new appointment (no appointmentId), reset patient list to show all
+                    const form = document.querySelector(SELECTORS.APPOINTMENT_FORM);
+                    if (!form.dataset.appointmentId) {
+                        loadPatientsForAppointment(); // Load all patients for new appointment
+                    }
                 }
 
                 // Small delay to ensure form is ready
@@ -2129,20 +2235,39 @@
                 });
             }
 
+            const revenueBranchFilter = document.getElementById('revenueBranchFilter');
+            if (revenueBranchFilter) {
+                $('#revenueBranchFilter').on('change', function () {
+                    renderRevenueTable();
+                    updateRevenueStats();
+                    renderRevenueChart();
+                });
+            }
+
+            const reportsBranchFilter = document.getElementById('reportsBranchFilter');
+            if (reportsBranchFilter) {
+                $('#reportsBranchFilter').on('change', function () {
+                    renderReports();
+                });
+            }
+
             // Phone number validation - accept only numbers and max length 10
             setupPhoneValidation();
+
+            // Patient and branch selection event listeners for auto-filtering
+            setupPatientBranchFiltering();
         }
 
         function setupPhoneValidation() {
             // Find all phone input fields
             const phoneInputs = document.querySelectorAll('input[name="phone"], input[type="tel"]');
-            
-            phoneInputs.forEach(function(input) {
+
+            phoneInputs.forEach(function (input) {
                 // Set max length
                 input.setAttribute('maxlength', '10');
-                
+
                 // Add input event listener to filter non-numeric characters
-                input.addEventListener('input', function(e) {
+                input.addEventListener('input', function (e) {
                     // Remove any non-digit characters
                     let value = e.target.value.replace(/\D/g, '');
                     // Limit to 10 digits
@@ -2153,7 +2278,7 @@
                 });
 
                 // Add keypress event listener to prevent non-numeric input
-                input.addEventListener('keypress', function(e) {
+                input.addEventListener('keypress', function (e) {
                     // Allow: backspace, delete, tab, escape, enter
                     if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
                         // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
@@ -2170,13 +2295,49 @@
                 });
 
                 // Add paste event listener to handle pasted content
-                input.addEventListener('paste', function(e) {
+                input.addEventListener('paste', function (e) {
                     e.preventDefault();
                     let paste = (e.clipboardData || window.clipboardData).getData('text');
                     // Remove any non-digit characters and limit to 10 digits
                     paste = paste.replace(/\D/g, '').substring(0, 10);
                     e.target.value = paste;
                 });
+            });
+        }
+
+        function handleUserStatusChange() {
+            const statusSwitch = document.querySelector('#userStatus');
+            const statusLabel = document.querySelector('#userModal label[for="userStatus"]');
+
+            if (statusSwitch && statusLabel) {
+                statusLabel.textContent = statusSwitch.checked ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+            }
+        }
+
+        function setupPatientBranchFiltering() {
+            // Only setup for super_admin users
+            if (currentUserRole !== 'super_admin') {
+                return;
+            }
+
+
+            $(SELECTORS.APPOINTMENT_FORM + ' select[name="patientId"]').prop('disabled', true);
+            $(SELECTORS.REVENUE_FORM + ' select[name="patientId"]').prop('disabled', true);
+
+            // Appointment form - branch selection change
+            $(SELECTORS.APPOINTMENT_FORM + ' select[name="branch"]').on('change.branchFilter', function () {
+                const selectedBranch = $(this).val();
+                loadPatientsForAppointment(selectedBranch);
+                // Clear patient selection when branch changes to avoid confusion
+                $(SELECTORS.APPOINTMENT_FORM + ' select[name="patientId"]').val('').trigger('change').prop('disabled', false);
+            });
+
+            // Revenue form - branch selection change
+            $(SELECTORS.REVENUE_FORM + ' select[name="branch"]').on('change.branchFilter', function () {
+                const selectedBranch = $(this).val();
+                loadPatientsForRevenue(selectedBranch);
+                // Clear patient selection when branch changes to avoid confusion
+                $(SELECTORS.REVENUE_FORM + ' select[name="patientId"]').val('').trigger('change').prop('disabled', false);
             });
         }
 
@@ -2322,11 +2483,15 @@
                 title: UI_TEXT.MESSAGES.LOGOUT_CONFIRM,
                 icon: 'question',
                 showCancelButton: true,
+                confirmButtonColor: '#30308b',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
                 confirmButtonText: UI_TEXT.BUTTONS.LOGOUT,
                 cancelButtonText: UI_TEXT.BUTTONS.CANCEL,
                 customClass: {
                     confirmButton: 'btn btn-danger',
-                    cancelButton: 'btn btn-secondary'
+                    cancelButton: 'btn btn-secondary',
+                    popup: 'rounded-4',
                 },
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -2397,9 +2562,10 @@
                     field.removeAttribute('required');
                 }
             });
+
             // Load data and show dashboard
             loadData();
-            showPage('dashboard');
+
         }
 
         function updateUserInfoDisplay() {
@@ -2415,15 +2581,9 @@
 
             // Function to get Thai branch name
             const getBranchDisplayName = (branch) => {
-                switch (branch) {
-                    case 'HEAD_OFFICE': return 'สำนักงานใหญ่';
-                    case 'BRANCH_01': return 'สาขาที่ 1';
-                    case 'BRANCH_02': return 'สาขาที่ 2';
-                    case 'BRANCH_03': return 'สาขาที่ 3';
-                    case 'BRANCH_04': return 'สาขาที่ 4';
-                    case 'BRANCH_05': return 'สาขาที่ 5';
-                    default: return branch || '-';
-                }
+                console.log("🚀 ~ getBranchDisplayName ~ branch:", branch)
+                const branchObj = branches.find(b => b.id === branch);
+                return branchObj ? branchObj.name : (branch || '-');
             };
 
             // Update user info in navbar
@@ -2450,6 +2610,7 @@
             switch (pageName) {
                 case 'dashboard':
                     updateDashboard();
+                    renderWeeklyAppointments();
                     break;
                 case 'patients':
                     renderPatientsTable();
@@ -2470,7 +2631,7 @@
                     updateRevenueStats();
                     break;
                 case 'reports':
-                    if (currentUserType === 'admin') {
+                    if (currentUserType !== 'user') {
                         renderReports();
                     }
                     break;
@@ -2523,7 +2684,11 @@
                     $(SELECTORS.LOGIN_PAGE).addClass('hidden');
                     $(SELECTORS.MAIN_APP).removeClass('hidden');
                     hideLoadingPage();
-                }, 1000); // Longer delay to show completion
+
+                    // Setup patient-branch filtering after all data is loaded
+                    setupPatientBranchFiltering();
+                    showPage('dashboard');
+                }, 200); // Longer delay to show completion
             }
         } function hideLoadingPage() {
             const loadingPage = document.getElementById('loadingPage');
@@ -2536,7 +2701,7 @@
             NProgress.done();
         }
 
-        function loadPatients() {
+        function loadPatients(needToCheck = true) {
             google.script.run
                 .withSuccessHandler(function (result) {
                     result = JSON.parse(result);
@@ -2552,12 +2717,16 @@
                         console.error('Error loading patients:', result.message);
                         patients = [];
                     }
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
                 .withFailureHandler(function (error) {
                     console.error('Failed to load patients:', error);
                     patients = [];
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
             [API_METHODS.GET_ALL_PATIENTS]({
                 branch: currentUserBranch,
@@ -2565,7 +2734,7 @@
             });
         }
 
-        function loadAppointments() {
+        function loadAppointments(needToCheck = true) {
             google.script.run
                 .withSuccessHandler(function (result) {
                     result = JSON.parse(result);
@@ -2574,6 +2743,7 @@
                         appointments = result.appointments || [];
                         renderCalendar();
                         renderTodayAppointments();
+                        renderWeeklyAppointments();
                         updateDashboard();
                         // Update progress with success message
                         setTimeout(() => {
@@ -2583,12 +2753,16 @@
                         console.error('Error loading appointments:', result.message);
                         appointments = [];
                     }
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
                 .withFailureHandler(function (error) {
                     console.error('Failed to load appointments:', error);
                     appointments = [];
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
             [API_METHODS.GET_ALL_APPOINTMENTS]({
                 branch: currentUserBranch,
@@ -2596,7 +2770,7 @@
             });
         }
 
-        function loadRevenues() {
+        function loadRevenues(needToCheck = true) {
             google.script.run
                 .withSuccessHandler(function (result) {
                     result = JSON.parse(result);
@@ -2614,12 +2788,16 @@
                         console.error('Error loading revenues:', result.message);
                         revenues = [];
                     }
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
                 .withFailureHandler(function (error) {
                     console.error('Failed to load revenues:', error);
                     revenues = [];
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
             [API_METHODS.GET_ALL_REVENUES]({
                 branch: currentUserBranch,
@@ -2628,7 +2806,7 @@
         }
 
         // Doctor management functions
-        function loadDoctors() {
+        function loadDoctors(needToCheck = true) {
             console.log(currentUser)
             google.script.run
                 .withSuccessHandler(function (result) {
@@ -2649,7 +2827,9 @@
                         });
                         doctors = [];
                     }
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
                 .withFailureHandler(function (error) {
                     console.error('Error loading doctors:', error);
@@ -2658,7 +2838,9 @@
                         title: 'เกิดข้อผิดพลาดในการเชื่อมต่อ'
                     });
                     doctors = [];
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
                 .getAllDoctors({
                     branch: currentUserBranch,
@@ -2667,7 +2849,7 @@
         }
 
         // User management functions
-        function loadUsers() {
+        function loadUsers(needToCheck = true) {
             google.script.run
                 .withSuccessHandler(function (result) {
                     result = JSON.parse(result);
@@ -2685,7 +2867,9 @@
                         });
                         users = [];
                     }
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
                 .withFailureHandler(function (error) {
                     console.error('Error loading users:', error);
@@ -2694,7 +2878,9 @@
                         title: 'เกิดข้อผิดพลาดในการเชื่อมต่อ'
                     });
                     users = [];
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
             [API_METHODS.GET_ALL_USERS]({
                 username: currentUser,
@@ -2703,7 +2889,7 @@
             });
         }
 
-        function loadOptions() {
+        function loadOptions(needToCheck = true) {
             google.script.run
                 .withSuccessHandler(function (result) {
                     result = JSON.parse(result);
@@ -2729,7 +2915,9 @@
                             title: result.message || 'เกิดข้อผิดพลาดในการโหลดตัวเลือก'
                         });
                     }
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
                 .withFailureHandler(function (error) {
                     console.error('Error loading options:', error);
@@ -2737,7 +2925,9 @@
                         icon: 'error',
                         title: 'เกิดข้อผิดพลาดในการเชื่อมต่อ'
                     });
-                    checkLoadingComplete();
+                    if (needToCheck) {
+                        checkLoadingComplete();
+                    }
                 })
             [API_METHODS.GET_ALL_OPTIONS]();
         }
@@ -2996,7 +3186,10 @@
         function updateBranchFilterDropdowns() {
             const filterDropdowns = [
                 '#weeklyAppointmentsBranchFilter',
-                '#calendarBranchFilter'
+                '#calendarBranchFilter',
+                '#notificationBranchFilter',
+                '#revenueBranchFilter',
+                '#reportsBranchFilter'
             ];
 
             filterDropdowns.forEach(selector => {
@@ -3035,13 +3228,23 @@
             });
         }
 
-        function loadPatientsForRevenue() {
+        function loadPatientsForRevenue(filterBranch = null) {
             const $select = $(`${SELECTORS.REVENUE_FORM} select[name="patientId"]`);
-            const options = patients.map(patient =>
+
+            // Filter patients by branch if specified
+            let filteredPatients = patients;
+            if (filterBranch && currentUserRole === 'super_admin') {
+                filteredPatients = patients.filter(patient => patient.branch === filterBranch);
+            }
+
+            const options = filteredPatients.map(patient =>
                 `<option value="${patient.id}">${patient.title_prefix ? patient.title_prefix + ' ' : ''}${patient.first_name} ${patient.last_name}</option>`
             ).join('');
 
             $select.html(`<option value="">เลือกลูกค้า</option>` + options);
+
+            // Trigger Select2 to refresh
+            $select.trigger('change');
         }
 
         function loadDoctorsForRevenue() {
@@ -3234,7 +3437,7 @@
 
                 // Get branch display name
                 const branch = branches.find(b => b.value === apt.branch);
-                const branchName = branch ? branch.displayName : apt.branch || 'ไม่ระบุสาขา';
+                const branchName = branch ? `สาขา : ${branch.displayName || apt.branch}` : 'ไม่ระบุสาขา';
 
                 return `
                         <div class="d-flex justify-content-between align-items-center border-bottom py-2">
@@ -3380,6 +3583,9 @@
                     iconHtml: '<i class="bi-hourglass-split text-primary"></i>',
                     title: 'กำลังบันทึกข้อมูล...',
                     allowOutsideClick: false,
+                    confirmButtonColor: '#30308b',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true,
                     didOpen: () => {
                         Swal.showLoading();
                     },
@@ -3433,10 +3639,11 @@
                 html: `ต้องการ${confirmAction}ข้อมูลลูกค้านี้หรือไม่?${detailsHtml}`,
                 icon: 'question',
                 showCancelButton: true,
+                confirmButtonColor: '#30308b',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
                 confirmButtonText: `ยืนยัน${confirmAction}`,
                 cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#198754',
-                cancelButtonColor: '#6c757d',
                 customClass: {
                     popup: 'rounded-4'
                 }
@@ -3455,7 +3662,7 @@
                         .withSuccessHandler(function (result) {
                             hidePatientLoading();
                             if (result.success) {
-                                loadPatients();
+                                loadPatients(false);
                                 closePatientModal(e.target);
                                 Toast.fire({
                                     icon: 'success',
@@ -3489,7 +3696,7 @@
                     google.script.run
                         .withSuccessHandler(function (result) {
                             if (result.success) {
-                                loadPatients();
+                                loadPatients(false);
                                 closePatientModal(e.target);
                                 Toast.fire({
                                     icon: 'success',
@@ -3594,9 +3801,11 @@
                     text: 'คุณมีการเปลี่ยนแปลงข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?',
                     icon: 'warning',
                     showCancelButton: true,
+                    confirmButtonColor: '#30308b',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true,
                     confirmButtonText: 'ออกจากหน้านี้',
                     cancelButtonText: 'ยกเลิก',
-                    confirmButtonColor: '#a92246',
                     customClass: {
                         popup: 'rounded-4'
                     }
@@ -3671,10 +3880,11 @@
                 html: `ต้องการลบข้อมูลลูกค้านี้หรือไม่?${detailsHtml}`,
                 icon: 'warning',
                 showCancelButton: true,
+                confirmButtonColor: '#30308b',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
                 confirmButtonText: 'ยืนยันลบ',
                 cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
                 customClass: {
                     popup: 'rounded-4'
                 }
@@ -3685,6 +3895,9 @@
                         iconHtml: '<i class="bi-hourglass-split text-danger"></i>',
                         title: 'กำลังลบข้อมูล...',
                         allowOutsideClick: false,
+                        confirmButtonColor: '#30308b',
+                        cancelButtonColor: '#6c757d',
+                        reverseButtons: true,
                         didOpen: () => {
                             Swal.showLoading();
                         },
@@ -3696,7 +3909,7 @@
                     google.script.run
                         .withSuccessHandler(function (result) {
                             if (result.success) {
-                                loadPatients();
+                                loadPatients(false);
                                 Toast.fire({
                                     icon: 'success',
                                     title: result.message
@@ -3897,11 +4110,11 @@
                             </div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-secondary">${doctorName}</small>
+                                <small class="text-muted">${branchName}</small>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
                                 <div class="small text-primary fw-semibold">${apt.appointment_time} น.</div>
                                 <small class="badge ${status}">${statusText}</small>
-                            </div>
-                            <div class="d-flex justify-content-start">
-                                <small class="text-muted">${branchName}</small>
                             </div>
                         </div>
                         <i class="fas fa-edit text-secondary" style="cursor: pointer;" onclick="editAppointment('${apt.id}')"></i>
@@ -3911,13 +4124,23 @@
             $container.html(htmlParts.join(''));
         }
 
-        function loadPatientsForAppointment() {
+        function loadPatientsForAppointment(filterBranch = null) {
             const $select = $(`${SELECTORS.APPOINTMENT_FORM} select[name="patientId"]`);
-            const options = patients.map(patient =>
+
+            // Filter patients by branch if specified
+            let filteredPatients = patients;
+            if (filterBranch && currentUserRole === 'super_admin') {
+                filteredPatients = patients.filter(patient => patient.branch === filterBranch);
+            }
+
+            const options = filteredPatients.map(patient =>
                 `<option value="${patient.id}">${patient.title_prefix ? patient.title_prefix + ' ' : ''}${patient.first_name} ${patient.last_name}</option>`
             ).join('');
 
             $select.html(`<option value="">${UI_TEXT.LABELS.SELECT_PATIENT}</option>` + options);
+
+            // Trigger Select2 to refresh
+            $select.trigger('change');
         }
 
 
@@ -3961,7 +4184,7 @@
             }).join('');
 
             $tbody.html(html);
-            $('#doctorsTable').DataTable({
+            $(SELECTORS.DOCTORS_TABLE).DataTable({
                 language: {
                     url: CONFIG.DATATABLES_LANG_URL
                 },
@@ -4013,6 +4236,9 @@
                     iconHtml: '<i class="bi-hourglass-split text-primary"></i>',
                     title: 'กำลังบันทึกข้อมูล...',
                     allowOutsideClick: false,
+                    confirmButtonColor: '#30308b',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true,
                     didOpen: () => {
                         Swal.showLoading();
                     },
@@ -4058,10 +4284,11 @@
                 html: `ต้องการ${confirmAction}ข้อมูลหมอนี้หรือไม่?${detailsHtml}`,
                 icon: 'question',
                 showCancelButton: true,
+                confirmButtonColor: '#30308b',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
                 confirmButtonText: `ยืนยัน${confirmAction}`,
                 cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#198754',
-                cancelButtonColor: '#6c757d',
                 customClass: {
                     popup: 'rounded-4'
                 }
@@ -4083,7 +4310,7 @@
                         .withSuccessHandler(function (result) {
                             if (result.success) {
                                 hideDoctorLoading();
-                                loadDoctors();
+                                loadDoctors(false);
                                 closeDoctorModal(e.target);
                                 Toast.fire({
                                     icon: 'success',
@@ -4116,7 +4343,7 @@
                     google.script.run
                         .withSuccessHandler(function (result) {
                             if (result.success) {
-                                loadDoctors();
+                                loadDoctors(false);
                                 closeDoctorModal(e.target);
                                 Toast.fire({
                                     icon: 'success',
@@ -4212,10 +4439,11 @@
                 html: `ต้องการลบข้อมูลหมอนี้หรือไม่?${detailsHtml}`,
                 icon: 'warning',
                 showCancelButton: true,
+                confirmButtonColor: '#30308b',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
                 confirmButtonText: 'ยืนยันลบ',
                 cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
                 customClass: {
                     popup: 'rounded-4'
                 }
@@ -4226,6 +4454,9 @@
                         iconHtml: '<i class="bi-hourglass-split text-danger"></i>',
                         title: 'กำลังลบข้อมูล...',
                         allowOutsideClick: false,
+                        confirmButtonColor: '#30308b',
+                        cancelButtonColor: '#6c757d',
+                        reverseButtons: true,
                         didOpen: () => {
                             Swal.showLoading();
                         },
@@ -4238,7 +4469,7 @@
                         .withSuccessHandler(function (result) {
                             Swal.close();
                             if (result.success) {
-                                loadDoctors();
+                                loadDoctors(false);
                                 Toast.fire({
                                     icon: 'success',
                                     title: 'ลบข้อมูลหมอสำเร็จ'
@@ -4312,6 +4543,17 @@
             }).join('');
 
             $tbody.html(html);
+            $(SELECTORS.USERS_TABLE).DataTable({
+                language: {
+                    url: CONFIG.DATATABLES_LANG_URL
+                },
+                responsive: true,
+                order: [0, 'asc'],
+                columnDefs: [
+                    { orderable: false, targets: 6 },
+                    { className: 'dt-head-center dt-head-nowrap dt-body-center dt-body-nowrap text-center', targets: '_all' }
+                ]
+            });
         }
 
         function handleUserSubmit(e) {
@@ -4331,8 +4573,9 @@
                 role: formData.get('role'),
                 email: formData.get('email'),
                 phone: formData.get('phone'),
-                status: formData.get('status')
+                status: formData.get('status') === 'active' ? 'active' : 'disable'
             };
+            console.log("🚀 ~ handleUserSubmit ~ userData:", userData)
 
             const userId = e.target.dataset.userId;
             const isEdit = Boolean(userId);
@@ -4347,10 +4590,29 @@
                 showCancelButton: true,
                 confirmButtonColor: '#30308b',
                 cancelButtonColor: '#6c757d',
+                reverseButtons: true,
                 confirmButtonText: 'ยืนยัน',
-                cancelButtonText: 'ยกเลิก'
+                cancelButtonText: 'ยกเลิก',
+                customClass: {
+                    popup: 'rounded-4'
+                }
             }).then((result) => {
                 if (result.isConfirmed) {
+                    Swal.fire({
+                        iconHtml: '<i class="bi-hourglass-split text-primary"></i>',
+                        title: 'กำลังบันทึกข้อมูล...',
+                        allowOutsideClick: false,
+                        confirmButtonColor: '#30308b',
+                        cancelButtonColor: '#6c757d',
+                        reverseButtons: true,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                        customClass: {
+                            popup: ' rounded-4',
+                            icon: 'border-0'
+                        }
+                    });
                     if (isEdit) {
                         google.script.run
                             .withSuccessHandler(function (result) {
@@ -4417,13 +4679,12 @@
         function editUser(username) {
             const user = users.find(u => u.username === username);
             if (!user) return;
-
+            console.log("🚀 ~ editUser ~ user:", user)
             const form = $(SELECTORS.USER_FORM)[0];
             form.dataset.userId = username;
 
             // Populate form
             form.querySelector('[name="username"]').value = user.username;
-            form.querySelector('[name="username"]').disabled = true; // Disable username editing
             form.querySelector('[name="password"]').value = user.password || '';
             form.querySelector('[name="password"]').required = false; // Password optional for edit
             form.querySelector('[name="firstName"]').value = user.first_name || '';
@@ -4432,7 +4693,16 @@
             form.querySelector('[name="role"]').value = user.role || '';
             form.querySelector('[name="email"]').value = user.email || '';
             form.querySelector('[name="phone"]').value = user.phone || '';
-            form.querySelector('[name="status"]').value = user.status || 'active';
+
+            // Set status switch and update label accordingly
+            const statusSwitch = form.querySelector('[name="status"]');
+            const statusLabel = document.querySelector('#userModal label[for="userStatus"]');
+            const isActive = user.status === 'active';
+
+            statusSwitch.checked = isActive;
+            if (statusLabel) {
+                statusLabel.textContent = isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+            }
 
             // Show modal
             const modal = new bootstrap.Modal($(SELECTORS.USER_MODAL)[0]);
@@ -4450,10 +4720,14 @@
                 text: `คุณต้องการลบผู้ใช้ "${userName}" หรือไม่?`,
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#d33',
+                confirmButtonColor: '#30308b',
                 cancelButtonColor: '#6c757d',
+                reverseButtons: true,
                 confirmButtonText: 'ลบ',
-                cancelButtonText: 'ยกเลิก'
+                cancelButtonText: 'ยกเลิก',
+                customClass: {
+                    popup: 'rounded-4'
+                }
             }).then((result) => {
                 if (result.isConfirmed) {
                     google.script.run
@@ -4600,9 +4874,11 @@
                     text: 'คุณมีการเปลี่ยนแปลงข้อมูลหมอที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?',
                     icon: 'warning',
                     showCancelButton: true,
+                    confirmButtonColor: '#30308b',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true,
                     confirmButtonText: 'ออกจากหน้านี้',
                     cancelButtonText: 'ยกเลิก',
-                    confirmButtonColor: '#a92246',
                     customClass: {
                         popup: 'rounded-4'
                     }
@@ -4731,9 +5007,11 @@
                     text: 'คุณมีการเปลี่ยนแปลงข้อมูลการนัดหมายที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?',
                     icon: 'warning',
                     showCancelButton: true,
+                    confirmButtonColor: '#30308b',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true,
                     confirmButtonText: 'ออกจากหน้านี้',
                     cancelButtonText: 'ยกเลิก',
-                    confirmButtonColor: '#a92246',
                     customClass: {
                         popup: 'rounded-4'
                     }
@@ -4800,6 +5078,7 @@
                 status: formData.get('status'),
                 branch: currentUserRole === 'super_admin' ? formData.get('branch') : currentUserBranch // Use form branch for super_admin, otherwise use user's branch
             };
+            console.log("🚀 ~ handleAppointmentSubmit ~ appointmentData:", appointmentData)
 
             const showAppointmentLoading = () => {
                 NProgress.start();
@@ -4854,10 +5133,11 @@
                 html: `ต้องการ${confirmAction}การนัดหมายนี้หรือไม่?${detailsHtml}`,
                 icon: 'question',
                 showCancelButton: true,
+                confirmButtonColor: '#30308b',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
                 confirmButtonText: `ยืนยัน${confirmAction}`,
                 cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#198754',
-                cancelButtonColor: '#6c757d',
                 customClass: {
                     popup: 'rounded-4'
                 }
@@ -4877,7 +5157,7 @@
                         .withSuccessHandler(function (result) {
                             if (result.success) {
                                 hideAppointmentLoading()
-                                loadAppointments();
+                                loadAppointments(false);
                                 closeAppointmentModal(e.target);
                                 Toast.fire({
                                     icon: 'success',
@@ -4909,7 +5189,7 @@
                     google.script.run
                         .withSuccessHandler(function (result) {
                             if (result.success) {
-                                loadAppointments();
+                                loadAppointments(false);
                                 closeAppointmentModal(e.target);
                                 Toast.fire({
                                     icon: 'success',
@@ -4974,6 +5254,7 @@
         function editAppointment(appointmentId) {
             console.log("🚀 ~ editAppointment ~ appointmentId:", appointmentId)
             const appointment = appointments.find(a => a.id === appointmentId);
+            console.log("🚀 ~ editAppointment ~ appointment:", appointment)
             if (!appointment) return;
 
             const form = document.querySelector(SELECTORS.APPOINTMENT_FORM);
@@ -4993,10 +5274,12 @@
             }
 
             // Populate form
-            form.querySelector('[name="cost"]').value = appointment.cost;
-            form.querySelector('[name="notes"]').value = appointment.notes || '';
-            form.querySelector('[name="status"]').value = appointment.status;
-            form.querySelector('[name="contactChannel"]').value = appointment.contact_channel || '';
+            setTimeout(() => {
+                form.querySelector('[name="cost"]').value = appointment.cost;
+                form.querySelector('[name="notes"]').value = appointment.notes || '';
+                form.querySelector('[name="status"]').value = appointment.status;
+                form.querySelector('[name="contactChannel"]').value = appointment.contact_channel || '';
+            }, 1000); // Delay to ensure form is ready
 
             // Populate case types
             if (appointment.case_type) {
@@ -5027,12 +5310,28 @@
                 });
             }
 
-            $('[name="patientId"]').val(appointment.patient_id).trigger('change');
-            $('[name="doctorId"]').val(appointment.doctor_id).trigger('change');
-            // Set branch field for super_admin users
+            // Set branch field for super_admin users and load filtered patients
             if (currentUserRole === 'super_admin' && form.querySelector('[name="branch"]')) {
-                form.querySelector('[name="branch"]').value = appointment.branch || '';
+                const appointmentBranch = appointment.branch || '';
+                form.querySelector('[name="branch"]').value = appointmentBranch;
+
+                // Load patients filtered by branch first, then set patient selection
+                if (appointmentBranch) {
+                    loadPatientsForAppointment(appointmentBranch);
+                } else {
+                    loadPatientsForAppointment(); // Load all patients if no branch
+                }
+
+                // Use setTimeout to ensure patients are loaded before setting selection
+                setTimeout(() => {
+                    $('[name="patientId"]').val(appointment.patient_id).trigger('change').prop('disabled', false);
+                }, 50);
+            } else {
+                // For non-super_admin users, just set the patient selection normally
+                $('[name="patientId"]').val(appointment.patient_id).trigger('change').prop('disabled', false);
             }
+
+            $('[name="doctorId"]').val(appointment.doctor_id).trigger('change');
             form.querySelector('[name="appointmentDate"]')._flatpickr.setDate(appointment.appointment_date, true);
             form.querySelector('[name="appointmentTime"]')._flatpickr.setDate(appointment.appointment_time, true);
 
@@ -5147,10 +5446,11 @@
                 html: `ต้องการเพิ่มข้อมูลรายได้นี้หรือไม่?${detailsHtml}`,
                 icon: 'question',
                 showCancelButton: true,
+                confirmButtonColor: '#30308b',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
                 confirmButtonText: 'ยืนยันเพิ่ม',
                 cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#198754',
-                cancelButtonColor: '#6c757d',
                 customClass: {
                     popup: 'rounded-4'
                 }
@@ -5179,7 +5479,7 @@
                     .withSuccessHandler(function (result) {
                         Swal.close();
                         if (result.success) {
-                            loadRevenues();
+                            loadRevenues(false);
                             closeRevenueModal(e.target);
                             Toast.fire({
                                 icon: 'success',
@@ -5237,12 +5537,24 @@
         function renderRevenueTable() {
             const tbody = document.querySelector(`${SELECTORS.REVENUE_TABLE} tbody`);
 
-            if (revenues.length === 0) {
+            // Get selected branch filter
+            const selectedBranch = document.querySelector('#revenueBranchFilter')?.value || '';
+
+            // Filter revenues by branch (only for super admin)
+            let filteredRevenues = revenues;
+            if (currentUserRole === 'super_admin' && selectedBranch) {
+                filteredRevenues = revenues.filter(revenue => revenue.branch === selectedBranch);
+            } else if (currentUserRole !== 'super_admin') {
+                // Non-super admin users only see their own branch data
+                filteredRevenues = revenues.filter(revenue => revenue.branch === currentUserBranch);
+            }
+
+            if (filteredRevenues.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">${UI_TEXT.MESSAGES.NO_REVENUE_DATA}</td></tr>`;
                 return;
             }
 
-            const sortedRevenues = revenues.sort((a, b) => new Date(b.date) - new Date(a.date));
+            const sortedRevenues = filteredRevenues.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             const html = sortedRevenues.map(revenue => {
                 const date = new Date(revenue.date).toLocaleDateString(CONFIG.DATE_FORMAT_TH);
@@ -5321,10 +5633,11 @@
                 html: `ต้องการลบข้อมูลรายรับ-รายจ่ายนี้หรือไม่?${detailsHtml}`,
                 icon: 'warning',
                 showCancelButton: true,
+                confirmButtonColor: '#30308b',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
                 confirmButtonText: 'ยืนยันลบ',
                 cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
                 customClass: {
                     popup: 'rounded-4'
                 }
@@ -5347,7 +5660,7 @@
                         .withSuccessHandler(function (result) {
                             Swal.close();
                             if (result.success) {
-                                loadRevenues();
+                                loadRevenues(false);
                                 Toast.fire({
                                     icon: 'success',
                                     title: result.message
@@ -5383,21 +5696,33 @@
             const currentYear = today.getFullYear();
             const todayStr = moment().format('YYYY-MM-DD');
 
+            // Get selected branch filter
+            const selectedBranch = document.querySelector('#revenueBranchFilter')?.value || '';
+
+            // Filter revenues by branch (only for super admin)
+            let filteredRevenues = revenues;
+            if (currentUserRole === 'super_admin' && selectedBranch) {
+                filteredRevenues = revenues.filter(revenue => revenue.branch === selectedBranch);
+            } else if (currentUserRole !== 'super_admin') {
+                // Non-super admin users only see their own branch data
+                filteredRevenues = revenues.filter(revenue => revenue.branch === currentUserBranch);
+            }
+
             // Daily revenue
-            console.log(revenues)
-            const dailyRev = revenues.filter(r => moment(r.date).format('YYYY-MM-DD') === todayStr)
+            console.log(filteredRevenues)
+            const dailyRev = filteredRevenues.filter(r => moment(r.date).format('YYYY-MM-DD') === todayStr)
                 .reduce((sum, r) => sum + calculateRevenueAmount(r), 0);
             $(SELECTORS.DAILY_REVENUE).text(`${dailyRev.toLocaleString()} ${UI_TEXT.LABELS.BAHT}`);
 
             // Monthly revenue
-            const monthlyRev = revenues.filter(r => {
+            const monthlyRev = filteredRevenues.filter(r => {
                 const rDate = moment(r.date);
                 return rDate.month() === currentMonth && rDate.year() === currentYear;
             }).reduce((sum, r) => sum + calculateRevenueAmount(r), 0);
             $(SELECTORS.MONTHLY_REVENUE).text(`${monthlyRev.toLocaleString()} ${UI_TEXT.LABELS.BAHT}`);
 
             // Yearly revenue
-            const yearlyRev = revenues.filter(r => {
+            const yearlyRev = filteredRevenues.filter(r => {
                 const rDate = moment(r.date);
                 return rDate.year() === currentYear;
             }).reduce((sum, r) => sum + calculateRevenueAmount(r), 0);
@@ -5414,6 +5739,18 @@
 
             const ctx = canvas.getContext('2d');
 
+            // Get selected branch filter
+            const selectedBranch = document.querySelector('#revenueBranchFilter')?.value || '';
+
+            // Filter revenues by branch (only for super admin)
+            let filteredRevenues = revenues;
+            if (currentUserRole === 'super_admin' && selectedBranch) {
+                filteredRevenues = revenues.filter(revenue => revenue.branch === selectedBranch);
+            } else if (currentUserRole !== 'super_admin') {
+                // Non-super admin users only see their own branch data
+                filteredRevenues = revenues.filter(revenue => revenue.branch === currentUserBranch);
+            }
+
             // Get last 12 months data
             const monthlyData = [];
             const labels = [];
@@ -5424,7 +5761,7 @@
                 const month = date.getMonth();
                 const year = date.getFullYear();
 
-                const monthRevenue = revenues.filter(r => {
+                const monthRevenue = filteredRevenues.filter(r => {
                     const rDate = new Date(r.date);
                     return rDate.getMonth() === month && rDate.getFullYear() === year;
                 }).reduce((sum, r) => sum + calculateRevenueAmount(r), 0);
@@ -5474,8 +5811,29 @@
         function updateNotifications() {
             // Simple notification system for upcoming appointments
             const tomorrow = moment().add(1, 'days').format('YYYY-MM-DD');
-            const tomorrowAppts = appointments.filter(apt => {
-                return moment(apt.appointment_date).format('YYYY-MM-DD') === tomorrow && apt.status === 'scheduled';
+
+            // Filter appointments by branch for super admin
+            let tomorrowAppts = appointments.filter(apt => {
+                const isScheduled = apt.status === 'scheduled';
+                const isTomorrow = moment(apt.appointment_date).format('YYYY-MM-DD') === tomorrow;
+
+                if (!isScheduled || !isTomorrow) return false;
+
+                // Branch filtering for super admin
+                if (currentUserRole === 'super_admin') {
+                    const selectedBranch = document.getElementById('notificationBranchFilter')?.value;
+                    if (selectedBranch && apt.branch !== selectedBranch) {
+                        return false;
+                    }
+                } else if (currentUserRole === 'admin') {
+                    // Admin can only see appointments from their branch
+                    return apt.branch === currentUserBranch;
+                } else {
+                    // Regular users can only see appointments from their branch
+                    return apt.branch === currentUserBranch;
+                }
+
+                return true;
             });
 
             if (tomorrowAppts.length > 0) {
@@ -5485,20 +5843,252 @@
                 const $notificationList = $(SELECTORS.NOTIFICATION_LIST);
                 const html = `
                         <li><h6 class="dropdown-header">${UI_TEXT.LABELS.NOTIFICATIONS}</h6></li>
+                        <li class="super-admin-only ${currentUserRole === 'super_admin' ? 'show' : ''}">
+                            <div class="dropdown-item-text">
+                                <label class="form-label mb-1" style="font-size: 0.875rem;">กรองตามสาขา:</label>
+                                <select class="form-select form-select-sm" id="notificationBranchFilter" onchange="updateNotifications()">
+                                    <option value="">ทุกสาขา</option>
+                                    ${branches.map(branch => `<option value="${branch.value}" ${document.getElementById('notificationBranchFilter')?.value === branch.value ? 'selected' : ''}>${branch.value}</option>`).join('')}
+                                </select>
+                            </div>
+                        </li>
+                        <li class="super-admin-only ${currentUserRole === 'super_admin' ? 'show' : ''}">
+                            <hr class="dropdown-divider">
+                        </li>
                         <li><hr class="dropdown-divider"></li>
                         ${tomorrowAppts.map(apt => {
                     const patient = patients.find(p => p.id === apt.patient_id);
                     const patientName = patient ? `${patient.first_name} ${patient.last_name}` : UI_TEXT.MESSAGES.PATIENT_NOT_FOUND;
-                    return `<li><a class="dropdown-item"><div class="fw-bold">${patientName}</div><small>${UI_TEXT.LABELS.TOMORROW_APPOINTMENT} ${apt.appointment_time} น.</small></a></li>`;
+                    const branchText = currentUserRole === 'super_admin' ? ` (${apt.branch || 'ไม่ระบุสาขา'})` : '';
+                    return `<li><a class="dropdown-item"><div class="fw-bold">${patientName}${branchText}</div><small>${UI_TEXT.LABELS.TOMORROW_APPOINTMENT} ${apt.appointment_time} น.</small></a></li>`;
                 }).join('')}
+                    `;
+                $notificationList.html(html);
+            } else {
+                $(SELECTORS.NOTIFICATION_BADGE).addClass('hidden');
+                const $notificationList = $(SELECTORS.NOTIFICATION_LIST);
+                const html = `
+                        <li><h6 class="dropdown-header">${UI_TEXT.LABELS.NOTIFICATIONS}</h6></li>
+                        <!-- Branch Filter for Super Admin -->
+                        <li class="super-admin-only">
+                            <div class="dropdown-item-text">
+                                <label class="form-label mb-1" style="font-size: 0.875rem;">กรองตามสาขา:</label>
+                                <select class="form-select form-select-sm" id="notificationBranchFilter" onchange="updateNotifications()">
+                                    <option value="">ทุกสาขา</option>
+                                    ${branches.map(branch => `<option value="${branch.value}" ${document.getElementById('notificationBranchFilter')?.value === branch.value ? 'selected' : ''}>${branch.value}</option>`).join('')}
+                                </select>
+                            </div>
+                        </li>
+                        <li class="super-admin-only">
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><span class="dropdown-item-text text-muted">ไม่มีการแจ้งเตือนใหม่</span></li>
                     `;
                 $notificationList.html(html);
             }
         }
 
         function renderReports() {
-            // This would be implemented for admin users
+            // Only admin and super_admin users should see reports
+            if (currentUserRole === 'user') {
+                console.log('Regular users cannot access reports');
+                return;
+            }
+
             console.log('Rendering reports for admin user');
+
+            // Get selected branch filter
+            const selectedBranch = document.querySelector('#reportsBranchFilter')?.value || '';
+
+            // Filter data by branch
+            let filteredPatients = patients;
+            let filteredAppointments = appointments;
+            let filteredRevenues = revenues;
+
+            if (currentUserRole === 'super_admin' && selectedBranch) {
+                // Super admin with specific branch selected
+                filteredPatients = patients.filter(p => p.branch === selectedBranch);
+                filteredAppointments = appointments.filter(a => a.branch === selectedBranch);
+                filteredRevenues = revenues.filter(r => r.branch === selectedBranch);
+            } else if (currentUserRole !== 'super_admin') {
+                // Non-super admin users only see their own branch
+                filteredPatients = patients.filter(p => p.branch === currentUserBranch);
+                filteredAppointments = appointments.filter(a => a.branch === currentUserBranch);
+                filteredRevenues = revenues.filter(r => r.branch === currentUserBranch);
+            }
+            // If super_admin with no branch selected, show all data (no filtering)
+
+            renderPatientsChart(filteredPatients);
+            renderAppointmentsChart(filteredAppointments);
+        }
+
+        function renderPatientsChart(patientsData) {
+            const canvas = document.getElementById('patientsChart');
+            if (!canvas) return;
+
+            // Check if chart already exists and destroy it
+            if (Chart.getChart(canvas)) {
+                Chart.getChart(canvas).destroy();
+            }
+
+            const ctx = canvas.getContext('2d');
+
+            // Get last 12 months patient registration data
+            const monthlyData = [];
+            const labels = [];
+
+            for (let i = 11; i >= 0; i--) {
+                const date = new Date();
+                date.setMonth(date.getMonth() - i);
+                const month = date.getMonth();
+                const year = date.getFullYear();
+
+                const monthPatients = patientsData.filter(p => {
+                    const pDate = new Date(p.created_at || p.birthDate); // Use created_at or fallback to birthDate
+                    return pDate.getMonth() === month && pDate.getFullYear() === year;
+                }).length;
+
+                monthlyData.push(monthPatients);
+                labels.push(date.toLocaleDateString(CONFIG.DATE_FORMAT_TH, {
+                    month: 'short',
+                    year: '2-digit'
+                }));
+            }
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'จำนวนลูกค้าใหม่',
+                        data: monthlyData,
+                        backgroundColor: 'rgba(48, 48, 139, 0.8)',
+                        borderColor: '#30308b',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function (value) {
+                                    return Math.floor(value) === value ? value : '';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return `ลูกค้าใหม่: ${context.parsed.y} คน`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderAppointmentsChart(appointmentsData) {
+            const canvas = document.getElementById('appointmentsChart');
+            if (!canvas) return;
+
+            // Check if chart already exists and destroy it
+            if (Chart.getChart(canvas)) {
+                Chart.getChart(canvas).destroy();
+            }
+
+            const ctx = canvas.getContext('2d');
+
+            // Get appointment status summary for current month
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+
+            const currentMonthAppointments = appointmentsData.filter(apt => {
+                const aptDate = new Date(apt.appointment_date);
+                return aptDate.getMonth() === currentMonth && aptDate.getFullYear() === currentYear;
+            });
+
+            // Group by status
+            const statusGroups = currentMonthAppointments.reduce((groups, apt) => {
+                const status = apt.status || 'scheduled';
+                groups[status] = (groups[status] || 0) + 1;
+                return groups;
+            }, {});
+
+            // Prepare data for pie chart
+            const statusLabels = {
+                'scheduled': 'นัดหมาย',
+                'completed': 'เสร็จสิ้น',
+                'cancelled': 'ยกเลิก'
+            };
+
+            const statusColors = {
+                'scheduled': '#30308b',
+                'completed': '#009958',
+                'cancelled': '#a92246'
+            };
+
+            const chartLabels = [];
+            const chartData = [];
+            const chartColors = [];
+
+            Object.keys(statusGroups).forEach(status => {
+                chartLabels.push(statusLabels[status] || status);
+                chartData.push(statusGroups[status]);
+                chartColors.push(statusColors[status] || '#6c757d');
+            });
+
+            // If no data, show a placeholder
+            if (chartData.length === 0) {
+                chartLabels.push('ไม่มีข้อมูล');
+                chartData.push(1);
+                chartColors.push('#e9ecef');
+            }
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        data: chartData,
+                        backgroundColor: chartColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return `${label}: ${value} ครั้ง (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         // Global functions for onclick events
