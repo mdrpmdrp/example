@@ -159,6 +159,22 @@
             display: none !important;
         }
 
+        .super-admin-only {
+            display: none !important;
+        }
+
+        .super-admin-only.show {
+            display: block !important;
+        }
+
+        .super-admin-only-filter {
+            display: none !important;
+        }
+
+        .super-admin-only-filter.show {
+            display: flex !important;
+        }
+
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -412,8 +428,37 @@
         .loading-text {
             font-size: 1.2rem;
             color: #30308b;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
             font-weight: 500;
+        }
+
+        .loading-progress-container {
+            width: 400px;
+            max-width: 90vw;
+            margin-bottom: 30px;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+
+        .progress-label {
+            color: #30308b;
+            font-weight: 500;
+        }
+
+        .progress-percentage {
+            color: #a92246;
+            font-weight: 600;
+        }
+
+        .progress {
+            background-color: #f1f1f1;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
         }
 
         .loading-spinner {
@@ -456,6 +501,21 @@
     <div id="loadingPage" class="loading-page">
         <img src="https://img2.pic.in.th/pic/Screenshot-2025-09-22-215301.png" alt="Clinic Logo" class="loading-logo">
         <div class="loading-text">กำลังโหลดระบบจัดการคลินิคทันตกรรม</div>
+
+        <!-- Progress Bar Container -->
+        <div class="loading-progress-container">
+            <div class="progress-info">
+                <div class="progress-label" id="loadingProgressLabel">เริ่มต้นโหลดข้อมูล...</div>
+                <div class="progress-percentage" id="loadingProgressPercentage">0%</div>
+            </div>
+            <div class="progress" style="height: 4px; border-radius: 10px;">
+                <div class="progress-bar progress-bar-animated progress-bar-striped" id="loadingProgressBar"
+                    role="progressbar" style="width: 0%; background: #30308b;" aria-valuenow="0" aria-valuemin="0"
+                    aria-valuemax="100">
+                </div>
+            </div>
+        </div>
+
         <div class="loading-spinner"></div>
         <div class="mt-3 text-muted">กรุณารอสักครู่...</div>
     </div>
@@ -615,6 +675,9 @@
                             <a class="nav-link admin-only" href="javascript:void(0)" data-page="doctors">
                                 <i class="fas fa-user-md me-2"></i>จัดการหมอ
                             </a>
+                            <a class="nav-link admin-only" href="javascript:void(0)" data-page="users">
+                                <i class="fas fa-users-cog me-2"></i>จัดการผู้ใช้
+                            </a>
                             <a class="nav-link" href="javascript:void(0)" data-page="appointments">
                                 <i class="fas fa-calendar-alt me-2"></i>การนัดหมาย
                             </a>
@@ -682,8 +745,15 @@
                             <div class="row">
                                 <div class="col-md-8">
                                     <div class="card">
-                                        <div class="card-header">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
                                             <h5 class="mb-0">นัดหมายในสัปดาห์นี้</h5>
+                                            <div class="d-flex align-items-center super-admin-only-filter">
+                                                <label class="form-label me-2 mb-0">สาขา:</label>
+                                                <select id="weeklyAppointmentsBranchFilter"
+                                                    class="form-select form-select-sm rounded-3" style="width: 150px;">
+                                                    <option value="">ทุกสาขา</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <div class="card-body">
                                             <div id="weeklyAppointments"></div>
@@ -765,6 +835,37 @@
                             </div>
                         </div>
 
+                        <!-- Users Page -->
+                        <div id="usersPage" class="page-content hidden admin-only">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2>จัดการผู้ใช้</h2>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal">
+                                    <i class="fas fa-plus me-2"></i>เพิ่มผู้ใช้ใหม่
+                                </button>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table id="usersTable" class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>ชื่อผู้ใช้</th>
+                                                    <th>ชื่อ-นามสกุล</th>
+                                                    <th>สาขา</th>
+                                                    <th>ระดับผู้ใช้</th>
+                                                    <th>สถานะ</th>
+                                                    <th>วันที่สร้าง</th>
+                                                    <th>การจัดการ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Appointments Page -->
                         <div id="appointmentsPage" class="page-content hidden">
                             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -780,14 +881,24 @@
                                     <div class="card">
                                         <div class="card-header d-flex justify-content-between align-items-center">
                                             <h5 class="mb-0">ปฏิทินการนัดหมาย</h5>
-                                            <div>
-                                                <button class="btn btn-sm btn-outline-primary" id="prevMonth">
-                                                    <i class="fas fa-chevron-left"></i>
-                                                </button>
-                                                <span id="currentMonth" class="mx-3"></span>
-                                                <button class="btn btn-sm btn-outline-primary" id="nextMonth">
-                                                    <i class="fas fa-chevron-right"></i>
-                                                </button>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="d-flex align-items-center super-admin-only-filter">
+                                                    <label class="form-label me-2 mb-0">สาขา:</label>
+                                                    <select id="calendarBranchFilter"
+                                                        class="form-select form-select-sm rounded-3"
+                                                        style="width: 150px;">
+                                                        <option value="">ทุกสาขา</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <button class="btn btn-sm btn-outline-primary" id="prevMonth">
+                                                        <i class="fas fa-chevron-left"></i>
+                                                    </button>
+                                                    <span id="currentMonth" class="mx-3"></span>
+                                                    <button class="btn btn-sm btn-outline-primary" id="nextMonth">
+                                                        <i class="fas fa-chevron-right"></i>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="card-body">
@@ -798,7 +909,7 @@
 
                                 <div class="col-md-4">
                                     <div class="card">
-                                        <div class="card-header">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
                                             <h5 class="mb-0">นัดหมายวันที่ <span id="selectedDate"
                                                     class="text-primary"></span></h5>
                                         </div>
@@ -937,6 +1048,8 @@
                                         <option value="นาย">
                                         <option value="นาง">
                                         <option value="นางสาว">
+                                        <option value="เด็กชาย">
+                                        <option value="เด็กหญิง">
                                         <option value="ไม่ระบุ">
                                     </datalist>
                                 </div>
@@ -977,6 +1090,14 @@
                                         <option value="ชาย">ชาย</option>
                                         <option value="หญิง">หญิง</option>
                                         <option value="ไม่ระบุ">ไม่ระบุ</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6 super-admin-only-filter">
+                                <div class="mb-3">
+                                    <label class="form-label">สาขา <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="branch">
+                                        <option value="">เลือกสาขา</option>
                                     </select>
                                 </div>
                             </div>
@@ -1101,6 +1222,13 @@
                             </select>
                         </div>
 
+                        <div class="mb-3 super-admin-only-filter">
+                            <label class="form-label">สาขา <span class="text-danger">*</span></label>
+                            <select class="form-select" name="branch">
+                                <option value="">เลือกสาขา</option>
+                            </select>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -1211,6 +1339,14 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="col-md-6 super-admin-only-filter">
+                                <div class="mb-3">
+                                    <label class="form-label">สาขา <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="branch">
+                                        <option value="">เลือกสาขา</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -1280,6 +1416,107 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
                     <button type="button" class="btn btn-primary" id="saveRevenueButton">บันทึก</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <div class="modal fade admin-only" id="userModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false"
+        data-bs-focus="false">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">จัดการผู้ใช้</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm" novalidate>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">ชื่อผู้ใช้ <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="username" required>
+                                    <div class="invalid-feedback">กรุณากรอกชื่อผู้ใช้</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">รหัสผ่าน <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="password" required>
+                                    <div class="invalid-feedback">กรุณากรอกรหัสผ่าน</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">ชื่อจริง <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="firstName" required>
+                                    <div class="invalid-feedback">กรุณากรอกชื่อจริง</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">นามสกุล <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="lastName" required>
+                                    <div class="invalid-feedback">กรุณากรอกนามสกุล</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">สาขา <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="branch" required>
+                                        <option value="">เลือกสาขา</option>
+                                    </select>
+                                    <div class="invalid-feedback">กรุณาเลือกสาขา</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">ระดับผู้ใช้ <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="role" required>
+                                        <option value="">เลือกระดับผู้ใช้</option>
+                                        <option value="user">ผู้ใช้ทั่วไป</option>
+                                        <option value="admin" class="super-admin-only">ผู้ดูแลระบบ</option>
+                                        <option value="super_admin" class="super-admin-only">ผู้ดูแลระบบสูงสุด</option>
+                                    </select>
+                                    <div class="invalid-feedback">กรุณาเลือกระดับผู้ใช้</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">อีเมล</label>
+                                    <input type="email" class="form-control" name="email">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">เบอร์โทรศัพท์</label>
+                                    <input type="tel" class="form-control" name="phone">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label class="form-label">สถานะ</label>
+                                    <select class="form-select" name="status">
+                                        <option value="active">เปิดใช้งาน</option>
+                                        <option value="inactive">ปิดใช้งาน</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" id="saveUserButton">บันทึก</button>
                 </div>
             </div>
         </div>
@@ -1383,13 +1620,17 @@
             GET_ALL_APPOINTMENTS: 'getAllAppointments',
             GET_ALL_REVENUES: 'getAllRevenues',
             GET_ALL_OPTIONS: 'getAllOptions',
+            GET_ALL_USERS: 'getAllUsers',
             ADD_PATIENT: 'addPatient',
             UPDATE_PATIENT: 'updatePatient',
             DELETE_PATIENT: 'deletePatient',
             ADD_APPOINTMENT: 'addAppointment',
             UPDATE_APPOINTMENT: 'updateAppointment',
             ADD_REVENUE: 'addRevenue',
-            DELETE_REVENUE: 'deleteRevenue'
+            DELETE_REVENUE: 'deleteRevenue',
+            ADD_USER: 'addUser',
+            UPDATE_USER: 'updateUser',
+            DELETE_USER: 'deleteUser'
         };
 
         // Constants for DOM selectors and IDs
@@ -1424,10 +1665,13 @@
             REVENUE_CHART: '#revenueChart',
             DOCTOR_FORM: '#doctorForm',
             DOCTOR_MODAL: '#doctorModal',
+            USER_FORM: '#userForm',
+            USER_MODAL: '#userModal',
             SUBMIT_PATIENT_BUTTON: '#savePatientButton',
             SUBMIT_APPOINTMENT_BUTTON: '#saveAppointmentButton',
             SUBMIT_REVENUE_BUTTON: '#saveRevenueButton',
-            SUBMIT_DOCTOR_BUTTON: '#saveDoctorButton'
+            SUBMIT_DOCTOR_BUTTON: '#saveDoctorButton',
+            SUBMIT_USER_BUTTON: '#saveUserButton'
         };
 
         // Constants for configuration values
@@ -1446,6 +1690,7 @@
         let currentUserRole = null;
         let patients = [];
         let doctors = [];
+        let users = [];
         let appointments = [];
         let revenues = [];
         let currentMonth = new Date();
@@ -1455,6 +1700,7 @@
         let caseDetails = [];
         let contactChannels = [];
         let paymentTypes = [];
+        let branches = [];
 
         // Form tracking variables for unsaved changes warning
         let originalPatientFormData = {};
@@ -1465,6 +1711,8 @@
         let isDoctorFormDirty = false;
         let originalRevenueFormData = {};
         let isRevenueFormDirty = false;
+        let originalUserFormData = {};
+        let isUserFormDirty = false;
 
         // Flatpickr instances
         let birthDatePicker = null;
@@ -1500,6 +1748,33 @@
                 groups[status].push(apt);
                 return groups;
             }, {});
+        }
+
+        // Loading progress functions
+        function updateLoadingProgress(processName, completed, total) {
+            const percentage = Math.round((completed / total) * 100);
+
+            const progressBar = document.getElementById('loadingProgressBar');
+            const progressLabel = document.getElementById('loadingProgressLabel');
+            const progressPercentage = document.getElementById('loadingProgressPercentage');
+
+            if (progressBar && progressLabel && progressPercentage) {
+                progressBar.style.width = percentage + '%';
+                progressBar.setAttribute('aria-valuenow', percentage);
+                progressLabel.textContent = processName;
+                progressPercentage.textContent = percentage + '%';
+            }
+        }
+
+        function getLoadingProcessName(processIndex) {
+            const processes = [
+                'กำลังโหลดข้อมูลผู้ป่วย...',
+                'กำลังโหลดข้อมูลการนัดหมาย...',
+                'กำลังโหลดข้อมูลรายได้...',
+                'กำลังโหลดข้อมูลแพทย์...',
+                'กำลังโหลดตัวเลือกระบบ...'
+            ];
+            return processes[processIndex] || 'กำลังโหลดข้อมูล...';
         }
 
         // Revenue calculation helper function
@@ -1632,12 +1907,14 @@
             $(SELECTORS.APPOINTMENT_FORM).on('submit', handleAppointmentSubmit);
             $(SELECTORS.REVENUE_FORM).on('submit', handleRevenueSubmit);
             $(SELECTORS.DOCTOR_FORM).on('submit', handleDoctorSubmit);
+            $(SELECTORS.USER_FORM).on('submit', handleUserSubmit);
 
             // // Modal Submit
             $(SELECTORS.SUBMIT_PATIENT_BUTTON).on('click', () => $(SELECTORS.PATIENT_FORM).submit())
             $(SELECTORS.SUBMIT_APPOINTMENT_BUTTON).on('click', () => $(SELECTORS.APPOINTMENT_FORM).submit())
             $(SELECTORS.SUBMIT_REVENUE_BUTTON).on('click', () => $(SELECTORS.REVENUE_FORM).submit());
             $(SELECTORS.SUBMIT_DOCTOR_BUTTON).on('click', () => $(SELECTORS.DOCTOR_FORM).submit());
+            $(SELECTORS.SUBMIT_USER_BUTTON).on('click', () => $(SELECTORS.USER_FORM).submit());
 
             // Calendar navigation
             $('#prevMonth').on('click', function () {
@@ -1695,6 +1972,47 @@
                 $('#doctorForm').removeClass('was-validated');
             });
 
+            $('#userModal').on('shown.bs.modal', function () {
+                // Filter role options based on current user permissions
+                const roleSelect = document.querySelector('#userModal select[name="role"]');
+                if (roleSelect) {
+                    const options = roleSelect.querySelectorAll('option');
+                    options.forEach(option => {
+                        if (option.value === '') return; // Keep empty option
+
+                        if (currentUserRole === 'admin') {
+                            // Admin can only create users
+                            if (option.value !== 'user') {
+                                option.style.display = 'none';
+                            } else {
+                                option.style.display = '';
+                            }
+                        } else if (currentUserRole === 'super_admin') {
+                            // Super admin can create users and admins
+                            if (option.value === 'super_admin') {
+                                option.style.display = 'none';
+                            } else {
+                                option.style.display = '';
+                            }
+                        }
+                    });
+                }
+
+                // Filter branch options based on current user permissions
+                const branchSelect = document.querySelector('#userModal select[name="branch"]');
+                if (branchSelect && currentUserRole === 'admin') {
+                    // Admin can only create users in their own branch
+                    branchSelect.value = currentUserBranch;
+                    branchSelect.disabled = true;
+                } else if (branchSelect) {
+                    branchSelect.disabled = false;
+                }
+            });
+
+            $('#userModal').on('hidden.bs.modal', function () {
+                $('#userForm').removeClass('was-validated');
+            });
+
             $('#revenueModal').on('hidden.bs.modal', function () {
                 if (revenueDatePicker) {
                     revenueDatePicker.clear();
@@ -1735,35 +2053,6 @@
                 }, 100);
             });
 
-            // Prevent modal from closing if there are unsaved changes
-            $('#revenueModal').on('hide.bs.modal', function (e) {
-                if (isRevenueFormChanged()) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    Swal.fire({
-                        title: 'มีการเปลี่ยนแปลงข้อมูล',
-                        text: 'คุณมีการเปลี่ยนแปลงข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonText: 'ออกจากหน้านี้',
-                        cancelButtonText: 'ยกเลิก',
-                        confirmButtonColor: '#a92246',
-                        customClass: {
-                            popup: 'rounded-4'
-                        }
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            const form = $(SELECTORS.REVENUE_FORM)[0];
-                            // Temporarily remove the event listener to allow closing
-                            $(this).off('hide.bs.modal');
-                            closeRevenueModal(form);
-                            // Re-add the event listener for next time
-                            $(this).on('hide.bs.modal', arguments.callee);
-                        }
-                    });
-                }
-            });
 
             // Appointment modal close button handlers
             $('#appointmentModal .btn-close').on('click', function (e) {
@@ -1822,6 +2111,72 @@
                 setTimeout(() => {
                     captureDoctorFormData();
                 }, 100);
+            });
+
+            // Branch filter event handlers - only bind if elements exist
+            const weeklyBranchFilter = document.getElementById('weeklyAppointmentsBranchFilter');
+            if (weeklyBranchFilter) {
+                $('#weeklyAppointmentsBranchFilter').on('change', function () {
+                    renderWeeklyAppointments();
+                });
+            }
+
+            const calendarBranchFilter = document.getElementById('calendarBranchFilter');
+            if (calendarBranchFilter) {
+                $('#calendarBranchFilter').on('change', function () {
+                    renderCalendar();
+                    renderTodayAppointments();
+                });
+            }
+
+            // Phone number validation - accept only numbers and max length 10
+            setupPhoneValidation();
+        }
+
+        function setupPhoneValidation() {
+            // Find all phone input fields
+            const phoneInputs = document.querySelectorAll('input[name="phone"], input[type="tel"]');
+            
+            phoneInputs.forEach(function(input) {
+                // Set max length
+                input.setAttribute('maxlength', '10');
+                
+                // Add input event listener to filter non-numeric characters
+                input.addEventListener('input', function(e) {
+                    // Remove any non-digit characters
+                    let value = e.target.value.replace(/\D/g, '');
+                    // Limit to 10 digits
+                    if (value.length > 10) {
+                        value = value.substring(0, 10);
+                    }
+                    e.target.value = value;
+                });
+
+                // Add keypress event listener to prevent non-numeric input
+                input.addEventListener('keypress', function(e) {
+                    // Allow: backspace, delete, tab, escape, enter
+                    if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
+                        // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                        (e.keyCode === 65 && e.ctrlKey === true) ||
+                        (e.keyCode === 67 && e.ctrlKey === true) ||
+                        (e.keyCode === 86 && e.ctrlKey === true) ||
+                        (e.keyCode === 88 && e.ctrlKey === true)) {
+                        return;
+                    }
+                    // Ensure that it is a number and stop the keypress
+                    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                        e.preventDefault();
+                    }
+                });
+
+                // Add paste event listener to handle pasted content
+                input.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    let paste = (e.clipboardData || window.clipboardData).getData('text');
+                    // Remove any non-digit characters and limit to 10 digits
+                    paste = paste.replace(/\D/g, '').substring(0, 10);
+                    e.target.value = paste;
+                });
             });
         }
 
@@ -1998,8 +2353,12 @@
         }
 
         function showMainApp() {
-            $(SELECTORS.LOGIN_PAGE).addClass('hidden');
-            $(SELECTORS.MAIN_APP).removeClass('hidden');
+            // Ensure loading page is visible during data loading
+            const loadingPage = document.getElementById('loadingPage');
+            if (loadingPage) {
+                loadingPage.classList.remove('fade-out');
+                loadingPage.style.display = 'flex';
+            }
 
             // Update user display
             $(SELECTORS.CURRENT_USER).text(currentUser);
@@ -2017,6 +2376,27 @@
                 }
             });
 
+            // Show/hide super-admin-only features
+            const superAdminElements = document.querySelectorAll('.super-admin-only, .super-admin-only-filter');
+            superAdminElements.forEach(el => {
+                if (currentUserRole === 'super_admin') {
+                    el.classList.add('show');
+                    el.style.display = '';
+                } else {
+                    el.classList.remove('show');
+                    el.style.display = 'none';
+                }
+            });
+
+            // Handle branch field required attributes based on user role
+            const branchFields = document.querySelectorAll('select[name="branch"]');
+            branchFields.forEach(field => {
+                if (currentUserRole === 'super_admin') {
+                    field.setAttribute('required', '');
+                } else {
+                    field.removeAttribute('required');
+                }
+            });
             // Load data and show dashboard
             loadData();
             showPage('dashboard');
@@ -2081,6 +2461,9 @@
                 case 'doctors':
                     loadDoctors();
                     break;
+                case 'users':
+                    loadUsers();
+                    break;
                 case 'revenue':
                     renderRevenueChart();
                     renderRevenueTable();
@@ -2097,32 +2480,52 @@
         function loadData() {
             NProgress.start();
 
-            // Initialize loading counter
+            // Initialize loading counter - check if user management should be included
+            const shouldLoadUsers = (currentUserRole === 'admin' || currentUserRole === 'super_admin');
             window.loadingCounter = {
-                total: 5, // patients, appointments, revenues, doctors, options
+                total: shouldLoadUsers ? 6 : 5, // patients, appointments, revenues, doctors, options, users (if admin+)
                 completed: 0
             };
 
-            // Load data from Google Apps Script backend
+            // Initialize progress bar
+            updateLoadingProgress('เริ่มต้นโหลดข้อมูล...', 0, window.loadingCounter.total);
             loadPatients();
             loadAppointments();
             loadRevenues();
             loadDoctors();
             loadOptions();
+
+            // Load users only for admin and super_admin
+            if (shouldLoadUsers) {
+                loadUsers();
+            }
         }
 
         function checkLoadingComplete() {
             window.loadingCounter.completed++;
 
-            if (window.loadingCounter.completed >= window.loadingCounter.total) {
-                // All data loaded, hide loading page
-                setTimeout(() => {
-                    hideLoadingPage();
-                }, 500); // Small delay to ensure smooth transition
-            }
-        }
+            // Update progress bar
+            updateLoadingProgress(
+                window.loadingCounter.completed >= window.loadingCounter.total ?
+                    'โหลดข้อมูลเสร็จสิ้น!' :
+                    `กำลังประมวลผล... (${window.loadingCounter.completed}/${window.loadingCounter.total})`,
+                window.loadingCounter.completed,
+                window.loadingCounter.total
+            );
 
-        function hideLoadingPage() {
+            if (window.loadingCounter.completed >= window.loadingCounter.total) {
+                // All data loaded, show completion message briefly then hide loading page
+                setTimeout(() => {
+                    updateLoadingProgress('เตรียมเข้าสู่ระบบ...', window.loadingCounter.total, window.loadingCounter.total);
+                }, 200);
+
+                setTimeout(() => {
+                    $(SELECTORS.LOGIN_PAGE).addClass('hidden');
+                    $(SELECTORS.MAIN_APP).removeClass('hidden');
+                    hideLoadingPage();
+                }, 1000); // Longer delay to show completion
+            }
+        } function hideLoadingPage() {
             const loadingPage = document.getElementById('loadingPage');
             if (loadingPage) {
                 loadingPage.classList.add('fade-out');
@@ -2141,6 +2544,10 @@
                         patients = result.patients || [];
                         renderPatientsTable();
                         updateDashboard();
+                        // Update progress with success message
+                        setTimeout(() => {
+                            updateLoadingProgress(`โหลดข้อมูลผู้ป่วยสำเร็จ (${patients.length} รายการ)`, window.loadingCounter.completed, window.loadingCounter.total);
+                        }, 100);
                     } else {
                         console.error('Error loading patients:', result.message);
                         patients = [];
@@ -2168,6 +2575,10 @@
                         renderCalendar();
                         renderTodayAppointments();
                         updateDashboard();
+                        // Update progress with success message
+                        setTimeout(() => {
+                            updateLoadingProgress(`โหลดข้อมูลการนัดหมายสำเร็จ (${appointments.length} รายการ)`, window.loadingCounter.completed, window.loadingCounter.total);
+                        }, 100);
                     } else {
                         console.error('Error loading appointments:', result.message);
                         appointments = [];
@@ -2195,6 +2606,10 @@
                         updateRevenueStats();
                         renderRevenueChart();
                         updateDashboard();
+                        // Update progress with success message
+                        setTimeout(() => {
+                            updateLoadingProgress(`โหลดข้อมูลรายได้สำเร็จ (${revenues.length} รายการ)`, window.loadingCounter.completed, window.loadingCounter.total);
+                        }, 100);
                     } else {
                         console.error('Error loading revenues:', result.message);
                         revenues = [];
@@ -2223,6 +2638,10 @@
                         renderDoctorsTable();
                         updateDashboard();
                         loadDoctorsForAppointment();
+                        // Update progress with success message
+                        setTimeout(() => {
+                            updateLoadingProgress(`โหลดข้อมูลแพทย์สำเร็จ (${doctors.length} รายการ)`, window.loadingCounter.completed, window.loadingCounter.total);
+                        }, 100);
                     } else {
                         Toast.fire({
                             icon: 'error',
@@ -2247,6 +2666,43 @@
                 });
         }
 
+        // User management functions
+        function loadUsers() {
+            google.script.run
+                .withSuccessHandler(function (result) {
+                    result = JSON.parse(result);
+                    if (result.success) {
+                        users = result.users || [];
+                        renderUsersTable();
+                        // Update progress with success message
+                        setTimeout(() => {
+                            updateLoadingProgress(`โหลดข้อมูลผู้ใช้สำเร็จ (${users.length} รายการ)`, window.loadingCounter.completed, window.loadingCounter.total);
+                        }, 100);
+                    } else {
+                        Toast.fire({
+                            icon: 'error',
+                            title: result.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ใช้'
+                        });
+                        users = [];
+                    }
+                    checkLoadingComplete();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('Error loading users:', error);
+                    Toast.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาดในการเชื่อมต่อ'
+                    });
+                    users = [];
+                    checkLoadingComplete();
+                })
+            [API_METHODS.GET_ALL_USERS]({
+                username: currentUser,
+                branch: currentUserBranch,
+                role: currentUserRole
+            });
+        }
+
         function loadOptions() {
             google.script.run
                 .withSuccessHandler(function (result) {
@@ -2256,10 +2712,16 @@
                         caseDetails = result.caseDetails || [];
                         contactChannels = result.contactChannels || [];
                         paymentTypes = result.paymentTypes || [];
+                        branches = result.branches || [];
                         renderCaseTypeOptions();
                         renderCaseDetailsOptions();
                         renderContactChannelOptions();
                         renderPaymentTypeOptions();
+                        renderBranchOptions();
+                        // Update progress with success message
+                        setTimeout(() => {
+                            updateLoadingProgress(`โหลดตัวเลือกระบบสำเร็จ`, window.loadingCounter.completed, window.loadingCounter.total);
+                        }, 100);
                     } else {
                         console.error('Failed to load options:', result.message);
                         Toast.fire({
@@ -2489,6 +2951,90 @@
 
         }
 
+        function renderBranchOptions() {
+            // Update branch select fields in all forms
+            const branchSelects = document.querySelectorAll('select[name="branch"]');
+
+            branchSelects.forEach(select => {
+                // Store current value to restore after populating options
+                const currentValue = select.value;
+
+                // Build options HTML
+                let optionsHtml = '<option value="">เลือกสาขา</option>';
+
+                if (branches.length > 0) {
+                    optionsHtml += branches.map(branch =>
+                        `<option value="${branch.value}">${branch.displayName}</option>`
+                    ).join('');
+                } else {
+                    // Fallback to default branches if no data from sheet
+                    const defaultBranches = [
+                        { value: 'HEAD_OFFICE', displayName: 'สำนักงานใหญ่' },
+                        { value: 'BRANCH_01', displayName: 'สาขาที่ 1' },
+                        { value: 'BRANCH_02', displayName: 'สาขาที่ 2' },
+                        { value: 'BRANCH_03', displayName: 'สาขาที่ 3' },
+                        { value: 'BRANCH_04', displayName: 'สาขาที่ 4' },
+                        { value: 'BRANCH_05', displayName: 'สาขาที่ 5' }
+                    ];
+                    optionsHtml += defaultBranches.map(branch =>
+                        `<option value="${branch.value}">${branch.displayName}</option>`
+                    ).join('');
+                }
+
+                select.innerHTML = optionsHtml;
+
+                // Restore previous value if it exists in the new options
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            });
+
+            // Update branch filter dropdowns
+            updateBranchFilterDropdowns();
+        }
+
+        function updateBranchFilterDropdowns() {
+            const filterDropdowns = [
+                '#weeklyAppointmentsBranchFilter',
+                '#calendarBranchFilter'
+            ];
+
+            filterDropdowns.forEach(selector => {
+                const dropdown = document.querySelector(selector);
+                if (dropdown) {
+                    const currentValue = dropdown.value;
+
+                    let optionsHtml = '<option value="">ทุกสาขา</option>';
+
+                    if (branches.length > 0) {
+                        optionsHtml += branches.map(branch =>
+                            `<option value="${branch.value}">${branch.displayName}</option>`
+                        ).join('');
+                    } else {
+                        // Fallback to default branches if no data from sheet
+                        const defaultBranches = [
+                            { value: 'HEAD_OFFICE', displayName: 'สำนักงานใหญ่' },
+                            { value: 'BRANCH_01', displayName: 'สาขาที่ 1' },
+                            { value: 'BRANCH_02', displayName: 'สาขาที่ 2' },
+                            { value: 'BRANCH_03', displayName: 'สาขาที่ 3' },
+                            { value: 'BRANCH_04', displayName: 'สาขาที่ 4' },
+                            { value: 'BRANCH_05', displayName: 'สาขาที่ 5' }
+                        ];
+                        optionsHtml += defaultBranches.map(branch =>
+                            `<option value="${branch.value}">${branch.displayName}</option>`
+                        ).join('');
+                    }
+
+                    dropdown.innerHTML = optionsHtml;
+
+                    // Restore previous value if it exists in the new options
+                    if (currentValue) {
+                        dropdown.value = currentValue;
+                    }
+                }
+            });
+        }
+
         function loadPatientsForRevenue() {
             const $select = $(`${SELECTORS.REVENUE_FORM} select[name="patientId"]`);
             const options = patients.map(patient =>
@@ -2650,11 +3196,21 @@
             const weekStart = new Date(today);
             weekStart.setDate(today.getDate() - today.getDay());
 
+            // Get selected branch filter
+            const selectedBranch = document.querySelector('#weeklyAppointmentsBranchFilter')?.value || '';
+
             const weeklyAppts = appointments.filter(apt => {
                 const aptDate = new Date(apt.appointment_date);
                 const weekEnd = new Date(weekStart);
                 weekEnd.setDate(weekStart.getDate() + 6);
-                return aptDate >= weekStart && aptDate <= weekEnd;
+
+                // Filter by date range
+                const dateMatch = aptDate >= weekStart && aptDate <= weekEnd;
+
+                // Filter by branch if selected
+                const branchMatch = !selectedBranch || apt.branch === selectedBranch;
+
+                return dateMatch && branchMatch;
             });
 
             if (weeklyAppts.length === 0) {
@@ -2676,11 +3232,16 @@
                     month: 'short'
                 });
 
+                // Get branch display name
+                const branch = branches.find(b => b.value === apt.branch);
+                const branchName = branch ? branch.displayName : apt.branch || 'ไม่ระบุสาขา';
+
                 return `
                         <div class="d-flex justify-content-between align-items-center border-bottom py-2">
                             <div>
                                 <div class="fw-bold">${patientName}</div>
                                 <div><small class="text-secondary">${doctorName}</small></div>
+                                <div><small class="text-muted">${branchName}</small></div>
                             </div>
                             <div class="text-end">
                                 <div class="small">${dateStr}</div>
@@ -2793,7 +3354,9 @@
                 order: [0, 'desc'],
                 columnDefs: [
                     { orderable: false, targets: 5 },
-                    { className: 'dt-head-center dt-head-nowrap dt-body-center dt-body-nowrap text-center', targets: '_all' }
+                    { className: 'dt-head-nowrap dt-head-center dt-body-nowrap', targets: '_all' },
+                    { className: 'dt-body-left', targets: 1 },
+                    { className: 'dt-body-center text-center', targets: [0, 2, 3, 4, 5] }
                 ]
             });
         }
@@ -2843,7 +3406,7 @@
                 allergies: formData.get('allergies'),
                 medicalHistory: formData.get('medicalHistory'),
                 notes: formData.get('notes'),
-                branch: currentUserBranch // Add user's branch to patient data
+                branch: currentUserRole === 'super_admin' ? formData.get('branch') : currentUserBranch // Use form branch for super_admin, otherwise use user's branch
             };
 
             const patientId = e.target.dataset.patientId;
@@ -2916,6 +3479,7 @@
                             NProgress.done();
                         })
                     [API_METHODS.UPDATE_PATIENT](patientId, patientData, {
+                        username: currentUser,
                         branch: currentUserBranch,
                         role: currentUserRole
                     });
@@ -2948,6 +3512,7 @@
                             NProgress.done();
                         })
                     [API_METHODS.ADD_PATIENT](patientData, {
+                        username: currentUser,
                         branch: currentUserBranch,
                         role: currentUserRole
                     });
@@ -3068,6 +3633,10 @@
             form.querySelector('[name="allergies"]').value = patient.allergies || '';
             form.querySelector('[name="medicalHistory"]').value = patient.medical_history || '';
             form.querySelector('[name="notes"]').value = patient.notes || '';
+            // Set branch field for super_admin users
+            if (currentUserRole === 'super_admin' && form.querySelector('[name="branch"]')) {
+                form.querySelector('[name="branch"]').value = patient.branch || '';
+            }
             form.querySelector('[name="birthDate"]')._flatpickr.setDate(patient.birth_date, true);
             // Show modal
             const modal = new bootstrap.Modal($(SELECTORS.PATIENT_MODAL)[0]);
@@ -3149,6 +3718,7 @@
                             NProgress.done();
                         })
                     [API_METHODS.DELETE_PATIENT](patientId, {
+                        username: currentUser,
                         branch: currentUserBranch,
                         role: currentUserRole
                     });
@@ -3178,7 +3748,16 @@
 
             // Pre-group appointments by date for O(1) lookup
             let appointmentsByDate = {};
-            appointments.forEach(apt => {
+
+            // Get selected branch filter for calendar
+            const selectedBranch = document.querySelector('#calendarBranchFilter')?.value || '';
+
+            // Filter appointments by branch if selected
+            const filteredAppointments = selectedBranch ?
+                appointments.filter(apt => apt.branch === selectedBranch) :
+                appointments;
+
+            filteredAppointments.forEach(apt => {
                 let dateStr = moment(apt.appointment_date).format('YYYY-MM-DD');
                 if (!appointmentsByDate[dateStr]) {
                     appointmentsByDate[dateStr] = [];
@@ -3268,7 +3847,15 @@
                 year: 'numeric'
             }));
 
-            const todayAppts = appointments.filter(apt => moment(apt.appointment_date).format('YYYY-MM-DD') === today);
+            const todayAppts = appointments.filter(apt => {
+                const dateMatch = moment(apt.appointment_date).format('YYYY-MM-DD') === today;
+
+                // Get selected branch filter from calendar branch filter
+                const selectedBranch = document.querySelector('#calendarBranchFilter')?.value || '';
+                const branchMatch = !selectedBranch || apt.branch === selectedBranch;
+
+                return dateMatch && branchMatch;
+            });
 
             if (todayAppts.length === 0) {
                 $container.html(`<li class="list-group-item text-center text-muted">${UI_TEXT.MESSAGES.NO_APPOINTMENTS_TODAY}</li>`);
@@ -3294,6 +3881,10 @@
                 const status = apt.status || 'scheduled';
                 const statusIcon = getStatusIcon(status);
                 const statusText = getStatusText(status);
+
+                // Get branch display name
+                const branch = branches.find(b => b.value === apt.branch);
+                const branchName = branch ? branch.displayName : apt.branch || 'ไม่ระบุสาขา';
                 console.log("🚀 ~ renderTodayAppointments ~ patientLookup:", patientLookup)
 
                 return `<li class="list-group-item d-flex justify-content-between align-items-start">
@@ -3308,6 +3899,9 @@
                                 <small class="text-secondary">${doctorName}</small>
                                 <div class="small text-primary fw-semibold">${apt.appointment_time} น.</div>
                                 <small class="badge ${status}">${statusText}</small>
+                            </div>
+                            <div class="d-flex justify-content-start">
+                                <small class="text-muted">${branchName}</small>
                             </div>
                         </div>
                         <i class="fas fa-edit text-secondary" style="cursor: pointer;" onclick="editAppointment('${apt.id}')"></i>
@@ -3513,6 +4107,7 @@
                             NProgress.done();
                         })
                         .updateDoctor(doctorId, doctorData, {
+                            username: currentUser,
                             branch: currentUserBranch,
                             role: currentUserRole
                         });
@@ -3544,6 +4139,7 @@
                             NProgress.done();
                         })
                         .addDoctor(doctorData, {
+                            username: currentUser,
                             branch: currentUserBranch,
                             role: currentUserRole
                         });
@@ -3677,6 +4273,229 @@
             modal.hide();
             form.reset();
             delete form.dataset.doctorId;
+        }
+
+        // User management functions
+        function renderUsersTable() {
+            const $tbody = $('#usersTable tbody');
+
+            if (users.length === 0) {
+                $tbody.html('<tr><td colspan="7" class="text-center">ไม่มีข้อมูลผู้ใช้</td></tr>');
+                return;
+            }
+
+            const html = users.map(user => {
+                const roleText = user.role === 'super_admin' ? 'ผู้ดูแลระบบสูงสุด' :
+                    user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้ทั่วไป';
+                const statusClass = user.status === 'active' ? 'success' : 'secondary';
+                const statusText = user.status === 'active' ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+                const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString('th-TH') : '';
+
+                return `
+                    <tr>
+                        <td>${user.username}</td>
+                        <td>${user.first_name || ''} ${user.last_name || ''}</td>
+                        <td>${user.branch || ''}</td>
+                        <td>${roleText}</td>
+                        <td><span class="badge bg-${statusClass}">${statusText}</span></td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="editUser('${user.username}')">
+                                <i class="fas fa-edit"></i> แก้ไข
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${user.username}')">
+                                <i class="fas fa-trash"></i> ลบ
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            $tbody.html(html);
+        }
+
+        function handleUserSubmit(e) {
+            e.preventDefault();
+            if (!e.target.checkValidity()) {
+                e.target.classList.add('was-validated');
+                return;
+            }
+
+            const formData = new FormData(e.target);
+            const userData = {
+                username: formData.get('username'),
+                password: formData.get('password'),
+                firstName: formData.get('firstName'),
+                lastName: formData.get('lastName'),
+                branch: formData.get('branch'),
+                role: formData.get('role'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                status: formData.get('status')
+            };
+
+            const userId = e.target.dataset.userId;
+            const isEdit = Boolean(userId);
+
+            const confirmAction = isEdit ? 'อัปเดต' : 'เพิ่ม';
+            const confirmTitle = isEdit ? 'ยืนยันการอัปเดตข้อมูลผู้ใช้' : 'ยืนยันการเพิ่มผู้ใช้ใหม่';
+
+            Swal.fire({
+                title: confirmTitle,
+                text: `คุณต้องการ${confirmAction}ข้อมูลผู้ใช้ "${userData.username}" หรือไม่?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#30308b',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if (isEdit) {
+                        google.script.run
+                            .withSuccessHandler(function (result) {
+                                if (result.success) {
+                                    loadUsers();
+                                    closeUserModal(e.target);
+                                    Toast.fire({
+                                        icon: 'success',
+                                        title: result.message
+                                    });
+                                } else {
+                                    Toast.fire({
+                                        icon: 'error',
+                                        title: result.message
+                                    });
+                                }
+                            })
+                            .withFailureHandler(function (error) {
+                                console.error('Error updating user:', error);
+                                Toast.fire({
+                                    icon: 'error',
+                                    title: 'เกิดข้อผิดพลาดในการอัปเดตข้อมูลผู้ใช้'
+                                });
+                            })
+                        [API_METHODS.UPDATE_USER](userId, userData, {
+                            username: currentUser,
+                            branch: currentUserBranch,
+                            role: currentUserRole
+                        });
+                    } else {
+                        google.script.run
+                            .withSuccessHandler(function (result) {
+                                if (result.success) {
+                                    loadUsers();
+                                    closeUserModal(e.target);
+                                    Toast.fire({
+                                        icon: 'success',
+                                        title: result.message
+                                    });
+                                } else {
+                                    Toast.fire({
+                                        icon: 'error',
+                                        title: result.message
+                                    });
+                                }
+                            })
+                            .withFailureHandler(function (error) {
+                                console.error('Error adding user:', error);
+                                Toast.fire({
+                                    icon: 'error',
+                                    title: 'เกิดข้อผิดพลาดในการเพิ่มผู้ใช้'
+                                });
+                            })
+                        [API_METHODS.ADD_USER](userData, {
+                            username: currentUser,
+                            branch: currentUserBranch,
+                            role: currentUserRole
+                        });
+                    }
+                }
+            });
+        }
+
+        function editUser(username) {
+            const user = users.find(u => u.username === username);
+            if (!user) return;
+
+            const form = $(SELECTORS.USER_FORM)[0];
+            form.dataset.userId = username;
+
+            // Populate form
+            form.querySelector('[name="username"]').value = user.username;
+            form.querySelector('[name="username"]').disabled = true; // Disable username editing
+            form.querySelector('[name="password"]').value = user.password || '';
+            form.querySelector('[name="password"]').required = false; // Password optional for edit
+            form.querySelector('[name="firstName"]').value = user.first_name || '';
+            form.querySelector('[name="lastName"]').value = user.last_name || '';
+            form.querySelector('[name="branch"]').value = user.branch || '';
+            form.querySelector('[name="role"]').value = user.role || '';
+            form.querySelector('[name="email"]').value = user.email || '';
+            form.querySelector('[name="phone"]').value = user.phone || '';
+            form.querySelector('[name="status"]').value = user.status || 'active';
+
+            // Show modal
+            const modal = new bootstrap.Modal($(SELECTORS.USER_MODAL)[0]);
+            modal.show();
+        }
+
+        function deleteUser(username) {
+            const user = users.find(u => u.username === username);
+            if (!user) return;
+
+            const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username;
+
+            Swal.fire({
+                title: 'ยืนยันการลบผู้ใช้',
+                text: `คุณต้องการลบผู้ใช้ "${userName}" หรือไม่?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'ลบ',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    google.script.run
+                        .withSuccessHandler(function (result) {
+                            if (result.success) {
+                                loadUsers();
+                                Toast.fire({
+                                    icon: 'success',
+                                    title: result.message
+                                });
+                            } else {
+                                Toast.fire({
+                                    icon: 'error',
+                                    title: result.message
+                                });
+                            }
+                        })
+                        .withFailureHandler(function (error) {
+                            console.error('Error deleting user:', error);
+                            Toast.fire({
+                                icon: 'error',
+                                title: 'เกิดข้อผิดพลาดในการลบผู้ใช้'
+                            });
+                        })
+                    [API_METHODS.DELETE_USER](username, {
+                        username: currentUser,
+                        branch: currentUserBranch,
+                        role: currentUserRole
+                    });
+                }
+            });
+        }
+
+        function closeUserModal(form) {
+            const modal = bootstrap.Modal.getInstance($(SELECTORS.USER_MODAL)[0]);
+            modal.hide();
+            form.reset();
+            delete form.dataset.userId;
+
+            // Re-enable username field and make password required for next use
+            form.querySelector('[name="username"]').disabled = false;
+            form.querySelector('[name="password"]').required = true;
         }
 
         // Appointment form tracking functions
@@ -3979,7 +4798,7 @@
                 cost: parseFloat(formData.get('cost')) || 0,
                 notes: formData.get('notes'),
                 status: formData.get('status'),
-                branch: currentUserBranch // Add user's branch to appointment data
+                branch: currentUserRole === 'super_admin' ? formData.get('branch') : currentUserBranch // Use form branch for super_admin, otherwise use user's branch
             };
 
             const showAppointmentLoading = () => {
@@ -4081,6 +4900,7 @@
                             NProgress.done();
                         })
                     [API_METHODS.UPDATE_APPOINTMENT](appointmentId, appointmentData, {
+                        username: currentUser,
                         branch: currentUserBranch,
                         role: currentUserRole
                     });
@@ -4112,6 +4932,7 @@
                             NProgress.done();
                         })
                     [API_METHODS.ADD_APPOINTMENT](appointmentData, {
+                        username: currentUser,
                         branch: currentUserBranch,
                         role: currentUserRole
                     });
@@ -4208,6 +5029,10 @@
 
             $('[name="patientId"]').val(appointment.patient_id).trigger('change');
             $('[name="doctorId"]').val(appointment.doctor_id).trigger('change');
+            // Set branch field for super_admin users
+            if (currentUserRole === 'super_admin' && form.querySelector('[name="branch"]')) {
+                form.querySelector('[name="branch"]').value = appointment.branch || '';
+            }
             form.querySelector('[name="appointmentDate"]')._flatpickr.setDate(appointment.appointment_date, true);
             form.querySelector('[name="appointmentTime"]')._flatpickr.setDate(appointment.appointment_time, true);
 
@@ -4273,7 +5098,7 @@
                 otherProductFee: parseFloat(formData.get('otherProductFee')) || 0,
                 discount: parseFloat(formData.get('discount')) || 0,
                 notes: formData.get('notes'),
-                branch: currentUserBranch // Add user's branch to revenue data
+                branch: currentUserRole === 'super_admin' ? formData.get('branch') : currentUserBranch // Use form branch for super_admin, otherwise use user's branch
             };
 
             // Get patient and doctor names for display
@@ -4378,6 +5203,7 @@
                         NProgress.done();
                     })
                 [API_METHODS.ADD_REVENUE](revenueData, {
+                    username: currentUser,
                     branch: currentUserBranch,
                     role: currentUserRole
                 });
@@ -4385,10 +5211,9 @@
         }
 
         function closeRevenueModal(form) {
-            const modal = bootstrap.Modal.getInstance(document.querySelector(SELECTORS.REVENUE_MODAL));
-            modal.hide();
             form.reset();
             form.querySelector('[name="date"]')._flatpickr.setDate(new Date());
+            $(SELECTORS.REVENUE_MODAL).modal('hide');
 
             // Reset pills and hidden inputs
             form.querySelectorAll('.pill-option').forEach(pill => pill.classList.remove('selected'));
@@ -4681,6 +5506,8 @@
         window.deletePatient = deletePatient;
         window.editAppointment = editAppointment;
         window.deleteRevenue = deleteRevenue;
+        window.editUser = editUser;
+        window.deleteUser = deleteUser;
     </script>
 </body>
 

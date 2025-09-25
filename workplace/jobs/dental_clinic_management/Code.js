@@ -23,6 +23,25 @@ const SHEET_NAMES = {
     OPTION_LIST: 'Option List'
 };
 
+// Users sheet column indices (0-based)
+const USER_COLUMNS = {
+    ID: 0,
+    USERNAME: 1,
+    PASSWORD_HASH: 2,
+    USER_TYPE: 3,
+    FIRST_NAME: 4,
+    LAST_NAME: 5,
+    EMAIL: 6,
+    PHONE: 7,
+    BRANCH: 8,
+    ROLE: 9,
+    STATUS: 10,
+    CREATED_AT: 11,
+    UPDATED_AT: 12,
+    CREATED_BY_USER: 13,
+    UPDATED_BY_USER: 14
+};
+
 // Cache for spreadsheet and sheets to avoid repeated API calls
 let spreadsheetCache = null;
 let sheetCache = {};
@@ -136,7 +155,8 @@ function setupPatientsSheet(sheet) {
     if (sheet.getLastRow() === 0) {
         const headers = [
             'ID', 'Title Prefix', 'First Name', 'Last Name', 'Phone', 'Birth Date', 'Gender',
-            'Address', 'Allergies', 'Medical History', 'Notes', 'Branch', 'Registration Date', 'Created At', 'Updated At'
+            'Address', 'Allergies', 'Medical History', 'Notes', 'Branch', 'Registration Date', 
+            'Created At', 'Updated At', 'Created By User', 'Updated By User'
         ];
         const range = sheet.getRange(1, 1, 1, headers.length);
         range.setValues([headers]);
@@ -151,7 +171,8 @@ function setupAppointmentsSheet(sheet) {
     if (sheet.getLastRow() === 0) {
         const headers = [
             'ID', 'Patient ID', 'Doctor ID', 'Appointment Date', 'Appointment Time',
-            'Case Type', 'Case Details', 'Contact Channel', 'Cost', 'Status', 'Notes', 'Branch', 'Created At', 'Updated At'
+            'Case Type', 'Case Details', 'Contact Channel', 'Cost', 'Status', 'Notes', 'Branch', 
+            'Created At', 'Updated At', 'Created By User', 'Updated By User'
         ];
         const range = sheet.getRange(1, 1, 1, headers.length);
         range.setValues([headers]);
@@ -168,7 +189,7 @@ function setupRevenueSheet(sheet) {
             'ID', 'Date', 'Patient ID', 'Doctor ID', 'Case Type', 'Case Details', 'Payment Type', 
             'Cash Amount', 'Transfer Amount', 'Social Security Amount', 'Visa Amount',
             'X-ray Fee', 'Medicine Fee', 'Other Product Fee', 'Discount', 
-            'Notes', 'Branch', 'Created At', 'Updated At'
+            'Notes', 'Branch', 'Created At', 'Updated At', 'Created By User', 'Updated By User'
         ];
         const range = sheet.getRange(1, 1, 1, headers.length);
         range.setValues([headers]);
@@ -182,8 +203,8 @@ function setupRevenueSheet(sheet) {
 function setupUsersSheet(sheet) {
     if (sheet.getLastRow() === 0) {
         const headers = [
-            'ID', 'Username', 'Password Hash', 'User Type', 'Full Name', 'Email',
-            'Phone', 'Branch', 'Role', 'Status', 'Created At', 'Updated At'
+            'ID', 'Username', 'Password Hash', 'User Type', 'First Name', 'Last Name', 'Email',
+            'Phone', 'Branch', 'Role', 'Status', 'Created At', 'Updated At', 'Created By User', 'Updated By User'
         ];
         const range = sheet.getRange(1, 1, 1, headers.length);
         range.setValues([headers]);
@@ -191,12 +212,12 @@ function setupUsersSheet(sheet) {
 
         // Add default users in batch with branch and role information
         const defaultUsers = [
-            ['U001', 'superadmin', 'superadmin123', 'super_admin', 'ผู้ดูแลระบบหลัก', 'superadmin@clinic.com',
-             '081-000-0000', 'HEAD_OFFICE', 'super_admin', 'active', new Date(), new Date()],
-            ['U002', 'admin', 'admin123', 'admin', 'ผู้ดูแลระบบสาขา', 'admin@clinic.com',
-             '081-234-5678', 'BRANCH_01', 'admin', 'active', new Date(), new Date()],
-            ['U003', 'user', 'user123', 'user', 'ผู้ใช้ทั่วไป', 'user@clinic.com',
-             '082-345-6789', 'BRANCH_01', 'user', 'active', new Date(), new Date()]
+            ['U001', 'superadmin', 'superadmin123', 'super_admin', 'ผู้ดูแลระบบ', 'หลัก', 'superadmin@clinic.com',
+             '081-000-0000', 'HEAD_OFFICE', 'super_admin', 'active', new Date(), new Date(), 'SYSTEM', 'SYSTEM'],
+            ['U002', 'admin', 'admin123', 'admin', 'ผู้ดูแลระบบ', 'สาขา', 'admin@clinic.com',
+             '081-234-5678', 'BRANCH_01', 'admin', 'active', new Date(), new Date(), 'SYSTEM', 'SYSTEM'],
+            ['U003', 'user', 'user123', 'user', 'ผู้ใช้', 'ทั่วไป', 'user@clinic.com',
+             '082-345-6789', 'BRANCH_01', 'user', 'active', new Date(), new Date(), 'SYSTEM', 'SYSTEM']
         ];
         
         if (defaultUsers.length > 0) {
@@ -212,7 +233,7 @@ function setupDoctorsSheet(sheet) {
     if (sheet.getLastRow() === 0) {
         const headers = [
             'ID', 'First Name', 'Last Name', 'Specialty', 'Phone', 'Email',
-            'License Number', 'Notes', 'Status', 'Created At', 'Updated At'
+            'License Number', 'Notes', 'Status', 'Created At', 'Updated At', 'Created By User', 'Updated By User'
         ];
         const range = sheet.getRange(1, 1, 1, headers.length);
         range.setValues([headers]);
@@ -220,9 +241,9 @@ function setupDoctorsSheet(sheet) {
 
         // Add sample doctors data in batch (shared across all branches)
         const sampleDoctors = [
-            ['DR001', 'สมชาย', 'ใจดี', 'จัดฟัน', '081-234-5678', 'somchai@clinic.com', 'D12345', 'ชำนาญการจัดฟันเด็กและผู้ใหญ่', 'active', new Date(), new Date()],
-            ['DR002', 'สุดา', 'ปรีชา', 'ทันตกรรมทั่วไป', '082-345-6789', 'suda@clinic.com', 'D23456', 'เชี่ยวชาญด้านการรักษาฟันผุและถอนฟัน', 'active', new Date(), new Date()],
-            ['DR003', 'วิชัย', 'สุขใส', 'ทันตกรรมเด็ก', '083-456-7890', 'wichai@clinic.com', 'D34567', 'ผู้เชี่ยวชาญด้านทันตกรรมเด็กและการป้องกัน', 'active', new Date(), new Date()]
+            ['DR001', 'สมชาย', 'ใจดี', 'จัดฟัน', '081-234-5678', 'somchai@clinic.com', 'D12345', 'ชำนาญการจัดฟันเด็กและผู้ใหญ่', 'active', new Date(), new Date(), 'SYSTEM', 'SYSTEM'],
+            ['DR002', 'สุดา', 'ปรีชา', 'ทันตกรรมทั่วไป', '082-345-6789', 'suda@clinic.com', 'D23456', 'เชี่ยวชาญด้านการรักษาฟันผุและถอนฟัน', 'active', new Date(), new Date(), 'SYSTEM', 'SYSTEM'],
+            ['DR003', 'วิชัย', 'สุขใส', 'ทันตกรรมเด็ก', '083-456-7890', 'wichai@clinic.com', 'D34567', 'ผู้เชี่ยวชาญด้านทันตกรรมเด็กและการป้องกัน', 'active', new Date(), new Date(), 'SYSTEM', 'SYSTEM']
         ];
         
         if (sampleDoctors.length > 0) {
@@ -464,8 +485,8 @@ function authenticateUser(username, password) {
         // Skip header row
         for (let i = 1; i < data.length; i++) {
             const row = data[i];
-            // Updated destructuring to match new column structure: Branch and Role added
-            const [id, dbUsername, dbPassword, dbUserType, fullName, email, phone, branch, role, status] = row;
+            // Updated destructuring to match new column structure with First Name and Last Name
+            const [id, dbUsername, dbPassword, dbUserType, firstName, lastName, email, phone, branch, role, status] = row;
 
             if (dbUsername === username && dbPassword === password && status === 'active') {
                 return {
@@ -475,7 +496,9 @@ function authenticateUser(username, password) {
                         id: id,
                         username: dbUsername,
                         userType: dbUserType,
-                        fullName: fullName,
+                        firstName: firstName,
+                        lastName: lastName,
+                        fullName: firstName + ' ' + lastName, // Combine for compatibility
                         email: email,
                         phone: phone,
                         branch: branch || 'BRANCH_01', // Default branch if not specified
@@ -506,14 +529,17 @@ function createUser(userData) {
             userData.username,
             userData.password, // In production, this should be hashed
             userData.userType,
-            userData.fullName,
+            userData.firstName,
+            userData.lastName,
             userData.email,
             userData.phone,
             userData.branch || 'BRANCH_01', // Default branch
             userData.role || userData.userType, // Default role to userType if not specified
             'active',
             new Date(),
-            new Date()
+            new Date(),
+            'SYSTEM', // Created By User
+            'SYSTEM'  // Updated By User
         ];
 
         usersSheet.getRange(lastRow + 1, 1, 1, newUser.length).setValues([newUser]);
@@ -644,6 +670,261 @@ function convertSheetDataToObjects(data, skipEmptyRows = true) {
 }
 
 // ===========================================
+// USER MANAGEMENT FUNCTIONS  
+// ===========================================
+
+/**
+ * Get all users with role-based filtering
+ */
+function getAllUsers(currentUser = null) {
+    try {
+        if (!currentUser) {
+            return JSON.stringify({ success: false, message: 'กรุณาเข้าสู่ระบบก่อน' });
+        }
+
+        // Check permissions - only admin and super_admin can view users
+        if (!checkPermission(currentUser.role, 'canManageUsers')) {
+            return JSON.stringify({ success: false, message: 'คุณไม่มีสิทธิ์ในการจัดการผู้ใช้' });
+        }
+
+        const usersSheet = getSheet(SHEET_NAMES.USERS);
+        const data = usersSheet.getDataRange().getValues();
+
+        if (data.length <= 1) {
+            return JSON.stringify({ success: true, users: [] });
+        }
+
+        const headers = data[0];
+        let users = data.slice(1).map(row => {
+            const user = {};
+            headers.forEach((header, index) => {
+                const key = header.toLowerCase().replace(/\s+/g, '_');
+                user[key] = row[index];
+            });
+            return user;
+        });
+
+        // Filter users based on role permissions
+        if (currentUser.role === 'admin') {
+            // Admin can only see users in their own branch and only 'user' role
+            users = users.filter(user => 
+                user.branch === currentUser.branch && 
+                user.role === 'user'
+            );
+        } else if (currentUser.role === 'super_admin') {
+            // Super admin can see all users (including admins)
+            users = users.filter(user => 
+                user.role === 'user' || user.role === 'admin'
+            );
+        }
+
+        return JSON.stringify({ success: true, users });
+    } catch (error) {
+        console.error('Error getting users:', error);
+        return JSON.stringify({ success: false, message: error.toString() });
+    }
+}
+
+/**
+ * Add new user
+ */
+function addUser(userData, currentUser = null) {
+    try {
+        if (!currentUser) {
+            return { success: false, message: 'กรุณาเข้าสู่ระบบก่อน' };
+        }
+
+        // Check permissions
+        if (!checkPermission(currentUser.role, 'canManageUsers')) {
+            return { success: false, message: 'คุณไม่มีสิทธิ์ในการเพิ่มผู้ใช้' };
+        }
+
+        // Validate role permissions
+        if (currentUser.role === 'admin') {
+            // Admin can only create 'user' role in their branch
+            if (userData.role !== 'user') {
+                return { success: false, message: 'ผู้ดูแลระบบสามารถสร้างผู้ใช้ทั่วไปเท่านั้น' };
+            }
+            if (userData.branch !== currentUser.branch) {
+                return { success: false, message: 'คุณสามารถสร้างผู้ใช้ในสาขาของคุณเท่านั้น' };
+            }
+        }
+
+        const usersSheet = getSheet(SHEET_NAMES.USERS);
+        
+        // Check if username already exists
+        const data = usersSheet.getDataRange().getValues();
+        const existingUser = data.slice(1).find(row => row[1] === userData.username);
+        if (existingUser) {
+            return { success: false, message: 'ชื่อผู้ใช้นี้มีอยู่แล้ว' };
+        }
+
+        const lastRow = usersSheet.getLastRow();
+        const newId = 'U' + String(lastRow).padStart(3, '0');
+
+        const newUser = [
+            newId,
+            userData.username,
+            userData.password,
+            userData.role || 'user', // userType for compatibility
+            userData.firstName,
+            userData.lastName,
+            userData.email || '',
+            userData.phone || '',
+            userData.branch,
+            userData.role || 'user',
+            userData.status || 'active',
+            new Date(),
+            new Date(),
+            currentUser.username, // Created By User
+            currentUser.username  // Updated By User
+        ];
+
+        usersSheet.getRange(lastRow + 1, 1, 1, newUser.length).setValues([newUser]);
+
+        return { success: true, message: 'เพิ่มผู้ใช้เรียบร้อย', userId: newId };
+    } catch (error) {
+        console.error('Error adding user:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Update user information
+ */
+function updateUser(username, userData, currentUser = null) {
+    try {
+        if (!currentUser) {
+            return { success: false, message: 'กรุณาเข้าสู่ระบบก่อน' };
+        }
+
+        // Check permissions
+        if (!checkPermission(currentUser.role, 'canManageUsers')) {
+            return { success: false, message: 'คุณไม่มีสิทธิ์ในการแก้ไขผู้ใช้' };
+        }
+
+        const usersSheet = getSheet(SHEET_NAMES.USERS);
+        const data = usersSheet.getDataRange().getValues();
+
+        // Find user row
+        let rowIndex = -1;
+        let existingUser = null;
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][1] === username) {
+                rowIndex = i + 1; // Sheets are 1-indexed
+                existingUser = data[i];
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return { success: false, message: 'ไม่พบข้อมูลผู้ใช้' };
+        }
+
+        // Validate permissions for editing specific user
+        if (currentUser.role === 'admin') {
+            // Admin can only edit 'user' role in their branch
+            if (existingUser[USER_COLUMNS.ROLE] !== 'user') {
+                return { success: false, message: 'คุณไม่สามารถแก้ไขข้อมูลผู้ดูแลระบบได้' };
+            }
+            if (existingUser[USER_COLUMNS.BRANCH] !== currentUser.branch) {
+                return { success: false, message: 'คุณสามารถแก้ไขผู้ใช้ในสาขาของคุณเท่านั้น' };
+            }
+            if (userData.role !== 'user') {
+                return { success: false, message: 'คุณไม่สามารถเปลี่ยนระดับผู้ใช้ได้' };
+            }
+        }
+
+        const updatedUser = [
+            existingUser[USER_COLUMNS.ID], // Keep original ID
+            username, // Keep original username
+            userData.password || existingUser[USER_COLUMNS.PASSWORD_HASH], // Keep old password if not provided
+            userData.role || existingUser[USER_COLUMNS.USER_TYPE],
+            userData.firstName || existingUser[USER_COLUMNS.FIRST_NAME], // First Name
+            userData.lastName || existingUser[USER_COLUMNS.LAST_NAME], // Last Name
+            userData.email || existingUser[USER_COLUMNS.EMAIL],
+            userData.phone || existingUser[USER_COLUMNS.PHONE],
+            userData.branch || existingUser[USER_COLUMNS.BRANCH],
+            userData.role || existingUser[USER_COLUMNS.ROLE],
+            userData.status || existingUser[USER_COLUMNS.STATUS],
+            existingUser[USER_COLUMNS.CREATED_AT], // Keep original created_at
+            new Date(), // Update updated_at
+            existingUser[USER_COLUMNS.CREATED_BY_USER] || 'UNKNOWN', // Keep original created by user
+            currentUser.username // Updated By User
+        ];
+
+        usersSheet.getRange(rowIndex, 1, 1, updatedUser.length).setValues([updatedUser]);
+
+        return { success: true, message: 'อัปเดตข้อมูलผู้ใช้เรียบร้อย' };
+    } catch (error) {
+        console.error('Error updating user:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Delete user
+ */
+function deleteUser(username, currentUser = null) {
+    try {
+        if (!currentUser) {
+            return { success: false, message: 'กรุณาเข้าสู่ระบบก่อน' };
+        }
+
+        // Check permissions
+        if (!checkPermission(currentUser.role, 'canManageUsers')) {
+            return { success: false, message: 'คุณไม่มีสิทธิ์ในการลบผู้ใช้' };
+        }
+
+        // Prevent self-deletion
+        if (username === currentUser.username) {
+            return { success: false, message: 'คุณไม่สามารถลบบัญชีของตัวเองได้' };
+        }
+
+        const usersSheet = getSheet(SHEET_NAMES.USERS);
+        const data = usersSheet.getDataRange().getValues();
+
+        // Find user row
+        let rowIndex = -1;
+        let existingUser = null;
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][1] === username) {
+                rowIndex = i + 1; // Sheets are 1-indexed
+                existingUser = data[i];
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return { success: false, message: 'ไม่พบข้อมูลผู้ใช้' };
+        }
+
+        // Validate permissions for deleting specific user
+        if (currentUser.role === 'admin') {
+            // Admin can only delete 'user' role in their branch
+            if (existingUser[8] !== 'user') {
+                return { success: false, message: 'คุณไม่สามารถลบผู้ดูแลระบบได้' };
+            }
+            if (existingUser[7] !== currentUser.branch) {
+                return { success: false, message: 'คุณสามารถลบผู้ใช้ในสาขาของคุณเท่านั้น' };
+            }
+        } else if (currentUser.role === 'super_admin') {
+            // Super admin cannot delete other super admins
+            if (existingUser[8] === 'super_admin') {
+                return { success: false, message: 'ไม่สามารถลบผู้ดูแลระบบสูงสุดได้' };
+            }
+        }
+
+        usersSheet.deleteRow(rowIndex);
+
+        return { success: true, message: 'ลบผู้ใช้เรียบร้อย' };
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+// ===========================================
 // PATIENT MANAGEMENT FUNCTIONS
 // ===========================================
 
@@ -739,10 +1020,12 @@ function addPatient(patientData, currentUser = null) {
             patientData.allergies || '',
             patientData.medicalHistory || '',
             patientData.notes || '',
-            currentUser ? currentUser.branch : 'BRANCH_01', // Add user's branch
+            patientData.branch || (currentUser ? currentUser.branch : 'BRANCH_01'), // Default to user's branch
             timestamp, // Registration Date
             timestamp, // Created At
-            timestamp  // Updated At
+            timestamp, // Updated At
+            currentUser ? currentUser.username : 'UNKNOWN', // Created By User
+            currentUser ? currentUser.username : 'UNKNOWN'  // Updated By User
         ];
 
         patientsSheet.getRange(lastRow + 1, 1, 1, newPatient.length).setValues([newPatient]);
@@ -811,10 +1094,12 @@ function updatePatient(patientId, patientData, currentUser = null) {
             patientData.allergies || '',
             patientData.medicalHistory || '',
             patientData.notes || '',
-            existingPatient[11] || (currentUser ? currentUser.branch : 'BRANCH_01'), // Keep original branch or set user's branch
+            patientData.branch || (currentUser ? currentUser.branch : 'BRANCH_01'), // Keep original or update branch
             existingPatient[12], // Keep original registration date
             existingPatient[13], // Keep original created date
-            new Date() // Update modified date
+            new Date(), // Update modified date
+            existingPatient[15] || 'UNKNOWN', // Keep original created by user
+            currentUser ? currentUser.username : 'UNKNOWN'  // Update "Updated By User"
         ];
 
         patientsSheet.getRange(rowIndex, 1, 1, updatedPatient.length).setValues([updatedPatient]);
@@ -968,8 +1253,10 @@ function addDoctor(doctorData, currentUser = null) {
             doctorData.licenseNumber || '',
             doctorData.notes || '',
             'active',
-            timestamp,
-            timestamp
+            timestamp, // Created At
+            timestamp, // Updated At
+            currentUser ? currentUser.username : 'UNKNOWN', // Created By User
+            currentUser ? currentUser.username : 'UNKNOWN'  // Updated By User
         ];
 
         doctorsSheet.getRange(lastRow + 1, 1, 1, newDoctor.length).setValues([newDoctor]);
@@ -994,16 +1281,23 @@ function addDoctor(doctorData, currentUser = null) {
 /**
  * Update doctor information
  */
-function updateDoctor(doctorId, doctorData) {
+function updateDoctor(doctorId, doctorData, currentUser = null) {
     try {
+
+         // Check permissions
+        if (currentUser && !checkPermission(currentUser.role, 'canManageDoctors')) {
+            return { success: false, message: 'คุณไม่มีสิทธิ์ในการเพิ่มข้อมูลหมอ' };
+        }
         const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
         const data = doctorsSheet.getDataRange().getValues();
 
         // Find doctor row
         let rowIndex = -1;
+        let existingDoctor = null;
         for (let i = 1; i < data.length; i++) {
             if (data[i][0] === doctorId) {
                 rowIndex = i + 1; // Sheets are 1-indexed
+                existingDoctor = data[i];
                 break;
             }
         }
@@ -1022,8 +1316,10 @@ function updateDoctor(doctorId, doctorData) {
             doctorData.licenseNumber || '',
             doctorData.notes || '',
             doctorData.status || 'active',
-            data[rowIndex - 1][9], // Keep original created_at
-            new Date() // Update updated_at
+            existingDoctor[9], // Keep original created_at
+            new Date(), // Update updated_at
+            existingDoctor[11] || 'UNKNOWN', // Keep original created by user
+            currentUser ? currentUser.username : 'UNKNOWN'  // Update "Updated By User"
         ];
 
         doctorsSheet.getRange(rowIndex, 1, 1, updatedDoctor.length).setValues([updatedDoctor]);
@@ -1218,9 +1514,11 @@ function addAppointment(appointmentData, currentUser = null) {
             appointmentData.cost || 0,
             appointmentData.status || 'scheduled',
             appointmentData.notes || '',
-            currentUser ? currentUser.branch : 'BRANCH_01', // Add user's branch
+            appointmentData.branch || (currentUser ? currentUser.branch : 'BRANCH_01'), // Default to user's branch
             timestamp, // Created At
-            timestamp  // Updated At
+            timestamp, // Updated At
+            currentUser ? currentUser.username : 'UNKNOWN',  // Created By User
+            currentUser ? currentUser.username : 'UNKNOWN'   // Updated By User
         ];
 
         appointmentsSheet.getRange(lastRow + 1, 1, 1, newAppointment.length).setValues([newAppointment]);
@@ -1245,16 +1543,18 @@ function addAppointment(appointmentData, currentUser = null) {
 /**
  * Update appointment
  */
-function updateAppointment(appointmentId, appointmentData) {
+function updateAppointment(appointmentId, appointmentData, currentUser = null) {
     try {
         const appointmentsSheet = getSheet(SHEET_NAMES.APPOINTMENTS);
         const data = appointmentsSheet.getDataRange().getValues();
 
         // Find appointment row
         let rowIndex = -1;
+        let existingAppointment = null;
         for (let i = 1; i < data.length; i++) {
             if (data[i][0] === appointmentId) {
                 rowIndex = i + 1; // Sheets are 1-indexed
+                existingAppointment = data[i];
                 break;
             }
         }
@@ -1289,8 +1589,11 @@ function updateAppointment(appointmentId, appointmentData) {
             appointmentData.cost || 0,
             appointmentData.status || 'scheduled',
             appointmentData.notes || '',
-            data[rowIndex - 1][11], // Keep original created date (index adjusted for contact channel)
-            new Date() // Update modified date
+            appointmentData.branch || existingAppointment[11], // Keep original or update branch
+            existingAppointment[12], // Keep original created date
+            new Date(), // Update modified date
+            existingAppointment[14] || 'UNKNOWN', // Keep original created by user
+            currentUser ? currentUser.username : 'UNKNOWN'   // Updated By User
         ];
 
         appointmentsSheet.getRange(rowIndex, 1, 1, updatedAppointment.length).setValues([updatedAppointment]);
@@ -1517,9 +1820,11 @@ function addRevenue(revenueData, currentUser = null) {
             revenueData.otherProductFee || 0,
             revenueData.discount || 0,
             revenueData.notes || '',
-            currentUser ? currentUser.branch : 'BRANCH_01', // Add user's branch
+            revenueData.branch || (currentUser ? currentUser.branch : 'BRANCH_01'), // Default to user's branch
             new Date(), // Created At
-            new Date()  // Updated At
+            new Date(), // Updated At
+            currentUser ? currentUser.username : 'UNKNOWN',  // Created By User
+            currentUser ? currentUser.username : 'UNKNOWN'   // Updated By User
         ];
 
         revenueSheet.getRange(lastRow + 1, 1, 1, newRevenue.length).setValues([newRevenue]);
@@ -1553,16 +1858,18 @@ function addRevenue(revenueData, currentUser = null) {
 /**
  * Update revenue record
  */
-function updateRevenue(revenueId, revenueData) {
+function updateRevenue(revenueId, revenueData, currentUser = null) {
     try {
         const revenueSheet = getSheet(SHEET_NAMES.REVENUE);
         const data = revenueSheet.getDataRange().getValues();
 
         // Find revenue row
         let rowIndex = -1;
+        let existingRevenue = null;
         for (let i = 1; i < data.length; i++) {
             if (data[i][0] === revenueId) {
                 rowIndex = i + 1; // Sheets are 1-indexed
+                existingRevenue = data[i];
                 break;
             }
         }
@@ -1589,9 +1896,11 @@ function updateRevenue(revenueId, revenueData) {
             revenueData.otherProductFee || 0,
             revenueData.discount || 0,
             revenueData.notes || '',
-            data[rowIndex - 1][16], // Keep original branch (updated index)
-            data[rowIndex - 1][17], // Keep original created date (updated index)
-            new Date() // Update modified date
+            revenueData.branch || existingRevenue[16], // Keep original or update branch
+            existingRevenue[17], // Keep original created date
+            new Date(), // Update modified date
+            existingRevenue[19] || 'UNKNOWN', // Keep original created by user
+            currentUser ? currentUser.username : 'UNKNOWN'   // Updated By User
         ];
 
         revenueSheet.getRange(rowIndex, 1, 1, updatedRevenue.length).setValues([updatedRevenue]);
@@ -2180,71 +2489,6 @@ function areNotificationsEnabled() {
     }
 }
 
-/**
- * Get accessible patients with role-based filtering (for web interface)
- */
-function getPatientsWithAccess(userInfo) {
-    const currentUser = {
-        branch: userInfo.branch,
-        role: userInfo.role
-    };
-    return getAllPatients(currentUser);
-}
-
-/**
- * Get accessible appointments with role-based filtering (for web interface)
- */
-function getAppointmentsWithAccess(userInfo) {
-    const currentUser = {
-        branch: userInfo.branch,
-        role: userInfo.role
-    };
-    return getAllAppointments(currentUser);
-}
-
-/**
- * Get accessible doctors with role-based filtering (for web interface)
- */
-function getDoctorsWithAccess(userInfo) {
-    const currentUser = {
-        branch: userInfo.branch,
-        role: userInfo.role
-    };
-    return getAllDoctors(currentUser);
-}
-
-/**
- * Add patient with access control (for web interface)
- */
-function addPatientWithAccess(patientData, userInfo) {
-    const currentUser = {
-        branch: userInfo.branch,
-        role: userInfo.role
-    };
-    return addPatient(patientData, currentUser);
-}
-
-/**
- * Update patient with access control (for web interface)
- */
-function updatePatientWithAccess(patientId, patientData, userInfo) {
-    const currentUser = {
-        branch: userInfo.branch,
-        role: userInfo.role
-    };
-    return updatePatient(patientId, patientData, currentUser);
-}
-
-/**
- * Add appointment with access control (for web interface)
- */
-function addAppointmentWithAccess(appointmentData, userInfo) {
-    const currentUser = {
-        branch: userInfo.branch,
-        role: userInfo.role
-    };
-    return addAppointment(appointmentData, currentUser);
-}
 
 /**
  * Check user permissions (for web interface)
