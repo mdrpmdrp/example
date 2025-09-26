@@ -2138,19 +2138,6 @@ function getUpcomingAppointments(days = 1) {
     }
 }
 
-/**
- * Send email notifications (requires Gmail API setup)
- */
-function sendEmailNotification(to, subject, body) {
-    try {
-        // This requires Gmail API to be enabled in Google Apps Script
-        GmailApp.sendEmail(to, subject, body);
-        return { success: true, message: 'อีเมลส่งเรียบร้อย' };
-    } catch (error) {
-        console.error('Error sending email:', error);
-        return { success: false, message: error.toString() };
-    }
-}
 
 /**
  * Send notification to Google Chat
@@ -2159,12 +2146,12 @@ function sendEmailNotification(to, subject, body) {
 function sendGoogleChatNotification(message, title = 'ระบบจัดการคลินิคทันตกรรม') {
     try {
         // Get webhook URL from script properties
-        // let WEBHOOK_URL = getGoogleChatWebhook();
+        let WEBHOOK_URL = getGoogleChatWebhook();
         
-        // if (!WEBHOOK_URL) {
-        //     console.warn('Google Chat webhook URL not configured. Call setGoogleChatWebhook() first.');
-        //     return { success: false, message: 'Google Chat webhook URL ยังไม่ได้ตั้งค่า กรุณาเรียก setGoogleChatWebhook() ก่อน' };
-        // }
+        if (!WEBHOOK_URL) {
+            console.warn('Google Chat webhook URL not configured. Call setGoogleChatWebhook() first.');
+            return { success: false, message: 'Google Chat webhook URL ยังไม่ได้ตั้งค่า กรุณาเรียก setGoogleChatWebhook() ก่อน' };
+        }
         
         const timestamp = new Date().toLocaleString('th-TH', {
             timeZone: 'Asia/Bangkok',
@@ -2176,8 +2163,12 @@ function sendGoogleChatNotification(message, title = 'ระบบจัดก�
             second: '2-digit'
         });
 
+        // For testing, log the message and return success
         Logger.log(`🏥 *${title}*\n\n${message}\n\n⏰ เวลา: ${timestamp}`);
-        return; // Skip actual sending for testing
+        
+        // For testing purposes, return success without actually sending
+        // Uncomment the code below when ready to send real notifications
+        /*
         const payload = {
             text: `🏥 *${title}*\n\n${message}\n\n⏰ เวลา: ${timestamp}`
         };
@@ -2198,6 +2189,9 @@ function sendGoogleChatNotification(message, title = 'ระบบจัดก�
             console.error('Google Chat notification failed:', response.getContentText());
             return { success: false, message: 'ไม่สามารถส่งการแจ้งเตือนไปยัง Google Chat ได้' };
         }
+        */
+        
+        return { success: true, message: 'ส่งการแจ้งเตือนสำเร็จ (โหมดทดสอบ)' };
         
     } catch (error) {
         console.error('Error sending Google Chat notification:', error);
@@ -2293,6 +2287,236 @@ function getStatusTextThai(status) {
         'cancelled': 'ยกเลิก'
     };
     return statusMap[status] || status;
+}
+
+/**
+ * Send daily patient brief to Google Chat
+ * This function sends a summary of today's appointments grouped by branch
+ */
+function sendDailyPatientBrief() {
+    try {
+        // Check if notifications are enabled
+        if (!areNotificationsEnabled()) {
+            Logger.log('Notifications are disabled. Skipping daily patient brief.');
+            return { success: false, message: 'การแจ้งเตือนถูกปิดใช้งาน' };
+        }
+
+        // Get today's date in Thailand timezone
+        const today = new Date();
+        const todayString = Utilities.formatDate(today, 'Asia/Bangkok', 'yyyy-MM-dd');
+        const todayFormatted = Utilities.formatDate(today, 'Asia/Bangkok', 'dd/MM/yyyy');
+        const dayOfWeek = Utilities.formatDate(today, 'Asia/Bangkok', 'EEEE', 'th');
+
+        Logger.log(`Generating daily patient brief for ${todayString}`);
+
+        // Get today's appointments
+        const appointmentsResult = getAppointmentsByDateRange(todayString, todayString);
+        if (!appointmentsResult.success) {
+            Logger.error('Failed to get appointments:', appointmentsResult.message);
+            return { success: false, message: 'ไม่สามารถโหลดข้อมูลการนัดหมายได้' };
+        }
+
+        const todayAppointments = appointmentsResult.appointments || [];
+        Logger.log(`Found ${todayAppointments.length} appointments for today`);
+
+        // Get all branches
+        const branches = getBranchList();
+        
+        // Group appointments by branch
+        const appointmentsByBranch = {};
+        branches.forEach(branch => {
+            appointmentsByBranch[branch] = todayAppointments.filter(apt => apt.branch === branch);
+        });
+
+        // Send message for each branch that has appointments
+        let messagesSent = 0;
+        const results = [];
+
+        for (const branch of branches) {
+            const branchAppointments = appointmentsByBranch[branch];
+            
+            if (branchAppointments.length > 0) {
+                const message = generateDailyBriefMessage(branch, branchAppointments, todayFormatted, dayOfWeek);
+                const result = sendGoogleChatNotification(
+                    message, 
+                    `📅 สรุปการนัดหมายวันนี้ - สาขา${branch}`
+                );
+                
+                results.push({ branch, success: result.success, message: result.message });
+                
+                if (result.success) {
+                    messagesSent++;
+                }
+                
+                // Add delay between messages to avoid rate limiting
+                Utilities.sleep(2000); // 2 seconds delay
+            } else {
+                // Send "no appointments" message for branches with no appointments
+                const noAppointmentMessage = generateNoAppointmentMessage(branch, todayFormatted, dayOfWeek);
+                const result = sendGoogleChatNotification(
+                    noAppointmentMessage, 
+                    `📅 สรุปการนัดหมายวันนี้ - สาขา${branch}`
+                );
+                
+                results.push({ branch, success: result.success, message: result.message });
+                
+                if (result.success) {
+                    messagesSent++;
+                }
+                
+                // Add delay between messages
+                Utilities.sleep(2000);
+            }
+        }
+
+        Logger.log(`Daily patient brief completed. Messages sent: ${messagesSent}/${branches.length}`);
+        
+        return { 
+            success: true, 
+            message: `ส่งรายงานรายวันสำเร็จ ${messagesSent}/${branches.length} สาขา`,
+            details: results
+        };
+        
+    } catch (error) {
+        Logger.error('Error in sendDailyPatientBrief:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Generate daily brief message for a specific branch
+ */
+function generateDailyBriefMessage(branch, appointments, dateFormatted, dayOfWeek) {
+    let message = `🏥 **สาขา${branch}**\n`;
+    message += `📅 **${dayOfWeek}ที่ ${dateFormatted}**\n\n`;
+    
+    if (appointments.length === 0) {
+        message += `✨ **ไม่มีการนัดหมายในวันนี้**\n`;
+        message += `พนักงานสามารถใช้เวลาจัดระเบียบและเตรียมความพร้อมได้`;
+        return message;
+    }
+
+    // Group by status
+    const appointmentsByStatus = {
+        'scheduled': appointments.filter(apt => apt.status === 'scheduled'),
+        'completed': appointments.filter(apt => apt.status === 'completed'),
+        'cancelled': appointments.filter(apt => apt.status === 'cancelled')
+    };
+
+    // Summary statistics
+    message += `📊 **สรุปภาพรวม:**\n`;
+    message += `• รวมทั้งหมด: **${appointments.length}** นัด\n`;
+    message += `• นัดหมาย: **${appointmentsByStatus.scheduled.length}** นัด\n`;
+    message += `• เสร็จสิ้น: **${appointmentsByStatus.completed.length}** นัด\n`;
+    message += `• ยกเลิก: **${appointmentsByStatus.cancelled.length}** นัด\n\n`;
+
+    // Show scheduled appointments details
+    if (appointmentsByStatus.scheduled.length > 0) {
+        message += `⏰ **การนัดหมายที่รอดำเนินการ (${appointmentsByStatus.scheduled.length} นัด):**\n`;
+        
+        // Sort by time
+        const sortedScheduled = appointmentsByStatus.scheduled.sort((a, b) => {
+            return a.appointmentTime.localeCompare(b.appointmentTime);
+        });
+
+        sortedScheduled.forEach((apt, index) => {
+            message += `${index + 1}. **${apt.appointmentTime}** - ${apt.patientName}\n`;
+            message += `   📱 ${apt.patientPhone || 'ไม่มีเบอร์โทร'}\n`;
+            message += `   🏥 หมอ: ${apt.doctorName || 'ไม่ระบุ'}\n`;
+            if (apt.caseType && apt.caseType.length > 0) {
+                message += `   🔍 ประเภท: ${apt.caseType.join(', ')}\n`;
+            }
+            message += `\n`;
+        });
+    }
+
+    // Show completed appointments summary
+    if (appointmentsByStatus.completed.length > 0) {
+        message += `✅ **การนัดหมายที่เสร็จสิ้น (${appointmentsByStatus.completed.length} นัด):**\n`;
+        const completedSummary = appointmentsByStatus.completed
+            .map(apt => `• ${apt.appointmentTime} - ${apt.patientName}`)
+            .join('\n');
+        message += completedSummary + '\n\n';
+    }
+
+    // Show cancelled appointments summary
+    if (appointmentsByStatus.cancelled.length > 0) {
+        message += `❌ **การนัดหมายที่ยกเลิก (${appointmentsByStatus.cancelled.length} นัด):**\n`;
+        const cancelledSummary = appointmentsByStatus.cancelled
+            .map(apt => `• ${apt.appointmentTime} - ${apt.patientName}`)
+            .join('\n');
+        message += cancelledSummary + '\n\n';
+    }
+
+    // Add encouragement message based on workload
+    if (appointmentsByStatus.scheduled.length > 10) {
+        message += `💪 **วันนี้มีงานเยอะ ทีมงานสู้ๆ นะครับ!**`;
+    } else if (appointmentsByStatus.scheduled.length > 5) {
+        message += `😊 **วันนี้มีงานพอดี ขอให้ทำงานเก่งๆ นะครับ!**`;
+    } else if (appointmentsByStatus.scheduled.length > 0) {
+        message += `🌟 **วันนี้งานน้อย มีเวลาดูแลคนไข้อย่างดีได้เลยครับ!**`;
+    } else {
+        message += `🎯 **วันนี้เป็นวันพักผ่อน มีเวลาเตรียมตัวสำหรับวันถัดไป!**`;
+    }
+
+    return message;
+}
+
+/**
+ * Generate no appointment message for a specific branch
+ */
+function generateNoAppointmentMessage(branch, dateFormatted, dayOfWeek) {
+    let message = `🏥 **สาขา${branch}**\n`;
+    message += `📅 **${dayOfWeek}ที่ ${dateFormatted}**\n\n`;
+    message += `✨ **ไม่มีการนัดหมายในวันนี้**\n\n`;
+    message += `🎯 **แนะนำกิจกรรมสำหรับวันนี้:**\n`;
+    message += `• 🧹 จัดระเบียบเครื่องมือและอุปกรณ์\n`;
+    message += `• 📚 ทบทวนความรู้และเทคนิคใหม่ๆ\n`;
+    message += `• 📞 ติดตามลูกค้าเก่าและทำการตลาด\n`;
+    message += `• 🏥 เตรียมความพร้อมสำหรับวันถัดไป\n\n`;
+    message += `😊 **ขอให้มีวันที่ดีและผ่อนคลายครับ!**`;
+
+    return message;
+}
+
+/**
+ * Get list of all branches
+ */
+function getBranchList() {
+    try {
+        const branchesData = getBranches();
+        const branchesResult = JSON.parse(branchesData);
+        
+        if (branchesResult.success && branchesResult.options) {
+            return branchesResult.options.filter(branch => branch && branch.trim() !== '');
+        }
+        
+        // Fallback to default branches
+        return ['หลัก', 'สาขา 2', 'สาขา 3'];
+        
+    } catch (error) {
+        Logger.error('Error getting branch list:', error);
+        // Return default branches as fallback
+        return ['หลัก', 'สาขา 2', 'สาขา 3'];
+    }
+}
+
+/**
+ * Test function for daily patient brief
+ */
+function testDailyPatientBrief() {
+    Logger.log('Testing daily patient brief...');
+    return sendDailyPatientBrief();
+}
+
+/**
+ * Manual trigger function for daily patient brief
+ * Can be called manually or scheduled
+ */
+function triggerDailyPatientBrief() {
+    const result = sendDailyPatientBrief();
+    Logger.log('Daily patient brief result:', result);
+    return result;
 }
 
 // ===========================================
@@ -2425,6 +2649,152 @@ function testGoogleChatNotification() {
     );
 }
 
+// ===========================================
+// TRIGGER MANAGEMENT FUNCTIONS
+// ===========================================
+
+/**
+ * Create daily patient brief trigger
+ * This will send patient brief every morning at specified time
+ */
+function createDailyPatientBriefTrigger(hour = 8, minute = 0) {
+    try {
+        // Delete existing daily brief triggers first
+        deleteDailyPatientBriefTriggers();
+        
+        // Create new trigger
+        const trigger = ScriptApp.newTrigger('triggerDailyPatientBrief')
+            .timeBased()
+            .everyDays(1)
+            .atHour(hour)
+            .atMinute(minute)
+            .inTimezone('Asia/Bangkok')
+            .create();
+
+        // Store trigger info
+        PropertiesService.getScriptProperties().setProperties({
+            'DAILY_BRIEF_TRIGGER_ID': trigger.getUniqueId(),
+            'DAILY_BRIEF_HOUR': hour.toString(),
+            'DAILY_BRIEF_MINUTE': minute.toString(),
+            'DAILY_BRIEF_CREATED': new Date().toISOString()
+        });
+
+        Logger.log(`Daily patient brief trigger created: ${hour}:${minute.toString().padStart(2, '0')} (Thailand time)`);
+        
+        return { 
+            success: true, 
+            message: `ตั้งค่าการส่งรายงานรายวันเวลา ${hour}:${minute.toString().padStart(2, '0')} น. เรียบร้อย`,
+            triggerId: trigger.getUniqueId()
+        };
+        
+    } catch (error) {
+        Logger.error('Error creating daily patient brief trigger:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Delete all daily patient brief triggers
+ */
+function deleteDailyPatientBriefTriggers() {
+    try {
+        const triggers = ScriptApp.getProjectTriggers();
+        let deletedCount = 0;
+        
+        triggers.forEach(trigger => {
+            if (trigger.getHandlerFunction() === 'triggerDailyPatientBrief') {
+                ScriptApp.deleteTrigger(trigger);
+                deletedCount++;
+            }
+        });
+
+        // Clear stored trigger info
+        PropertiesService.getScriptProperties().deleteProperty('DAILY_BRIEF_TRIGGER_ID');
+        PropertiesService.getScriptProperties().deleteProperty('DAILY_BRIEF_HOUR');
+        PropertiesService.getScriptProperties().deleteProperty('DAILY_BRIEF_MINUTE');
+        PropertiesService.getScriptProperties().deleteProperty('DAILY_BRIEF_CREATED');
+
+        Logger.log(`Deleted ${deletedCount} daily patient brief triggers`);
+        
+        return { 
+            success: true, 
+            message: `ลบ trigger การส่งรายงานรายวัน ${deletedCount} ตัวเรียบร้อย`,
+            deletedCount: deletedCount
+        };
+        
+    } catch (error) {
+        Logger.error('Error deleting daily patient brief triggers:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Get daily patient brief trigger status
+ */
+function getDailyPatientBriefTriggerStatus() {
+    try {
+        const properties = PropertiesService.getScriptProperties();
+        const triggerId = properties.getProperty('DAILY_BRIEF_TRIGGER_ID');
+        const hour = properties.getProperty('DAILY_BRIEF_HOUR');
+        const minute = properties.getProperty('DAILY_BRIEF_MINUTE');
+        const created = properties.getProperty('DAILY_BRIEF_CREATED');
+
+        if (!triggerId) {
+            return {
+                success: true,
+                isActive: false,
+                message: 'ยังไม่มี trigger การส่งรายงานรายวัน'
+            };
+        }
+
+        // Check if trigger still exists
+        const triggers = ScriptApp.getProjectTriggers();
+        const existingTrigger = triggers.find(t => t.getUniqueId() === triggerId);
+
+        if (!existingTrigger) {
+            // Trigger was deleted externally, clean up properties
+            PropertiesService.getScriptProperties().deleteProperty('DAILY_BRIEF_TRIGGER_ID');
+            PropertiesService.getScriptProperties().deleteProperty('DAILY_BRIEF_HOUR');
+            PropertiesService.getScriptProperties().deleteProperty('DAILY_BRIEF_MINUTE');
+            PropertiesService.getScriptProperties().deleteProperty('DAILY_BRIEF_CREATED');
+            
+            return {
+                success: true,
+                isActive: false,
+                message: 'Trigger ถูกลบไปแล้ว'
+            };
+        }
+
+        return {
+            success: true,
+            isActive: true,
+            triggerId: triggerId,
+            schedule: `${hour}:${minute.toString().padStart(2, '0')} น. ทุกวัน`,
+            hour: parseInt(hour),
+            minute: parseInt(minute),
+            created: created,
+            message: `ส่งรายงานรายวันเวลา ${hour}:${minute.toString().padStart(2, '0')} น. ทุกวัน`
+        };
+        
+    } catch (error) {
+        Logger.error('Error getting daily patient brief trigger status:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Update daily patient brief trigger time
+ */
+function updateDailyPatientBriefTrigger(hour = 8, minute = 0) {
+    try {
+        // Delete existing trigger and create new one
+        return createDailyPatientBriefTrigger(hour, minute);
+    } catch (error) {
+        Logger.error('Error updating daily patient brief trigger:', error);
+        return { success: false, message: error.toString() };
+    }
+}
+
 /**
  * Configure Google Chat webhook from web interface
  */
@@ -2547,6 +2917,148 @@ function formatCurrency(amount) {
         style: 'currency',
         currency: 'THB'
     }).format(amount);
+}
+
+// ===========================================
+// DAILY BRIEF MANAGEMENT FUNCTIONS (For Manual Use)
+// ===========================================
+
+/**
+ * Setup daily patient brief - Run this once to set up automatic daily reports
+ * Default time: 8:00 AM Thailand time
+ * 
+ * Example usage:
+ * setupDailyPatientBrief() // Sets up daily brief at 8:00 AM
+ * setupDailyPatientBrief(9, 30) // Sets up daily brief at 9:30 AM
+ */
+function setupDailyPatientBrief(hour = 8, minute = 0) {
+    Logger.log('Setting up daily patient brief...');
+    
+    // First check if Google Chat is configured
+    const webhookUrl = getGoogleChatWebhook();
+    if (!webhookUrl) {
+        Logger.error('Google Chat webhook not configured. Please set up webhook first.');
+        return { 
+            success: false, 
+            message: 'กรุณาตั้งค่า Google Chat webhook ก่อนใช้งานการส่งรายงานรายวัน' 
+        };
+    }
+
+    // Create the trigger
+    const result = createDailyPatientBriefTrigger(hour, minute);
+    
+    if (result.success) {
+        Logger.log(`Daily patient brief setup completed successfully at ${hour}:${minute.toString().padStart(2, '0')}`);
+    } else {
+        Logger.error('Failed to setup daily patient brief:', result.message);
+    }
+    
+    return result;
+}
+
+/**
+ * Remove daily patient brief trigger
+ */
+function removeDailyPatientBrief() {
+    Logger.log('Removing daily patient brief...');
+    const result = deleteDailyPatientBriefTriggers();
+    
+    if (result.success) {
+        Logger.log('Daily patient brief removed successfully');
+    } else {
+        Logger.error('Failed to remove daily patient brief:', result.message);
+    }
+    
+    return result;
+}
+
+/**
+ * Check daily patient brief status
+ */
+function checkDailyPatientBriefStatus() {
+    const status = getDailyPatientBriefTriggerStatus();
+    
+    if (status.success) {
+        Logger.log('Daily brief status:', status);
+        if (status.isActive) {
+            Logger.log(`Daily patient brief is active: ${status.schedule}`);
+        } else {
+            Logger.log('Daily patient brief is not active');
+        }
+    } else {
+        Logger.error('Error checking daily brief status:', status.message);
+    }
+    
+    return status;
+}
+
+/**
+ * Send immediate patient brief (for testing)
+ */
+function sendImmediatePatientBrief() {
+    Logger.log('Sending immediate patient brief for testing...');
+    const result = sendDailyPatientBrief();
+    
+    if (result.success) {
+        Logger.log('Immediate patient brief sent successfully');
+    } else {
+        Logger.error('Failed to send immediate patient brief:', result.message);
+    }
+    
+    return result;
+}
+
+/**
+ * Complete setup example function
+ * This shows how to set up everything from scratch
+ */
+function completeSetupExample() {
+    Logger.log('=== Complete Setup Example ===');
+    
+    // Step 1: Check Google Chat webhook
+    Logger.log('Step 1: Checking Google Chat webhook...');
+    const webhookUrl = getGoogleChatWebhook();
+    if (!webhookUrl) {
+        Logger.log('❌ Google Chat webhook not configured');
+        Logger.log('Please run: setGoogleChatWebhook("YOUR_WEBHOOK_URL")');
+        return { success: false, message: 'Google Chat webhook not configured' };
+    }
+    Logger.log('✅ Google Chat webhook is configured');
+    
+    // Step 2: Test notification
+    Logger.log('Step 2: Testing Google Chat notification...');
+    const testResult = testGoogleChatNotification();
+    if (!testResult.success) {
+        Logger.log('❌ Google Chat test failed:', testResult.message);
+        return { success: false, message: 'Google Chat test failed' };
+    }
+    Logger.log('✅ Google Chat test successful');
+    
+    // Step 3: Set up daily brief trigger
+    Logger.log('Step 3: Setting up daily patient brief trigger...');
+    const setupResult = setupDailyPatientBrief(8, 0); // 8:00 AM
+    if (!setupResult.success) {
+        Logger.log('❌ Daily brief setup failed:', setupResult.message);
+        return { success: false, message: 'Daily brief setup failed' };
+    }
+    Logger.log('✅ Daily brief trigger set up successfully');
+    
+    // Step 4: Send test brief
+    Logger.log('Step 4: Sending test daily brief...');
+    const briefResult = sendImmediatePatientBrief();
+    if (!briefResult.success) {
+        Logger.log('❌ Test brief failed:', briefResult.message);
+        return { success: false, message: 'Test brief failed' };
+    }
+    Logger.log('✅ Test brief sent successfully');
+    
+    Logger.log('=== Setup Complete! ===');
+    Logger.log('Daily patient brief will be sent every day at 8:00 AM Thailand time');
+    
+    return { 
+        success: true, 
+        message: 'การตั้งค่าสำเร็จ - ระบบจะส่งรายงานรายวันเวลา 8:00 น. ทุกวัน' 
+    };
 }
 
 // ===========================================
@@ -3104,3 +3616,112 @@ function getOptimizedDashboardData() {
         return { success: false, message: error.toString() };
     }
 }
+
+// ===========================================
+// DAILY PATIENT BRIEF - SETUP INSTRUCTIONS
+// ===========================================
+
+/*
+📋 DAILY PATIENT BRIEF SETUP GUIDE
+==================================
+
+🎯 PURPOSE:
+This system automatically sends daily patient appointment summaries to Google Chat every morning.
+Each branch gets a separate message with detailed appointment information.
+
+📝 SETUP STEPS:
+
+1. SET UP GOOGLE CHAT WEBHOOK:
+   - Go to your Google Chat space
+   - Click on space name → "Manage webhooks" → "Add webhook"
+   - Copy the webhook URL
+   - Run: setGoogleChatWebhook('YOUR_WEBHOOK_URL')
+
+2. TEST THE SYSTEM:
+   - Run: testGoogleChatNotification()
+   - Run: sendImmediatePatientBrief()
+
+3. SET UP AUTOMATIC DAILY REPORTS:
+   - Run: setupDailyPatientBrief()        // Default: 8:00 AM
+   - Or: setupDailyPatientBrief(9, 30)    // Custom: 9:30 AM
+
+4. CHECK STATUS:
+   - Run: checkDailyPatientBriefStatus()
+
+5. MODIFY SCHEDULE:
+   - Run: setupDailyPatientBrief(7, 0)    // Change to 7:00 AM
+
+6. REMOVE DAILY REPORTS:
+   - Run: removeDailyPatientBrief()
+
+🔧 QUICK SETUP (All-in-one):
+   - Run: completeSetupExample()
+
+📊 WHAT GETS SENT:
+- Daily summary for each branch
+- Scheduled appointments with patient details
+- Completed appointments summary
+- Cancelled appointments summary
+- Motivational messages based on workload
+
+⏰ TRIGGER INFORMATION:
+- Timezone: Asia/Bangkok (Thailand time)
+- Frequency: Daily
+- Default time: 8:00 AM
+- Customizable time via setupDailyPatientBrief(hour, minute)
+
+🛠️ MANUAL FUNCTIONS:
+- triggerDailyPatientBrief()         // Manual trigger for testing
+- sendDailyPatientBrief()           // Direct send function
+- testDailyPatientBrief()           // Test with current data
+
+📧 MESSAGE FORMAT:
+Each branch receives a message with:
+- Branch name and date
+- Summary statistics (total, scheduled, completed, cancelled)
+- Detailed scheduled appointments with:
+  * Time and patient name
+  * Phone number
+  * Doctor name
+  * Case type
+- Brief summary of completed/cancelled appointments
+- Encouragement message based on workload
+
+🔄 AUTOMATIC FEATURES:
+- Skips empty branches (or sends special "no appointments" message)
+- Sorts appointments by time
+- Adds delay between messages to avoid rate limiting
+- Thai language support with proper formatting
+- Timezone-aware (Thailand time)
+
+⚠️ IMPORTANT NOTES:
+- Google Chat webhook must be configured first
+- System respects notification enable/disable settings
+- Trigger uses Thailand timezone (Asia/Bangkok)
+- Messages are sent with 2-second delays between branches
+- System will fall back to default branch list if unable to load from sheets
+
+🚀 EXAMPLE USAGE:
+```javascript
+// Complete setup
+completeSetupExample();
+
+// Custom time setup (7:30 AM)
+setupDailyPatientBrief(7, 30);
+
+// Check current status
+checkDailyPatientBriefStatus();
+
+// Send test message now
+sendImmediatePatientBrief();
+
+// Remove all triggers
+removeDailyPatientBrief();
+```
+
+💡 TROUBLESHOOTING:
+- If messages don't send: Check Google Chat webhook URL
+- If no appointments show: Verify date format and data in sheets
+- If trigger doesn't work: Check timezone and permissions
+- If branch data missing: System uses fallback branch list
+*/

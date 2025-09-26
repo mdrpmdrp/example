@@ -167,6 +167,10 @@
             display: block !important;
         }
 
+        .sidebar .super-admin-only.show {
+            display: flex !important;
+        }
+
         .super-admin-only-filter {
             display: none !important;
         }
@@ -542,6 +546,45 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* Settings page specific styles */
+        .steps-container .step {
+            transition: all 0.3s ease;
+        }
+
+        .steps-container .step:hover {
+            transform: translateX(5px);
+        }
+
+        .steps-container .badge {
+            min-width: 24px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Settings modal styles */
+        #setupInstructionsModal .modal-body {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        #setupInstructionsModal code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        /* Status indicators */
+        .alert {
+            border: none;
+            border-radius: 12px;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.5em 0.75em;
+        }
     </style>
 </head>
 
@@ -748,6 +791,9 @@
                             </a>
                             <a class="nav-link admin-only hidden" href="javascript:void(0)" data-page="reports">
                                 <i class="fas fa-chart-bar me-2"></i>รายงาน
+                            </a>
+                            <a class="nav-link super-admin-only" href="javascript:void(0)" data-page="settings">
+                                <i class="fas fa-cog me-2"></i>ตั้งค่าระบบ
                             </a>
                         </div>
                     </div>
@@ -1100,6 +1146,78 @@
                                         </div>
                                         <div class="card-body">
                                             <canvas id="appointmentsChart" height="200"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settings Page (Super Admin Only) -->
+                        <div id="settingsPage" class="page-content hidden">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2>ตั้งค่าระบบ</h2>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-10 mx-auto">
+                                    <div class="card">
+                                        <div class="card-header d-flex align-items-center">
+                                            <i class="fas fa-bell me-2 text-primary"></i>
+                                            <h5 class="mb-0">การแจ้งเตือน Google Chat</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <p class="text-muted">
+                                                    ตั้งค่า Google Chat เพื่อรับการแจ้งเตือนเมื่อมีข้อมูลใหม่ในระบบ
+                                                </p>
+                                            </div>
+
+                                            <div id="notificationStatus" class="alert" role="alert">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="spinner-border spinner-border-sm me-2" role="status">
+                                                        <span class="visually-hidden">Loading...</span>
+                                                    </div>
+                                                    <span>กำลังตรวจสอบสถานะ...</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="chatWebhookUrl" class="form-label">
+                                                    <i class="fas fa-link me-1"></i>Google Chat Webhook URL
+                                                </label>
+                                                <input type="url" class="form-control" id="chatWebhookUrl"
+                                                    placeholder="https://chat.googleapis.com/v1/spaces/YOUR_SPACE/messages?key=YOUR_KEY&token=YOUR_TOKEN"
+                                                    disabled>
+                                                <div class="form-text">
+                                                    กรอก Webhook URL ของ Google Chat Space ที่ต้องการรับการแจ้งเตือน
+                                                </div>
+                                            </div>
+
+                                            <div class="d-flex gap-2 flex-wrap mb-4">
+                                                <button type="button" class="btn btn-primary" id="saveWebhookBtn"
+                                                    disabled>
+                                                    <i class="fas fa-save me-1"></i>บันทึกการตั้งค่า
+                                                </button>
+                                                <button type="button" class="btn btn-success" id="testNotificationBtn"
+                                                    disabled>
+                                                    <i class="fas fa-paper-plane me-1"></i>ทดสอบการแจ้งเตือน
+                                                </button>
+                                                <button type="button" class="btn btn-info" id="setupInstructionsBtn">
+                                                    <i class="fas fa-question-circle me-1"></i>วิธีการตั้งค่า
+                                                </button>
+                                            </div>
+
+                                            <div class="alert alert-warning">
+                                                <div class="d-flex align-items-start">
+                                                    <i class="fas fa-exclamation-triangle me-2 mt-1"></i>
+                                                    <div>
+                                                        <strong>คำเตือน:</strong>
+                                                        <p class="mb-0 small">
+                                                            การตั้งค่านี้จะส่งผลต่อการแจ้งเตือนของระบบทั้งหมด กรุณาตรวจสอบให้แน่ใจก่อนบันทึก
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1600,6 +1718,101 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
                     <button type="button" class="btn btn-primary" id="saveUserButton">บันทึก</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Chat Setup Instructions Modal -->
+    <div class="modal fade" id="setupInstructionsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fab fa-google text-primary me-2"></i>วิธีการตั้งค่า Google Chat
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>ข้อมูลสำคัญ:</strong> การตั้งค่านี้จะทำให้ระบบส่งการแจ้งเตือนอัตโนมัติไปยัง Google Chat เมื่อมีข้อมูลใหม่
+                    </div>
+
+                    <div class="steps-container">
+                        <h6 class="mb-3"><i class="fas fa-list-ol me-2 text-primary"></i>ขั้นตอนการตั้งค่า:</h6>
+                        
+                        <div class="step mb-4">
+                            <div class="d-flex align-items-start">
+                                <span class="badge bg-primary rounded-circle me-3" style="width: 24px; height: 24px; line-height: 16px;">1</span>
+                                <div>
+                                    <strong>สร้างหรือเปิด Google Chat Space</strong>
+                                    <p class="text-muted mb-1">เข้าไปที่ <code>chat.google.com</code> และสร้าง Space ใหม่หรือเลือก Space ที่มีอยู่</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step mb-4">
+                            <div class="d-flex align-items-start">
+                                <span class="badge bg-primary rounded-circle me-3" style="width: 24px; height: 24px; line-height: 16px;">2</span>
+                                <div>
+                                    <strong>คลิกที่ชื่อ Space</strong>
+                                    <p class="text-muted mb-1">คลิกที่ชื่อ Space ด้านบนเพื่อเข้าสู่การตั้งค่า</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step mb-4">
+                            <div class="d-flex align-items-start">
+                                <span class="badge bg-primary rounded-circle me-3" style="width: 24px; height: 24px; line-height: 16px;">3</span>
+                                <div>
+                                    <strong>เลือก "Manage webhooks"</strong>
+                                    <p class="text-muted mb-1">เลือกเมนู "Manage webhooks" จากรายการตัวเลือก</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step mb-4">
+                            <div class="d-flex align-items-start">
+                                <span class="badge bg-primary rounded-circle me-3" style="width: 24px; height: 24px; line-height: 16px;">4</span>
+                                <div>
+                                    <strong>คลิก "Add webhook"</strong>
+                                    <p class="text-muted mb-1">คลิกปุ่ม "Add webhook" เพื่อสร้าง webhook ใหม่</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step mb-4">
+                            <div class="d-flex align-items-start">
+                                <span class="badge bg-primary rounded-circle me-3" style="width: 24px; height: 24px; line-height: 16px;">5</span>
+                                <div>
+                                    <strong>ตั้งชื่อและคัดลอก URL</strong>
+                                    <p class="text-muted mb-1">ตั้งชื่อให้กับ webhook (เช่น "ระบบคลินิคทันตกรรม") และคัดลอก URL ที่ได้</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step mb-4">
+                            <div class="d-flex align-items-start">
+                                <span class="badge bg-success rounded-circle me-3" style="width: 24px; height: 24px; line-height: 16px;">6</span>
+                                <div>
+                                    <strong>นำ URL มาใส่ในระบบ</strong>
+                                    <p class="text-muted mb-1">นำ Webhook URL ที่ได้มาวางในช่อง "Google Chat Webhook URL" และกดบันทึก</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>หมายเหตุ:</strong> URL ที่ได้จะมีลักษณะเช่น:<br>
+                        <code class="small">https://chat.googleapis.com/v1/spaces/AAAA.../messages?key=...&token=...</code>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                        <i class="fas fa-check me-1"></i>เข้าใจแล้ว
+                    </button>
                 </div>
             </div>
         </div>
@@ -2256,6 +2469,11 @@
 
             // Patient and branch selection event listeners for auto-filtering
             setupPatientBranchFiltering();
+
+            // Settings event listeners
+            $('#saveWebhookBtn').on('click', saveGoogleChatWebhook);
+            $('#testNotificationBtn').on('click', testGoogleChatNotification);
+            $('#setupInstructionsBtn').on('click', showSetupInstructions);
         }
 
         function setupPhoneValidation() {
@@ -2633,6 +2851,11 @@
                 case 'reports':
                     if (currentUserType !== 'user') {
                         renderReports();
+                    }
+                    break;
+                case 'settings':
+                    if (currentUserRole === 'super_admin') {
+                        loadSettingsPage();
                     }
                     break;
             }
@@ -4900,6 +5123,292 @@
 
         // Revenue form tracking functions
         function captureRevenueFormData() {
+            const form = document.getElementById('revenueForm');
+            if (!form) return {};
+            
+            originalRevenueFormData = {
+                patientId: form.patientId.value || '',
+                doctorId: form.doctorId.value || '',
+                date: form.date.value || '',
+                caseType: form.caseType ? Array.from(form.caseType).filter(cb => cb.checked).map(cb => cb.value) : [],
+                caseDetails: form.caseDetails ? Array.from(form.caseDetails).filter(cb => cb.checked).map(cb => cb.value) : [],
+                paymentTypes: form.paymentTypes ? Array.from(form.paymentTypes).filter(cb => cb.checked).map(cb => cb.value) : [],
+                notes: form.notes.value || '',
+                branch: form.branch.value || ''
+            };
+            
+            // Get payment amounts
+            const paymentAmountInputs = form.querySelectorAll('input[name^="paymentAmount_"]');
+            paymentAmountInputs.forEach(input => {
+                originalRevenueFormData[input.name] = input.value || '';
+            });
+            
+            isRevenueFormDirty = false;
+        }
+        
+        function isRevenueFormChanged() {
+            const form = document.getElementById('revenueForm');
+            if (!form) return false;
+            
+            const currentData = {
+                patientId: form.patientId.value || '',
+                doctorId: form.doctorId.value || '',
+                date: form.date.value || '',
+                caseType: form.caseType ? Array.from(form.caseType).filter(cb => cb.checked).map(cb => cb.value) : [],
+                caseDetails: form.caseDetails ? Array.from(form.caseDetails).filter(cb => cb.checked).map(cb => cb.value) : [],
+                paymentTypes: form.paymentTypes ? Array.from(form.paymentTypes).filter(cb => cb.checked).map(cb => cb.value) : [],
+                notes: form.notes.value || '',
+                branch: form.branch.value || ''
+            };
+            
+            // Check payment amounts
+            const paymentAmountInputs = form.querySelectorAll('input[name^="paymentAmount_"]');
+            paymentAmountInputs.forEach(input => {
+                currentData[input.name] = input.value || '';
+            });
+            
+            return JSON.stringify(currentData) !== JSON.stringify(originalRevenueFormData);
+        }
+        
+        function handleRevenueModalClose(event) {
+            if (isRevenueFormDirty && isRevenueFormChanged()) {
+                event.preventDefault();
+                
+                Swal.fire({
+                    title: 'มีข้อมูลที่ยังไม่ได้บันทึก',
+                    text: 'คุณต้องการออกโดยไม่บันทึกข้อมูลหรือไม่?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'ออกโดยไม่บันทึก',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        closeRevenueModal(document.getElementById('revenueForm'));
+                    }
+                });
+            }
+        }
+
+        // Settings page functions
+        function loadSettingsPage() {
+            // Load notification status
+            checkNotificationStatus();
+        }
+
+        function checkNotificationStatus() {
+            const statusEl = document.getElementById('notificationStatus');
+            const webhookUrlInput = document.getElementById('chatWebhookUrl');
+            const saveBtn = document.getElementById('saveWebhookBtn');
+            const testBtn = document.getElementById('testNotificationBtn');
+
+            // Show loading state
+            statusEl.className = 'alert alert-info';
+            statusEl.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border spinner-border-sm me-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span>กำลังตรวจสอบสถานะ...</span>
+                </div>
+            `;
+
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    if (result.success) {
+                        const isConfigured = result.isConfigured;
+                        
+                        // Update status display
+                        if (isConfigured) {
+                            statusEl.className = 'alert alert-success';
+                            statusEl.innerHTML = `
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    <span>${result.message}</span>
+                                </div>
+                            `;
+                        } else {
+                            statusEl.className = 'alert alert-warning';
+                            statusEl.innerHTML = `
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <span>${result.message}</span>
+                                </div>
+                            `;
+                        }
+
+                        // Enable/disable controls based on status
+                        webhookUrlInput.disabled = false;
+                        saveBtn.disabled = false;
+                        testBtn.disabled = !isConfigured;
+                        
+                        // Show current webhook URL (partially masked for security)
+                        if (isConfigured) {
+                            google.script.run
+                                .withSuccessHandler(function(webhookUrl) {
+                                    if (webhookUrl) {
+                                        // Mask the URL for security (show only first and last parts)
+                                        const maskedUrl = webhookUrl.length > 50 
+                                            ? webhookUrl.substring(0, 40) + '...' + webhookUrl.substring(webhookUrl.length - 20)
+                                            : webhookUrl;
+                                        webhookUrlInput.placeholder = maskedUrl;
+                                    }
+                                })
+                                .getGoogleChatWebhook();
+                        }
+                    } else {
+                        statusEl.className = 'alert alert-danger';
+                        statusEl.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <span>เกิดข้อผิดพลาด: ${result.message}</span>
+                            </div>
+                        `;
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    console.error('Error checking notification status:', error);
+                    statusEl.className = 'alert alert-danger';
+                    statusEl.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <span>ไม่สามารถตรวจสอบสถานะได้: ${error.message}</span>
+                        </div>
+                    `;
+                })
+                .getNotificationStatus();
+        }
+
+        function saveGoogleChatWebhook() {
+            const webhookUrlInput = document.getElementById('chatWebhookUrl');
+            const webhookUrl = webhookUrlInput.value.trim();
+            const saveBtn = document.getElementById('saveWebhookBtn');
+
+            if (!webhookUrl) {
+                Toast.fire({
+                    icon: 'error',
+                    title: 'กรุณากรอก Webhook URL'
+                });
+                return;
+            }
+
+            // Validate URL format
+            try {
+                new URL(webhookUrl);
+            } catch (e) {
+                Toast.fire({
+                    icon: 'error',
+                    title: 'รูปแบบ URL ไม่ถูกต้อง'
+                });
+                return;
+            }
+
+            // Check if it's a Google Chat webhook URL
+            if (!webhookUrl.includes('chat.googleapis.com')) {
+                Swal.fire({
+                    title: 'ยืนยันการบันทึก',
+                    text: 'URL นี้ไม่ใช่ Google Chat webhook URL คุณต้องการดำเนินการต่อหรือไม่?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'ดำเนินการต่อ',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        performWebhookSave(webhookUrl, saveBtn);
+                    }
+                });
+            } else {
+                performWebhookSave(webhookUrl, saveBtn);
+            }
+        }
+
+        function performWebhookSave(webhookUrl, saveBtn) {
+            // Show loading state
+            const originalText = saveBtn.innerHTML;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>กำลังบันทึก...';
+
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalText;
+
+                    if (result.success) {
+                        Toast.fire({
+                            icon: 'success',
+                            title: result.message
+                        });
+                        
+                        // Clear the input after successful save
+                        document.getElementById('chatWebhookUrl').value = '';
+                        
+                        // Refresh status
+                        setTimeout(() => {
+                            checkNotificationStatus();
+                        }, 1000);
+                    } else {
+                        Toast.fire({
+                            icon: 'error',
+                            title: result.message
+                        });
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    console.error('Error saving webhook:', error);
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalText;
+                    
+                    Toast.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาดในการบันทึก'
+                    });
+                })
+                .setGoogleChatWebhook(webhookUrl);
+        }
+
+        function testGoogleChatNotification() {
+            const testBtn = document.getElementById('testNotificationBtn');
+            const originalText = testBtn.innerHTML;
+            
+            testBtn.disabled = true;
+            testBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>กำลังทดสอบ...';
+
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    testBtn.disabled = false;
+                    testBtn.innerHTML = originalText;
+
+                    if (result.success) {
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'ส่งข้อความทดสอบสำเร็จ'
+                        });
+                    } else {
+                        Toast.fire({
+                            icon: 'error',
+                            title: `การทดสอบล้มเหลว: ${result.message}`
+                        });
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    console.error('Error testing notification:', error);
+                    testBtn.disabled = false;
+                    testBtn.innerHTML = originalText;
+                    
+                    Toast.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาดในการทดสอบ'
+                    });
+                })
+                .testGoogleChatNotification();
+        }
+
+        function showSetupInstructions() {
+            const modal = new bootstrap.Modal(document.getElementById('setupInstructionsModal'));
+            modal.show();
+        }
+        function captureRevenueFormData() {
             const form = $(SELECTORS.REVENUE_FORM)[0];
             const formData = new FormData(form);
             originalRevenueFormData = {};
@@ -6098,6 +6607,13 @@
         window.deleteRevenue = deleteRevenue;
         window.editUser = editUser;
         window.deleteUser = deleteUser;
+        
+        // Settings functions
+        window.loadSettingsPage = loadSettingsPage;
+        window.checkNotificationStatus = checkNotificationStatus;
+        window.saveGoogleChatWebhook = saveGoogleChatWebhook;
+        window.testGoogleChatNotification = testGoogleChatNotification;
+        window.showSetupInstructions = showSetupInstructions;
     </script>
 </body>
 
