@@ -1,4 +1,4 @@
-defafunction doGet(e) {
+function doGet(e) {
     let html = HtmlService.createTemplateFromFile('index')
     html.lists = getLists();
     html = html.evaluate()
