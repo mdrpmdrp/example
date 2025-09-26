@@ -2736,6 +2736,8 @@
         }
 
         function showMainApp() {
+              // Load data and show dashboard
+            loadData();
             // Ensure loading page is visible during data loading
             const loadingPage = document.getElementById('loadingPage');
             if (loadingPage) {
@@ -2781,8 +2783,7 @@
                 }
             });
 
-            // Load data and show dashboard
-            loadData();
+          
 
         }
 
@@ -3116,12 +3117,13 @@
             google.script.run
                 .withSuccessHandler(function (result) {
                     result = JSON.parse(result);
+                    console.log('Options loaded:', result);
                     if (result.success) {
-                        caseTypes = result.caseTypes || [];
-                        caseDetails = result.caseDetails || [];
-                        contactChannels = result.contactChannels || [];
-                        paymentTypes = result.paymentTypes || [];
-                        branches = result.branches || [];
+                        caseTypes = result.options.caseTypes || [];
+                        caseDetails = result.options.caseDetails || [];
+                        contactChannels = result.options.contactChannels || [];
+                        paymentTypes = result.options.paymentTypes || [];
+                        branches = result.options.branches || [];
                         renderCaseTypeOptions();
                         renderCaseDetailsOptions();
                         renderContactChannelOptions();
@@ -3374,10 +3376,10 @@
 
                 // Build options HTML
                 let optionsHtml = '<option value="">เลือกสาขา</option>';
-
+                console.log('branches:', branches);
                 if (branches.length > 0) {
                     optionsHtml += branches.map(branch =>
-                        `<option value="${branch.value}">${branch.displayName}</option>`
+                        `<option value="${branch}">${branch}</option>`
                     ).join('');
                 } else {
                     // Fallback to default branches if no data from sheet
