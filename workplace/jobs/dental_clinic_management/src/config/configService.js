@@ -55,9 +55,16 @@ function getGoogleChatWebhook() {
 }
 
 /**
- * Test Google Chat notification
+ * Test Google Chat notification with card format
  */
 function testGoogleChatNotification() {
+  return testGoogleChatCardNotification();
+}
+
+/**
+ * Test all notification formats (legacy function for backward compatibility)
+ */
+function testGoogleChatNotificationLegacy() {
   return sendGoogleChatNotification(
     "🔧 นี่คือข้อความทดสอบจากระบบจัดการคลินิคทันตกรรม\n✨ ระบบการแจ้งเตือนทำงานได้ปกติ",
     "🧪 การทดสอบระบบการแจ้งเตือน"

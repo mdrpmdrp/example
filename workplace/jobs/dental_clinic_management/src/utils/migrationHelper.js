@@ -317,8 +317,3 @@ function verifyMigration() {
     return { success: false, message: error.toString() };
   }
 }
-
-// Quick start functions for migration
-console.log("🔧 MIGRATION HELPER LOADED");
-console.log("Run prepareMigration() to start the migration process");
-console.log("Run verifyMigration() after adding refactored files");

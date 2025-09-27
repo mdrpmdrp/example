@@ -189,6 +189,7 @@ function updatePatient(patientId, patientData, currentUser = null) {
       new Date(), // Update modified at
       existingPatient[15] || "UNKNOWN", // Keep original created by
       currentUser ? currentUser.username : "UNKNOWN", // Update modified by
+      existingPatient[17]
     ];
 
     patientsSheet

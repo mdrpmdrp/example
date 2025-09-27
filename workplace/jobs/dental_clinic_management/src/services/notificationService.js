@@ -12,8 +12,11 @@ function getUpcomingAppointments(days = 1) {
     const targetDate = new Date(today);
     targetDate.setDate(today.getDate() + days);
 
-    const targetDateString = targetDate.toISOString().split('T')[0]; // YYYY-MM-DD format
-    const appointmentsResult = getAppointmentsByDateRange(targetDateString, targetDateString);
+    const targetDateString = targetDate.toISOString().split("T")[0]; // YYYY-MM-DD format
+    const appointmentsResult = getAppointmentsByDateRange(
+      targetDateString,
+      targetDateString
+    );
 
     if (appointmentsResult.success) {
       return { success: true, appointments: appointmentsResult.appointments };
@@ -42,7 +45,7 @@ function sendGoogleChatNotification(
     }
 
     const payload = {
-      text: `*${title}*\n${message}`
+      text: `${title}\n${message}`,
     };
 
     const options = {
@@ -54,14 +57,14 @@ function sendGoogleChatNotification(
     // Split long messages to avoid hitting limits
     const MAX_MESSAGE_LENGTH = 4000;
     let remainingMessage = message;
-    
+
     while (remainingMessage.length > 0) {
       let currentMessage = remainingMessage;
       if (currentMessage.length > MAX_MESSAGE_LENGTH) {
         // Find a good break point (newline or space)
-        let breakPoint = currentMessage.lastIndexOf('\n', MAX_MESSAGE_LENGTH);
+        let breakPoint = currentMessage.lastIndexOf("\n", MAX_MESSAGE_LENGTH);
         if (breakPoint === -1) {
-          breakPoint = currentMessage.lastIndexOf(' ', MAX_MESSAGE_LENGTH);
+          breakPoint = currentMessage.lastIndexOf(" ", MAX_MESSAGE_LENGTH);
         }
         if (breakPoint === -1) {
           breakPoint = MAX_MESSAGE_LENGTH;
@@ -70,9 +73,12 @@ function sendGoogleChatNotification(
       }
 
       const currentPayload = {
-        text: currentMessage === message ? `*${title}*\n${currentMessage}` : currentMessage
+        text:
+          currentMessage === message
+            ? `${title}\n${currentMessage}`
+            : currentMessage,
       };
-      
+
       const currentOptions = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,7 +86,7 @@ function sendGoogleChatNotification(
       };
 
       UrlFetchApp.fetch(webhookUrl, currentOptions);
-      
+
       remainingMessage = remainingMessage.substring(currentMessage.length);
       if (remainingMessage.length > 0) {
         Utilities.sleep(1000); // Wait 1 second between messages
@@ -108,38 +114,44 @@ function sendFormSubmissionNotification(formType, data, action = "เพิ่�
 
     switch (formType) {
       case "patient":
-        message = `👤 *คนไข้ใหม่*\n`;
+        message = `👤 คนไข้ใหม่\n\n`;
+        message += `• สาขา: ${data[11] || "ไม่ระบุ"}\n\n`;
         message += `• ชื่อ: ${data[2]} ${data[3]}\n`;
         message += `• โทรศัพท์: ${data[4]}\n`;
-        message += `• สาขา: ${data[11] || 'ไม่ระบุ'}\n`;
-        message += `• วันที่ลงทะเบียน: ${new Date(data[12]).toLocaleDateString('th-TH')}\n`;
+        message += `• วันที่ลงทะเบียน: ${new Date(data[12]).toLocaleDateString(
+          "th-TH"
+        )}\n`;
         break;
 
       case "appointment":
-        message = `📅 *การนัดหมาย${action === "เพิ่ม" ? "ใหม่" : ""}*\n`;
+        message = `📅 การนัดหมาย${action === "เพิ่ม" ? "ใหม่" : ""}\n\n`;
+        message += `• สาขา: ${data[11] || "ไม่ระบุ"}\n\n`;
         message += `• รหัสคนไข้: ${data[1]}\n`;
-        message += `• วันที่นัด: ${new Date(data[3]).toLocaleDateString('th-TH')}\n`;
+        message += `• วันที่นัด: ${new Date(data[3]).toLocaleDateString(
+          "th-TH"
+        )}\n`;
         message += `• เวลา: ${data[4]}\n`;
-        message += `• ประเภทการรักษา: ${data[5] || 'ไม่ระบุ'}\n`;
-        message += `• รายละเอียด: ${data[6] || 'ไม่ระบุ'}\n`;
-        message += `• สาขา: ${data[11] || 'ไม่ระบุ'}\n`;
+        message += `• ประเภทการรักษา: ${data[5] || "ไม่ระบุ"}\n`;
+        message += `• รายละเอียด: ${data[6] || "ไม่ระบุ"}\n`;
         break;
 
       case "doctor":
-        message = `👨‍⚕️ *หมอ${action === "เพิ่ม" ? "ใหม่" : ""}*\n`;
+        message = `👨‍⚕️ หมอ${action === "เพิ่ม" ? "ใหม่" : ""}\n`;
         message += `• ชื่อ: ${data[1]} ${data[2]}\n`;
-        message += `• ความเชี่ยวชาญ: ${data[3] || 'ไม่ระบุ'}\n`;
+        message += `• ความเชี่ยวชาญ: ${data[3] || "ไม่ระบุ"}\n`;
         message += `• โทรศัพท์: ${data[4]}\n`;
-        message += `• อีเมล: ${data[5] || 'ไม่ระบุ'}\n`;
+        message += `• อีเมล: ${data[5] || "ไม่ระบุ"}\n`;
         break;
 
       case "revenue":
-        message = `💰 *รายได้${action === "เพิ่ม" ? "ใหม่" : ""}*\n`;
-        message += `• วันที่: ${new Date(data[1]).toLocaleDateString('th-TH')}\n`;
-        message += `• รหัสคนไข้: ${data[2] || 'ไม่ระบุ'}\n`;
-        message += `• ประเภทการรักษา: ${data[4] || 'ไม่ระบุ'}\n`;
+        message = `💰 รายได้${action === "เพิ่ม" ? "ใหม่" : ""}\n\n`;
+        message += `• สาขา: ${data[16] || "ไม่ระบุ"}\n\n`;
+        message += `• วันที่: ${new Date(data[1]).toLocaleDateString(
+          "th-TH"
+        )}\n`;
+        message += `• รหัสคนไข้: ${data[2] || "ไม่ระบุ"}\n`;
+        message += `• ประเภทการรักษา: ${data[4] || "ไม่ระบุ"}\n`;
         message += `• จำนวนเงิน: ${formatCurrency(data[7] || 0)}\n`;
-        message += `• สาขา: ${data[16] || 'ไม่ระบุ'}\n`;
         break;
 
       default:
@@ -177,16 +189,16 @@ function sendDailyPatientBrief() {
     }
 
     const today = new Date();
-    const dateFormatted = today.toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    const dateFormatted = today.toLocaleDateString("th-TH", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
-    const dayOfWeek = today.toLocaleDateString('th-TH', { weekday: 'long' });
+    const dayOfWeek = today.toLocaleDateString("th-TH", { weekday: "long" });
 
     // Get today's appointments
-    const todayString = today.toISOString().split('T')[0];
-    const appointmentsResult = getAppointmentsByDateRange(todayString, todayString);
+    const todayString = today.toISOString().split("T")[0];
+    const appointmentsResult = getTodayAppointments();
 
     if (!appointmentsResult.success) {
       return { success: false, message: "Cannot fetch today's appointments" };
@@ -195,33 +207,34 @@ function sendDailyPatientBrief() {
     const appointments = appointmentsResult.appointments;
 
     // Group appointments by branch
-    const appointmentsByBranch = {};
-    appointments.forEach(appointment => {
-      const branch = appointment.branch || 'ไม่ระบุสาขา';
-      if (!appointmentsByBranch[branch]) {
-        appointmentsByBranch[branch] = [];
-      }
-      appointmentsByBranch[branch].push(appointment);
-    });
+    const appointmentsByBranch = Object.groupBy(appointments,(a) => a.branch || "ไม่ระบุสาขา");
 
     // Send brief for each branch
     const branches = Object.keys(appointmentsByBranch);
     for (let i = 0; i < branches.length; i++) {
       const branch = branches[i];
       const branchAppointments = appointmentsByBranch[branch];
-      
-      const message = generateDailyBriefMessage(branch, branchAppointments, dateFormatted, dayOfWeek);
+
+      const message = generateDailyBriefMessage(
+        branch,
+        branchAppointments,
+        dateFormatted,
+        dayOfWeek
+      );
       const title = `📋 สรุปคนไข้ประจำวัน - ${branch}`;
-      
+
       sendGoogleChatNotification(message, title);
-      
+
       // Add delay between messages to avoid rate limiting
       if (i < branches.length - 1) {
         Utilities.sleep(2000); // Wait 2 seconds between branches
       }
     }
 
-    return { success: true, message: `Daily brief sent for ${branches.length} branches` };
+    return {
+      success: true,
+      message: `Daily brief sent for ${branches.length} branches`,
+    };
   } catch (error) {
     console.error("Error sending daily patient brief:", error);
     return { success: false, message: error.toString() };
@@ -242,14 +255,19 @@ function getTodayAppointments() {
   if (data.length <= 1) {
     return { success: true, appointments: [] };
   }
-  
+
   let appointments = data.map((row) => ({
     id: row[0],
     patientId: row[1],
-    patientName: `${row[2]} ${row[3]}`,
+    patientName: `${row[18]}${row[19]} ${row[20]}`,
     appointmentTime: row[4],
-    status: row[5]
-  }));
+    caseType: row[5],
+    caseDetails: row[6],
+    status: row[9],
+    branch: row[11],
+    doctorName: `${row[16]} ${row[17]}`,
+    doctorId: row[3],
+  })).filter(a => a.status === 'scheduled'); // Only include scheduled appointments
 
   return { success: true, appointments };
 }
@@ -263,7 +281,7 @@ function generateDailyBriefMessage(
   dateFormatted,
   dayOfWeek
 ) {
-  let message = `🏥 *${branch}*\n`;
+  let message = `🏥 ${branch}\n`;
   message += `📅 ${dayOfWeek} ${dateFormatted}\n\n`;
 
   if (appointments.length === 0) {
@@ -284,15 +302,15 @@ function generateDailyBriefMessage(
 
   // Show scheduled appointments details
   if (appointmentsByStatus.scheduled.length > 0) {
-    message += `⏰ *การนัดหมายที่กำหนดไว้:* (${appointmentsByStatus.scheduled.length} นัด)\n`;
+    message += `⏰ การนัดหมายที่กำหนดไว้: (${appointmentsByStatus.scheduled.length} นัด)\n`;
     appointmentsByStatus.scheduled
       .sort((a, b) => a.appointment_time?.localeCompare(b.appointment_time))
       .forEach((apt, index) => {
         message += `${index + 1}. ${apt.appointment_time} - `;
         message += `${apt.patient_name || `รหัส: ${apt.patient_id}`}\n`;
-        message += `   📞 ${apt.patient_phone || 'ไม่ระบุเบอร์'} | `;
-        message += `👨‍⚕️ ${apt.doctor_name || 'ไม่ระบุหมอ'}\n`;
-        message += `   🦷 ${apt.case_type || 'ไม่ระบุประเภท'}\n\n`;
+        message += `   📞 ${apt.patient_phone || "ไม่ระบุเบอร์"} | `;
+        message += `👨‍⚕️ ${apt.doctor_name || "ไม่ระบุหมอ"}\n`;
+        message += `   🦷 ${apt.case_type || "ไม่ระบุประเภท"}\n\n`;
       });
   }
 

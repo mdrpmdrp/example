@@ -26,15 +26,14 @@ function doGet() {
 
     // Create and return the HTML output
     const htmlOutput = HtmlService.createTemplateFromFile("index");
-    
+
     return htmlOutput
       .evaluate()
       .setTitle("ระบบจัดการคลินิคทันตกรรม")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-      
   } catch (error) {
     Logger.log("Error in doGet:", error);
-    
+
     // Return error page
     const errorHtml = HtmlService.createHtmlOutput(
       `<h1>เกิดข้อผิดพลาด</h1><p>${error.toString()}</p>`
@@ -44,12 +43,33 @@ function doGet() {
 }
 
 /**
+ * Handle POST requests - primarily for LINE webhook
+ * @param {Object} e - Event object containing request data
+ */
+function doPost(e) {
+  Logger = BetterLog.useSpreadsheet()
+  try {
+    LineBotWebhook.init(e, LINE_CHANNEL_ACCESS_TOKEN, true).forEach((event) => {
+      processLineEvent(event);
+    });
+    return ContentService.createTextOutput("OK").setMimeType(
+      ContentService.MimeType.TEXT
+    );
+  } catch (e) { //with stack tracing if your exceptions bubble up to here
+    e = (typeof e === 'string') ? new Error(e) : e;
+    Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s" .',e.name||'', 
+               e.message||'', e.lineNumber||'', e.fileName||'', e.stack||'');
+    throw e;
+  }
+}
+
+/**
  * Search functions for cached data optimization
  */
 function findPatientById(patientId) {
   // Use cached data if available
   if (dataCache.patients) {
-    return dataCache.patients.find(patient => patient.id === patientId);
+    return dataCache.patients.find((patient) => patient.id === patientId);
   }
 
   // Fallback to direct sheet access
@@ -59,7 +79,7 @@ function findPatientById(patientId) {
 function findDoctorById(doctorId) {
   // Use cached data if available
   if (dataCache.doctors) {
-    return dataCache.doctors.find(doctor => doctor.id === doctorId);
+    return dataCache.doctors.find((doctor) => doctor.id === doctorId);
   }
 
   // Fallback to direct sheet access
@@ -69,7 +89,9 @@ function findDoctorById(doctorId) {
 function findAppointmentsByPatient(patientId) {
   // Use cached data if available
   if (dataCache.appointments) {
-    return dataCache.appointments.filter(appointment => appointment.patient_id === patientId);
+    return dataCache.appointments.filter(
+      (appointment) => appointment.patient_id === patientId
+    );
   }
 
   // Fallback to existing function
@@ -79,7 +101,7 @@ function findAppointmentsByPatient(patientId) {
 function findAppointmentsByDate(date) {
   // Use cached data if available
   if (dataCache.appointments) {
-    return dataCache.appointments.filter(appointment => {
+    return dataCache.appointments.filter((appointment) => {
       const appointmentDate = new Date(appointment.appointment_date);
       const targetDate = new Date(date);
       return appointmentDate.toDateString() === targetDate.toDateString();
@@ -90,49 +112,93 @@ function findAppointmentsByDate(date) {
   return getAppointmentsByDateRange(date, date);
 }
 
+// 7-Day Appointment Reminder Functions
+
 /**
- * Test function to verify all functionality
+ * Send appointment reminders to registered patients 7 days ahead
+ * External access function for triggers and manual execution
  */
-function testAllFunctions() {
-  console.log("Testing Dental Clinic Management System...");
-
-  // Test initialization
-  const initResult = initializeSystem();
-  console.log("Init Result:", initResult);
-
-  // Test patient operations
-  const patientData = {
-    firstName: "ทดสอบ",
-    lastName: "ระบบ",
-    phone: "081-111-1111",
-    birthDate: "1990-01-01",
-    address: "ที่อยู่ทดสอบ",
-  };
-
-  const addPatientResult = addPatient(patientData);
-  console.log("Add Patient Result:", addPatientResult);
-
-  const getAllPatientsResult = getAllPatients();
-  console.log("Get All Patients Result:", getAllPatientsResult);
-
-  // Test performance monitoring
-  const performanceTest = measurePerformance("testFunction", () => {
-    return "Test completed successfully";
-  });
-  
-  const testResult = performanceTest();
-  console.log("Performance Test Result:", testResult);
-
-  console.log("All tests completed!");
-  
-  return {
-    success: true,
-    message: "All tests completed successfully",
-    results: {
-      init: initResult,
-      addPatient: addPatientResult,
-      getAllPatients: !!getAllPatientsResult,
-      performanceTest: testResult
-    }
-  };
+function doSendSevenDayAppointmentReminders() {
+  return sendSevenDayAppointmentReminders();
 }
+
+/**
+ * Test 7-day appointment reminder system
+ */
+function doTestSevenDayAppointmentReminders() {
+  return testSevenDayAppointmentReminders();
+}
+
+/**
+ * Create automated trigger for 7-day appointment reminders
+ * Runs daily at 10:00 AM to send reminders for appointments 7 days ahead
+ */
+function createSevenDayAppointmentReminderTrigger() {
+  try {
+    // Delete existing 7-day reminder triggers
+    const existingTriggers = ScriptApp.getProjectTriggers();
+    existingTriggers.forEach(trigger => {
+      if (trigger.getHandlerFunction() === 'doSendSevenDayAppointmentReminders') {
+        ScriptApp.deleteTrigger(trigger);
+      }
+    });
+    
+    // Create daily trigger for 7-day reminders (runs at 10:00 AM)
+    ScriptApp.newTrigger('doSendSevenDayAppointmentReminders')
+      .timeBased()
+      .everyDays(1)
+      .atHour(10)
+      .create();
+    
+    console.log("7-day appointment reminder trigger created successfully");
+    
+    return {
+      success: true,
+      message: "สร้างการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติเรียบร้อย",
+      schedule: "Daily at 10:00 AM",
+      description: "ส่งการแจ้งเตือนให้ผู้ป่วยที่ลงทะเบียน LINE สำหรับการนัดหมายที่จะมาถึงในอีก 7 วัน"
+    };
+    
+  } catch (error) {
+    console.error("Error creating 7-day appointment reminder trigger:", error);
+    return {
+      success: false,
+      message: "เกิดข้อผิดพลาดในการสร้างการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติ",
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Delete 7-day appointment reminder trigger
+ */
+function deleteSevenDayAppointmentReminderTrigger() {
+  try {
+    const existingTriggers = ScriptApp.getProjectTriggers();
+    let deletedCount = 0;
+    
+    existingTriggers.forEach(trigger => {
+      if (trigger.getHandlerFunction() === 'doSendSevenDayAppointmentReminders') {
+        ScriptApp.deleteTrigger(trigger);
+        deletedCount++;
+      }
+    });
+    
+    console.log(`Deleted ${deletedCount} 7-day appointment reminder triggers`);
+    
+    return {
+      success: true,
+      message: `ลบการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติ ${deletedCount} รายการ`,
+      deletedCount: deletedCount
+    };
+    
+  } catch (error) {
+    console.error("Error deleting 7-day appointment reminder trigger:", error);
+    return {
+      success: false,
+      message: "เกิดข้อผิดพลาดในการลบการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติ",
+      error: error.toString()
+    };
+  }
+}
+
