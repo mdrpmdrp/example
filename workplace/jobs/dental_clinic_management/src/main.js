@@ -30,7 +30,8 @@ function doGet() {
     return htmlOutput
       .evaluate()
       .setTitle("ระบบจัดการคลินิคทันตกรรม")
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .setFaviconUrl("https://img2.pic.in.th/pic/Screenshot-2025-09-22-215301.png");
   } catch (error) {
     Logger.log("Error in doGet:", error);
 
@@ -110,95 +111,5 @@ function findAppointmentsByDate(date) {
 
   // Fallback to existing function
   return getAppointmentsByDateRange(date, date);
-}
-
-// 7-Day Appointment Reminder Functions
-
-/**
- * Send appointment reminders to registered patients 7 days ahead
- * External access function for triggers and manual execution
- */
-function doSendSevenDayAppointmentReminders() {
-  return sendSevenDayAppointmentReminders();
-}
-
-/**
- * Test 7-day appointment reminder system
- */
-function doTestSevenDayAppointmentReminders() {
-  return testSevenDayAppointmentReminders();
-}
-
-/**
- * Create automated trigger for 7-day appointment reminders
- * Runs daily at 10:00 AM to send reminders for appointments 7 days ahead
- */
-function createSevenDayAppointmentReminderTrigger() {
-  try {
-    // Delete existing 7-day reminder triggers
-    const existingTriggers = ScriptApp.getProjectTriggers();
-    existingTriggers.forEach(trigger => {
-      if (trigger.getHandlerFunction() === 'doSendSevenDayAppointmentReminders') {
-        ScriptApp.deleteTrigger(trigger);
-      }
-    });
-    
-    // Create daily trigger for 7-day reminders (runs at 10:00 AM)
-    ScriptApp.newTrigger('doSendSevenDayAppointmentReminders')
-      .timeBased()
-      .everyDays(1)
-      .atHour(10)
-      .create();
-    
-    console.log("7-day appointment reminder trigger created successfully");
-    
-    return {
-      success: true,
-      message: "สร้างการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติเรียบร้อย",
-      schedule: "Daily at 10:00 AM",
-      description: "ส่งการแจ้งเตือนให้ผู้ป่วยที่ลงทะเบียน LINE สำหรับการนัดหมายที่จะมาถึงในอีก 7 วัน"
-    };
-    
-  } catch (error) {
-    console.error("Error creating 7-day appointment reminder trigger:", error);
-    return {
-      success: false,
-      message: "เกิดข้อผิดพลาดในการสร้างการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติ",
-      error: error.toString()
-    };
-  }
-}
-
-/**
- * Delete 7-day appointment reminder trigger
- */
-function deleteSevenDayAppointmentReminderTrigger() {
-  try {
-    const existingTriggers = ScriptApp.getProjectTriggers();
-    let deletedCount = 0;
-    
-    existingTriggers.forEach(trigger => {
-      if (trigger.getHandlerFunction() === 'doSendSevenDayAppointmentReminders') {
-        ScriptApp.deleteTrigger(trigger);
-        deletedCount++;
-      }
-    });
-    
-    console.log(`Deleted ${deletedCount} 7-day appointment reminder triggers`);
-    
-    return {
-      success: true,
-      message: `ลบการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติ ${deletedCount} รายการ`,
-      deletedCount: deletedCount
-    };
-    
-  } catch (error) {
-    console.error("Error deleting 7-day appointment reminder trigger:", error);
-    return {
-      success: false,
-      message: "เกิดข้อผิดพลาดในการลบการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติ",
-      error: error.toString()
-    };
-  }
 }
 

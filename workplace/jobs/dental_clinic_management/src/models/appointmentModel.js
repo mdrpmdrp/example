@@ -119,7 +119,7 @@ function addAppointment(appointmentData, currentUser = null) {
       appointmentData.status || "scheduled",
       appointmentData.notes || "",
       appointmentData.branch ||
-        (currentUser ? currentUser.branch : "BRANCH_01"),
+      (currentUser ? currentUser.branch : "BRANCH_01"),
       timestamp,
       timestamp,
       currentUser ? currentUser.username : "UNKNOWN",
@@ -135,7 +135,8 @@ function addAppointment(appointmentData, currentUser = null) {
 
     // Send notification to Google Chat
     try {
-      sendFormSubmissionNotification("appointment", newAppointment, "เพิ่ม");
+      // sendFormSubmissionNotification("appointment", newAppointment, "เพิ่ม");
+      sendAppointmentConfirmation(appointmentData)
     } catch (notificationError) {
       console.error("Notification error:", notificationError);
     }
@@ -214,6 +215,9 @@ function updateAppointment(appointmentId, appointmentData, currentUser = null) {
     // Send notification to Google Chat
     try {
       sendFormSubmissionNotification("appointment", updatedAppointment, "แก้ไข");
+      if(appointmentData.status !== 'cancelled') {
+        sendAppointmentEdit(appointmentData);
+      }
     } catch (notificationError) {
       console.error("Notification error:", notificationError);
     }
@@ -310,8 +314,8 @@ function getAppointmentsByDateRange(startDate, endDate) {
     const filteredAppointments = allAppointments.appointments.filter(
       (appointment) => {
         const appointmentDate = new Date(appointment.appointment_date);
-        return appointmentDate >= new Date(startDate) && 
-               appointmentDate <= new Date(endDate);
+        return appointmentDate >= new Date(startDate) &&
+          appointmentDate <= new Date(endDate);
       }
     );
 
@@ -319,5 +323,109 @@ function getAppointmentsByDateRange(startDate, endDate) {
   } catch (error) {
     console.error("Error getting appointments by date range:", error);
     return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Get today's appointments from Today Appointments sheet
+ */
+function getTodayAppointments() {
+  let sheet = getSheet(SHEET_NAMES.TODAY_APPOINTMENTS);
+  let [header, ...data] = sheet
+    .getDataRange()
+    .getValues()
+    .filter((x) => x[0] != ""); // Remove empty rows
+
+  if (data.length <= 1) {
+    return { success: true, appointments: [] };
+  }
+
+  let appointments = data.map((row) => ({
+    id: row[0],
+    patientId: row[1],
+    patientName: `${row[18]}${row[19]} ${row[20]}`,
+    appointmentTime: row[4],
+    caseType: row[5],
+    caseDetails: row[6],
+    status: row[9],
+    branch: row[11],
+    doctorName: `${row[16]} ${row[17]}`,
+    doctorId: row[3],
+  })).filter(a => a.status === 'scheduled'); // Only include scheduled appointments
+
+  return { success: true, appointments };
+}
+
+function getSevenDaysAheadAppointments() {
+  let sheet = getSheet(SHEET_NAMES.SEVEN_DAYS_AHEAD_APPOINTMENTS);
+  let [header, ...data] = sheet
+    .getDataRange()
+    .getValues()
+    .filter((x) => x[0] != ""); // Remove empty rows
+  if (data.length <= 1) {
+    return { success: true, appointments: [] };
+  }
+  let appointments = data.map((row) => ({
+    id: row[0],
+    patientId: row[1],
+    patientName: `${row[18]}${row[19]} ${row[20]}`,
+    appointmentDate: row[3],
+    appointmentTime: row[4],
+    caseType: row[5],
+    caseDetails: row[6],
+    status: row[9],
+    branch: row[11],
+    doctorName: `${row[16]} ${row[17]}`,
+    doctorId: row[3],
+  })).filter(a => a.status === 'scheduled'); // Only include scheduled appointments
+
+  return { success: true, appointments };
+}
+
+function sendAppointmentConfirmation(appointmentData) {
+  try {
+    // Get patient details
+    const patientResult = getPatientById(appointmentData.patientId);
+    if (!patientResult.success) {
+      console.error("Patient not found for appointment confirmation");
+      return;
+    }
+    const doctorResult = appointmentData.doctorId ? getDoctorById(appointmentData.doctorId) : null;
+
+    const patient = patientResult.patient
+    const doctor = doctorResult && doctorResult.success ? doctorResult.doctor : null;
+    if (!patient.userid || patient.userid.trim() === "") {
+      console.log(`Patient ${patient.patient_id} not registered with LINE, skipping confirmation...`);
+      return;
+    }
+    const lineUserId = patient.userid.trim();
+    appointmentData.appointmentDate = formatDateThai(appointmentData.appointmentDate);
+    LineBotWebhook.push(lineUserId, LINE_CHANNEL_ACCESS_TOKEN, [createAppointmentConfirmationFlexMessage(appointmentData, patient, doctor)]);
+  } catch (error) {
+    console.error("Error sending appointment confirmation:", error);
+  }
+}
+
+function sendAppointmentEdit(appointmentData) {
+  try {
+    // Get patient details
+    const patientResult = getPatientById(appointmentData.patientId);
+    if (!patientResult.success) {
+      console.error("Patient not found for appointment edit notification");
+      return;
+    }
+    const doctorResult = appointmentData.doctorId ? getDoctorById(appointmentData.doctorId) : null;
+
+    const patient = patientResult.patient
+    const doctor = doctorResult && doctorResult.success ? doctorResult.doctor : null; 
+    if (!patient.userid || patient.userid.trim() === "") {
+      console.log(`Patient ${patient.patient_id} not registered with LINE, skipping edit notification...`);
+      return;
+    }
+    const lineUserId = patient.userid.trim();
+    appointmentData.appointmentDate = formatDateThai(appointmentData.appointmentDate);
+    LineBotWebhook.push(lineUserId, LINE_CHANNEL_ACCESS_TOKEN, [createAppointmentEditFlexMessage(appointmentData, patient, doctor)]);
+  } catch (error) {
+    console.error("Error sending appointment edit notification:", error);
   }
 }

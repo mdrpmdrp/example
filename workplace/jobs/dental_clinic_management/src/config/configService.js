@@ -92,6 +92,9 @@ function getNotificationStatus() {
         webhookConfigured: !!webhookUrl,
         notificationsEnabled: notificationsEnabled,
         webhookUrl: webhookUrl ? webhookUrl.substring(0, 50) + "..." : null,
+        message: webhookUrl
+          ? `Google Chat Webhook is configured. Notifications are ${notificationsEnabled ? "enabled" : "disabled"}.`
+          : "Google Chat Webhook is not configured.",
       },
     };
   } catch (error) {

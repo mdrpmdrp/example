@@ -178,150 +178,118 @@ function getStatusTextThai(status) {
   return statusMap[status] || status;
 }
 
+// 7-Day Appointment Reminder Functions
 /**
- * Send daily patient brief to Google Chat
- * This function sends a summary of today's appointments grouped by branch
+ * Send appointment reminders to registered patients 7 days ahead
+ * @returns {Object} Result object with success status and message details
  */
-function sendDailyPatientBrief() {
+function sendSevenDayAppointmentReminders() {
   try {
-    if (!areNotificationsEnabled()) {
-      return { success: false, message: "Notifications are disabled" };
-    }
+    console.log("Starting 7-day appointment reminder process...");
 
-    const today = new Date();
-    const dateFormatted = today.toLocaleDateString("th-TH", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-    const dayOfWeek = today.toLocaleDateString("th-TH", { weekday: "long" });
-
-    // Get today's appointments
-    const todayString = today.toISOString().split("T")[0];
-    const appointmentsResult = getTodayAppointments();
+    // Get appointments for the target date
+    const appointmentsResult = getSevenDaysAheadAppointments();
 
     if (!appointmentsResult.success) {
-      return { success: false, message: "Cannot fetch today's appointments" };
+      console.error("Failed to retrieve appointments:", appointmentsResult.message);
+      return {
+        success: false,
+        message: "ไม่สามารถดึงข้อมูลการนัดหมายได้",
+        details: appointmentsResult.message
+      };
     }
 
     const appointments = appointmentsResult.appointments;
+    console.log(`Found ${appointments.length} appointments`);
 
-    // Group appointments by branch
-    const appointmentsByBranch = Object.groupBy(appointments,(a) => a.branch || "ไม่ระบุสาขา");
-
-    // Send brief for each branch
-    const branches = Object.keys(appointmentsByBranch);
-    for (let i = 0; i < branches.length; i++) {
-      const branch = branches[i];
-      const branchAppointments = appointmentsByBranch[branch];
-
-      const message = generateDailyBriefMessage(
-        branch,
-        branchAppointments,
-        dateFormatted,
-        dayOfWeek
-      );
-      const title = `📋 สรุปคนไข้ประจำวัน - ${branch}`;
-
-      sendGoogleChatNotification(message, title);
-
-      // Add delay between messages to avoid rate limiting
-      if (i < branches.length - 1) {
-        Utilities.sleep(2000); // Wait 2 seconds between branches
-      }
+    if (appointments.length === 0) {
+      return {
+        success: true,
+        message: "ไม่มีการนัดหมายในวันที่ 7 วันข้างหน้า",
+        sentCount: 0,
+        totalCount: 0,
+        targetDate: targetDateString
+      };
     }
 
-    return {
-      success: true,
-      message: `Daily brief sent for ${branches.length} branches`,
-    };
+    // Get all patients to match LINE User IDs
+    const patientsResult = JSON.parse(getAllPatients());
+    if (!patientsResult.success) {
+      console.error("Failed to retrieve patients:", patientsResult.message);
+      return {
+        success: false,
+        message: "ไม่สามารถดึงข้อมูลผู้ป่วยได้"
+      };
+    }
+
+    const patients = patientsResult.patients;
+    const patientMap = {};
+
+    // Create patient lookup map
+    patients.forEach(patient => {
+      if (patient.userid && patient.userid.trim() !== "") {
+        patientMap[patient.patient_id] = {
+          lineUserId: patient.userid.trim(),
+          patientName: `${patient.title_name || ''} ${patient.first_name || ''} ${patient.last_name || ''}`.trim(),
+          branch: patient.branch || 'สาขาหลัก',
+          phone: patient.phone || ''
+        };
+      }
+    });
+
+    let sentCount = 0;
+    let failedCount = 0;
+    const results = [];
+
+    // Process each appointment
+    for (const appointment of appointments) {
+      const patientId = appointment.patient_id;
+      const patientInfo = patientMap[patientId];
+
+      if (!patientInfo) {
+        console.log(`Patient ${patientId} not registered with LINE, skipping...`);
+        results.push({
+          patientId: patientId,
+          status: 'skipped',
+          reason: 'ผู้ป่วยไม่ได้ลงทะเบียน LINE'
+        });
+        continue;
+      }
+
+      // Prepare appointment data for 7-day reminder Flex Message
+      const appointmentData = {
+        patientName: patientInfo.patientName,
+        doctorName: appointment.doctorName || 'แพทย์ประจำ',
+        appointmentDate: formatDateThai(appointment.appointmentDate),
+        appointmentTime: formatTimeThai(appointment.appointmentTime),
+        caseDetails: appointment.caseDetails || 'ทั่วไป',
+        branch: patientInfo.branch,
+        daysAhead: 7
+      };
+
+      try {
+        // Create 7-day reminder Flex Message
+        const reminderMessage = createSevenDayReminderFlexMessage(appointmentData);
+        Logger.log(JSON.stringify(reminderMessage));
+        const sendResult = LineBotWebhook.push(patientInfo.lineUserId, LINE_CHANNEL_ACCESS_TOKEN, [reminderMessage]);
+        // Add delay between messages to avoid rate limiting
+        Utilities.sleep(500);
+      } catch (error) {
+        results.push({
+          patientId: patientId,
+          patientName: patientInfo.patientName,
+          status: 'error',
+          reason: error.toString()
+        });
+        console.error(`Error sending 7-day reminder to ${patientId}:`, error);
+      }
+    }
   } catch (error) {
-    console.error("Error sending daily patient brief:", error);
-    return { success: false, message: error.toString() };
+    console.error("Error in sendSevenDayAppointmentReminders:", error);
+    return {
+      success: false,
+      message: "เกิดข้อผิดพลาดในการส่งการแจ้งเตือน 7 วันล่วงหน้า",
+      error: error.toString()
+    };
   }
-}
-
-/**
- * Get today's appointments from Today Appointments sheet
- */
-function getTodayAppointments() {
-  let ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAMES.TODAY_APPOINTMENTS);
-  let [header, ...data] = sheet
-    .getDataRange()
-    .getValues()
-    .filter((x) => x[0] != ""); // Remove empty rows
-
-  if (data.length <= 1) {
-    return { success: true, appointments: [] };
-  }
-
-  let appointments = data.map((row) => ({
-    id: row[0],
-    patientId: row[1],
-    patientName: `${row[18]}${row[19]} ${row[20]}`,
-    appointmentTime: row[4],
-    caseType: row[5],
-    caseDetails: row[6],
-    status: row[9],
-    branch: row[11],
-    doctorName: `${row[16]} ${row[17]}`,
-    doctorId: row[3],
-  })).filter(a => a.status === 'scheduled'); // Only include scheduled appointments
-
-  return { success: true, appointments };
-}
-
-/**
- * Generate daily brief message for a specific branch
- */
-function generateDailyBriefMessage(
-  branch,
-  appointments,
-  dateFormatted,
-  dayOfWeek
-) {
-  let message = `🏥 ${branch}\n`;
-  message += `📅 ${dayOfWeek} ${dateFormatted}\n\n`;
-
-  if (appointments.length === 0) {
-    message += `🎉 วันนี้ไม่มีการนัดหมาย\nได้พักผ่อนกันเถอะ! 😊\n`;
-    return message;
-  }
-
-  // Group by status
-  const appointmentsByStatus = {
-    scheduled: appointments.filter((apt) => apt.status === "scheduled"),
-    completed: appointments.filter((apt) => apt.status === "completed"),
-    cancelled: appointments.filter((apt) => apt.status === "cancelled"),
-  };
-
-  // Summary statistics
-  message += `📊 สรุปภาพรวม:\n`;
-  message += `• รวมทั้งหมด: ${appointments.length} นัด\n\n`;
-
-  // Show scheduled appointments details
-  if (appointmentsByStatus.scheduled.length > 0) {
-    message += `⏰ การนัดหมายที่กำหนดไว้: (${appointmentsByStatus.scheduled.length} นัด)\n`;
-    appointmentsByStatus.scheduled
-      .sort((a, b) => a.appointment_time?.localeCompare(b.appointment_time))
-      .forEach((apt, index) => {
-        message += `${index + 1}. ${apt.appointment_time} - `;
-        message += `${apt.patient_name || `รหัส: ${apt.patient_id}`}\n`;
-        message += `   📞 ${apt.patient_phone || "ไม่ระบุเบอร์"} | `;
-        message += `👨‍⚕️ ${apt.doctor_name || "ไม่ระบุหมอ"}\n`;
-        message += `   🦷 ${apt.case_type || "ไม่ระบุประเภท"}\n\n`;
-      });
-  }
-
-  // Add encouragement message based on workload
-  if (appointmentsByStatus.scheduled.length > 10) {
-    message += `💪 วันนี้งานเยอะ แต่เราทำได้! สู้ๆ! 🌟`;
-  } else if (appointmentsByStatus.scheduled.length > 5) {
-    message += `👍 วันนี้งานพอดี ทำงานสนุกๆ นะ! 😊`;
-  } else if (appointmentsByStatus.scheduled.length > 0) {
-    message += `😌 วันนี้งานน้อย ได้พักผ่อนบ้าง! ☕`;
-  }
-
-  return message;
 }

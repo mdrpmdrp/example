@@ -16,7 +16,7 @@ function authenticateUser(username, password) {
       const row = data[i];
       if (
         row[USER_COLUMNS.USERNAME] === username &&
-        row[USER_COLUMNS.PASSWORD_HASH] === password &&
+        row[USER_COLUMNS.PASSWORD_HASH] == password &&
         row[USER_COLUMNS.STATUS] === "active"
       ) {
         return {

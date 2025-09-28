@@ -108,55 +108,118 @@ function testDailyPatientBrief() {
 }
 
 /**
- * Complete setup example function
- * This shows how to set up everything from scratch
+ * Send daily patient brief to Google Chat
+ * This function sends a summary of today's appointments grouped by branch
  */
-function completeSetupExample() {
-  Logger.log("=== Complete Setup Example ===");
+function sendDailyPatientBrief() {
+  try {
+    if (!areNotificationsEnabled()) {
+      return { success: false, message: "Notifications are disabled" };
+    }
 
-  // Step 1: Check Google Chat webhook
-  Logger.log("Step 1: Checking Google Chat webhook...");
-  const webhookUrl = getGoogleChatWebhook();
-  if (!webhookUrl) {
-    Logger.log("❌ Google Chat webhook not configured");
-    return { success: false, message: "กรุณาตั้งค่า Google Chat Webhook ก่อน" };
+    const today = new Date();
+    const dateFormatted = today.toLocaleDateString("th-TH", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const dayOfWeek = today.toLocaleDateString("th-TH", { weekday: "long" });
+
+    // Get today's appointments
+    const todayString = today.toISOString().split("T")[0];
+    const appointmentsResult = getTodayAppointments();
+
+    if (!appointmentsResult.success) {
+      return { success: false, message: "Cannot fetch today's appointments" };
+    }
+
+    const appointments = appointmentsResult.appointments;
+
+    // Group appointments by branch
+    const appointmentsByBranch = Object.groupBy(appointments,(a) => a.branch || "ไม่ระบุสาขา");
+
+    // Send brief for each branch
+    const branches = Object.keys(appointmentsByBranch);
+    for (let i = 0; i < branches.length; i++) {
+      const branch = branches[i];
+      const branchAppointments = appointmentsByBranch[branch];
+
+      const message = generateDailyBriefMessage(
+        branch,
+        branchAppointments,
+        dateFormatted,
+        dayOfWeek
+      );
+      const title = `📋 สรุปคนไข้ประจำวัน - ${branch}`;
+
+      sendGoogleChatNotification(message, title);
+
+      // Add delay between messages to avoid rate limiting
+      if (i < branches.length - 1) {
+        Utilities.sleep(2000); // Wait 2 seconds between branches
+      }
+    }
+
+    return {
+      success: true,
+      message: `Daily brief sent for ${branches.length} branches`,
+    };
+  } catch (error) {
+    console.error("Error sending daily patient brief:", error);
+    return { success: false, message: error.toString() };
   }
-  Logger.log("✅ Google Chat webhook is configured");
+}
 
-  // Step 2: Test notification
-  Logger.log("Step 2: Testing Google Chat notification...");
-  const testResult = testGoogleChatNotification();
-  if (!testResult.success) {
-    Logger.log("❌ Google Chat test failed:", testResult.message);
-    return testResult;
+/**
+ * Generate daily brief message for a specific branch
+ */
+function generateDailyBriefMessage(
+  branch,
+  appointments,
+  dateFormatted,
+  dayOfWeek
+) {
+  let message = `🏥 ${branch}\n`;
+  message += `📅 ${dayOfWeek} ${dateFormatted}\n\n`;
+
+  if (appointments.length === 0) {
+    message += `🎉 วันนี้ไม่มีการนัดหมาย\nได้พักผ่อนกันเถอะ! 😊\n`;
+    return message;
   }
-  Logger.log("✅ Google Chat test successful");
 
-  // Step 3: Set up daily brief trigger
-  Logger.log("Step 3: Setting up daily patient brief trigger...");
-  const setupResult = setupDailyPatientBrief(8, 0); // 8:00 AM
-  if (!setupResult.success) {
-    Logger.log("❌ Daily brief setup failed:", setupResult.message);
-    return setupResult;
-  }
-  Logger.log("✅ Daily brief trigger set up successfully");
-
-  // Step 4: Send test brief
-  Logger.log("Step 4: Sending test daily brief...");
-  const briefResult = sendImmediatePatientBrief();
-  if (!briefResult.success) {
-    Logger.log("❌ Test brief failed:", briefResult.message);
-    return briefResult;
-  }
-  Logger.log("✅ Test brief sent successfully");
-
-  Logger.log("=== Setup Complete! ===");
-  Logger.log(
-    "Daily patient brief will be sent every day at 8:00 AM Thailand time"
-  );
-
-  return {
-    success: true,
-    message: "การตั้งค่าสำเร็จ - ระบบจะส่งรายงานรายวันเวลา 8:00 น. ทุกวัน",
+  // Group by status
+  const appointmentsByStatus = {
+    scheduled: appointments.filter((apt) => apt.status === "scheduled"),
+    completed: appointments.filter((apt) => apt.status === "completed"),
+    cancelled: appointments.filter((apt) => apt.status === "cancelled"),
   };
+
+  // Summary statistics
+  message += `📊 สรุปภาพรวม:\n`;
+  message += `• รวมทั้งหมด: ${appointments.length} นัด\n\n`;
+
+  // Show scheduled appointments details
+  if (appointmentsByStatus.scheduled.length > 0) {
+    message += `⏰ การนัดหมายที่กำหนดไว้: (${appointmentsByStatus.scheduled.length} นัด)\n`;
+    appointmentsByStatus.scheduled
+      .sort((a, b) => a.appointment_time?.localeCompare(b.appointment_time))
+      .forEach((apt, index) => {
+        message += `${index + 1}. ${apt.appointment_time} - `;
+        message += `${apt.patient_name || `รหัส: ${apt.patient_id}`}\n`;
+        message += `   📞 ${apt.patient_phone || "ไม่ระบุเบอร์"} | `;
+        message += `👨‍⚕️ ${apt.doctor_name || "ไม่ระบุหมอ"}\n`;
+        message += `   🦷 ${apt.case_type || "ไม่ระบุประเภท"}\n\n`;
+      });
+  }
+
+  // Add encouragement message based on workload
+  if (appointmentsByStatus.scheduled.length > 10) {
+    message += `💪 วันนี้งานเยอะ แต่เราทำได้! สู้ๆ! 🌟`;
+  } else if (appointmentsByStatus.scheduled.length > 5) {
+    message += `👍 วันนี้งานพอดี ทำงานสนุกๆ นะ! 😊`;
+  } else if (appointmentsByStatus.scheduled.length > 0) {
+    message += `😌 วันนี้งานน้อย ได้พักผ่อนบ้าง! ☕`;
+  }
+
+  return message;
 }

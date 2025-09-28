@@ -2886,11 +2886,11 @@
 
             // Initialize progress bar
             updateLoadingProgress('เริ่มต้นโหลดข้อมูล...', 0, window.loadingCounter.total);
+            loadOptions();
             loadPatients();
             loadAppointments();
             loadRevenues();
             loadDoctors();
-            loadOptions();
 
             // Load users only for admin and super_admin
             if (shouldLoadUsers) {
@@ -3668,7 +3668,7 @@
                 });
 
                 // Get branch display name
-                const branch = branches.find(b => b.value === apt.branch);
+                const branch = branches.find(b => b === apt.branch);
                 const branchName = branch ? `สาขา : ${branch.displayName || apt.branch}` : 'ไม่ระบุสาขา';
 
                 return `
@@ -5226,8 +5226,9 @@
 
             google.script.run
                 .withSuccessHandler(function (result) {
+                    console.log('Notification status result:', result);
                     if (result.success) {
-                        const isConfigured = result.isConfigured;
+                        const isConfigured = result.status.webhookConfigured;
 
                         // Update status display
                         if (isConfigured) {
@@ -5235,7 +5236,7 @@
                             statusEl.innerHTML = `
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-check-circle me-2"></i>
-                                    <span>${result.message}</span>
+                                    <span>${result.status.message}</span>
                                 </div>
                             `;
                         } else {
@@ -5243,7 +5244,7 @@
                             statusEl.innerHTML = `
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-exclamation-triangle me-2"></i>
-                                    <span>${result.message}</span>
+                                    <span>${result.status.message}</span>
                                 </div>
                             `;
                         }
@@ -5254,19 +5255,10 @@
                         testBtn.disabled = !isConfigured;
 
                         // Show current webhook URL (partially masked for security)
-                        if (isConfigured) {
-                            google.script.run
-                                .withSuccessHandler(function (webhookUrl) {
-                                    if (webhookUrl) {
-                                        // Mask the URL for security (show only first and last parts)
-                                        const maskedUrl = webhookUrl.length > 50
-                                            ? webhookUrl.substring(0, 40) + '...' + webhookUrl.substring(webhookUrl.length - 20)
-                                            : webhookUrl;
-                                        webhookUrlInput.placeholder = maskedUrl;
-                                    }
-                                })
-                                .getGoogleChatWebhook();
-                        }
+                        const maskedUrl = result.status.webhookUrl.length > 50
+                            ? result.status.webhookUrl.substring(0, 40) + '...' + result.status.webhookUrl.substring(result.status.webhookUrl.length - 20)
+                            : result.status.webhookUrl;
+                        webhookUrlInput.placeholder = maskedUrl;
                     } else {
                         statusEl.className = 'alert alert-danger';
                         statusEl.innerHTML = `

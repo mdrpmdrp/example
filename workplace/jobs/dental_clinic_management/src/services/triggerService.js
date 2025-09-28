@@ -97,13 +97,13 @@ function getDailyPatientBriefTriggerStatus() {
     const created = properties.getProperty("DAILY_BRIEF_CREATED");
 
     if (!triggerId) {
-      return {
+      return Logger.log( JSON.stringify( {
         success: true,
         status: {
           hasActiveTrigger: false,
           message: "ไม่มี trigger ที่ทำงานอยู่",
         },
-      };
+      }));
     }
 
     // Check if trigger still exists
@@ -117,16 +117,16 @@ function getDailyPatientBriefTriggerStatus() {
       properties.deleteProperty("DAILY_BRIEF_MINUTE");
       properties.deleteProperty("DAILY_BRIEF_CREATED");
 
-      return {
+      return Logger.log(JSON.stringify( {
         success: true,
         status: {
           hasActiveTrigger: false,
           message: "trigger ถูกลบไปแล้ว",
         },
-      };
+      }));
     }
 
-    return {
+    Logger.log(JSON.stringify({
       success: true,
       status: {
         hasActiveTrigger: true,
@@ -137,7 +137,7 @@ function getDailyPatientBriefTriggerStatus() {
         created: created ? new Date(created).toLocaleDateString("th-TH") : "ไม่ทราบ",
         message: `กำหนดเวลาส่งรายงานรายวันเวลา ${hour?.padStart(2, "0")}:${minute?.padStart(2, "0")} น. ทุกวัน`,
       },
-    };
+    }));
   } catch (error) {
     console.error("Error getting daily patient brief trigger status:", error);
     return {
@@ -156,5 +156,78 @@ function updateDailyPatientBriefTrigger(hour = 8, minute = 0) {
   } catch (error) {
     console.error("Error updating daily patient brief trigger:", error);
     return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Create automated trigger for 7-day appointment reminders
+ * Runs daily at 10:00 AM to send reminders for appointments 7 days ahead
+ */
+function createSevenDayAppointmentReminderTrigger() {
+  try {
+    // Delete existing 7-day reminder triggers
+    const existingTriggers = ScriptApp.getProjectTriggers();
+    existingTriggers.forEach(trigger => {
+      if (trigger.getHandlerFunction() === 'sendSevenDayAppointmentReminders') {
+        ScriptApp.deleteTrigger(trigger);
+      }
+    });
+    
+    // Create daily trigger for 7-day reminders (runs at 10:00 AM)
+    ScriptApp.newTrigger('sendSevenDayAppointmentReminders')
+      .timeBased()
+      .everyDays(1)
+      .atHour(10)
+      .create();
+    
+    console.log("7-day appointment reminder trigger created successfully");
+    
+    return {
+      success: true,
+      message: "สร้างการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติเรียบร้อย",
+      schedule: "Daily at 10:00 AM",
+      description: "ส่งการแจ้งเตือนให้ผู้ป่วยที่ลงทะเบียน LINE สำหรับการนัดหมายที่จะมาถึงในอีก 7 วัน"
+    };
+    
+  } catch (error) {
+    console.error("Error creating 7-day appointment reminder trigger:", error);
+    return {
+      success: false,
+      message: "เกิดข้อผิดพลาดในการสร้างการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติ",
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Delete 7-day appointment reminder trigger
+ */
+function deleteSevenDayAppointmentReminderTrigger() {
+  try {
+    const existingTriggers = ScriptApp.getProjectTriggers();
+    let deletedCount = 0;
+    
+    existingTriggers.forEach(trigger => {
+      if (trigger.getHandlerFunction() === 'sendSevenDayAppointmentReminders') {
+        ScriptApp.deleteTrigger(trigger);
+        deletedCount++;
+      }
+    });
+    
+    console.log(`Deleted ${deletedCount} 7-day appointment reminder triggers`);
+    
+    return {
+      success: true,
+      message: `ลบการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติ ${deletedCount} รายการ`,
+      deletedCount: deletedCount
+    };
+    
+  } catch (error) {
+    console.error("Error deleting 7-day appointment reminder trigger:", error);
+    return {
+      success: false,
+      message: "เกิดข้อผิดพลาดในการลบการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติ",
+      error: error.toString()
+    };
   }
 }
