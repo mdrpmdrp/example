@@ -1079,7 +1079,7 @@
                     ]
                 });
 
-                datatable.on('select deselect', function (e, dt, type, indexes) {
+                datatable.on('select', function (e, dt, type, indexes) {
                     let selectedRows = datatable.rows({ selected: true }).count()
                     if (type === 'row') {
                         indexes.forEach(function (idx) {
@@ -1089,8 +1089,16 @@
                             }
                         });
                     }
-                    console.log(`Selected rows: ${selectedRows}`);
                 })
+
+                datatable.on('deselect', function (e, dt, type, indexes) {
+                    let selectedRows = datatable.rows({ selected: true }).count()
+                    if (selectedRows === 0) {
+                        showTableButtons('add')
+                        datatable.column(1).visible(false);
+                        reloadTable('#goldTable');
+                    }
+                });
 
             }
             else if (selector === '#transactionTable') {
@@ -1879,6 +1887,7 @@
         $(function () {
 
             const setUserData = (user) => {
+                console.log('Setting user data:', user);
                 if (!user) return;
                 window.user = user;
                 if(user.role === 'admin') user.branch = 'all';
@@ -1942,8 +1951,7 @@
             const storedUser = localStorage.getItem('goldshop_user');
             if (storedUser) {
                 const user = JSON.parse(storedUser);
-                // if (user && user.expires && user.expires > Date.now()) {
-                if(user) {
+                if (user && user.expires && user.expires > Date.now()) {
                     $('#login-section').hide();
                     $('#main-sec').show();
                     reloadTable('#goldTable');
@@ -2010,6 +2018,7 @@
                     cancelButtonText: 'ยกเลิก',
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        showTableButtons('add')
                         goldSwal({
                             icon: 'info',
                             title: 'กำลังออกจากระบบ...',

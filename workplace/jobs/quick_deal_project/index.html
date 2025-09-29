@@ -343,18 +343,30 @@
                             </div>
                         </div>
                         <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="editCheckupProgram" class="form-label">โปรแกรมตรวจ</label>
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <label for="editCheckupProgram" class="form-label">โปรแกรมตรวจ</label>
+                                    <button type="button" class="btn btn-sm"
+                                        id="copyCheckupProgramBtn">
+                                        <i class="bi bi-clipboard me-1"></i> คัดลอก
+                                    </button>
+                                </div>
                                 <textarea class="form-control rounded-3" id="editCheckupProgram" name="checkupProgram"
                                     rows="5"></textarea>
                             </div>
-                            <div class="col-md-6">
-                                <label for="editAdditionalCheckupProgram" class="form-label">โปรแกรมตรวจ
-                                    เพิ่มเติม</label>
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <label for="editAdditionalCheckupProgram" class="form-label">โปรแกรมตรวจ
+                                        เพิ่มเติม</label>
+                                    <button type="button" class="btn btn-sm"
+                                        id="copyAdditionalCheckupProgramBtn">
+                                        <i class="bi bi-clipboard me-1"></i> คัดลอก
+                                    </button>
+                                </div>
                                 <textarea class="form-control rounded-3" id="editAdditionalCheckupProgram"
                                     name="additionalCheckupProgram" rows="5"></textarea>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <label for="editEntitlementDocument" class="form-label">เอกสารขอรับสิทธิ</label>
                                 <input type="text" class="form-control rounded-3" id="editEntitlementDocument"
                                     name="entitlementDocument" />
@@ -414,13 +426,32 @@
     <!-- update status modal -->
     <div class="modal fade" id="updateStatusModal" tabindex="-1" aria-labelledby="updateStatusModalLabel"
         aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="updateStatusModalLabel">อัปเดตสถานะ</h5>
                     <button type="button" class="btn-close dismiss-update-modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title mb-2">ข้อมูลผู้ป่วย</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <small class="text-muted">HN:</small>
+                                    <div id="briefHn" class="fw-semibold">-</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">ชื่อ-นามสกุล:</small>
+                                    <div id="briefFullName" class="fw-semibold">-</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">บริษัท:</small>
+                                    <div id="briefCompany" class="fw-semibold">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <form id="updateStatusForm">
                         <input type="hidden" id="statusHn" name="hn" value="" />
                         <div class="mb-3">
@@ -877,6 +908,9 @@
                         row = row.prev(); // If it's a child row, get the parent row
                     }
                     const rowData = window.MainTable.row(row).data();
+                    $("#briefHn").text(rowData.hn);
+                    $("#briefFullName").text(rowData.fullName);
+                    $("#briefCompany").text(rowData.company);
                     if (
                         rowData.dataStatus === "Inactive" ||
                         rowData.dataStatus === "Locked"
@@ -910,20 +944,16 @@
                         .on("click", "button.dismiss-update-modal", function (e) {
                             e.preventDefault();
                             let change = false;
-
-                            if (
-                                $("#statusSelect").val() !== null &&
-                                window._editModalOriginalData.status !==
-                                $("#statusSelect").val()
-                            ) {
-                                change = true;
-                            }
-                            if (
-                                window._editModalOriginalData.opdNote !==
-                                ($("#statusOpdNote").val() || "")
-                            ) {
-                                change = true;
-                            }
+                            $('#updateStatusForm').find("input,textarea,select")
+                            .each(function () {
+                                if (
+                                    $(this).val() !==
+                                    window._editModalOriginalData[$(this).attr("id")]
+                                ) {
+                                    changed = true;
+                                    return false;
+                                }
+                            });
 
                             if (change) {
                                 Swal.fire({
@@ -999,6 +1029,9 @@
                 form.reset();
                 // Hide service date field
                 $("#editServiceDateContainer").addClass("d-none");
+                $('#briefHn').text('-');
+                $('#briefFullName').text('-');
+                $('#briefCompany').text('-');
                 $("#editDataForm")
                     .find("input,textarea,select")
                     .each(function () {
@@ -1047,6 +1080,76 @@
             });
         }
 
+        $('#copyCheckupProgramBtn').on('click', function () {
+            let checkupProgram = $("#editCheckupProgram").val();
+            if (checkupProgram) {
+                try{
+                    navigator.clipboard.writeText(checkupProgram).then(
+                        function () {
+                            Swal.fire({
+                                toast: true,
+                                position: "top-end",
+                                icon: "success",
+                                title: "คัดลอกโปรแกรมตรวจเรียบร้อย",
+                                showConfirmButton: false,
+                                timer: 1500,
+                                customClass: SwalCustomClasses,
+                            });
+                        },
+                        function () {
+                            Swal.fire({
+                                toast: true,
+                                position: "top-end",
+                                icon: "error",
+                                title: "ไม่สามารถคัดลอกโปรแกรมตรวจได้",
+                                showConfirmButton: false,
+                                timer: 1500,
+                                customClass: SwalCustomClasses,
+                            });
+                        }
+                    );
+                } catch (err) {
+                    console.error("Error copying text: ", err);
+                }
+            }
+        });
+
+        $('#copyAdditionalCheckupProgramBtn').on('click', function () {
+            let additionalCheckupProgram = $(
+                "#editAdditionalCheckupProgram"
+            ).val();
+            if (additionalCheckupProgram) {
+                try{
+                    navigator.clipboard.writeText(additionalCheckupProgram).then(
+                        function () {
+                            Swal.fire({
+                                toast: true,
+                                position: "top-end",
+                                icon: "success",
+                                title: "คัดลอกโปรแกรมตรวจเพิ่มเติมเรียบร้อย",
+                                showConfirmButton: false,
+                                timer: 1500,
+                                customClass: SwalCustomClasses,
+                            });
+                        },
+                        function () {
+                            Swal.fire({
+                                toast: true,
+                                position: "top-end",
+                                icon: "error",
+                                title: "ไม่สามารถคัดลอกโปรแกรมตรวจเพิ่มเติมได้",
+                                showConfirmButton: false,
+                                timer: 1500,
+                                customClass: SwalCustomClasses,
+                            });
+                        }
+                    );
+                } catch (err) {
+                    console.error("Error copying text: ", err);
+                }
+            }
+        })
+        
         function filterDateRange() {
             let _start = $("#exportStartDate").val();
             let _end = $("#exportEndDate").val();
@@ -1328,7 +1431,7 @@
                     if (window._editModalOriginalData) {
                         let changed = false;
                         $("#editDataForm")
-                            .find("input,textarea")
+                            .find("input,textarea,select")
                             .each(function () {
                                 if (
                                     $(this).val() !==

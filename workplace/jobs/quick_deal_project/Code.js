@@ -65,7 +65,6 @@ function getContractData(role) {
         success: true,
         data: contracts
     });
-
 }
 
 function getLists() {
@@ -121,7 +120,7 @@ function saveUpdateData(formData) {
     newRow[15] = new Date(formData.serviceDate); // use existing serviceDate if provided
 
     // Find row by citizenId or trimmed fullName
-    const rowIdx = data.findIndex(row =>
+    const rowIdx = data.findLastIndex(row =>
         row[6] === formData.citizenId ||
         (row[4] && row[4].trim() === formData.fullName)
     );
@@ -144,32 +143,28 @@ function saveUpdateData(formData) {
 }
 
 function saveQuickUpdate(formData) {
-    formData = {
-        "serviceStatus": "OBG",
-        "opdNote": "qwedweferdsv",
-        "hn": "hn12424"
-    }
     let lock = LockService.getScriptLock();
     if (!lock.tryLock(30000)) {
         return returnObj({ success: false, message: 'Could not acquire lock' });
     }
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let ws = ss.getSheetByName('Visit Data');
-    let finder = ws.getRange("A:A").createTextFinder(formData.hn).matchEntireCell(true).findNext();
-    if (!finder) {
+    let finder = ws.getDataRange().getValues().findLastIndex(row => row[0] === formData.hn);
+    if (finder === -1) {
         lock.releaseLock();
         return returnObj({ success: false, message: 'ไม่พบข้อมูล HN นี้' });
     }
     const today = new Date();
-    const newRow = ws.getRange(finder.getRow(), 1, 1, ws.getLastColumn()).getValues()[0];
+    const newRow = ws.getRange(finder + 1, 1, 1, ws.getLastColumn()).getValues()[0];
     const existingDate = newRow[15];
     let serviceStatus = formData.serviceStatus;
     let opdNote = formData.opdNote;
     newRow[12] = serviceStatus;
     newRow[14] = opdNote;
     newRow[16] = today;
+
     if (existingDate && new Date(existingDate).toDateString() === today.toDateString()) {
-        ws.getRange(finder.getRow(), 1, 1, newRow.length).setValues([newRow]);
+        ws.getRange(finder + 1, 1, 1, newRow.length).setValues([newRow]);
         lock.releaseLock();
         return returnObj({ success: true, message: 'บันทึกข้อมูลเรียบร้อยแล้ว' });
     } else {

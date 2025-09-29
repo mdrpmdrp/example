@@ -1,4 +1,5 @@
 function doGet() {
+  
     let html = HtmlService.createTemplateFromFile('index');
     html.lists = getList();
     return html.evaluate()
