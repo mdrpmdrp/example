@@ -1,5 +1,5 @@
 function doGet() {
-  
+
     let html = HtmlService.createTemplateFromFile('index');
     html.lists = getList();
     return html.evaluate()
@@ -278,7 +278,7 @@ function saveMeltBill(meltData) {
         meltData.meltSellPrice || '',
         meltData.recorder || '',
         meltData.branch || '',
-        'เสร็จสิ้น'
+        'รอส่ง'
     ];
     sheet.getRange(lastRow + 1, 1, 1, newRow.length).setValues([newRow]);
     let buySheet = ss.getSheetByName('บันทึกซื้อ');
@@ -434,24 +434,8 @@ function onEdit(e) {
     let col = e.range.getColumn();
     let row = e.range.getRow();
     if (sheet.getName() === 'บันทึกหลอม' && col === 9 && e.value === 'ยกเลิก') {
-        let lock = LockService.getScriptLock();
-        if (!lock.tryLock(10000)) {
-            throw new Error('ไม่สามารถยกเลิกการหลอมได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง');
-        }
         let meltBillNo = sheet.getRange(row, 2).getValue();
-        let ss = SpreadsheetApp.getActiveSpreadsheet();
-        let buySheet = ss.getSheetByName('บันทึกซื้อ');
-        let lastRow = SuperScript.getRealLastRow('A', buySheet);
-        let dataRange = buySheet.getRange(2, 1, lastRow - 1, buySheet.getLastColumn()).getValues();
-        dataRange.forEach((row, index) => {
-            if (row[10] == meltBillNo) { // Assuming bill number is in column K (index 10)
-                row[10] = ''; // Reset bill number to ''
-                buySheet.getRange(index + 2, 1, 1, row.length).setValues([row]); // +2 because of header and zero-based index
-            }
-        });
-        sheet.deleteRow(row); // Delete the row where the cancel was triggered
-        eventLog('ยกเลิกบิลหลอม ' + meltBillNo + '\nโดย ' + Session.getActiveUser().getEmail());
-        lock.releaseLock();
+        cancelMeltBill(meltBillNo, 'ยกเลิกโดยตรงในชีท');
     }
 }
 
@@ -499,4 +483,292 @@ function getBranch() {
     let branch = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('สาขา').getDataRange().getValues().filter(v => v[0]).map(branch => branch[0].trim()).slice(1);
     branch.unshift('all');
     return branch;
+}
+
+function getMeltData(branch = '') {
+    if (!branch || branch === '') {
+        return JSON.stringify([]);
+    }
+
+    let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('บันทึกหลอม');
+    let lastRow = SuperScript.getRealLastRow('A', sheet);
+    if (lastRow < 2) {
+        return JSON.stringify([]);
+    }
+
+    let timezone = Session.getScriptTimeZone();
+    let today = Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd');
+    const startOfWeek = new Date();
+    const endOfWeek = new Date();
+    if (startOfWeek.getDay() !== 1) { // If today is Monday
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // Set to last Monday
+    }
+    if (endOfWeek.getDay() !== 6) { // If today is not Saturday
+        endOfWeek.setDate(endOfWeek.getDate() + (6 - endOfWeek.getDay())); // Set to next Saturday
+    }
+    startOfWeek.setHours(0, 0, 0, 0); // Set to start of the day
+    endOfWeek.setHours(23, 59, 59, 999); // Set to end of the day
+
+    let data = sheet.getRange(2, 1, lastRow, sheet.getLastColumn()).getValues().filter(row => {
+        return row[0] && row[0] instanceof Date;
+    });
+
+    // Filter by branch
+    data = data.filter(row => {
+        return branch === 'all' || row[7] === branch; // Column H (index 7) is branch
+    });
+
+    // Sort by date descending
+    data = data.sort((a, b) => {
+        return b[0] - a[0];
+    });
+    return JSON.stringify(data.map(row => {
+        return {
+            date: row[0],
+            billNo: row[1],
+            beforeWeight: row[2],
+            buyPrice: row[3],
+            afterWeight: row[4],
+            sellPrice: row[5],
+            recorder: row[6],
+            branch: row[7],
+            status: row[8],
+            enableEdit: row[8] !== 'ยกเลิก' && (row[0] >= startOfWeek && row[0] <= endOfWeek),
+        }
+    }));
+}
+
+
+function updateMeltBill(billNo, updateData, updater) {
+    let lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+        return JSON.stringify({ success: false, message: 'ไม่สามารถแก้ไขข้อมูลได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง' });
+    }
+
+    try {
+        let ss = SpreadsheetApp.getActiveSpreadsheet();
+        let sheet = ss.getSheetByName('บันทึกหลอม');
+        let lastRow = SuperScript.getRealLastRow('A', sheet);
+        let dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+
+        let rowIndex = -1;
+        for (let i = 0; i < dataRange.length; i++) {
+            if (dataRange[i][1] === billNo) { // Column B (index 1) is bill number
+                rowIndex = i;
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return JSON.stringify({ success: false, message: 'ไม่พบบิลหลอมที่ต้องการแก้ไข' });
+        }
+
+        let row = dataRange[rowIndex];
+
+        // Update fields
+        if (updateData.afterWeight !== undefined && updateData.afterWeight !== null && updateData.afterWeight !== '') {
+            row[4] = parseFloat(updateData.afterWeight); // Column E (index 4) is after weight
+        }
+        if (updateData.sellPrice !== undefined && updateData.sellPrice !== null && updateData.sellPrice !== '') {
+            row[5] = parseFloat(updateData.sellPrice); // Column F (index 5) is sell price
+        }
+        row[2] = '',
+            row[3] = '',
+            sheet.getRange(rowIndex + 2, 1, 1, row.length).setValues([row]);
+
+        eventLog('แก้ไขข้อมูลบิลหลอม ' + billNo + '\n' + row.join(', ') + '\nโดย ' + updater);
+
+        return JSON.stringify({ success: true, message: 'แก้ไขข้อมูลบิลหลอมสำเร็จ' });
+    } catch (error) {
+        return JSON.stringify({ success: false, message: 'เกิดข้อผิดพลาด: ' + error.message });
+    } finally {
+        lock.releaseLock();
+    }
+}
+
+function cancelMeltBill(billNo, canceler) {
+    let lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+        return JSON.stringify({ success: false, message: 'ไม่สามารถยกเลิกบิลได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง' });
+    }
+
+    try {
+        let ss = SpreadsheetApp.getActiveSpreadsheet();
+        let meltSheet = ss.getSheetByName('บันทึกหลอม');
+        let lastRow = SuperScript.getRealLastRow('A', meltSheet);
+        let dataRange = meltSheet.getRange(2, 1, lastRow - 1, meltSheet.getLastColumn()).getValues();
+
+        let rowIndex = -1;
+        for (let i = 0; i < dataRange.length; i++) {
+            if (dataRange[i][1] === billNo) { // Column B (index 1) is bill number
+                rowIndex = i;
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return JSON.stringify({ success: false, message: 'ไม่พบบิลหลอมที่ต้องการยกเลิก' });
+        }
+
+        let row = dataRange[rowIndex];
+
+        if (row[8] === 'ยกเลิก') {
+            return JSON.stringify({ success: false, message: 'บิลหลอมนี้ถูกยกเลิกไปแล้ว' });
+        }
+
+        // Update buy records - reset bill number
+        let buySheet = ss.getSheetByName('บันทึกซื้อ');
+        let buyLastRow = SuperScript.getRealLastRow('A', buySheet);
+        let buyDataRange = buySheet.getRange(2, 1, buyLastRow - 1, buySheet.getLastColumn()).getValues();
+
+        buyDataRange.forEach((buyRow, buyIndex) => {
+            if (buyRow[10] === billNo) { // Column K (index 10) is bill number
+                buyRow[10] = ''; // Reset bill number
+                buySheet.getRange(buyIndex + 2, 1, 1, buyRow.length).setValues([buyRow]);
+            }
+        });
+
+        // Delete melt record row
+        meltSheet.deleteRow(rowIndex + 2);
+
+        eventLog('ยกเลิกบิลหลอม ' + billNo + '\nโดย ' + canceler);
+
+        return JSON.stringify({ success: true, message: 'ยกเลิกบิลหลอมสำเร็จ' });
+    } catch (error) {
+        return JSON.stringify({ success: false, message: 'เกิดข้อผิดพลาด: ' + error.message });
+    } finally {
+        lock.releaseLock();
+    }
+}
+
+function getAccountBalance(branch = 'all') {
+    let lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+        return JSON.stringify({ success: false, message: 'ไม่สามารถดึงข้อมูลยอดคงเหลือได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง' });
+    }
+    let timezone = Session.getScriptTimeZone();
+
+    try {
+        let ss = SpreadsheetApp.getActiveSpreadsheet();
+        let sheet = ss.getSheetByName('บันทึกซื้อ');
+        let sheet2 = ss.getSheetByName('บันทึกการรับจ่าย');
+        let lastRow = SuperScript.getRealLastRow('A', sheet);
+        let dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+        let lastRow2 = SuperScript.getRealLastRow('A', sheet2);
+        let dataRange2 = sheet2.getRange(2, 1, lastRow2 - 1, sheet2.getLastColumn()).getValues();
+
+        let today = Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd');
+        let accountBalance = {
+            summary: 0,
+            todaybuy: 0,
+            todaytrans: 0,
+        }
+        dataRange.forEach(row => {
+            if (row[7] !== 'สด') return;
+            if (branch === 'all' || row[6] === branch) { // Column B (index 1) is branch
+                accountBalance.summary -= parseFloat(row[4]) || 0; // Column E (index 4) is amount
+                if (Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today && row[9] === 'เสร็จสิ้น') {
+                    accountBalance.todaybuy += parseFloat(row[4]) || 0;
+                }
+            }
+        });
+
+        dataRange2.forEach(row => {
+            if (row[3] !== 'สด') return;
+            if (branch === 'all' || row[7] === branch) { // Column H (index 7) is branch
+                if (row[1] === 'รับ') { // Column B (index 1) is type
+                    accountBalance.summary += parseFloat(row[4]) || 0; // Column E (index 4) is amount
+                } else if (row[1] === 'จ่าย') {
+                    accountBalance.summary -= parseFloat(row[4]) || 0; // Column E (index 4) is amount
+                }
+                if (Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today && row[8] === 'เสร็จสิ้น') {
+                    if (row[1] === 'รับ') {
+                        accountBalance.todaytrans += parseFloat(row[4]) || 0;
+                    } else if (row[1] === 'จ่าย') {
+                        accountBalance.todaytrans -= parseFloat(row[4]) || 0;
+                    }
+                }
+            }
+        });
+
+
+        return JSON.stringify({ success: true, accountBalance: accountBalance });
+    } catch (error) {
+        return JSON.stringify({ success: false, message: 'เกิดข้อผิดพลาด: ' + error.message });
+    } finally {
+        lock.releaseLock();
+    }
+}
+
+function getMeltSummaryReport(options) {
+    try {
+        let ss = SpreadsheetApp.getActiveSpreadsheet();
+        let meltSheet = ss.getSheetByName('บันทึกหลอม');
+
+        if (!meltSheet) {
+            return JSON.stringify({ success: false, message: 'ไม่พบแผ่นงานบันทึกหลอม' });
+        }
+        let { startDate, endDate, branch } = options;
+
+        startDate = new Date(startDate);
+        endDate = new Date(endDate);
+        startDate.setHours(0, 0, 0, 0); // Start of the day
+        endDate.setHours(23, 59, 59, 999); // Include the entire end date
+
+        let lastRow = SuperScript.getRealLastRow('A', meltSheet);
+        if (lastRow < 2) {
+            return JSON.stringify({ success: true, data: [] });
+        }
+
+        // Get all melt data
+        let allData = meltSheet.getDataRange().getValues().slice(1);
+        let timezone = Session.getScriptTimeZone();
+
+        // Filter data based on options
+        let filteredData = allData.filter(row => {
+            if (!row[0] || !(row[0] instanceof Date)) return false;
+            if (row[8] !== 'รอส่ง') return false; // Only include 'รอส่ง' status   
+
+            // Check date range
+            let rowDate = row[0];
+            if (rowDate < startDate || rowDate > endDate) return false;
+
+            // Check branch
+            if (branch !== 'all' && row[7] !== branch) return false;
+            return true;
+        });
+        // Transform data to expected format xxxxxx
+        let transformedData = filteredData.map(row => {
+            return {
+                date: row[0],
+                billNo: row[1] || '',
+                beforeWeight: parseFloat(row[2]) || 0,
+                buyPrice: parseFloat(row[3]) || 0,
+                afterWeight: parseFloat(row[4]) || 0,
+                sellPrice: parseFloat(row[5]) || 0,
+                recorder: row[6] || '',
+                branch: row[7] || '',
+                status: row[8] || 'เสร็จสิ้น',
+            };
+        });
+        return JSON.stringify({
+            success: true,
+            data: transformedData,
+            rawData: transformedData,
+            summary: {
+                totalBills: filteredData.length,
+                totalBeforeWeight: transformedData.reduce((sum, item) => sum + (item.totalBeforeWeight || item.beforeWeight), 0),
+                totalAfterWeight: transformedData.reduce((sum, item) => sum + (item.totalAfterWeight || item.afterWeight), 0),
+                totalBuyPrice: transformedData.reduce((sum, item) => sum + (item.totalBuyPrice || item.buyPrice), 0),
+                totalSellPrice: transformedData.reduce((sum, item) => sum + (item.totalSellPrice || item.sellPrice), 0)
+            }
+        });
+
+    } catch (error) {
+        return JSON.stringify({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงรายงาน: ' + error.message
+        });
+    }
 }
