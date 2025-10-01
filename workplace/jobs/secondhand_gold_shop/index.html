@@ -649,6 +649,21 @@
                         </div>
                         <h5 class="gold-title mb-3">สรุปข้อมูล</h5>
                         <div class="row">
+                            <div class="col-6">
+                                <div class="border rounded p-2 mb-2 bg-light text-center">
+                                    <span class="fw-semibold text-dark">จำนวนรายการที่เลือก:</span>
+                                    <span id="summaryCount" class="fw-bold text-secondary">0</span> <span
+                                        class="text-secondary">รายการ</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="border rounded p-2 mb-2 bg-light text-center">
+                                    <span class="fw-semibold text-dark">ประเภท:</span>
+                                    <span id="meltType" class="fw-bold text-warning">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="border rounded p-2 mb-2 bg-light text-center">
                                     <span class="fw-semibold text-dark">น้ำหนักก่อนหลอม:</span>
@@ -671,6 +686,11 @@
                                 (ไม่บังคับ)</label>
                             <input type="number" class="form-control" id="meltWeight" name="meltWeight"
                                 placeholder="กรอกน้ำหนักหลังหลอม" min="0" step="0.01">
+                        </div>
+                        <div class="mb-3">
+                            <label for="meltPercentAfterMelt" class="form-label text-dark">% ที่ได้ (ไม่บังคับ)</label>
+                            <input type="number" class="form-control" id="meltPercentAfterMelt" name="meltPercentAfterMelt"
+                                placeholder="กรอกเปอร์เซ็นต์หลังหลอม" min="0" step="0.01">
                         </div>
                         <div class="mb-3">
                             <label for="meltSellPrice" class="form-label text-dark">ยอดขาย (บาท) (ไม่บังคับ)</label>
@@ -771,6 +791,12 @@
                             <label for="editAfterWeight" class="form-label text-dark">น้ำหนักหลังหลอม (กรัม)</label>
                             <input type="number" class="form-control" id="editAfterWeight" name="editAfterWeight"
                                 placeholder="กรอกน้ำหนักหลังหลอม" min="0" step="0.01"
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editPercentAfterMelt" class="form-label text-dark">% ที่ได้</label>
+                            <input type="number" class="form-control" id="editPercentAfterMelt" name="editPercentAfterMelt"
+                                placeholder="กรอกเปอร์เซ็นต์หลังหลอม" min="0" step="0.01"
                                 style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
                         </div>
                         <div class="mb-3">
@@ -1965,6 +1991,13 @@
                         }
                     },
                     {
+                        data: 'meltType',
+                        title: 'หมวดหมู่',
+                        render: function (data) {
+                            return data || 'ไม่ระบุ';
+                        }
+                    },
+                    {
                         data: 'beforeWeight',
                         title: 'น้ำหนักก่อนหลอม (กรัม)',
                         render: function (data) {
@@ -1983,6 +2016,13 @@
                         title: 'น้ำหนักหลังหลอม (กรัม)',
                         render: function (data) {
                             return data ? parseFloat(data).toFixed(2) : '-';
+                        }
+                    },
+                    {
+                        data: 'percentAfterMelt',
+                        title: '% ที่ได้',
+                        render: function (data) {
+                            return data ? parseFloat(data).toFixed(1)+'%' : '-';
                         }
                     },
                     {
@@ -2258,7 +2298,8 @@
             $('#editBillNo').val(data.billNo);
             $('#editBeforeWeight').val(data.beforeWeight);
             $('#editAfterWeight').val(data.afterWeight || '');
-            $('#editSellPrice').val(data.sellPrice || '');
+            $('#editPercentAfterMelt').val(data.percentAfterMelt || '');
+            $('#editSellPrice').val(data.sellPrice || '').parent().css('display', window.user.role === 'admin' ? 'block' : 'none');
 
             // Store current data for form submission
             $('#editMeltBillForm').data('currentData', data);
@@ -2273,7 +2314,8 @@
 
             const updateData = {
                 afterWeight: form.editAfterWeight.value,
-                sellPrice: form.editSellPrice.value
+                sellPrice: form.editSellPrice.value,
+                percentAfterMelt: form.editPercentAfterMelt.value
             };
 
             NProgress.start();
@@ -2441,6 +2483,25 @@
         $('#meltBillModal').on('shown.bs.modal', function () {
             let selectedRows = datatable ? datatable.rows({ selected: true }).data().toArray() : [];
             console.log('selectedRows', selectedRows);
+            let isSameType = selectedRows.every(row => row.category === selectedRows[0].category);
+            if(!isSameType) {
+                goldSwal({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ถูกต้อง',
+                    html: 'กรุณาเลือกแถวที่มีประเภทสินค้าเดียวกันเท่านั้น',
+                });
+                $('#meltBillModal').modal('hide');
+                return;
+            }
+            if (selectedRows.length === 0) {
+                goldSwal({
+                    icon: 'warning',
+                    title: 'ไม่มีข้อมูลที่เลือก',
+                    text: 'กรุณาเลือกแถวที่ต้องการสร้างบิลหลอมก่อน',
+                });
+                $('#meltBillModal').modal('hide');
+                return;
+            }
             let $tbody = $('#selectedRowsTable tbody');
             let tbodyHtml = ''
             selectedRows.forEach(row => {
@@ -2462,6 +2523,9 @@
             });
             $('#summaryWeight').text(totalWeight.toFixed(2));
             $('#summaryPrice').text(totalPrice.toLocaleString('th-TH', { maximumFractionDigits: 2 }));
+            $('#meltSellPrice').parent().css('display', window.user.role === 'admin' ? 'block' : 'none');
+            $('#summaryCount').text(selectedRows.length);
+            $('#meltType').text(selectedRows[0].category || 'ไม่ระบุ');
         })
             .on('hidden.bs.modal', function () {
                 $('#selectedRowsTable tbody').empty();
@@ -2479,6 +2543,8 @@
                 meltSellPrice: form.find('#meltSellPrice').val(),
                 recorder: window.user.name,
                 branch: window.user.branch || 'สาขาหลัก',
+                meltType: $('#meltType').text().trim(),
+                percentAfterMelt: form.find('#meltPercentAfterMelt').val(),
                 selectedRows: datatable ? datatable.rows({ selected: true }).data().toArray().map(row => row.uuid) : []
             };
             if (meltData.selectedRows.length === 0) {
@@ -3036,21 +3102,9 @@
                             title: 'กำลังออกจากระบบ...',
                             didOpen: () => Swal.showLoading()
                         })
+                        window.user = null;
                         localStorage.removeItem('goldshop_user');
-                        setTimeout(() => {
-                            $('#main-sec').hide();
-                            $('#login-section').show();
-                            $('#loginForm')[0].reset();
-                            $('#logoutNavItem').addClass('d-none')
-                            $('#goldNavbar .navbar-nav').addClass('d-none');
-                            if ($('.navbar-collapse.show').length) {
-                                $('.navbar-toggler').trigger('click');
-                            }
-                            setTimeout(() => {
-                                $('#loginUser').focus();
-                            }, 200);
-                            Swal.close();
-                        }, 1500);
+                        window.open('<?= ScriptApp.getService().getUrl() ?>', '_top');
                     }
                 });
             });

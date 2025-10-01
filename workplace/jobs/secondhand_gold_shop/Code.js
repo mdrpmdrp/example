@@ -272,13 +272,15 @@ function saveMeltBill(meltData) {
     let newRow = [
         new Date(),
         meltBillNo,
+        meltData.meltType || '',
         '',
         '',
         meltData.meltWeight || '',
         meltData.meltSellPrice || '',
         meltData.recorder || '',
         meltData.branch || '',
-        'รอส่ง'
+        'รอส่ง',
+        meltData.percentAfterMelt || '',
     ];
     sheet.getRange(lastRow + 1, 1, 1, newRow.length).setValues([newRow]);
     let buySheet = ss.getSheetByName('บันทึกซื้อ');
@@ -516,7 +518,7 @@ function getMeltData(branch = '') {
 
     // Filter by branch
     data = data.filter(row => {
-        return branch === 'all' || row[7] === branch; // Column H (index 7) is branch
+        return branch === 'all' || row[8] === branch; // Column I (index 8) is branch
     });
 
     // Sort by date descending
@@ -527,14 +529,16 @@ function getMeltData(branch = '') {
         return {
             date: row[0],
             billNo: row[1],
-            beforeWeight: row[2],
-            buyPrice: row[3],
-            afterWeight: row[4],
-            sellPrice: row[5],
-            recorder: row[6],
-            branch: row[7],
-            status: row[8],
-            enableEdit: row[8] !== 'ยกเลิก' && (row[0] >= startOfWeek && row[0] <= endOfWeek),
+            meltType: row[2],
+            beforeWeight: row[3],
+            buyPrice: row[4],
+            afterWeight: row[5],
+            sellPrice: row[6],
+            recorder: row[7],
+            branch: row[8],
+            status: row[9],
+            percentAfterMelt: row[10],
+            enableEdit: row[9] !== 'ยกเลิก' && (row[0] >= startOfWeek && row[0] <= endOfWeek),
         }
     }));
 }
@@ -568,14 +572,17 @@ function updateMeltBill(billNo, updateData, updater) {
 
         // Update fields
         if (updateData.afterWeight !== undefined && updateData.afterWeight !== null && updateData.afterWeight !== '') {
-            row[4] = parseFloat(updateData.afterWeight); // Column E (index 4) is after weight
+            row[5] = parseFloat(updateData.afterWeight); 
         }
         if (updateData.sellPrice !== undefined && updateData.sellPrice !== null && updateData.sellPrice !== '') {
-            row[5] = parseFloat(updateData.sellPrice); // Column F (index 5) is sell price
+            row[6] = parseFloat(updateData.sellPrice); 
         }
-        row[2] = '',
-            row[3] = '',
-            sheet.getRange(rowIndex + 2, 1, 1, row.length).setValues([row]);
+        if(updateData.percentAfterMelt !== undefined && updateData.percentAfterMelt !== null && updateData.percentAfterMelt !== ''){
+            row[10] = parseFloat(updateData.percentAfterMelt);
+        }
+        row[3] = '';
+        row[4] = '';
+        sheet.getRange(rowIndex + 2, 1, 1, row.length).setValues([row]);
 
         eventLog('แก้ไขข้อมูลบิลหลอม ' + billNo + '\n' + row.join(', ') + '\nโดย ' + updater);
 
@@ -613,7 +620,7 @@ function cancelMeltBill(billNo, canceler) {
 
         let row = dataRange[rowIndex];
 
-        if (row[8] === 'ยกเลิก') {
+        if (row[9] === 'ยกเลิก') {
             return JSON.stringify({ success: false, message: 'บิลหลอมนี้ถูกยกเลิกไปแล้ว' });
         }
 
@@ -665,7 +672,7 @@ function getAccountBalance(branch = 'all') {
             todaytrans: 0,
         }
         dataRange.forEach(row => {
-            if (row[7] !== 'สด' ||  row[9] === 'ยกเลิก') return;
+            if (row[7] !== 'สด' || row[9] === 'ยกเลิก') return;
             if (branch === 'all' || row[6] === branch) { // Column B (index 1) is branch
                 accountBalance.summary -= parseFloat(row[4]) || 0; // Column E (index 4) is amount
                 if (Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today && row[9] === 'เสร็จสิ้น') {
@@ -675,7 +682,7 @@ function getAccountBalance(branch = 'all') {
         });
 
         dataRange2.forEach(row => {
-            if (row[3] !== 'สด'|| row[8] !== 'เสร็จสิ้น') return;
+            if (row[3] !== 'สด' || row[8] !== 'เสร็จสิ้น') return;
             if (branch === 'all' || row[7] === branch) { // Column H (index 7) is branch
                 if (row[1] === 'รับ') { // Column B (index 1) is type
                     accountBalance.summary += parseFloat(row[4]) || 0; // Column E (index 4) is amount
