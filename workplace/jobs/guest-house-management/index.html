@@ -1,0 +1,2586 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- no cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!-- no cache -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Non La Mer Hostel - Bed Management System</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #f5e342;
+            --secondary-color: #db0b20;
+            --white-color: #ffffff;
+            --black-color: #000000;
+            --success-color: #38a169;
+            --warning-color: #d69e2e;
+            --danger-color: #db0b20;
+            --info-color: #3182ce;
+            --light-primary: rgba(245, 227, 66, 0.1);
+            --light-secondary: rgba(219, 11, 32, 0.1);
+            --light-black: rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            font-family: 'Noto Sans Thai', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--white-color), var(--light-primary));
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--black-color), var(--secondary-color));
+            color: var(--white-color);
+            padding: 1rem 0;
+            box-shadow: 0 4px 20px rgba(219, 11, 32, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="10" cy="10" r="2" fill="%23f5e342" opacity="0.15"/><circle cx="90" cy="20" r="1.5" fill="%23f5e342" opacity="0.1"/><circle cx="30" cy="80" r="1" fill="%23f5e342" opacity="0.1"/><circle cx="70" cy="60" r="2.5" fill="%23f5e342" opacity="0.15"/></svg>');
+            pointer-events: none;
+        }
+
+        .logo {
+            height: 60px;
+            width: auto;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+
+        .dashboard {
+            background: linear-gradient(135deg, var(--white-color), var(--light-primary));
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(245, 227, 66, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stats-grid-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            height: 100%;
+            justify-content: center;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 300px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .stat-card-compact {
+            background: linear-gradient(135deg, var(--white-color), var(--light-primary));
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(245, 227, 66, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card-compact:hover {
+            transform: translateX(5px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--white-color);
+            flex-shrink: 0;
+        }
+
+        .stat-icon.total {
+            background: linear-gradient(135deg, var(--black-color), #333333);
+        }
+
+        .stat-icon.available {
+            background: linear-gradient(135deg, var(--success-color), #2f855a);
+        }
+
+        .stat-icon.occupied {
+            background: linear-gradient(135deg, var(--secondary-color), #a30818);
+        }
+
+        .stat-icon.rate {
+            background: linear-gradient(135deg, var(--primary-color), #e6d139);
+            color: var(--black-color);
+        }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-content .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--secondary-color), var(--black-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.2rem;
+        }
+
+        .stat-content .stat-label {
+            color: var(--black-color);
+            font-weight: 500;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--white-color), var(--light-primary));
+            border-radius: 15px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.08);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 15px;
+            padding: 2px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            z-index: -1;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--secondary-color), var(--black-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            color: var(--black-color);
+            margin-top: 0.5rem;
+            font-weight: 500;
+            opacity: 0.7;
+        }
+
+        .date-range-selector {
+            background: linear-gradient(135deg, var(--white-color), var(--light-primary));
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(245, 227, 66, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .date-range-selector::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+        }
+
+        .table-container {
+            background: linear-gradient(135deg, var(--white-color), var(--light-black));
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+            border: 1px solid rgba(245, 227, 66, 0.3);
+            position: relative;
+        }
+
+        .table-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .bed-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .bed-table th {
+            background: linear-gradient(135deg, var(--black-color), #333333);
+            color: var(--white-color);
+            padding: 1rem 0.8rem;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .bed-table th:first-child {
+            background: linear-gradient(135deg, var(--primary-color), #e6d139);
+            color: var(--black-color);
+            position: sticky;
+            left: 0;
+            z-index: 11;
+            min-width: 80px;
+            border-right: 3px solid var(--secondary-color);
+            text-shadow: none;
+        }
+
+        .bed-table td {
+            padding: 0.8rem 0.5rem;
+            border: 1px solid rgba(245, 227, 66, 0.2);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            min-height: 50px;
+            vertical-align: middle;
+        }
+
+        .bed-table td:first-child {
+            background: linear-gradient(135deg, var(--white-color), var(--light-primary));
+            font-weight: bold;
+            position: sticky;
+            left: 0;
+            z-index: 9;
+            border-right: 3px solid var(--primary-color);
+            color: var(--black-color);
+        }
+
+        .bed-cell {
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            margin: 3px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bed-cell.available {
+            background: linear-gradient(135deg, var(--white-color), rgba(245, 227, 66, 0.2));
+            border: 2px solid var(--primary-color);
+            color: var(--black-color);
+            font-weight: 600;
+        }
+
+        .bed-cell.available::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(245, 227, 66, 0.4), transparent);
+            transition: left 0.5s;
+        }
+
+        .bed-cell.available:hover::before {
+            left: 100%;
+        }
+
+        .bed-cell.occupied {
+            background: linear-gradient(135deg, var(--secondary-color), #a30818);
+            border: 2px solid var(--secondary-color);
+            color: var(--white-color);
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .bed-cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(219, 11, 32, 0.3);
+        }
+
+        .bed-type-indicator {
+            font-size: 0.7rem;
+            opacity: 0.8;
+            display: block;
+            margin-top: 2px;
+            font-weight: normal;
+        }
+
+        .guest-name {
+            font-size: 0.85rem;
+            font-weight: bold;
+            word-break: break-word;
+        }
+
+        .btn-custom {
+            border-radius: 25px;
+            padding: 0.8rem 2rem;
+            font-weight: bold;
+            margin: 0.25rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-outline-primary {
+            color: var(--secondary-color);
+            border-color: var(--secondary-color);
+            background: transparent;
+        }
+
+        .btn-outline-primary:hover {
+            background: linear-gradient(135deg, var(--secondary-color), #a30818);
+            border-color: var(--secondary-color);
+            color: var(--white-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(219, 11, 32, 0.3);
+        }
+
+        .btn-outline-secondary {
+            color: var(--black-color);
+            border-color: var(--black-color);
+            background: transparent;
+            font-weight: 600;
+        }
+
+        .btn-outline-secondary:hover {
+            background: linear-gradient(135deg, var(--black-color), #333333);
+            border-color: var(--black-color);
+            color: var(--white-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-add-date {
+            background: linear-gradient(135deg, var(--primary-color), #e6d139);
+            border-color: var(--primary-color);
+            color: var(--black-color);
+            font-weight: 600;
+        }
+
+        .btn-add-date:hover {
+            background: linear-gradient(135deg, #e6d139, var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(245, 227, 66, 0.4);
+        }
+
+        .input-group-text {
+            background: linear-gradient(135deg, var(--primary-color), #e6d139);
+            border-color: var(--primary-color);
+            color: var(--black-color);
+            font-weight: bold;
+        }
+
+        .form-control:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 0.2rem rgba(219, 11, 32, 0.25);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--black-color), var(--secondary-color));
+            color: #fff;
+            border-bottom: none;
+        }
+
+        .modal-title {
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-color), #2f855a);
+            border-color: var(--success-color);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #2f855a, var(--success-color));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(56, 161, 105, 0.3);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--primary-color), #e6d139);
+            border-color: var(--primary-color);
+            color: var(--black-color);
+            font-weight: 600;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #e6d139, var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(245, 227, 66, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger-color), #a30818);
+            border-color: var(--danger-color);
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #a30818, var(--danger-color));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(219, 11, 32, 0.3);
+        }
+
+        .loading {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--black-color), var(--secondary-color));
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .loading-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 4rem 3rem;
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(245, 227, 66, 0.6);
+            position: relative;
+            overflow: hidden;
+            max-width: 400px;
+            width: 90%;
+            animation: slideInUp 0.8s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loading-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--primary-color));
+            background-size: 200% 100%;
+            animation: gradientMove 2s ease-in-out infinite;
+        }
+
+        @keyframes gradientMove {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .loading-logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 1.5rem;
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+            animation: logoFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes logoFloat {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .loading-title {
+            color: var(--black-color);
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--black-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .loading-subtitle {
+            color: var(--black-color);
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-bottom: 2rem;
+        }
+
+        .modern-spinner {
+            width: 60px;
+            height: 60px;
+            margin: 1.5rem auto;
+            position: relative;
+        }
+
+        .modern-spinner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 4px solid rgba(245, 227, 66, 0.3);
+            border-radius: 50%;
+        }
+
+        .modern-spinner::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 4px solid transparent;
+            border-top-color: var(--primary-color);
+            border-right-color: var(--secondary-color);
+            border-radius: 50%;
+            animation: modernSpin 1.2s linear infinite;
+        }
+
+        @keyframes modernSpin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            color: var(--black-color);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .loading-subtext {
+            color: var(--black-color);
+            opacity: 0.6;
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+
+        .loading-dots {
+            display: inline-flex;
+            gap: 4px;
+            margin-left: 4px;
+        }
+
+        .loading-dots span {
+            width: 4px;
+            height: 4px;
+            background: var(--secondary-color);
+            border-radius: 50%;
+            animation: loadingDots 1.5s ease-in-out infinite;
+        }
+
+        .loading-dots span:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.3s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+
+        @keyframes loadingDots {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+
+            40% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        /* Hide main content while loading */
+        body.loading-active .header,
+        body.loading-active .container {
+            display: none;
+        }
+
+        .dorm-separator {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color)) !important;
+            height: 3px !important;
+            padding: 0 !important;
+        }
+
+        .dorm-separator td {
+            padding: 0 !important;
+            height: 3px !important;
+        }
+
+        .date-header {
+
+            text-orientation: mixed;
+            min-width: 70px;
+            max-width: 90px;
+        }
+
+        .date-header.today {
+            background: linear-gradient(135deg, var(--primary-color), #e6d139) !important;
+            color: var(--black-color) !important;
+            font-weight: bold;
+            text-shadow: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .date-header.today::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: todayShimmer 2s ease-in-out infinite;
+        }
+
+        @keyframes todayShimmer {
+            0% {
+                left: -100%;
+            }
+
+            100% {
+                left: 100%;
+            }
+        }
+
+        .bed-table td.today {
+            background: linear-gradient(135deg, rgba(245, 227, 66, 0.1), rgba(245, 227, 66, 0.2)) !important;
+            border-left: 3px solid var(--primary-color) !important;
+            border-right: 3px solid var(--primary-color) !important;
+            position: relative;
+        }
+
+        .bed-table td.today::before {
+            position: absolute;
+            top: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary-color);
+            color: var(--black-color);
+            font-size: 0.6rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 0 0 8px 8px;
+            z-index: 5;
+            letter-spacing: 0.5px;
+        }
+
+        .bed-table td.today .bed-cell {
+            border: 2px solid var(--primary-color) !important;
+            box-shadow: 0 0 15px rgba(245, 227, 66, 0.4) !important;
+        }
+
+        .bed-table td.today .bed-cell.available {
+            background: linear-gradient(135deg, var(--white-color), rgba(245, 227, 66, 0.4)) !important;
+            animation: todayPulse 2s ease-in-out infinite;
+        }
+
+        .bed-table td.today .bed-cell.occupied {
+            background: linear-gradient(135deg, var(--secondary-color), #a30818) !important;
+            animation: todayPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes todayPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 15px rgba(245, 227, 66, 0.4);
+            }
+
+            50% {
+                transform: scale(1.02);
+                box-shadow: 0 0 20px rgba(245, 227, 66, 0.6);
+            }
+        }
+
+        .alert-info {
+            background: linear-gradient(135deg, rgba(245, 227, 66, 0.1), var(--light-primary));
+            border-color: var(--primary-color);
+            color: var(--black-color);
+        }
+
+        h4,
+        h5 {
+            background: linear-gradient(135deg, var(--black-color), var(--secondary-color));
+            background-clip: text;
+            font-weight: bold;
+        }
+
+        .badge.bg-danger {
+            background: linear-gradient(135deg, var(--danger-color), #a30818) !important;
+        }
+
+        .text-primary {
+            color: var(--primary-color) !important;
+        }
+
+        .text-success {
+            color: var(--success-color) !important;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--black-color);
+        }
+
+        /* Collapsible Dorm Sections */
+        .dorm-section {
+            margin-bottom: 1.5rem;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(245, 227, 66, 0.3);
+        }
+
+        .dorm-header {
+            background: linear-gradient(135deg, var(--black-color), var(--secondary-color));
+            color: var(--white-color);
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dorm-header:hover {
+            background: linear-gradient(135deg, var(--secondary-color), var(--black-color));
+        }
+
+        .dorm-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(245, 227, 66, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .dorm-header:hover::before {
+            left: 100%;
+        }
+
+        .dorm-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .dorm-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .bed-count {
+            background: rgba(245, 227, 66, 0.2);
+            color: var(--primary-color);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .collapse-icon {
+            transition: transform 0.3s ease;
+            font-size: 1.2rem;
+        }
+
+        .collapse-icon.collapsed {
+            transform: rotate(180deg);
+        }
+
+        .dorm-content {
+            background: linear-gradient(135deg, var(--white-color), var(--light-primary));
+            transition: max-height 0.3s ease;
+        }
+
+        .dorm-table {
+            margin: 0;
+        }
+
+        .dorm-table .bed-table {
+            margin-bottom: 0;
+        }
+
+        /* Additional visual improvements */
+        .table-container h4 {
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+
+        .dorm-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .dorm-section {
+            transition: all 0.3s ease;
+        }
+
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .dorm-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .bed-count {
+                margin-top: 0.2rem;
+            }
+
+            .chart-container {
+                height: 250px;
+                width: 250px;
+                padding: 0.5rem;
+            }
+
+            .stats-grid-vertical {
+                margin-bottom: 1rem;
+            }
+
+            .stat-card-compact {
+                padding: 0.8rem;
+            }
+
+            .stat-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+
+            .stat-content .stat-number {
+                font-size: 1.5rem;
+            }
+        }
+
+
+        @media (max-width: 768px) {
+            .bed-table {
+                font-size: 0.8rem;
+            }
+
+            .bed-cell {
+                min-height: 35px;
+                font-size: 0.7rem;
+            }
+
+            .date-header {
+                min-width: 50px;
+                max-width: 60px;
+            }
+
+            .dashboard,
+            .date-range-selector,
+            .table-container {
+                margin-bottom: 1rem;
+                padding: 1.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+        }
+
+        /* Custom scrollbar */
+        .table-responsive::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .table-responsive::-webkit-scrollbar-track {
+            background: rgba(74, 144, 226, 0.1);
+            border-radius: 4px;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            border-radius: 4px;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(90deg, var(--accent-color), var(--primary-color));
+        }
+
+        /* Notes Popover Styles */
+        .notes-popover {
+            max-width: 300px;
+            font-size: 0.9rem;
+        }
+
+        .notes-popover .popover-header {
+            background: linear-gradient(135deg, var(--black-color), var(--secondary-color));
+            color: var(--white-color);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+
+        .notes-popover .popover-body {
+            background: linear-gradient(135deg, var(--white-color), var(--light-primary));
+            color: var(--black-color);
+            padding: 0.75rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .notes-popover .popover-arrow::before {
+            border-top-color: var(--black-color);
+        }
+
+        /* Note indicator styling */
+        .bed-cell .fa-sticky-note {
+            color: var(--primary-color);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            animation: noteGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes noteGlow {
+            from {
+                opacity: 0.7;
+                transform: scale(1);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+        }
+
+        /* Color picker styles */
+        .color-picker-btn {
+            border: 2px solid transparent !important;
+            border-radius: 8px !important;
+            font-size: 0.8rem !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .color-picker-btn:hover {
+            transform: scale(1.05) !important;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .color-picker-btn.active {
+            border-color: var(--black-color) !important;
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3) !important;
+            transform: scale(1.1) !important;
+        }
+
+        /* Note icon color variants */
+        .bed-cell .fa-sticky-note.note-default {
+            color: var(--primary-color);
+        }
+
+        .bed-cell .fa-sticky-note.note-red {
+            color: #dc3545;
+        }
+
+        .bed-cell .fa-sticky-note.note-blue {
+            color: #0d6efd;
+        }
+
+        .bed-cell .fa-sticky-note.note-green {
+            color: #198754;
+        }
+
+        .bed-cell .fa-sticky-note.note-purple {
+            color: #6f42c1;
+        }
+
+        .bed-cell .fa-sticky-note.note-orange {
+            color: #fd7e14;
+        }
+    </style>
+
+</head>
+
+<body class="loading-active">
+    <!-- Loading Screen -->
+    <div id="loading" class="loading">
+        <div class="loading-content">
+            <img src="https://img2.pic.in.th/pic/1759252648621.png" alt="Non La Mer Hostel Logo" class="loading-logo">
+            <div class="loading-title">Non La Mer Hostel</div>
+            <div class="loading-subtitle">Bed & Yoga Management System</div>
+            <div class="modern-spinner"></div>
+            <div class="loading-text">Initializing Application</div>
+            <div class="loading-subtext" id="loadingStatus">
+                Starting up<span class="loading-dots"><span></span><span></span><span></span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="row align-items-center g-2">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <img src="https://img2.pic.in.th/pic/1759252648621.png" alt="Non La Mer Hostel Logo"
+                            class="logo me-3">
+                        <div>
+                            <h1 class="h3 mb-0">Non La Mer Hostel</h1>
+                            <p class="mb-0 opacity-75 text-primary">Bed & Yoga Management System</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mt-4">
+
+        <!-- Dashboard -->
+        <div class="dashboard">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Occupancy Dashboard</h4>
+                <div class="d-flex align-items-center text-end">
+                    <i class="fas fa-calendar-day me-2 text-primary"></i>
+                    <div>
+                        <div class="fw-bold" id="currentDate"></div>
+                        <small class="text-muted">Today's Date</small>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="chart-container">
+                        <canvas id="occupancyChart" width="300" height="300"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="stat-card-compact">
+                                <div class="stat-icon total">
+                                    <i class="fas fa-bed"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-number" id="totalBeds">48</div>
+                                    <div class="stat-label">Total Beds</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-card-compact">
+                                <div class="stat-icon available">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-number text-success" id="availableBeds">0</div>
+                                    <div class="stat-label">Available Beds</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-card-compact">
+                                <div class="stat-icon occupied">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-number text-danger" id="occupiedBeds">0</div>
+                                    <div class="stat-label">Occupied Beds</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-card-compact">
+                                <div class="stat-icon rate">
+                                    <i class="fas fa-percent"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-number text-warning" id="occupancyRate">0%</div>
+                                    <div class="stat-label">Occupancy Rate</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        <!-- Date Range Selector -->
+        <div class="date-range-selector">
+            <div class="row">
+                <div class="col-12">
+                    <h5 class="mb-3"><i class="fas fa-calendar-alt me-2"></i>Date Range Selection</h5>
+                </div>
+            </div>
+            <div class="row d-flex flex-column-reverse flex-md-row align-items-end justify-content-end g-3">
+                <div class="col-md-8">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label for="startDate" class="form-label">Start Date</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </span>
+                                <input type="date" id="startDate" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="endDate" class="form-label">End Date</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </span>
+                                <input type="date" id="endDate" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-md-start text-end">
+                            <button class="btn btn-outline-primary" onclick="loadTableData()">
+                                <i class="fas fa-sync-alt me-1"></i>Load
+                            </button>
+                            <!-- <div class="input-group">
+                                <button class="btn btn-add-date" onclick="addSingleDate()">
+                                    <i class="fas fa-plus me-1"></i>Add Date
+                                </button>
+                            </div> -->
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <div class="btn-group w-100" role="group">
+                        <button class="btn btn-outline-secondary" onclick="setToday()">Today</button>
+                        <button class="btn btn-outline-secondary" onclick="setThisWeek()">This Week</button>
+                        <button class="btn btn-outline-secondary" onclick="setThisMonth()">This Month</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- Bed Management Table -->
+        <div class="table-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0"><i class="fas fa-bed me-2"></i>Bed Occupancy by Dormitory</h4>
+                <button type="button" id="toggleAllButton" class="btn btn-outline-primary btn-sm"
+                    onclick="toggleAllDorms()">
+                    <i class="fas fa-expand-alt me-1"></i>Expand All
+                </button>
+            </div>
+            <div id="dormTablesContainer">
+                <!-- Dorm tables will be generated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Check In Modal -->
+    <div class="modal fade" id="checkInModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-sign-in-alt me-2"></i>Check In Guest</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="checkInForm">
+                        <div class="mb-3">
+                            <label class="form-label">Selected Bed & Dates</label>
+                            <div id="selectedBedInfo" class="form-control bg-light"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="guestName" class="form-label">Guest Name *</label>
+                            <input type="text" class="form-control" id="guestName" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="checkInDate" class="form-label">Check-in Date *</label>
+                                <input type="text" class="form-control" id="checkInDate" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="checkOutDate" class="form-label">Check-out Date *</label>
+                                <input type="text" class="form-control" id="checkOutDate" required>
+                            </div>
+                        </div>
+                        <div class="mb-3 mt-3">
+                            <label for="guestPhone" class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" id="guestPhone">
+                        </div>
+                        <div class="mb-3">
+                            <label for="guestNotes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="guestNotes" rows="3"></textarea>
+                            
+                            <div class="mt-2">
+                                <label class="form-label">Note Icon Color:</label>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <button type="button" class="btn btn-sm color-picker-btn active" 
+                                            data-color="default" style="background-color: #f5e342; color: #000;">
+                                        <i class="fas fa-sticky-note"></i> Yellow
+                                    </button>
+                                    <button type="button" class="btn btn-sm color-picker-btn" 
+                                            data-color="red" style="background-color: #dc3545; color: #fff;">
+                                        <i class="fas fa-sticky-note"></i> Red
+                                    </button>
+                                    <button type="button" class="btn btn-sm color-picker-btn" 
+                                            data-color="blue" style="background-color: #0d6efd; color: #fff;">
+                                        <i class="fas fa-sticky-note"></i> Blue
+                                    </button>
+                                    <button type="button" class="btn btn-sm color-picker-btn" 
+                                            data-color="green" style="background-color: #198754; color: #fff;">
+                                        <i class="fas fa-sticky-note"></i> Green
+                                    </button>
+                                    <button type="button" class="btn btn-sm color-picker-btn" 
+                                            data-color="purple" style="background-color: #6f42c1; color: #fff;">
+                                        <i class="fas fa-sticky-note"></i> Purple
+                                    </button>
+                                    <button type="button" class="btn btn-sm color-picker-btn" 
+                                            data-color="orange" style="background-color: #fd7e14; color: #fff;">
+                                        <i class="fas fa-sticky-note"></i> Orange
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="checkInGuest()">Check In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guest Details Modal -->
+    <div class="modal fade" id="guestDetailsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-user me-2"></i>Guest Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="guestDetailsContent">
+                        <!-- Guest details will be populated here -->
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <!-- Right side: Action buttons -->
+                    <button type="button" class="btn btn-success" id="saveNotesBtn" onclick="saveGuestNotes()">
+                        <i class="fas fa-save me-1"></i>Save Details
+                    </button>
+                    <button type="button" class="btn btn-warning" id="moveRoomBtn" onclick="showMoveRoomModal()">
+                        <i class="fas fa-exchange-alt me-1"></i>Move Room
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" id="checkOutBtn"
+                        onclick="showCheckOutConfirm()">
+                        <i class="fas fa-sign-out-alt me-1"></i>Check Out
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Move Room Modal -->
+    <div class="modal fade" id="moveRoomModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>Move to Different Room</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Current Booking</label>
+                        <div id="currentBookingInfo" class="form-control bg-light"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newBedSelect" class="form-label">Select New Bed *</label>
+                        <select class="form-select" id="newBedSelect" required>
+                            <option value="">Choose available bed...</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Only beds that are available for the entire stay period will be shown.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning" onclick="moveToNewRoom()">Move Room</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Scripts -->
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js">
+    </script>
+    <script> // VConsole will be exported to `window.VConsole` by default.
+        var vConsole = new window.VConsole();
+    </script> -->
+
+    <script>
+        // Global variables
+        let hostelData = {};
+        let displayDates = [];
+        let currentSelectedCell = null;
+        let currentGuestData = null;
+        let occupancyChart = null;
+
+        // Hostel configuration
+        const HOSTEL_CONFIG = {
+            name: "Non La Mer Hostel - Bed & Yoga",
+            totalBeds: 48,
+            dorms: {
+                'Dorm 1': ['1A', '1B', '1C', '1D', '1E', '1F', '1G', '1H'],
+                'Dorm 2': ['2A', '2B', '2C', '2D', '2E', '2F'],
+                'Dorm 3': ['3A', '3B', '3C', '3D', '3E', '3F'],
+                'Dorm 4': ['4A', '4B', '4C', '4D', '4E', '4F'],
+                'Dorm 5': ['5A', '5B', '5C', '5D', '5E', '5F', '5G', '5H'],
+                'Dorm 7': ['7A', '7B', '7C', '7D', '7E', '7F', '7G', '7H'],
+                'Dorm 8': ['8A', '8B', '8C', '8D', '8E', '8F']
+            }
+        };
+
+        // Get all bed IDs in order
+        function getAllBeds() {
+            const beds = [];
+            Object.keys(HOSTEL_CONFIG.dorms).forEach(dormName => {
+                beds.push(...HOSTEL_CONFIG.dorms[dormName]);
+            });
+            return beds;
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function () {
+            initializeApp();
+            initializeColorPickers();
+        });
+
+        function initializeColorPickers() {
+            // Add event listeners for color picker buttons
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.color-picker-btn')) {
+                    const button = e.target.closest('.color-picker-btn');
+                    const color = button.getAttribute('data-color');
+                    const container = button.closest('.modal-body') || button.closest('.modal');
+                    
+                    // Remove active class from siblings
+                    container.querySelectorAll('.color-picker-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    
+                    // Add active class to clicked button
+                    button.classList.add('active');
+                }
+            });
+        }
+
+        function updateLoadingStatus(message) {
+            const statusElement = document.getElementById('loadingStatus');
+            if (statusElement) {
+                statusElement.innerHTML = `${message}<span class="loading-dots"><span></span><span></span><span></span></span>`;
+            }
+        }
+
+        function hideLoadingScreen() {
+            const loadingElement = document.getElementById('loading');
+            const body = document.body;
+
+            if (loadingElement && body) {
+                loadingElement.classList.add('hidden');
+                body.classList.remove('loading-active');
+            }
+        }
+
+        async function initializeApp() {
+            try {
+                updateLoadingStatus('Booting up system');
+
+                moment.locale('th');
+                // Set current date
+                const today = new Date();
+                console.log(today);
+                document.getElementById('currentDate').textContent = new Intl.DateTimeFormat('en-GB', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long'
+                }).format(today);
+
+                updateLoadingStatus('Configuring date handlers');
+
+                // Set default date range (today + 6 days)
+                flatpickr("#startDate", {
+                    dateFormat: "Y-m-d",
+                    defaultDate: moment().startOf('week').toDate(),
+                    altFormat: "d/m/Y",
+                    altInput: true,
+
+                });
+                flatpickr("#endDate", {
+                    dateFormat: "Y-m-d",
+                    defaultDate: moment().endOf('week').toDate(),
+                    altFormat: "d/m/Y",
+                    altInput: true,
+                });
+
+                flatpickr("#checkInDate", {
+                    dateFormat: "Y-m-d",
+                    defaultDate: new Date(),
+                    altFormat: "d/m/Y",
+                    altInput: true,
+                    onChange: function (selectedDates, dateStr, instance) {
+                        const checkOutInput = document.getElementById('checkOutDate');
+                        const checkInDate = selectedDates[0];
+                        if (checkInDate) {
+                            const minCheckOutDate = moment(checkInDate).add(1, 'days').toDate();
+                            checkOutInput._flatpickr.set('minDate', minCheckOutDate);
+                            if (new Date(checkOutInput.value) <= checkInDate) {
+                                checkOutInput._flatpickr.setDate(minCheckOutDate);
+                            }
+                        }
+                    }
+                });
+                flatpickr("#checkOutDate", {
+                    dateFormat: "Y-m-d",
+                    defaultDate: moment(new Date()).add(1, 'days').toDate(),
+                    altFormat: "d/m/Y",
+                    altInput: true,
+                });
+
+                updateLoadingStatus('Syncing with cloud data');
+
+                // Load saved data and initialize table
+                await loadDataFromStorage();
+
+                updateLoadingStatus('Building dashboard');
+
+
+                updateLoadingStatus('Applying final touches');
+
+                // Initialize AOS animations
+                AOS.init();
+
+                // Small delay to ensure everything is rendered
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                updateLoadingStatus('Welcome aboard');
+
+                // Small delay for final message
+                await new Promise(resolve => setTimeout(resolve, 400));
+
+                // Hide loading screen
+                hideLoadingScreen();
+
+            } catch (error) {
+                console.error('Error during initialization:', error);
+                updateLoadingStatus('Oops! Something went wrong');
+            }
+        }
+
+        function initializeOccupancyChart() {
+            const ctx = document.getElementById('occupancyChart').getContext('2d');
+
+            // Destroy existing chart if it exists
+            if (occupancyChart) {
+                occupancyChart.destroy();
+            }
+            let totalBeds = HOSTEL_CONFIG.totalBeds || 48;
+            let occupiedBeds = []
+            let today = moment().format('YYYY-MM-DD');
+            hostelData[today] && Object.values(hostelData[today]).forEach(bed => {
+                if (bed.status === 'occupied') {
+                    occupiedBeds.push(bed);
+                }
+            });
+            occupiedBeds = [...new Set(occupiedBeds.map(bed => bed.bookingId))]; // Unique bookings
+            occupiedBeds = occupiedBeds.length;
+            occupancyChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Available Beds', 'Occupied Beds'],
+                    datasets: [{
+                        data: [totalBeds - occupiedBeds, occupiedBeds],
+                        backgroundColor: [
+                            'rgba(245, 227, 66, 0.8)', // Yellow for available (--primary-color)
+                            'rgba(219, 11, 32, 0.8)'   // Red for occupied (--secondary-color)
+                        ],
+                        borderColor: [
+                            'rgba(245, 227, 66, 1)',   // Yellow border
+                            'rgba(219, 11, 32, 1)'     // Red border
+                        ],
+                        borderWidth: 3,
+                        hoverBackgroundColor: [
+                            'rgba(245, 227, 66, 0.9)', // Brighter yellow on hover
+                            'rgba(219, 11, 32, 0.9)'   // Brighter red on hover
+                        ],
+                        hoverBorderWidth: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const label = context.label || '';
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} beds (${percentage}%)`;
+                                }
+                            },
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            titleColor: '#f5e342',
+                            bodyColor: '#ffffff',
+                            borderColor: 'rgba(245, 227, 66, 1)',
+                            borderWidth: 2
+                        }
+                    },
+                    cutout: '60%',
+                    animation: {
+                        animateRotate: true,
+                        duration: 1000
+                    }
+                }
+            });
+        }
+
+        function setToday() {
+            const today = moment().format('YYYY-MM-DD');
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
+            loadTableData();
+        }
+
+        function setThisWeek() {
+            const startOfWeek = moment().startOf('week').format('YYYY-MM-DD');
+            const endOfWeek = moment().endOf('week').format('YYYY-MM-DD');
+
+            document.getElementById('startDate').value = startOfWeek;
+            document.getElementById('endDate').value = endOfWeek;
+            loadTableData();
+        }
+
+        function setThisMonth() {
+            const firstDay = moment().startOf('month').format('YYYY-MM-DD');
+            const lastDay = moment().endOf('month').format('YYYY-MM-DD');
+
+            document.getElementById('startDate').value = firstDay;
+            document.getElementById('endDate').value = lastDay;
+            loadTableData();
+        }
+
+        function loadTableData() {
+            NProgress.start();
+            // save collapse state
+            const dormSections = document.querySelectorAll('.dorm-section .collapse');
+            const collapseStates = Array.from(dormSections).map(section => section.classList.contains('show'));
+            localStorage.setItem('dormCollapseStates', JSON.stringify(collapseStates));
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (!startDate || !endDate) {
+                Swal.fire('Error', 'Please select both start and end dates', 'error');
+                NProgress.done();
+                return;
+            }
+
+            // Generate date range
+            displayDates = generateDateRange(startDate, endDate);
+
+            // Initialize data for new dates
+            displayDates.forEach(date => {
+                if (!hostelData[date]) {
+                    initializeDataForDate(date);
+                }
+            });
+
+            // Generate table
+            generateTable();
+            updateDashboard();
+
+            NProgress.done();
+        }
+
+        function generateDateRange(startDate, endDate) {
+            const dates = [];
+            const currentDate = new Date(startDate);
+            const end = new Date(endDate);
+
+            while (currentDate <= end) { // Changed from <= to < to exclude checkout date
+                dates.push(currentDate.toISOString().split('T')[0]);
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            return dates;
+        }
+
+        function initializeDataForDate(date) {
+            hostelData[date] = {};
+            getAllBeds().forEach(bedId => {
+                hostelData[date][bedId] = {
+                    status: 'available',
+                    guest: null,
+                    checkIn: null,
+                    checkOut: null,
+                    phone: '',
+                    notes: '',
+                    noteColor: 'default',
+                    bookingId: null
+                };
+            });
+
+        }
+
+        function initializeDataForBed(bedId, date) {
+            if (!hostelData[date]) {
+                initializeDataForDate(date);
+            }
+            if (!hostelData[date][bedId]) {
+                hostelData[date][bedId] = {
+                    status: 'available',
+                    guest: null,
+                    checkIn: null,
+                    checkOut: null,
+                    phone: '',
+                    notes: '',
+                    noteColor: 'default',
+                    bookingId: null
+                };
+            }
+        }
+        function generateTable() {
+            const container = document.getElementById('dormTablesContainer');
+            container.innerHTML = '';
+
+            // Generate a collapsible section for each dorm
+            Object.keys(HOSTEL_CONFIG.dorms).forEach((dormName, dormIndex) => {
+                const dormBeds = HOSTEL_CONFIG.dorms[dormName];
+                const dormId = `dorm-${dormIndex}`;
+                const collapseId = `collapse-${dormIndex}`;
+
+                // Calculate occupancy for this dorm
+                const occupiedBeds = dormBeds.filter(bedId => {
+                    return displayDates.some(date => hostelData[date]?.[bedId]?.status === 'occupied');
+                }).length;
+
+                const occupancyRate = Math.round((occupiedBeds / dormBeds.length) * 100);
+                const statusColor = occupiedBeds === 0 ? 'success' : occupiedBeds === dormBeds.length ? 'danger' : 'warning';
+                const statusText = occupiedBeds === 0 ? 'All Available' : occupiedBeds === dormBeds.length ? 'Full' : 'Partially Occupied';
+
+                // Create dorm section
+                const dormSection = document.createElement('div');
+                dormSection.className = 'dorm-section';
+                dormSection.innerHTML = `
+                    <div class="dorm-header" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false">
+                        <div class="dorm-title">
+                            <div class="dorm-info">
+                                <i class="fas fa-building me-2"></i>
+                                <span>${dormName}</span>
+                                <span class="bed-count">${dormBeds.length} beds</span>
+                                <span class="badge bg-${statusColor} ${statusColor === 'warning' ? 'text-dark' : ''}" title="${statusText}">${occupiedBeds}/${dormBeds.length} (${occupancyRate}%)</span>
+                            </div>
+                            <i class="fas fa-chevron-up collapse-icon collapsed"></i>
+                        </div>
+                    </div>
+                    <div class="collapse" id="${collapseId}">
+                        <div class="dorm-content">
+                            <div class="table-responsive dorm-table">
+                                <table class="bed-table">
+                                    <thead>
+                                        <tr id="tableHeader-${dormIndex}">
+                                            <th>Bed</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tableBody-${dormIndex}">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(dormSection);
+
+                // Generate date headers for this dorm
+                const tableHeader = document.getElementById(`tableHeader-${dormIndex}`);
+                const today = new Date().toISOString().split('T')[0];
+
+                displayDates.forEach(date => {
+                    const th = document.createElement('th');
+                    th.className = date === today ? 'date-header today' : 'date-header';
+                    const dateObj = new Date(date);
+                    th.innerHTML = `
+                        <div>${dateObj.getDate()}</div>
+                        <div style="font-size: 0.7rem;">${dateObj.toLocaleDateString('en-US', { month: 'short' })}</div>
+                        <div style="font-size: 0.7rem;">${dateObj.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                    `;
+                    tableHeader.appendChild(th);
+                });
+
+                // Generate bed rows for this dorm
+                const tableBody = document.getElementById(`tableBody-${dormIndex}`);
+                console.log(dormBeds)
+                dormBeds.forEach(bedId => {
+                    const row = document.createElement('tr');
+
+                    // Bed ID cell
+                    const bedCell = document.createElement('td');
+                    bedCell.innerHTML = `
+                        <strong>${bedId}</strong>
+                        <div class="bed-type-indicator">${getBedType(bedId)}</div>
+                    `;
+                    row.appendChild(bedCell);
+                    // Date cells
+                    const today = moment().format('YYYY-MM-DD');
+
+                    displayDates.forEach(date => {
+                        const cell = document.createElement('td');
+                        cell.id = `cell-${bedId}-${date}`;
+                        cell.className = date === today ? 'today' : '';
+                        cell.onclick = () => handleCellClick(bedId, date, cell);
+
+                        const bedData = hostelData?.[date]?.[bedId];
+                        console.log("🚀 ~ generateTable ~ bedData:", JSON.stringify(bedData));
+                        if (!bedData) {
+                            initializeDataForBed(bedId, date);
+                        }
+                        updateCellDisplay(cell, bedData, bedId, date);
+
+                        row.appendChild(cell);
+                    });
+
+                    tableBody.appendChild(row);
+                });
+            });
+
+            // Add collapse event listeners to update icons and button state
+            $('.collapse').on('show.bs.collapse', function () {
+                console.log("🚀 ~ $('.collapse').on ~ this:", this)
+                $(this).prev('.dorm-header').find('.collapse-icon').removeClass('collapsed');
+                updateToggleButtonState();
+            }).on('hide.bs.collapse', function () {
+                $(this).prev('.dorm-header').find('.collapse-icon').addClass('collapsed');
+                updateToggleButtonState();
+            });
+
+            let collapseStates = JSON.parse(localStorage.getItem('dormCollapseStates') || '[]');
+            const dormSections = document.querySelectorAll('.dorm-section .collapse');
+
+            dormSections.forEach((section, index) => {
+                if (collapseStates[index]) {
+                    $(section).collapse('show');
+                }else {
+                    $(section).collapse('hide');
+                }
+            });
+
+            // Update toggle button state after setting initial collapse states
+            updateToggleButtonState();
+
+            // Initialize popovers for occupied cells with notes
+            initializePopovers();
+        }
+
+        function updateToggleButtonState() {
+            const button = document.getElementById('toggleAllButton');
+            if (!button) return;
+
+            const allCollapses = document.querySelectorAll('.dorm-section .collapse');
+            const expandedCount = document.querySelectorAll('.dorm-section .collapse.show').length;
+
+            if (expandedCount === allCollapses.length) {
+                // All are expanded - show "Collapse All"
+                button.innerHTML = '<i class="fas fa-compress-alt me-1"></i>Collapse All';
+                button.className = 'btn btn-outline-secondary btn-sm';
+                allExpanded = true;
+            } else if (expandedCount === 0) {
+                // All are collapsed - show "Expand All"
+                button.innerHTML = '<i class="fas fa-expand-alt me-1"></i>Expand All';
+                button.className = 'btn btn-outline-primary btn-sm';
+                allExpanded = false;
+            } else {
+                // Mixed state - show "Collapse All" (default action)
+                button.innerHTML = '<i class="fas fa-compress-alt me-1"></i>Collapse All';
+                button.className = 'btn btn-outline-warning btn-sm';
+                allExpanded = true;
+            }
+        }
+
+        function initializePopovers() {
+            // Dispose of existing popovers to prevent memory leaks
+            const existingPopovers = document.querySelectorAll('[data-bs-toggle="popover"]');
+            existingPopovers.forEach(element => {
+                const existingPopover = bootstrap.Popover.getInstance(element);
+                if (existingPopover) {
+                    existingPopover.dispose();
+                }
+            });
+
+            // Initialize new popovers
+            const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+            const popoverList = [...popoverTriggerList].map(popoverTriggerEl => {
+                return new bootstrap.Popover(popoverTriggerEl, {
+                    container: 'body',
+                    sanitize: false,
+                    customClass: 'notes-popover'
+                });
+            });
+        }
+
+        function updateCellDisplay(cell, bedData, bedId, date) {
+            if (!bedData) {
+                bedData = hostelData?.[date]?.[bedId];
+            }
+            const cellDiv = document.createElement('div');
+            cellDiv.className = 'bed-cell';
+
+            if (bedData.status === 'occupied') {
+                cellDiv.classList.add('occupied');
+                cellDiv.innerHTML = `
+                    <div class="guest-name">${bedData.guest}</div>
+                `;
+                
+                // Add popover for notes if they exist
+                if (bedData.notes && bedData.notes.trim() !== '') {
+                    cellDiv.setAttribute('data-bs-toggle', 'popover');
+                    cellDiv.setAttribute('data-bs-placement', 'top');
+                    cellDiv.setAttribute('data-bs-trigger', 'hover focus');
+                    cellDiv.setAttribute('data-bs-title', `${bedData.guest} - Notes`);
+                    cellDiv.setAttribute('data-bs-content', bedData.notes);
+                    cellDiv.setAttribute('data-bs-html', 'true');
+                    
+                    // Add a small note indicator with color
+                    const noteColor = bedData.noteColor || 'default';
+                    cellDiv.innerHTML += `<i class="fas fa-sticky-note note-${noteColor}" style="position: absolute; top: 2px; right: 2px; font-size: 0.7rem; opacity: 0.7;"></i>`;
+                    cellDiv.style.position = 'relative';
+                }
+            } else {
+                cellDiv.classList.add('available');
+                cellDiv.innerHTML = '<i class="fas fa-plus" style="opacity: 0.5;"></i>';
+            }
+
+            cell.innerHTML = '';
+            cell.appendChild(cellDiv);
+        }
+
+        function handleCellClick(bedId, date, cell) {
+            const bedData = hostelData?.[date]?.[bedId];
+
+            if (!bedData || bedData?.status === 'available') {
+                // Show check-in form
+                showCheckInForm(bedId, date);
+            } else {
+                // Show guest details
+                showGuestDetails(bedId, date, bedData);
+            }
+        }
+
+        function showCheckInForm(bedId, date) {
+            currentSelectedCell = { bedId, date };
+            console.log("🚀 ~ showCheckInForm ~ currentSelectedCell:", currentSelectedCell)
+            // Clear form
+            let form = document.getElementById('checkInForm');
+            form.reset();
+
+            // Set form data
+            document.getElementById('selectedBedInfo').textContent = `Bed ${bedId} - ${new Date(date).toLocaleDateString()}`;
+            document.getElementById('checkInDate')._flatpickr.setDate(moment(date, 'YYYY-MM-DD').toDate(), true);
+            document.getElementById('checkOutDate')._flatpickr.setDate(moment(date, 'YYYY-MM-DD').add(1, 'days').toDate(), true);
+
+
+            const modal = new bootstrap.Modal(document.getElementById('checkInModal'));
+            modal.show();
+        }
+
+        function showGuestDetails(bedId, date, bedData) {
+            currentGuestData = { bedId, date, ...bedData };
+
+            const bedType = getBedType(bedId);
+            const checkInFormatted = bedData.checkIn ? new Date(bedData.checkIn).toLocaleDateString() : 'N/A';
+            const checkOutFormatted = bedData.checkOut ? new Date(bedData.checkOut).toLocaleDateString() : 'N/A';
+
+            document.getElementById('guestDetailsContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Bed:</strong> ${bedId} (${bedType})</p>
+                        <p><strong>Guest Name:</strong> ${bedData.guest}</p>
+                        <p><strong>Phone:</strong> ${bedData.phone || 'N/A'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Check-in:</strong> ${checkInFormatted}</p>
+                        <p><strong>Check-out:</strong> ${checkOutFormatted}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-danger">Occupied</span></p>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label for="guestNotes" class="form-label"><strong>Notes:</strong></label>
+                    <textarea class="form-control" id="guestNotes" rows="3" placeholder="Add notes about this guest...">${bedData.notes || ''}</textarea>
+                    
+                    <div class="mt-2">
+                        <label class="form-label"><strong>Note Color:</strong></label>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-sm color-picker-btn ${bedData.noteColor === 'default' || !bedData.noteColor ? 'active' : ''}" 
+                                    data-color="default" style="background-color: #f5e342; color: #000;">
+                                <i class="fas fa-sticky-note"></i> Yellow
+                            </button>
+                            <button type="button" class="btn btn-sm color-picker-btn ${bedData.noteColor === 'red' ? 'active' : ''}" 
+                                    data-color="red" style="background-color: #dc3545; color: #fff;">
+                                <i class="fas fa-sticky-note"></i> Red
+                            </button>
+                            <button type="button" class="btn btn-sm color-picker-btn ${bedData.noteColor === 'blue' ? 'active' : ''}" 
+                                    data-color="blue" style="background-color: #0d6efd; color: #fff;">
+                                <i class="fas fa-sticky-note"></i> Blue
+                            </button>
+                            <button type="button" class="btn btn-sm color-picker-btn ${bedData.noteColor === 'green' ? 'active' : ''}" 
+                                    data-color="green" style="background-color: #198754; color: #fff;">
+                                <i class="fas fa-sticky-note"></i> Green
+                            </button>
+                            <button type="button" class="btn btn-sm color-picker-btn ${bedData.noteColor === 'purple' ? 'active' : ''}" 
+                                    data-color="purple" style="background-color: #6f42c1; color: #fff;">
+                                <i class="fas fa-sticky-note"></i> Purple
+                            </button>
+                            <button type="button" class="btn btn-sm color-picker-btn ${bedData.noteColor === 'orange' ? 'active' : ''}" 
+                                    data-color="orange" style="background-color: #fd7e14; color: #fff;">
+                                <i class="fas fa-sticky-note"></i> Orange
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const modal = new bootstrap.Modal(document.getElementById('guestDetailsModal'));
+            modal.show();
+        }
+
+        function checkInGuest() {
+            const guestName = document.getElementById('guestName').value.trim();
+            const checkInDate = document.getElementById('checkInDate').value;
+            const checkOutDate = document.getElementById('checkOutDate').value;
+            const phone = document.getElementById('guestPhone').value.trim();
+            const notes = document.getElementById('guestNotes').value.trim();
+            
+            // Get selected note color
+            const selectedColorBtn = document.querySelector('#checkInModal .color-picker-btn.active');
+            const noteColor = selectedColorBtn ? selectedColorBtn.getAttribute('data-color') : 'default';
+
+            if (!guestName || !checkInDate || !checkOutDate) {
+                Swal.fire('Error', 'Please fill in all required fields', 'error');
+                return;
+            }
+
+            if (checkOutDate <= checkInDate) {
+                Swal.fire('Error', 'Check-out date must be after check-in date', 'error');
+                return;
+            }
+
+            const { bedId } = currentSelectedCell;
+            const bookingId = generateBookingId();
+
+            // Check if bed is available for the entire period
+            const dateRange = generateDateRange(checkInDate, checkOutDate);
+            dateRange.pop(); // Remove checkout date to allow back-to-back bookings
+            const isAvailable = dateRange.every(date => {
+                return !hostelData[date]?.[bedId] || hostelData[date][bedId].status === 'available';
+            });
+
+            if (!isAvailable) {
+                Swal.fire('Error', 'Bed is not available for the selected period', 'error');
+                return;
+            }
+
+            // Book the bed for all dates in the range
+            dateRange.forEach(date => {
+                if (!hostelData[date]) {
+                    initializeDataForDate(date);
+                }
+
+                hostelData[date][bedId] = {
+                    status: 'occupied',
+                    guest: guestName,
+                    checkIn: checkInDate,
+                    checkOut: checkOutDate,
+                    phone: phone,
+                    notes: notes,
+                    noteColor: noteColor,
+                    bookingId: bookingId
+                };
+            });
+            google.script.run.withSuccessHandler((e) => {
+                console.log('Data saved to Google Sheets: ', e);
+            }).checkInGuest(guestName, bedId, checkInDate, checkOutDate, phone, notes, bookingId, noteColor);
+
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('checkInModal')).hide();
+
+            // Show success message
+            Swal.fire({
+                title: 'Check-in Successful!',
+                text: `${guestName} has been checked into bed ${bedId}`,
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+            // Update display
+            loadTableData();
+        }
+
+        function showMoveRoomModal() {
+            if (!currentGuestData) return;
+
+            // Populate current booking info
+            document.getElementById('currentBookingInfo').textContent =
+                `${currentGuestData.guest} - Bed ${currentGuestData.bedId} (${currentGuestData.checkIn} to ${currentGuestData.checkOut})`;
+
+            // Populate available beds
+            const newBedSelect = document.getElementById('newBedSelect');
+            newBedSelect.innerHTML = '<option value="">Choose available bed...</option>';
+
+            const checkInDate = currentGuestData.checkIn;
+            const checkOutDate = currentGuestData.checkOut;
+            const dateRange = generateDateRange(checkInDate, checkOutDate);
+
+            getAllBeds().forEach(bedId => {
+                if (bedId === currentGuestData.bedId) return; // Skip current bed
+
+                const isAvailable = dateRange.every(date => {
+                    return hostelData[date] && hostelData[date][bedId] &&
+                        (hostelData[date][bedId].status === 'available' ||
+                            hostelData[date][bedId].bookingId === currentGuestData.bookingId);
+                });
+
+                if (isAvailable) {
+                    const option = document.createElement('option');
+                    option.value = bedId;
+                    option.textContent = `${bedId} (${getBedType(bedId)})`;
+                    newBedSelect.appendChild(option);
+                }
+            });
+
+            // Hide guest details modal and show move room modal
+            bootstrap.Modal.getInstance(document.getElementById('guestDetailsModal')).hide();
+            const modal = new bootstrap.Modal(document.getElementById('moveRoomModal'));
+            modal.show();
+        }
+
+        function moveToNewRoom() {
+            const newBedId = document.getElementById('newBedSelect').value;
+
+            if (!newBedId) {
+                Swal.fire('Error', 'Please select a new bed', 'error');
+                return;
+            }
+
+            const oldBedId = currentGuestData.bedId;
+            const checkInDate = currentGuestData.checkIn;
+            const checkOutDate = currentGuestData.checkOut;
+            const dateRange = generateDateRange(checkInDate, checkOutDate);
+
+            // check if new bed is still available (in case of overlapping bookings)
+            const isAvailable = dateRange.every(date => {
+                return hostelData[date] && hostelData[date][newBedId] &&
+                    hostelData[date][newBedId].status === 'available';
+            });
+
+            if (!isAvailable) {
+                Swal.fire('Error', 'Selected bed is not available for the entire duration', 'error');
+                return;
+            }
+
+            // Move the booking
+            dateRange.forEach(date => {
+                if (hostelData[date]) {
+                    // Copy data to new bed
+                    hostelData[date][newBedId] = { ...hostelData[date][oldBedId] };
+
+                    // Clear old bed
+                    hostelData[date][oldBedId] = {
+                        status: 'available',
+                        guest: null,
+                        checkIn: null,
+                        checkOut: null,
+                        phone: '',
+                        notes: '',
+                        bookingId: null
+                    };
+                }
+            });
+            google.script.run.withSuccessHandler(() => {
+                console.log('Room move recorded in Google Sheets');
+            }).moveBed(oldBedId, newBedId);
+
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('moveRoomModal')).hide();
+
+            // Show success message
+            Swal.fire({
+                title: 'Room Moved!',
+                text: `Guest moved from bed ${oldBedId} to bed ${newBedId}`,
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+            // Update display
+            loadTableData();
+
+            // Check if dorm section is collapsed and expand it first
+            const dormIndex = Object.keys(HOSTEL_CONFIG.dorms).findIndex(dormName => 
+                HOSTEL_CONFIG.dorms[dormName].includes(newBedId)
+            );
+
+            if (dormIndex !== -1) {
+                const collapseId = `collapse-${dormIndex}`;
+                const collapseElement = document.getElementById(collapseId);
+                
+                if (collapseElement && !collapseElement.classList.contains('show')) {
+                    // Expand the dorm section first
+                    const bsCollapse = new bootstrap.Collapse(collapseElement, { show: true });
+                    
+                    // Update the collapse icon
+                    const dormHeader = document.querySelector(`[data-bs-target="#${collapseId}"]`);
+                    if (dormHeader) {
+                        const icon = dormHeader.querySelector('.collapse-icon');
+                        if (icon) {
+                            icon.classList.remove('collapsed');
+                        }
+                    }
+                    
+                    // Update toggle button state
+                    updateToggleButtonState();
+                }
+            }
+
+            // focus on the new bed cell
+            const newCellId = `cell-${newBedId}-${checkInDate}`;
+            const newCell = document.getElementById(newCellId);
+            if (newCell) {
+                newCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                newCell.classList.add('highlight');
+                setTimeout(() => {
+                    newCell.classList.remove('highlight');
+                }, 2000);
+            }
+        }
+
+        function showCheckOutConfirm() {
+            if (!currentGuestData) return;
+
+            Swal.fire({
+                title: 'Check Out Guest?',
+                text: `Are you sure you want to check out ${currentGuestData.guest} from bed ${currentGuestData.bedId}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, check out!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    checkOutGuest();
+                }
+            });
+        }
+
+        function checkOutGuest() {
+            if (!currentGuestData) return;
+
+            const bedId = currentGuestData.bedId;
+            const checkInDate = currentGuestData.checkIn;
+            const checkOutDate = currentGuestData.checkOut;
+            const guestName = currentGuestData.guest;
+            const bookingId = currentGuestData.bookingId;
+
+            // Clear all dates for this booking
+            Object.keys(hostelData).forEach(date => {
+                if (hostelData[date][bedId] && hostelData[date][bedId].bookingId === bookingId) {
+                    hostelData[date][bedId] = {
+                        status: 'available',
+                        guest: null,
+                        checkIn: null,
+                        checkOut: null,
+                        phone: '',
+                        notes: '',
+                        noteColor: 'default',
+                        bookingId: null
+                    };
+                }
+            });
+
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('guestDetailsModal')).hide();
+            google.script.run.withSuccessHandler(() => {
+                console.log('Check-out recorded in Google Sheets');
+            }).checkOutGuest(guestName, bedId, checkInDate, checkOutDate, bookingId);
+            // Show success message
+            Swal.fire({
+                title: 'Check-out Successful!',
+                text: `${guestName} has been checked out from bed ${bedId}`,
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+            // Update display
+            loadTableData();
+        }
+
+        function updateDashboard() {
+            let totalOccupied = []
+            let totalCells = 0;
+
+            let today = moment().format('YYYY-MM-DD');
+
+            hostelData[today] && Object.keys(hostelData[today]).forEach(bedId => {
+                if (hostelData[today][bedId].status === 'occupied') {
+                    totalOccupied.push(bedId);
+                }
+            });
+            totalOccupied = [...new Set(totalOccupied)].length; // Unique occupied beds
+
+            const totalBeds = HOSTEL_CONFIG.totalBeds;
+            const availableBeds = totalBeds - totalOccupied;
+            const occupancyRate = Math.round((totalOccupied / totalBeds) * 100);
+
+            // Update text stats
+            document.getElementById('totalBeds').textContent = totalBeds;
+            document.getElementById('availableBeds').textContent = availableBeds;
+            document.getElementById('occupiedBeds').textContent = totalOccupied;
+            document.getElementById('occupancyRate').textContent = occupancyRate + '%';
+
+            // Update pie chart
+            if (occupancyChart) {
+                occupancyChart.data.datasets[0].data = [availableBeds, totalOccupied];
+                occupancyChart.update('active');
+            } else {
+                initializeOccupancyChart();
+            }
+        }
+
+        function saveGuestNotes() {
+            if (!currentGuestData) {
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'No guest data found',
+                    icon: 'error'
+                });
+                return;
+            }
+
+            const newNotes = $('#guestDetailsModal').find('#guestNotes').val().trim();
+            const { bedId, date } = currentGuestData;
+            
+            // Get selected note color
+            const selectedColorBtn = document.querySelector('#guestDetailsModal .color-picker-btn.active');
+            const newNoteColor = selectedColorBtn ? selectedColorBtn.getAttribute('data-color') : 'default';
+
+            // Show loading
+            Swal.fire({
+                title: 'Saving Notes...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            let dateRange = generateDateRange(currentGuestData.checkIn, currentGuestData.checkOut);
+            dateRange.forEach(date => {
+                if (hostelData[date] && hostelData[date][bedId] && hostelData[date][bedId].bookingId === currentGuestData.bookingId) {
+                    hostelData[date][bedId].notes = newNotes;
+                    hostelData[date][bedId].noteColor = newNoteColor;
+                }
+            });
+
+            // Call Google Apps Script to update notes
+            google.script.run.withSuccessHandler(() => {
+                console.log('Notes updated in Google Sheets');
+                
+                // Update the table display to show new popover indicators
+                generateTable();
+                
+                // Show success message
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Notes saved successfully',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }).withFailureHandler((error) => {
+                console.error('Error updating notes:', error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to save notes. Please try again.',
+                    icon: 'error'
+                });
+            }).updateGuestNotes(bedId, newNotes, newNoteColor);
+
+        }
+
+        // Collapsible functions
+        let allExpanded = false; // Track the current state (all dorms start collapsed by default)
+
+        function toggleAllDorms() {
+            const button = document.getElementById('toggleAllButton');
+            const icon = button.querySelector('i');
+            const text = button.querySelector('i').nextSibling;
+
+            if (allExpanded) {
+                // Collapse all
+                document.querySelectorAll('.dorm-section .collapse').forEach(collapse => {
+                    if (collapse.classList.contains('show')) {
+                        const bsCollapse = new bootstrap.Collapse(collapse, { hide: true });
+                    }
+                });
+
+                // Update all icons
+                document.querySelectorAll('.collapse-icon').forEach(icon => {
+                    icon.classList.add('collapsed');
+                });
+
+                // Update button
+                icon.className = 'fas fa-expand-alt me-1';
+                button.innerHTML = '<i class="fas fa-expand-alt me-1"></i>Expand All';
+                button.className = 'btn btn-outline-primary btn-sm';
+                allExpanded = false;
+            } else {
+                // Expand all
+                document.querySelectorAll('.dorm-section .collapse').forEach(collapse => {
+                    if (!collapse.classList.contains('show')) {
+                        const bsCollapse = new bootstrap.Collapse(collapse, { show: true });
+                    }
+                });
+
+                // Update all icons
+                document.querySelectorAll('.collapse-icon').forEach(icon => {
+                    icon.classList.remove('collapsed');
+                });
+
+                // Update button
+                icon.className = 'fas fa-compress-alt me-1';
+                button.innerHTML = '<i class="fas fa-compress-alt me-1"></i>Collapse All';
+                button.className = 'btn btn-outline-secondary btn-sm';
+                allExpanded = true;
+            }
+        }
+
+        function expandAllDorms() {
+            // Keep for backward compatibility, but use toggle
+            if (!allExpanded) {
+                toggleAllDorms();
+            }
+        }
+
+        function collapseAllDorms() {
+            // Keep for backward compatibility, but use toggle
+            if (allExpanded) {
+                toggleAllDorms();
+            }
+        }
+
+        // Utility functions
+        function getBedType(bedId) {
+            const letter = bedId.slice(-1);
+            return ['A', 'C', 'E', 'G'].includes(letter) ? 'Upper' : 'Lower';
+        }
+
+        function getNextDay(dateString) {
+            const date = new Date(dateString);
+            date.setDate(date.getDate() + 1);
+            return date.toISOString().split('T')[0];
+        }
+
+        function generateBookingId() {
+            return 'BK' + Date.now() + Math.random().toString(36).substr(2, 5);
+        }
+
+
+        async function loadDataFromStorage() {
+            try {
+                const savedData = await new Promise(resolve => {
+                    google.script.run.withSuccessHandler(data => {
+                        data = JSON.parse(data);
+                        console.log('Data loaded from Google Sheets:', data);
+                        resolve(data);
+                    }).withFailureHandler(err => {
+                        console.error('Error loading data from Google Sheets:', err);
+                        resolve(null);
+                    }).loadAllBedData();
+                });
+
+                if (savedData && savedData.success) {
+                    localStorage.setItem('hostelTableData', JSON.stringify(savedData.data));
+                    hostelData = savedData.data;
+
+                    updateLoadingStatus('Organizing room data');
+                    await new Promise(resolve => setTimeout(resolve, 300)); // Small delay for UX
+
+                    loadTableData();
+                } else {
+                    // If no data from server, try localStorage
+                    const localData = localStorage.getItem('hostelTableData');
+                    if (localData) {
+                        hostelData = JSON.parse(localData);
+                        updateLoadingStatus('Loading cached data');
+                        loadTableData();
+                        initializeOccupancyChart();
+                    } else {
+                        updateLoadingStatus('Setting up fresh workspace');
+                        loadTableData();
+                    }
+                }
+            } catch (error) {
+                console.error('Error in loadDataFromStorage:', error);
+                updateLoadingStatus('Working offline');
+                // Fallback to localStorage or fresh initialization
+                const localData = localStorage.getItem('hostelTableData');
+                if (localData) {
+                    hostelData = JSON.parse(localData);
+                }
+                loadTableData();
+            }
+        }
+
+    </script>
+</body>
+
+</html>
