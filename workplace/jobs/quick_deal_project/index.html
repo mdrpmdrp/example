@@ -82,6 +82,7 @@
         :root {
             --primary-color: #d4bf9c;
             --primary-color-dark: #bfa76e;
+            --primary-color-light: #e8d8b5;
             --grey: #f6f6f6;
         }
 
@@ -346,8 +347,7 @@
                             <div class="col-12">
                                 <div class="d-flex justify-content-between">
                                     <label for="editCheckupProgram" class="form-label">โปรแกรมตรวจ</label>
-                                    <button type="button" class="btn btn-sm"
-                                        id="copyCheckupProgramBtn">
+                                    <button type="button" class="btn btn-sm" id="copyCheckupProgramBtn">
                                         <i class="bi bi-clipboard me-1"></i> คัดลอก
                                     </button>
                                 </div>
@@ -358,8 +358,7 @@
                                 <div class="d-flex justify-content-between">
                                     <label for="editAdditionalCheckupProgram" class="form-label">โปรแกรมตรวจ
                                         เพิ่มเติม</label>
-                                    <button type="button" class="btn btn-sm"
-                                        id="copyAdditionalCheckupProgramBtn">
+                                    <button type="button" class="btn btn-sm" id="copyAdditionalCheckupProgramBtn">
                                         <i class="bi bi-clipboard me-1"></i> คัดลอก
                                     </button>
                                 </div>
@@ -805,13 +804,15 @@
                                         </div>`;
                             } else if (data === "Locked") {
                                 return '<i class="bi bi-lock-fill" style="font-size: 1.5rem; color: gray;" title="Locked"></i>';
+                            } else if (!row.isLatest) {
+                                return `<i class="bi bi-archive-fill" style="font-size: 1.5rem; color: gray;" title="Archived"></i>`;
                             }
                             return "";
                         },
                     },
                 ],
                 rowCallback: function (row, data) {
-                    if (data.dataStatus === "Inactive") {
+                    if (data.dataStatus === "Inactive" || !data.isLatest) {
                         $(row).addClass("status-inactive");
                     }
                 },
@@ -911,6 +912,9 @@
                     $("#briefHn").text(rowData.hn);
                     $("#briefFullName").text(rowData.fullName);
                     $("#briefCompany").text(rowData.company);
+                    if(!rowData.isLatest) {
+                        return;
+                    }
                     if (
                         rowData.dataStatus === "Inactive" ||
                         rowData.dataStatus === "Locked"
@@ -945,15 +949,15 @@
                             e.preventDefault();
                             let change = false;
                             $('#updateStatusForm').find("input,textarea,select")
-                            .each(function () {
-                                if (
-                                    $(this).val() !==
-                                    window._editModalOriginalData[$(this).attr("id")]
-                                ) {
-                                    changed = true;
-                                    return false;
-                                }
-                            });
+                                .each(function () {
+                                    if (
+                                        $(this).val() !==
+                                        window._editModalOriginalData[$(this).attr("id")]
+                                    ) {
+                                        changed = true;
+                                        return false;
+                                    }
+                                });
 
                             if (change) {
                                 Swal.fire({
@@ -1083,7 +1087,7 @@
         $('#copyCheckupProgramBtn').on('click', function () {
             let checkupProgram = $("#editCheckupProgram").val();
             if (checkupProgram) {
-                try{
+                try {
                     navigator.clipboard.writeText(checkupProgram).then(
                         function () {
                             Swal.fire({
@@ -1119,7 +1123,7 @@
                 "#editAdditionalCheckupProgram"
             ).val();
             if (additionalCheckupProgram) {
-                try{
+                try {
                     navigator.clipboard.writeText(additionalCheckupProgram).then(
                         function () {
                             Swal.fire({
@@ -1149,7 +1153,7 @@
                 }
             }
         })
-        
+
         function filterDateRange() {
             let _start = $("#exportStartDate").val();
             let _end = $("#exportEndDate").val();
@@ -1271,6 +1275,16 @@
             const rowData = window.MainTable.row(row).data();
             console.log("🚀 ~ editData ~ rowData:", rowData);
             const role = getUser().role?.toLowerCase();
+            if(!rowData.isLatest) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "ไม่สามารถแก้ไขได้",
+                    html: "ข้อมูลนี้เป็นข้อมูลเก่า<br>กรุณาติดต่อผู้ดูแลระบบ",
+                    confirmButtonText: "ตกลง",
+                    customClass: SwalCustomClasses,
+                });
+                return;
+            }
             if ((role === "เวชระเบียน" && rowData.dataStatus === "Inactive") || (!["admin", "เวชระเบียน"].includes(role) && ['Inactive', 'Locked'].includes(rowData.dataStatus))) {
                 Swal.fire({
                     icon: "warning",
@@ -1386,7 +1400,7 @@
                 $(`#${field}`)
                     .prop("readonly", true)
                     .addClass("bg-success-subtle")
-                    .css("cursor", "not-allowed");
+                // .css("cursor", "not-allowed");
             });
             // Populate modal fields
             $("#editKey").val(rowData.hn || "");

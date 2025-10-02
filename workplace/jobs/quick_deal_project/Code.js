@@ -56,6 +56,56 @@ function getContractData(role) {
             dataStatus: row[18] || "Locked"
         }
     })
+    // Check for duplicates and mark first occurrence as latest data
+    let hnMap = new Map();
+    let citizenIdMap = new Map();
+
+    // First pass: identify duplicates
+    contracts.forEach((contract, index) => {
+        if (contract.hn) {
+            if (!hnMap.has(contract.hn)) {
+                hnMap.set(contract.hn, []);
+            }
+            hnMap.get(contract.hn).push(index);
+        }
+        
+        if (contract.citizenId) {
+            if (!citizenIdMap.has(contract.citizenId)) {
+                citizenIdMap.set(contract.citizenId, []);
+            }
+            citizenIdMap.get(contract.citizenId).push(index);
+        }
+    });
+
+    // Second pass: mark duplicates
+    hnMap.forEach((indices) => {
+        if (indices.length > 1) {
+            // Mark all but first as not latest
+            for (let i = 1; i < indices.length; i++) {
+                contracts[indices[i]].isLatest = false;
+            }
+            // Mark first as latest
+            contracts[indices[0]].isLatest = true;
+        }
+    });
+
+    citizenIdMap.forEach((indices) => {
+        if (indices.length > 1) {
+            // Mark all but first as not latest
+            for (let i = 1; i < indices.length; i++) {
+                contracts[indices[i]].isLatest = false;
+            }
+            // Mark first as latest
+            contracts[indices[0]].isLatest = true;
+        }
+    });
+
+    // Set isLatest to true for records without duplicates
+    contracts.forEach(contract => {
+        if (contract.isLatest === undefined) {
+            contract.isLatest = true;
+        }
+    });
     if (role === 'เวชระเบียน') {
         contracts = contracts.filter(c => c.dataStatus !== 'Inactive');
     } else if (role !== 'admin') {
@@ -76,7 +126,7 @@ function getLists() {
     headers.forEach((header, index) => {
         lists[header.toLowerCase()] = data.map(row => row[index]).filter(item => item);
     })
-    return lists
+    return lists //aaaaaaa
 }
 
 function saveUpdateData(formData) {
@@ -149,7 +199,7 @@ function saveQuickUpdate(formData) {
     }
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let ws = ss.getSheetByName('Visit Data');
-    let finder = ws.getDataRange().getValues().findLastIndex(row => row[0] === formData.hn);
+    let finder = ws.getDataRange().getValues().findLastIndex(row => row[0] == formData.hn);
     if (finder === -1) {
         lock.releaseLock();
         return returnObj({ success: false, message: 'ไม่พบข้อมูล HN นี้' });
