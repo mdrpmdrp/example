@@ -735,14 +735,14 @@ function getMeltSummaryReport(options) {
         // Filter data based on options
         let filteredData = allData.filter(row => {
             if (!row[0] || !(row[0] instanceof Date)) return false;
-            if (row[8] !== 'รอส่ง') return false; // Only include 'รอส่ง' status   
+            if (row[9] !== 'รอส่ง') return false; // Only include 'รอส่ง' status   
 
             // Check date range
             let rowDate = row[0];
             if (rowDate < startDate || rowDate > endDate) return false;
 
             // Check branch
-            if (branch !== 'all' && row[7] !== branch) return false;
+            if (branch !== 'all' && row[8] !== branch) return false;
             return true;
         });
         // Transform data to expected format xxxxxx
@@ -750,13 +750,15 @@ function getMeltSummaryReport(options) {
             return {
                 date: row[0],
                 billNo: row[1] || '',
-                beforeWeight: parseFloat(row[2]) || 0,
-                buyPrice: parseFloat(row[3]) || 0,
-                afterWeight: parseFloat(row[4]) || 0,
-                sellPrice: parseFloat(row[5]) || 0,
-                recorder: row[6] || '',
-                branch: row[7] || '',
-                status: row[8] || 'เสร็จสิ้น',
+                meltType: row[2] || '',
+                beforeWeight: parseFloat(row[3]) || 0,
+                buyPrice: parseFloat(row[4]) || 0,
+                afterWeight: parseFloat(row[5]) || 0,
+                sellPrice: parseFloat(row[6]) || 0,
+                recorder: row[7] || '',
+                branch: row[8] || '',
+                status: row[9] || 'เสร็จสิ้น',
+                percentAfterMelt: parseFloat(row[10]) || 0,
             };
         });
         return JSON.stringify({
