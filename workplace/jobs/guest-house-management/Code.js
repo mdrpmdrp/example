@@ -1,7 +1,6 @@
 /**
  * Non La Mer Hostel - Bed Management System
- * Google Apps Script Backend
- */
+*/
 
 // Configuration
 const SHEET_NAME = 'HostelData';
@@ -46,28 +45,28 @@ function initializeHostelData() {
 function getOrCreateSpreadsheet() {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = spreadsheet.getSheetByName(SHEET_NAME);
-    
+
     // Create sheet if it doesn't exist
     if (!sheet) {
         sheet = spreadsheet.insertSheet(SHEET_NAME);
-        
+
         // Set up headers for normal row-column structure
         const headers = [
-            'BookingID', 'BedID', 'Status', 'GuestName', 'CheckInDate', 
+            'BookingID', 'BedID', 'Status', 'GuestName', 'CheckInDate',
             'CheckOutDate', 'Notes', 'NoteColor', 'BookingType', 'CreatedDate',
             'ActualCheckIn', 'ActualCheckOut', 'LastModified', 'CancelledDate',
             'MovedDate', 'OriginalBedID'
         ];
-        
+
         sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-        
+
         // Format headers
         sheet.getRange(1, 1, 1, headers.length)
             .setFontWeight('bold')
             .setBackground('#db0b20')
             .setFontColor('white');
     }
-    
+
     return spreadsheet;
 }
 
@@ -76,9 +75,10 @@ function generateDateRange(startDate, endDate) {
     const end = new Date(endDate);
     const dateArray = [];
     let currentDate = start;
+    let timezone = Session.getScriptTimeZone();
 
     while (currentDate <= end) {
-        dateArray.push(currentDate.toISOString().split('T')[0]);
+        dateArray.push(Utilities.formatDate(currentDate, timezone, 'yyyy-MM-dd'));
         currentDate.setDate(currentDate.getDate() + 1);
     }
     return dateArray;
@@ -141,38 +141,72 @@ function loadAllBedData() {
         const allData = {};
         const allBookings = [];
 
-        // Process data rows (skip header)
-        for (let i = 1; i < data.length; i++) {
+        const timezone = Session.getScriptTimeZone();
+        
+        // Pre-size arrays for better performance
+        const dataLength = data.length;
+        allBookings.length = dataLength - 1;
+        let bookingIndex = 0;
+
+        // Process data rows (skip header) - single pass optimization
+        for (let i = 1; i < dataLength; i++) {
             const row = data[i];
-            if(!row[0] || !row[1]) continue; // Skip if no booking ID or bed ID
+            if (!row[0] || !row[1]) continue; // Skip if no booking ID or bed ID
+
+            const bookingData = {
+                bookingId: row[0],
+                bedId: row[1],
+                status: row[2] || 'available',
+                guest: row[3] || '',
+                checkIn: row[4] || '',
+                checkOut: row[5] || '',
+                notes: row[6] || '',
+                noteColor: row[7] || 'default',
+                bookingType: row[8] || 'checkin',
+                createdDate: row[9] || '',
+                actualCheckIn: row[10] || '',
+                actualCheckOut: row[11] || '',
+                lastModified: row[12] || '',
+                cancelledDate: row[13] || '',
+                movedDate: row[14] || '',
+                originalBedId: row[15] || ''
+            };
             
-            try {
-                const bookingData = rowToBookingObject(row);
-                allBookings.push(bookingData);
+            allBookings[bookingIndex++] = bookingData;
+
+            // Skip cancelled bookings for date range generation
+            if (bookingData.status === 'cancelled') continue;
+
+            // Optimize date range generation - calculate once
+            const checkIn = new Date(bookingData.checkIn);
+            const checkOut = new Date(bookingData.checkOut);
+            const daysDiff = Math.ceil((checkOut - checkIn) / 86400000); // milliseconds to days
+            
+            // Direct date iteration without array creation
+            for (let j = 0; j < daysDiff; j++) {
+                const currentDate = new Date(checkIn);
+                currentDate.setDate(checkIn.getDate() + j);
+                const dateStr = Utilities.formatDate(currentDate, timezone, 'yyyy-MM-dd');
                 
-                // Generate date range for this booking
-                let dateRange = generateDateRange(bookingData.checkIn, bookingData.checkOut);
-                dateRange.pop(); // Remove checkout date to allow back-to-back bookings
+                if (!allData[dateStr]) {
+                    allData[dateStr] = {};
+                }
                 
-                dateRange.forEach(d => {
-                    if (!allData[d]) {
-                        allData[d] = {};
-                    }
-                    allData[d][bookingData.bedId] = {
-                        status: bookingData.status,
-                        guest: bookingData.guest,
-                        checkIn: bookingData.checkIn,
-                        checkOut: bookingData.checkOut,
-                        notes: bookingData.notes,
-                        bookingId: bookingData.bookingId,
-                        noteColor: bookingData.noteColor || 'default',
-                        bookingType: bookingData.bookingType || 'checkin'
-                    };
-                });
-            } catch (parseError) {
-                Logger.log('Error processing booking data at row ' + i + ': ' + parseError.toString());
+                allData[dateStr][bookingData.bedId] = {
+                    status: bookingData.status,
+                    guest: bookingData.guest,
+                    checkIn: bookingData.checkIn,
+                    checkOut: bookingData.checkOut,
+                    notes: bookingData.notes,
+                    bookingId: bookingData.bookingId,
+                    noteColor: bookingData.noteColor,
+                    bookingType: bookingData.bookingType
+                };
             }
         }
+        
+        // Trim array to actual size
+        allBookings.length = bookingIndex;
 
         return JSON.stringify({ success: true, data: allData, bookings: allBookings });
     } catch (error) {
@@ -189,22 +223,22 @@ function loadBedData(date) {
         const spreadsheet = getOrCreateSpreadsheet();
         const sheet = spreadsheet.getSheetByName(SHEET_NAME);
         const data = sheet.getDataRange().getValues();
-        
+
         const dateData = {};
         const targetDate = new Date(date);
-        
+
         // Process all bookings to find those that cover the target date
         for (let i = 1; i < data.length; i++) {
             if (!data[i][0] || !data[i][1]) continue; // Skip if no booking ID or bed ID
-            
+
             try {
                 const bookingData = rowToBookingObject(data[i]);
-                
+
                 if (bookingData.status === 'cancelled') continue;
-                
+
                 const checkIn = new Date(bookingData.checkIn);
                 const checkOut = new Date(bookingData.checkOut);
-                
+
                 // Check if the target date falls within this booking period
                 if (targetDate >= checkIn && targetDate < checkOut) {
                     dateData[bookingData.bedId] = {
@@ -222,7 +256,7 @@ function loadBedData(date) {
                 continue;
             }
         }
-        
+
         return JSON.stringify({ success: true, data: dateData });
     } catch (error) {
         Logger.log('Error loading data: ' + error.toString());
@@ -245,12 +279,13 @@ function getOccupancyStats(startDate, endDate) {
 
         // Initialize stats for each day in range
         let currentDate = new Date(start);
+        let timezone = Session.getScriptTimeZone();
         while (currentDate <= end) {
-            const dateStr = currentDate.toISOString().split('T')[0];
-            stats[dateStr] = { 
-                total: 0, 
-                occupied: 0, 
-                booked: 0, 
+            const dateStr = Utilities.formatDate(currentDate, timezone, 'yyyy-MM-dd');
+            stats[dateStr] = {
+                total: 0,
+                occupied: 0,
+                booked: 0,
                 available: 0,
                 occupancyRate: 0,
                 bookingRate: 0
@@ -261,30 +296,31 @@ function getOccupancyStats(startDate, endDate) {
         // Process booking data
         for (let i = 1; i < data.length; i++) {
             if (!data[i][0] || !data[i][1]) continue; // Skip if no booking ID or bed ID
-            
+
             try {
                 const bookingData = rowToBookingObject(data[i]);
-                
+
                 if (bookingData.status === 'cancelled') continue;
-                
+
                 // Generate date range for this booking
                 const bookingStart = new Date(bookingData.checkIn);
                 const bookingEnd = new Date(bookingData.checkOut);
-                
+
                 let currentBookingDate = new Date(bookingStart);
+
                 while (currentBookingDate < bookingEnd) {
-                    const dateStr = currentBookingDate.toISOString().split('T')[0];
-                    
+                    const dateStr = Utilities.formatDate(currentBookingDate, timezone, 'yyyy-MM-dd');
+
                     if (stats[dateStr]) {
                         stats[dateStr].total++;
-                        
+
                         if (bookingData.status === 'occupied') {
                             stats[dateStr].occupied++;
                         } else if (bookingData.status === 'booked') {
                             stats[dateStr].booked++;
                         }
                     }
-                    
+
                     currentBookingDate.setDate(currentBookingDate.getDate() + 1);
                 }
             } catch (parseError) {
@@ -295,7 +331,7 @@ function getOccupancyStats(startDate, endDate) {
         // Calculate rates and available beds
         const hostelConfig = initializeHostelData();
         const totalBeds = hostelConfig.totalBeds;
-        
+
         Object.keys(stats).forEach(date => {
             stats[date].available = totalBeds - stats[date].occupied - stats[date].booked;
             stats[date].occupancyRate = totalBeds > 0 ? Math.round((stats[date].occupied / totalBeds) * 100) : 0;
@@ -316,17 +352,17 @@ function preBookBed(guestName, bedId, checkInDate, checkOutDate, notes, bookingI
     try {
         const ss = getOrCreateSpreadsheet();
         const sheet = ss.getSheetByName(SHEET_NAME);
-        
+
         // Generate unique booking ID if not provided
         if (!bookingId) {
-            bookingId = 'PRE-' + Date.now();
+            bookingId = 'BOOK-' + Date.now();
         }
-        
+
         // Check for conflicts with existing bookings
         const existingData = sheet.getDataRange().getValues();
         for (let i = 1; i < existingData.length; i++) {
             if (!existingData[i][0] || !existingData[i][1]) continue; // Skip if no booking ID or bed ID
-            
+
             try {
                 const existingBooking = rowToBookingObject(existingData[i]);
                 if (existingBooking.bedId === bedId && existingBooking.status !== 'cancelled') {
@@ -335,7 +371,7 @@ function preBookBed(guestName, bedId, checkInDate, checkOutDate, notes, bookingI
                     const existingEnd = new Date(existingBooking.checkOut);
                     const newStart = new Date(checkInDate);
                     const newEnd = new Date(checkOutDate);
-                    
+
                     if ((newStart < existingEnd && newEnd > existingStart)) {
                         return { success: false, message: 'Bed is already booked for these dates' };
                     }
@@ -344,7 +380,7 @@ function preBookBed(guestName, bedId, checkInDate, checkOutDate, notes, bookingI
                 continue;
             }
         }
-        
+
         // Create new booking
         const bookingData = {
             bookingId: bookingId,
@@ -356,12 +392,12 @@ function preBookBed(guestName, bedId, checkInDate, checkOutDate, notes, bookingI
             notes: notes,
             noteColor: noteColor || 'default',
             bookingType: 'prebooking',
-            createdDate: new Date().toISOString().split('T')[0]
+            createdDate: new Date()
         };
-        
+
         // Add new row with booking data
         sheet.appendRow(bookingObjectToRow(bookingData));
-        
+
         return { success: true, message: 'Bed pre-booked successfully', bookingId: bookingId };
     } catch (error) {
         Logger.log('Error pre-booking bed: ' + error.toString());
@@ -373,22 +409,26 @@ function preBookBed(guestName, bedId, checkInDate, checkOutDate, notes, bookingI
  * Check in a guest
  */
 function checkInGuest(guestName, bedId, checkInDate, checkOutDate, notes, bookingId, noteColor) {
+    let lock = LockService.getScriptLock();
+    if(!lock.tryLock(15000)) {
+        return { success: false, message: 'Could not obtain lock. Please try again.' };
+    }
     try {
         const ss = getOrCreateSpreadsheet();
         const sheet = ss.getSheetByName(SHEET_NAME);
-        
+
         // Check if there's an existing pre-booking for this bed/guest
         let existingBookingRow = null;
         const data = sheet.getDataRange().getValues();
-        
+
         for (let i = 1; i < data.length; i++) {
             if (!data[i][0] || !data[i][1]) continue; // Skip if no booking ID or bed ID
-            
+
             try {
                 const bookingData = rowToBookingObject(data[i]);
-                if (bookingData.bedId === bedId && bookingData.status === 'booked' && 
-                    (bookingId && bookingData.bookingId === bookingId || 
-                     bookingData.guest === guestName)) {
+                if (bookingData.bedId === bedId && bookingData.status === 'booked' &&
+                    (bookingId && bookingData.bookingId === bookingId ||
+                        bookingData.guest === guestName)) {
                     existingBookingRow = i + 1; // Convert to 1-based row number
                     break;
                 }
@@ -396,26 +436,27 @@ function checkInGuest(guestName, bedId, checkInDate, checkOutDate, notes, bookin
                 continue;
             }
         }
-        
+
         if (existingBookingRow) {
             // Update existing pre-booking to checked-in status
             const existingBooking = rowToBookingObject(sheet.getRange(existingBookingRow, 1, 1, 16).getValues()[0]);
             existingBooking.status = 'occupied';
             existingBooking.bookingType = 'checkin';
-            existingBooking.actualCheckIn = checkInDate;
-            
+            existingBooking.actualCheckIn = new Date();
+
             // Update any changed details
             if (guestName) existingBooking.guest = guestName;
             if (notes) existingBooking.notes = notes;
             if (noteColor) existingBooking.noteColor = noteColor;
-            
+
             sheet.getRange(existingBookingRow, 1, 1, 16).setValues([bookingObjectToRow(existingBooking)]);
+            lock.releaseLock();
             return { success: true, message: 'Guest checked in successfully (from pre-booking)' };
         } else {
             // Check for conflicts with existing bookings
             for (let i = 1; i < data.length; i++) {
                 if (!data[i][0] || !data[i][1]) continue;
-                
+
                 try {
                     const bookingData = rowToBookingObject(data[i]);
                     if (bookingData.bedId === bedId && (bookingData.status === 'occupied' || bookingData.status === 'booked')) {
@@ -424,8 +465,9 @@ function checkInGuest(guestName, bedId, checkInDate, checkOutDate, notes, bookin
                         const existingEnd = new Date(bookingData.checkOut);
                         const newStart = new Date(checkInDate);
                         const newEnd = new Date(checkOutDate);
-                        
+
                         if ((newStart < existingEnd && newEnd > existingStart)) {
+                            lock.releaseLock();
                             return { success: false, message: 'Bed is already occupied or booked for these dates' };
                         }
                     }
@@ -433,29 +475,31 @@ function checkInGuest(guestName, bedId, checkInDate, checkOutDate, notes, bookin
                     continue;
                 }
             }
-            
+
             // Create new check-in booking
             if (!bookingId) {
-                bookingId = 'CHK-' + Date.now();
+                bookingId = 'WALK-' + Date.now();
             }
-            
             const bookingData = {
                 bookingId: bookingId,
                 bedId: bedId,
                 status: 'occupied',
                 guest: guestName,
-                checkIn: checkInDate,
-                checkOut: checkOutDate,
+                checkIn: checkInDate.split('T')[0],
+                checkOut: checkOutDate.split('T')[0],
                 notes: notes,
                 noteColor: noteColor || 'default',
                 bookingType: 'checkin',
-                createdDate: new Date().toISOString().split('T')[0]
+                createdDate: new Date(),
+                actualCheckIn: new Date()
             };
-            
+
             sheet.appendRow(bookingObjectToRow(bookingData));
+            lock.releaseLock();
             return { success: true, message: 'Guest checked in successfully' };
         }
     } catch (error) {
+        lock.releaseLock();
         Logger.log('Error checking in guest: ' + error.toString());
         return { success: false, message: error.toString() };
     }
@@ -465,31 +509,39 @@ function checkInGuest(guestName, bedId, checkInDate, checkOutDate, notes, bookin
  * Cancel a pre-booking
  */
 function cancelPreBooking(bookingId) {
+    let lock = LockService.getScriptLock();
+    if(!lock.tryLock(15000)) {
+        return { success: false, message: 'Could not acquire lock' };
+    }
     try {
         const ss = getOrCreateSpreadsheet();
         const sheet = ss.getSheetByName(SHEET_NAME);
         const data = sheet.getDataRange().getValues();
-        
+
         for (let i = 1; i < data.length; i++) {
             if (!data[i][0] || !data[i][1]) continue; // Skip if no booking ID or bed ID
-            
+
             try {
                 const bookingData = rowToBookingObject(data[i]);
                 if (bookingData.bookingId === bookingId && bookingData.status === 'booked') {
                     // Update booking status to cancelled
                     bookingData.status = 'cancelled';
-                    bookingData.cancelledDate = new Date().toISOString().split('T')[0];
-                    
-                    sheet.getRange(i + 1, 1, 1, 16).setValues([bookingObjectToRow(bookingData)]);
+                    bookingData.cancelledDate = new Date()
+                    bookingData.lastModified = new Date();
+                    const archiveSheet = ss.getSheetByName('ArchiveData') || ss.insertSheet('ArchiveData');
+                    archiveSheet.appendRow(bookingObjectToRow(bookingData));
+                    sheet.deleteRow(i + 1); // Delete the row (i+1 for 1-based index)
+                    lock.releaseLock();
                     return { success: true, message: 'Pre-booking cancelled successfully' };
                 }
             } catch (parseError) {
                 continue;
             }
         }
-        
+        lock.releaseLock();
         return { success: false, message: 'Pre-booking not found or already processed' };
     } catch (error) {
+        lock.releaseLock();
         Logger.log('Error cancelling pre-booking: ' + error.toString());
         return { success: false, message: error.toString() };
     }
@@ -503,33 +555,33 @@ function getAllBookings(startDate, endDate) {
         const ss = getOrCreateSpreadsheet();
         const sheet = ss.getSheetByName(SHEET_NAME);
         const data = sheet.getDataRange().getValues();
-        
+
         const bookings = [];
         const start = startDate ? new Date(startDate) : null;
         const end = endDate ? new Date(endDate) : null;
-        
+
         for (let i = 1; i < data.length; i++) {
             if (!data[i][0] || !data[i][1]) continue; // Skip if no booking ID or bed ID
-            
+
             try {
                 const bookingData = rowToBookingObject(data[i]);
-                
+
                 // Filter by date range if provided
                 if (start && end) {
                     const bookingStart = new Date(bookingData.checkIn);
                     const bookingEnd = new Date(bookingData.checkOut);
-                    
+
                     if (bookingEnd < start || bookingStart > end) {
                         continue;
                     }
                 }
-                
+
                 bookings.push(bookingData);
             } catch (parseError) {
                 continue;
             }
         }
-        
+
         return { success: true, data: bookings };
     } catch (error) {
         Logger.log('Error getting all bookings: ' + error.toString());
@@ -540,153 +592,236 @@ function getAllBookings(startDate, endDate) {
 /**
  * Check out a guest
  */
-function checkOutGuest(bedId, checkOutDate) {
+function checkOutGuest(bookingId, bedId) {
+    let lock = LockService.getScriptLock();
+    if(!lock.tryLock(15000)) {
+        return { success: false, message: 'Could not obtain lock. Please try again.' };
+    }
     try {
         const ss = getOrCreateSpreadsheet();
         const sheet = ss.getSheetByName(SHEET_NAME);
         const data = sheet.getDataRange().getValues();
-        
-        // Find the current booking for this bed
+
         for (let i = 1; i < data.length; i++) {
-            if (!data[i][0] || !data[i][1]) continue; // Skip if no booking ID or bed ID
-            
+            if (!data[i][0] || !data[i][1]) continue; // Skip if no booking ID or bed ID                    
             try {
                 const bookingData = rowToBookingObject(data[i]);
-                if (bookingData.bedId === bedId && bookingData.status === 'occupied') {
-                    // Check if current date is within the booking period
-                    const currentDate = checkOutDate || new Date().toISOString().split('T')[0];
-                    const bookingStart = new Date(bookingData.checkIn);
-                    const bookingEnd = new Date(bookingData.checkOut);
-                    const today = new Date(currentDate);
-                    
-                    if (today >= bookingStart && today <= bookingEnd) {
-                        // Update booking to checked out
-                        bookingData.status = 'completed';
-                        bookingData.actualCheckOut = currentDate;
-                        
-                        sheet.getRange(i + 1, 1, 1, 16).setValues([bookingObjectToRow(bookingData)]);
-                        return { success: true, message: 'Guest checked out successfully' };
-                    }
-                }
-            } catch (parseError) {
-                continue;
+                if (bookingData.bookingId === bookingId && bookingData.bedId === bedId && bookingData.status === 'occupied') {
+                    bookingData.status = 'checked-out';
+                    bookingData.actualCheckOut = new Date();
+                    bookingData.lastModified = new Date();
+                    // move to archive sheet
+                    const archiveSheet = ss.getSheetByName('ArchiveData') || ss.insertSheet('ArchiveData');
+                    archiveSheet.appendRow(bookingObjectToRow(bookingData));
+                    sheet.deleteRow(i + 1); // Delete the row (i+1 for 1-based index)
+                    lock.releaseLock();
+                    return { success: true, message: 'Guest checked out successfully' };
+                } 
+            } catch (error) {
+                lock.releaseLock();
+                Logger.log('Error checking out guest: ' + error.toString());
+                return { success: false, message: error.toString() };
             }
         }
-        
-        return { success: false, message: 'No active booking found for this bed' };
+        lock.releaseLock();
+        return { success: false, message: 'No active booking found for this bed and booking ID' };
     } catch (error) {
+        lock.releaseLock();
         Logger.log('Error checking out guest: ' + error.toString());
         return { success: false, message: error.toString() };
     }
 }
 
 /**
- * Move a guest from one bed to another
+ * Move a guest from one bed to another (Optimized - single pass)
  */
-function moveBed(fromBedId, toBedId) {
+function moveBed(bookingId, fromBedId, toBedId) {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(15000)) {
+        return { success: false, message: 'Could not obtain lock. Please try again.' };
+    }
+    
     try {
         const ss = getOrCreateSpreadsheet();
         const sheet = ss.getSheetByName(SHEET_NAME);
         const data = sheet.getDataRange().getValues();
-        
+
         let fromBookingRow = null;
         let fromBookingData = null;
-        
-        // Find the current booking for the source bed
+        let conflictFound = false;
+
+        // Single pass: find source booking and check for conflicts
         for (let i = 1; i < data.length; i++) {
-            if (!data[i][0] || !data[i][1]) continue; // Skip if no booking ID or bed ID
-            
-            try {
-                const bookingData = rowToBookingObject(data[i]);
-                if (bookingData.bedId === fromBedId && 
-                    (bookingData.status === 'occupied' || bookingData.status === 'booked')) {
-                    fromBookingRow = i + 1;
-                    fromBookingData = bookingData;
-                    break;
+            const row = data[i];
+            if (!row[0] || !row[1]) continue;
+
+            const currentBookingId = row[0];
+            const currentBedId = row[1];
+            const currentStatus = row[2];
+
+            // Find source booking
+            if (currentBookingId === bookingId && currentBedId === fromBedId) {
+                fromBookingRow = i + 1;
+                fromBookingData = {
+                    bookingId: row[0],
+                    bedId: row[1],
+                    status: row[2],
+                    guest: row[3],
+                    checkIn: row[4],
+                    checkOut: row[5],
+                    notes: row[6],
+                    noteColor: row[7] || 'default',
+                    bookingType: row[8],
+                    createdDate: row[9],
+                    actualCheckIn: row[10],
+                    actualCheckOut: row[11],
+                    lastModified: row[12],
+                    cancelledDate: row[13],
+                    movedDate: row[14],
+                    originalBedId: row[15]
+                };
+            }
+
+            // Check for conflicts on target bed (only if we have source booking)
+            if (fromBookingData && currentBedId === toBedId && 
+                (currentStatus === 'occupied' || currentStatus === 'booked')) {
+                
+                // Quick date overlap check without creating Date objects unnecessarily
+                const existingCheckIn = row[4];
+                const existingCheckOut = row[5];
+                const moveCheckIn = fromBookingData.checkIn;
+                const moveCheckOut = fromBookingData.checkOut;
+
+                // String comparison for dates in ISO format (YYYY-MM-DD)
+                if (moveCheckIn < existingCheckOut && moveCheckOut > existingCheckIn) {
+                    lock.releaseLock();
+                    return { success: false, message: 'Target bed is not available for this period' };
                 }
-            } catch (parseError) {
-                continue;
             }
         }
-        
+
         if (!fromBookingData) {
-            return { success: false, message: 'No active booking found for source bed' };
+            lock.releaseLock();
+            return { success: false, message: 'Booking not found' };
         }
-        
-        // Check if target bed is available during the same period
-        for (let i = 1; i < data.length; i++) {
-            if (!data[i][0] || !data[i][1]) continue;
-            
-            try {
-                const bookingData = rowToBookingObject(data[i]);
-                if (bookingData.bedId === toBedId && 
-                    (bookingData.status === 'occupied' || bookingData.status === 'booked')) {
-                    
-                    // Check date overlap
-                    const existingStart = new Date(bookingData.checkIn);
-                    const existingEnd = new Date(bookingData.checkOut);
-                    const moveStart = new Date(fromBookingData.checkIn);
-                    const moveEnd = new Date(fromBookingData.checkOut);
-                    
-                    if ((moveStart < existingEnd && moveEnd > existingStart)) {
-                        return { success: false, message: 'Target bed is not available for the same period' };
-                    }
-                }
-            } catch (parseError) {
-                continue;
-            }
-        }
-        
-        // Update the booking with new bed ID
+
+        // Update booking
         fromBookingData.bedId = toBedId;
-        fromBookingData.movedDate = new Date().toISOString().split('T')[0];
+        fromBookingData.movedDate = new Date()
         fromBookingData.originalBedId = fromBedId;
-        
+        fromBookingData.lastModified = new Date()
+
         sheet.getRange(fromBookingRow, 1, 1, 16).setValues([bookingObjectToRow(fromBookingData)]);
-        
-        return { success: true, message: 'Guest moved successfully from ' + fromBedId + ' to ' + toBedId };
+        lock.releaseLock();
+        return { success: true, message: 'Guest moved successfully' };
     } catch (error) {
+        lock.releaseLock();
         Logger.log('Error moving bed: ' + error.toString());
         return { success: false, message: error.toString() };
     }
 }
 
 /**
- * Update guest notes
+ * Update guest notes and dates with conflict checking (Optimized)
  */
-function updateGuestNotes(bedId, notes, noteColor, bookingId) {
+function updateGuestNotes(bookingId, bedId, notes, noteColor, checkIn, checkOut) {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(15000)) {
+        return { success: false, message: 'Could not obtain lock. Please try again.' };
+    }
+    
     try {
         const ss = getOrCreateSpreadsheet();
         const sheet = ss.getSheetByName(SHEET_NAME);
         const data = sheet.getDataRange().getValues();
         
+        let targetRowIndex = -1;
+        let targetBooking = null;
+        const datesChanged = checkIn || checkOut;
+        let conflicts = [];
+
+        // Single pass optimization
         for (let i = 1; i < data.length; i++) {
-            if (!data[i][0] || !data[i][1]) continue; // Skip if no booking ID or bed ID
+            const row = data[i];
+            if (!row[0] || !row[1]) continue;
             
-            try {
-                const bookingData = rowToBookingObject(data[i]);
+            const currentBookingId = row[0];
+            const currentBedId = row[1];
+            const currentStatus = row[2];
+            
+            // Find target booking
+            if (currentBookingId === bookingId && currentBedId === bedId) {
+                targetRowIndex = i + 1;
+                targetBooking = {
+                    bookingId: row[0],
+                    bedId: row[1],
+                    status: row[2],
+                    guest: row[3],
+                    checkIn: row[4],
+                    checkOut: row[5],
+                    notes: row[6],
+                    noteColor: row[7] || 'default',
+                    bookingType: row[8],
+                    createdDate: row[9],
+                    actualCheckIn: row[10],
+                    actualCheckOut: row[11],
+                    lastModified: row[12],
+                    cancelledDate: row[13],
+                    movedDate: row[14],
+                    originalBedId: row[15]
+                };
+            }
+            
+            // Check for date conflicts if dates are being updated
+            if (datesChanged && targetBooking && currentBedId === bedId && 
+                currentBookingId !== bookingId && currentStatus !== 'cancelled') {
                 
-                // Match by bedId and optionally bookingId, and ensure it's an active booking
-                if (bookingData.bedId === bedId && 
-                    (bookingData.status === 'occupied' || bookingData.status === 'booked') &&
-                    (!bookingId || bookingData.bookingId === bookingId)) {
-                    
-                    // Update notes and note color
-                    bookingData.notes = notes;
-                    bookingData.noteColor = noteColor || 'default';
-                    bookingData.lastModified = new Date().toISOString().split('T')[0];
-                    
-                    sheet.getRange(i + 1, 1, 1, 16).setValues([bookingObjectToRow(bookingData)]);
-                    return { success: true, message: 'Notes updated successfully' };
+                const newCheckIn = checkIn || targetBooking.checkIn;
+                const newCheckOut = checkOut || targetBooking.checkOut;
+                const existingCheckIn = row[4];
+                const existingCheckOut = row[5];
+                
+                // Check overlap (ISO date string comparison works for YYYY-MM-DD format)
+                if (newCheckIn < existingCheckOut && newCheckOut > existingCheckIn) {
+                    conflicts.push({
+                        date: existingCheckIn,
+                        guest: row[3],
+                        status: currentStatus
+                    });
                 }
-            } catch (parseError) {
-                continue;
             }
         }
         
-        return { success: false, message: 'No active booking found for this bed' };
+        if (!targetBooking) {
+            lock.releaseLock();
+            return { success: false, message: 'Booking not found' };
+        }
+        
+        // Return conflicts if found
+        if (conflicts.length > 0) {
+            lock.releaseLock();
+            return { 
+                success: false, 
+                message: 'Date conflicts detected', 
+                conflicts: conflicts 
+            };
+        }
+        
+        // Update booking data
+        if (notes !== undefined) targetBooking.notes = notes;
+        if (noteColor !== undefined) targetBooking.noteColor = noteColor;
+        if (checkIn !== undefined) targetBooking.checkIn = checkIn.split('T')[0];
+        if (checkOut !== undefined) targetBooking.checkOut = checkOut.split('T')[0];
+        targetBooking.lastModified = new Date()
+        
+        // Single write operation
+        sheet.getRange(targetRowIndex, 1, 1, 16).setValues([bookingObjectToRow(targetBooking)]);
+        lock.releaseLock();
+        return { success: true, message: 'Booking updated successfully' };
+        
     } catch (error) {
-        Logger.log('Error updating notes: ' + error.toString());
+        lock.releaseLock();
+        Logger.log('Error updating guest notes: ' + error.toString());
         return { success: false, message: error.toString() };
     }
 }
@@ -707,7 +842,7 @@ function exportGuestData(startDate, endDate) {
         // Filter data by date range
         for (let i = 1; i < data.length; i++) {
             if (!data[i][0] || !data[i][1]) continue; // Skip if no booking ID or bed ID
-            
+
             try {
                 const bookingData = rowToBookingObject(data[i]);
                 const bookingStart = new Date(bookingData.checkIn);
@@ -741,6 +876,197 @@ function exportGuestData(startDate, endDate) {
     } catch (error) {
         Logger.log('Error exporting data: ' + error.toString());
         return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Change room with new dates (for mid-stay changes)
+ */
+function changeRoomWithNewDates(bookingId, oldBedId, newBedId, newCheckIn, newCheckOut) {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(15000)) {
+        return { success: false, message: 'Could not obtain lock. Please try again.' };
+    }
+    
+    try {
+        const ss = getOrCreateSpreadsheet();
+        const sheet = ss.getSheetByName(SHEET_NAME);
+        const data = sheet.getDataRange().getValues();
+        
+        let targetRowIndex = -1;
+        let targetBooking = null;
+        
+        // Find and update in single pass
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row[0] || !row[1]) continue;
+            
+            if (row[0] === bookingId && row[1] === oldBedId) {
+                targetRowIndex = i + 1;
+                targetBooking = rowToBookingObject(row);
+                break;
+            }
+        }
+        
+        if (!targetBooking) {
+            lock.releaseLock();
+            return { success: false, message: 'Booking not found' };
+        }
+        
+        // Check for conflicts on new bed
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row[0] || !row[1] || row[0] === bookingId) continue;
+            
+            if (row[1] === newBedId && row[2] !== 'cancelled') {
+                if (newCheckIn < row[5] && newCheckOut > row[4]) {
+                    lock.releaseLock();
+                    return { success: false, message: 'New bed is occupied during this period' };
+                }
+            }
+        }
+        
+        // Update booking
+        targetBooking.bedId = newBedId;
+        targetBooking.checkIn = newCheckIn;
+        targetBooking.checkOut = newCheckOut;
+        targetBooking.movedDate = new Date()
+        targetBooking.originalBedId = oldBedId;
+        targetBooking.lastModified = new Date()
+        
+        sheet.getRange(targetRowIndex, 1, 1, 16).setValues([bookingObjectToRow(targetBooking)]);
+        lock.releaseLock();
+        return { success: true, message: 'Room changed successfully' };
+    } catch (error) {
+        lock.releaseLock();
+        Logger.log('Error changing room: ' + error.toString());
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Split booking into two periods (for mid-stay room changes)
+ */
+function splitBooking(originalBookingId, oldBedId, newBedId, splitDate, newCheckIn, newCheckOut, guestName, notes, noteColor) {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(15000)) {
+        return { success: false, message: 'Could not obtain lock. Please try again.' };
+    }
+    
+    try {
+        const ss = getOrCreateSpreadsheet();
+        const sheet = ss.getSheetByName(SHEET_NAME);
+        const data = sheet.getDataRange().getValues();
+        
+        let originalRowIndex = -1;
+        let originalBooking = null;
+        
+        // Find original booking
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if (row[0] === originalBookingId && row[1] === oldBedId) {
+                originalRowIndex = i + 1;
+                originalBooking = rowToBookingObject(row);
+                break;
+            }
+        }
+        
+        if (!originalBooking) {
+            lock.releaseLock();
+            return { success: false, message: 'Original booking not found' };
+        }
+        
+        // Check conflicts on new bed
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row[0] || !row[1]) continue;
+            
+            if (row[1] === newBedId && row[2] !== 'cancelled') {
+                if (newCheckIn < row[5] && newCheckOut > row[4]) {
+                    lock.releaseLock();
+                    return { success: false, message: 'New bed is occupied during the second period' };
+                }
+            }
+        }
+        
+        // Update original booking (truncate to split date)
+        originalBooking.checkOut = splitDate;
+        originalBooking.lastModified = new Date()
+        sheet.getRange(originalRowIndex, 1, 1, 16).setValues([bookingObjectToRow(originalBooking)]);
+        
+        // Create new booking for second period
+        const newBookingId = 'SPLIT-' + Date.now();
+        const newBooking = {
+            bookingId: newBookingId,
+            bedId: newBedId,
+            status: 'booked',
+            guest: guestName,
+            checkIn: newCheckIn,
+            checkOut: newCheckOut,
+            notes: notes || '',
+            noteColor: noteColor || 'default',
+            bookingType: 'split-booking',
+            createdDate: new Date(),
+            actualCheckIn: '',
+            actualCheckOut: '',
+            lastModified: new Date(),
+            cancelledDate: '',
+            movedDate: '',
+            originalBedId: originalBookingId
+        };
+        
+        sheet.appendRow(bookingObjectToRow(newBooking));
+        lock.releaseLock();
+        return { 
+            success: true, 
+            message: 'Booking split successfully',
+            newBookingId: newBookingId
+        };
+    } catch (error) {
+        lock.releaseLock();
+        Logger.log('Error splitting booking: ' + error.toString());
+        return { success: false, message: error.toString() };
+    }
+}
+
+/**
+ * Find available beds for a date range (optimized)
+ */
+function findAvailableBeds(checkIn, checkOut, excludeBedId) {
+    try {
+        const ss = getOrCreateSpreadsheet();
+        const sheet = ss.getSheetByName(SHEET_NAME);
+        const data = sheet.getDataRange().getValues();
+        const hostelConfig = initializeHostelData();
+        
+        // Create a set of all beds
+        const allBeds = [];
+        Object.values(hostelConfig.dorms).forEach(beds => {
+            allBeds.push(...beds);
+        });
+        
+        // Track occupied beds
+        const occupiedBeds = new Set();
+        
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if (!row[0] || !row[1] || row[2] === 'cancelled') continue;
+            
+            // Check date overlap
+            if (checkIn < row[5] && checkOut > row[4]) {
+                occupiedBeds.add(row[1]);
+            }
+        }
+        
+        // Filter available beds
+        const availableBeds = allBeds.filter(bed => 
+            bed !== excludeBedId && !occupiedBeds.has(bed)
+        );
+        
+        return { success: true, beds: availableBeds };
+    } catch (error) {
+        Logger.log('Error finding available beds: ' + error.toString());
+        return { success: false, message: error.toString(), beds: [] };
     }
 }
 
