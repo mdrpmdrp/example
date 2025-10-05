@@ -1,5 +1,4 @@
 // Configuration - Update these with your Google Sheet details
-const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE'; // Replace with your actual spreadsheet ID
 const GOODS_SHEET_NAME = 'GOODS';
 const PRO_SHEET_NAME = 'PRO';
 
@@ -10,7 +9,7 @@ const PRO_SHEET_NAME = 'PRO';
  */
 function getSheetData(sheetName) {
   try {
-    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet()
     const sheet = spreadsheet.getSheetByName(sheetName);
     
     if (!sheet) {
@@ -41,7 +40,7 @@ function getSheetData(sheetName) {
     }
     
     console.log(`Loaded ${data.length} records from ${sheetName} sheet`);
-    return data;
+    return JSON.stringify(data);
     
   } catch (error) {
     console.error(`Error loading data from ${sheetName}:`, error);
@@ -141,7 +140,7 @@ function searchData(searchTerm) {
  */
 function testSheetAccess() {
   try {
-    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const goodsSheet = spreadsheet.getSheetByName(GOODS_SHEET_NAME);
     const proSheet = spreadsheet.getSheetByName(PRO_SHEET_NAME);
     
@@ -175,7 +174,7 @@ function testSheetAccess() {
  */
 function getSheetHeaders(sheetName) {
   try {
-    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = spreadsheet.getSheetByName(sheetName);
     
     if (!sheet) {
