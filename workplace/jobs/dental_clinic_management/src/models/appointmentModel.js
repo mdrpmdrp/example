@@ -215,7 +215,7 @@ function updateAppointment(appointmentId, appointmentData, currentUser = null) {
     // Send notification to Google Chat
     try {
       sendFormSubmissionNotification("appointment", updatedAppointment, "แก้ไข");
-      if(appointmentData.status !== 'cancelled') {
+      if(appointmentData.status === 'scheduled') {
         sendAppointmentEdit(appointmentData);
       }
     } catch (notificationError) {

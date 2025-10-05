@@ -1515,6 +1515,15 @@
                                     <input type="date" class="form-control" name="date" required>
                                 </div>
                             </div>
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label class="form-label">เลือกจากรายการนัดหมาย (ถ้ามี)</label>
+                                    <select class="form-select" id="appointmentSelect" name="appointmentId">
+                                        <option value="">-- เลือกนัดหมาย --</option>
+                                    </select>
+                                    <small class="form-text text-muted" style="font-size: 0.7rem;">เมื่อเลือกนัดหมาย ข้อมูลลูกค้าและหมอจะถูกกรอกอัตโนมัติ และสถานะจะเปลี่ยนเป็น "เสร็จสิ้น"</small>
+                                </div>
+                            </div>
                             <div class="col-12 super-admin-only">
                                 <div class="mb-3">
                                     <label class="form-label">สาขา <span class="text-danger">*</span></label>
@@ -2195,6 +2204,27 @@
                     return $(`<div><strong>${doctor.first_name}</strong> ${doctor.last_name}</div>`);
                 },
             });
+
+            // Initialize Select2 for appointment selector in revenue form
+            $('#appointmentSelect').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#revenueModal'),
+                placeholder: '-- เลือกนัดหมาย --',
+                allowClear: true
+            });
+
+            // Handle appointment selection change
+            $('#appointmentSelect').on('change', function() {
+                const appointmentId = $(this).val();
+                if (appointmentId) {
+                    populateRevenueFromAppointment(appointmentId);
+                }
+            });
+
+            // Handle date change in revenue form - reload appointments
+            $(SELECTORS.REVENUE_FORM + ' input[name="date"]').on('change', function() {
+                loadAppointmentsForRevenue();
+            });
         }
 
         function setupEventListeners() {
@@ -2369,6 +2399,9 @@
                 // Load patients and doctors for revenue form
                 loadPatientsForRevenue(); // Load all patients initially
                 loadDoctorsForRevenue();
+                
+                // Load appointments for the selected date
+                loadAppointmentsForRevenue();
 
                 // Small delay to ensure form is ready
                 setTimeout(() => {
@@ -5857,6 +5890,131 @@
 
         }
 
+        // Function to load appointments for revenue form based on selected date
+        function loadAppointmentsForRevenue() {
+            const dateInput = document.querySelector(SELECTORS.REVENUE_FORM + ' input[name="date"]');
+            const selectedDate = dateInput ? dateInput.value : '';
+            const appointmentSelect = $('#appointmentSelect');
+            
+            if (!selectedDate) {
+                appointmentSelect.html('<option value="">-- เลือกวันที่ก่อน --</option>');
+                return;
+            }
+
+            // Filter appointments for the selected date and not completed/cancelled
+            const dateAppointments = appointments.filter(apt => {
+                const aptDate = moment(apt.appointment_date).format('YYYY-MM-DD');
+                const matchDate = aptDate === selectedDate;
+                const isNotCompleted = apt.status !== 'completed' && apt.status !== 'cancelled';
+                
+                // Filter by branch for non-super_admin users
+                let matchBranch = true;
+                if (currentUserRole !== 'super_admin') {
+                    matchBranch = apt.branch === currentUserBranch;
+                }
+                
+                return matchDate && isNotCompleted && matchBranch;
+            });
+
+            // Build options
+            let options = '<option value="">-- เลือกนัดหมาย --</option>';
+            
+            if (dateAppointments.length > 0) {
+                dateAppointments.forEach(apt => {
+                    const patient = patients.find(p => p.id === apt.patient_id);
+                    const doctor = doctors.find(d => d.id === apt.doctor_id);
+                    
+                    const patientName = patient ? 
+                        `${patient.title_prefix ? patient.title_prefix + ' ' : ''}${patient.first_name} ${patient.last_name}` : 
+                        'ไม่ระบุลูกค้า';
+                    const doctorName = doctor ? 
+                        `${doctor.first_name} ${doctor.last_name}` : 
+                        'ไม่ระบุหมอ';
+                    const time = apt.appointment_time || 'ไม่ระบุเวลา';
+                    const statusText = getStatusText(apt.status);
+                    
+                    options += `<option value="${apt.id}">${time} - ${patientName} (หมอ: ${doctorName}) [${statusText}]</option>`;
+                });
+            }
+            
+            appointmentSelect.html(options);
+        }
+
+        // Function to populate revenue form from selected appointment
+        function populateRevenueFromAppointment(appointmentId) {
+            const appointment = appointments.find(a => a.id === appointmentId);
+            
+            if (!appointment) return;
+
+            const form = document.querySelector(SELECTORS.REVENUE_FORM);
+            
+            // Store appointment ID for later status update
+            form.dataset.linkedAppointmentId = appointmentId;
+            
+            // Populate patient and doctor
+            setTimeout(() => {
+                $('[name="patientId"]').val(appointment.patient_id).trigger('change');
+                $('[name="doctorId"]').val(appointment.doctor_id).trigger('change');
+            }, 100);
+
+            // Populate case type and details if available
+            if (appointment.case_type) {
+                const caseTypes = appointment.case_type.split(', ');
+                const caseTypeContainer = form.querySelector('#revenueCaseTypeContainer');
+                
+                // Reset existing selections
+                caseTypeContainer.querySelectorAll('.pill-option').forEach(pill => {
+                    pill.classList.remove('selected');
+                });
+                form.querySelectorAll('input[name="caseType"][type="hidden"]').forEach(input => input.remove());
+                
+                // Select case types
+                caseTypes.forEach(type => {
+                    const pill = caseTypeContainer.querySelector(`.pill-option[data-value="${type}"]`);
+                    if (pill) {
+                        pill.click();
+                    }
+                });
+            }
+
+            if (appointment.case_details) {
+                const caseDetails = appointment.case_details.split(', ');
+                const caseDetailsContainer = form.querySelector('#revenueCaseDetailsContainer');
+                
+                // Reset existing selections
+                caseDetailsContainer.querySelectorAll('.pill-option').forEach(pill => {
+                    pill.classList.remove('selected');
+                });
+                form.querySelectorAll('input[name="caseDetails"][type="hidden"]').forEach(input => input.remove());
+                
+                // Select case details
+                caseDetails.forEach(detail => {
+                    const pill = caseDetailsContainer.querySelector(`.pill-option[data-value="${detail}"]`);
+                    if (pill) {
+                        pill.click();
+                    }
+                });
+            }
+
+            // Populate cost if available
+            if (appointment.cost) {
+                // You might want to map this to appropriate payment field
+                // For now, we'll just show it as a reference
+                Toast.fire({
+                    icon: 'info',
+                    title: `ค่ารักษาจากนัดหมาย: ${appointment.cost.toLocaleString()} บาท`
+                });
+            }
+
+            // Populate notes
+            if (appointment.notes) {
+                form.querySelector('[name="notes"]').value = appointment.notes;
+            }
+
+            // Mark form as dirty
+            isRevenueFormDirty = true;
+        }
+
         function handleRevenueSubmit(e) {
             e.preventDefault();
             if (!e.target.checkValidity()) {
@@ -5991,12 +6149,28 @@
                     .withSuccessHandler(function (result) {
                         Swal.close();
                         if (result.success) {
-                            loadRevenues(false);
-                            closeRevenueModal(e.target);
-                            Toast.fire({
-                                icon: 'success',
-                                title: result.message
-                            });
+                            // Check if there's a linked appointment to update
+                            const linkedAppointmentId = e.target.dataset.linkedAppointmentId;
+                            
+                            if (linkedAppointmentId) {
+                                // Update appointment status to completed
+                                updateAppointmentStatusToCompleted(linkedAppointmentId, function() {
+                                    loadRevenues(false);
+                                    loadAppointments(false); // Reload appointments to show updated status
+                                    closeRevenueModal(e.target);
+                                    Toast.fire({
+                                        icon: 'success',
+                                        title: result.message + ' (อัพเดทสถานะนัดหมายเป็นเสร็จสิ้นแล้ว)'
+                                    });
+                                });
+                            } else {
+                                loadRevenues(false);
+                                closeRevenueModal(e.target);
+                                Toast.fire({
+                                    icon: 'success',
+                                    title: result.message
+                                });
+                            }
                         } else {
                             Toast.fire({
                                 icon: 'error',
@@ -6022,6 +6196,52 @@
             }
         }
 
+        // Function to update appointment status to completed
+        function updateAppointmentStatusToCompleted(appointmentId, callback) {
+            const appointment = appointments.find(a => a.id === appointmentId);
+            
+            if (!appointment) {
+                console.error('Appointment not found:', appointmentId);
+                if (callback) callback();
+                return;
+            }
+
+            // Prepare appointment data with completed status
+            const appointmentData = {
+                patientId: appointment.patient_id,
+                doctorId: appointment.doctor_id,
+                appointmentDate: moment(appointment.appointment_date).format('YYYY-MM-DD'),
+                appointmentTime: appointment.appointment_time,
+                caseType: appointment.case_type,
+                caseDetails: appointment.case_details,
+                contactChannel: appointment.contact_channel,
+                cost: appointment.cost,
+                status: 'completed', // Change to completed
+                notes: appointment.notes,
+                branch: appointment.branch
+            };
+
+            // Call backend to update
+            google.script.run
+                .withSuccessHandler(function (result) {
+                    if (result.success) {
+                        console.log('Appointment status updated to completed:', appointmentId);
+                    } else {
+                        console.error('Failed to update appointment status:', result.message);
+                    }
+                    if (callback) callback();
+                })
+                .withFailureHandler(function (error) {
+                    console.error('Error updating appointment status:', error);
+                    if (callback) callback();
+                })
+                [API_METHODS.UPDATE_APPOINTMENT](appointmentId, appointmentData, {
+                    username: currentUser,
+                    branch: currentUserBranch,
+                    role: currentUserRole
+                });
+        }
+
         function closeRevenueModal(form) {
             form.reset();
             form.querySelector('[name="date"]')._flatpickr.setDate(new Date());
@@ -6033,12 +6253,18 @@
             form.querySelectorAll('input[name="caseDetails"][type="hidden"]').forEach(input => input.remove());
             form.querySelectorAll('input[name="paymentType"][type="hidden"]').forEach(input => input.remove());
 
-            // Reset select2 elements
+            // Reset select2 elements (including appointment select)
             form.querySelectorAll('select').forEach(select => {
                 if ($(select).hasClass('select2-hidden-accessible')) {
                     $(select).val('').trigger('change');
                 }
             });
+            
+            // Reset appointment select specifically
+            $('#appointmentSelect').val('').trigger('change');
+
+            // Clear linked appointment
+            delete form.dataset.linkedAppointmentId;
 
             // Reset form tracking
             originalRevenueFormData = {};

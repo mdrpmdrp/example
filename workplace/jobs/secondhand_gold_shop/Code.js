@@ -487,7 +487,7 @@ function getBranch() {
     return branch;
 }
 
-function getMeltData(branch = '') {
+function getMeltData(branch = 'สาขา 2') {
     if (!branch || branch === '') {
         return JSON.stringify([]);
     }
@@ -503,11 +503,14 @@ function getMeltData(branch = '') {
     let today = Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd');
     const startOfWeek = new Date();
     const endOfWeek = new Date();
-    if (startOfWeek.getDay() !== 1) { // If today is Monday
-        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // Set to last Monday
-    }
-    if (endOfWeek.getDay() !== 6) { // If today is not Saturday
-        endOfWeek.setDate(endOfWeek.getDate() + (6 - endOfWeek.getDay())); // Set to next Saturday
+    if (startOfWeek.getDay() > 1) { // If today more than Monday
+        // get last monday
+        startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() - 1));
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+    }else if (startOfWeek.getDay() === 0) { // If today is Sunday
+        // get last monday
+        startOfWeek.setDate(startOfWeek.getDate() - 6);
+        // endOfWeek.setDate(startOfWeek.getDate() + 6);
     }
     startOfWeek.setHours(0, 0, 0, 0); // Set to start of the day
     endOfWeek.setHours(23, 59, 59, 999); // Set to end of the day
