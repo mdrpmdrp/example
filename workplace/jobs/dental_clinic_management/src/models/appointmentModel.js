@@ -336,7 +336,7 @@ function getTodayAppointments() {
     .getValues()
     .filter((x) => x[0] != ""); // Remove empty rows
 
-  if (data.length <= 1) {
+  if (data.length < 1) {
     return { success: true, appointments: [] };
   }
 

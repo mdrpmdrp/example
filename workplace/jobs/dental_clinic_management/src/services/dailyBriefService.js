@@ -204,11 +204,10 @@ function generateDailyBriefMessage(
     appointmentsByStatus.scheduled
       .sort((a, b) => a.appointment_time?.localeCompare(b.appointment_time))
       .forEach((apt, index) => {
-        message += `${index + 1}. ${apt.appointment_time} - `;
-        message += `${apt.patient_name || `รหัส: ${apt.patient_id}`}\n`;
-        message += `   📞 ${apt.patient_phone || "ไม่ระบุเบอร์"} | `;
-        message += `👨‍⚕️ ${apt.doctor_name || "ไม่ระบุหมอ"}\n`;
-        message += `   🦷 ${apt.case_type || "ไม่ระบุประเภท"}\n\n`;
+        message += `${index + 1}. ${apt.appointmentTime} - `;
+        message += `${apt.patientName || `รหัส: ${apt.patientId}`}\n`;
+        message += `หมอ: ${apt.doctorName || "ไม่ระบุหมอ"}\n`;
+        message += `ประเภท: ${apt.caseType || "ไม่ระบุประเภท"}\n\n`;
       });
   }
 
