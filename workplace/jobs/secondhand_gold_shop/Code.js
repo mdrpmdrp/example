@@ -675,7 +675,7 @@ function getAccountBalance(branch = 'all') {
             todaytrans: 0,
         }
         dataRange.forEach(row => {
-            if (row[7] !== 'สด' || row[9] === 'ยกเลิก') return;
+            if (row[7] !== 'สด'+branch || row[9] === 'ยกเลิก') return;
             if (branch === 'all' || row[6] === branch) { // Column B (index 1) is branch
                 accountBalance.summary -= parseFloat(row[4]) || 0; // Column E (index 4) is amount
                 if (Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today && row[9] === 'เสร็จสิ้น') {
@@ -685,7 +685,7 @@ function getAccountBalance(branch = 'all') {
         });
 
         dataRange2.forEach(row => {
-            if (row[3] !== 'สด' || row[8] !== 'เสร็จสิ้น') return;
+            if (row[3] !== 'สด'+branch || row[8] !== 'เสร็จสิ้น') return;
             if (branch === 'all' || row[7] === branch) { // Column H (index 7) is branch
                 if (row[1] === 'รับ') { // Column B (index 1) is type
                     accountBalance.summary += parseFloat(row[4]) || 0; // Column E (index 4) is amount
