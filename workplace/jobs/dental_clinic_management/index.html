@@ -1515,21 +1515,23 @@
                                     <input type="date" class="form-control" name="date" required>
                                 </div>
                             </div>
-                            <div class="col-12">
-                                <div class="mb-3">
-                                    <label class="form-label">เลือกจากรายการนัดหมาย (ถ้ามี)</label>
-                                    <select class="form-select" id="appointmentSelect" name="appointmentId">
-                                        <option value="">-- เลือกนัดหมาย --</option>
-                                    </select>
-                                    <small class="form-text text-muted" style="font-size: 0.7rem;">เมื่อเลือกนัดหมาย ข้อมูลลูกค้าและหมอจะถูกกรอกอัตโนมัติ และสถานะจะเปลี่ยนเป็น "เสร็จสิ้น"</small>
-                                </div>
-                            </div>
                             <div class="col-12 super-admin-only">
                                 <div class="mb-3">
                                     <label class="form-label">สาขา <span class="text-danger">*</span></label>
                                     <select class="form-select" name="branch">
                                         <option value="">เลือกสาขา</option>
                                     </select>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label class="form-label">เลือกจากรายการนัดหมาย (ถ้ามี)</label>
+                                    <select class="form-select" id="appointmentSelect" name="appointmentId">
+                                        <option value="">-- เลือกนัดหมาย --</option>
+                                    </select>
+                                    <small class="form-text text-muted" style="font-size: 0.7rem;">
+                                        <span class="super-admin-only mt-2">กรุณาเลือกสาขาและวันที่ก่อน |</span> เมื่อเลือกนัดหมาย ข้อมูลลูกค้าและหมอจะถูกกรอกอัตโนมัติ และสถานะจะเปลี่ยนเป็น "เสร็จสิ้น"
+                                    </small>
                                 </div>
                             </div>
                             <div class="col-12">
@@ -2602,6 +2604,11 @@
                 loadPatientsForRevenue(selectedBranch);
                 // Clear patient selection when branch changes to avoid confusion
                 $(SELECTORS.REVENUE_FORM + ' select[name="patientId"]').val('').trigger('change').prop('disabled', false);
+                
+                // Reload appointments when branch changes (for super_admin)
+                loadAppointmentsForRevenue();
+                // Clear appointment selection when branch changes
+                $('#appointmentSelect').val('').trigger('change');
             });
         }
 
@@ -2884,10 +2891,10 @@
                     renderTodayAppointments();
                     break;
                 case 'doctors':
-                    loadDoctors();
+                    loadDoctors(false);
                     break;
                 case 'users':
-                    loadUsers();
+                    loadUsers(false);
                     break;
                 case 'revenue':
                     renderRevenueChart();
@@ -3466,7 +3473,7 @@
 
                     if (branches.length > 0) {
                         optionsHtml += branches.map(branch =>
-                            `<option value="${branch.value}">${branch.displayName}</option>`
+                            `<option value="${branch}">${branch}</option>`
                         ).join('');
                     } else {
                         // Fallback to default branches if no data from sheet
@@ -5901,15 +5908,31 @@
                 return;
             }
 
+            // For super_admin, check if branch is selected
+            let selectedBranch = null;
+            if (currentUserRole === 'super_admin') {
+                const branchInput = document.querySelector(SELECTORS.REVENUE_FORM + ' select[name="branch"]');
+                selectedBranch = branchInput ? branchInput.value : '';
+                
+                if (!selectedBranch) {
+                    appointmentSelect.html('<option value="">-- เลือกสาขาก่อน --</option>');
+                    return;
+                }
+            }
+
             // Filter appointments for the selected date and not completed/cancelled
             const dateAppointments = appointments.filter(apt => {
                 const aptDate = moment(apt.appointment_date).format('YYYY-MM-DD');
                 const matchDate = aptDate === selectedDate;
                 const isNotCompleted = apt.status !== 'completed' && apt.status !== 'cancelled';
                 
-                // Filter by branch for non-super_admin users
+                // Filter by branch
                 let matchBranch = true;
-                if (currentUserRole !== 'super_admin') {
+                if (currentUserRole === 'super_admin') {
+                    // For super_admin, filter by selected branch
+                    matchBranch = apt.branch === selectedBranch;
+                } else {
+                    // For other users, filter by their own branch
                     matchBranch = apt.branch === currentUserBranch;
                 }
                 
@@ -5935,6 +5958,13 @@
                     
                     options += `<option value="${apt.id}">${time} - ${patientName} (หมอ: ${doctorName}) [${statusText}]</option>`;
                 });
+            } else {
+                // Show appropriate message when no appointments found
+                if (currentUserRole === 'super_admin') {
+                    options = '<option value="">-- ไม่มีนัดหมายในวันและสาขาที่เลือก --</option>';
+                } else {
+                    options = '<option value="">-- ไม่มีนัดหมายในวันที่เลือก --</option>';
+                }
             }
             
             appointmentSelect.html(options);

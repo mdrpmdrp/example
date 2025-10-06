@@ -126,7 +126,7 @@ function sendDailyPatientBrief() {
     const dayOfWeek = today.toLocaleDateString("th-TH", { weekday: "long" });
 
     // Get today's appointments
-    const todayString = today.toISOString().split("T")[0];
+    const todayString = Utilities.formatDate(today, "GMT+7", "yyyy-MM-dd");
     const appointmentsResult = getTodayAppointments();
 
     if (!appointmentsResult.success) {
