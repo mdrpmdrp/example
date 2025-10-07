@@ -197,7 +197,9 @@ function getSheetHeaders(sheetName) {
 function doGet() {
   return HtmlService.createTemplateFromFile('index')
     .evaluate()
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
 }
 
 /**
