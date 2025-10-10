@@ -42,6 +42,8 @@ function doPost(e) {
         return userAuthen(e);
       case 'checkMemberId':
         return checkMemberId(e)
+      case 'searchCustomer':
+        return searchCustomer(e);
       case 'memberRegist':
         return memberRegist(e);
       case 'guestRegist':
@@ -111,12 +113,62 @@ function checkMemberId(e) {
   for (let i = 1; i < allValues.length; i++) {
     if (allValues[i][customerIdIndex] === id) {
       const obj = rowToObject(allValues[i], header);
-      obj.status = 'success';
+      obj.status = 'found';
       return createJsonResponse(obj);
     }
   }
   
-  return createJsonResponse(null);
+  return createJsonResponse({ status: 'not found' });
+}
+
+function searchCustomer(e) {
+  const searchValue = e.parameter.searchValue.toString().trim();
+  let uid = e.parameter.uid;
+  const searchValueUpper = searchValue.toUpperCase();
+  const sh = getSheetWithCache(SHEET_NAME);
+  const allValues = sh.getDataRange().getValues();
+  const header = allValues[0];
+  const headerIndices = getHeaderIndices(header);
+  const customerIdIndex = headerIndices['รหัสลูกค้า'];
+  const phoneIndex = headerIndices['เบอร์โทร'];
+  const uidIndex = headerIndices['uid'];
+  if(allValues.map(v => v[uidIndex]).indexOf(uid) > 0) {
+    return createJsonResponse({ status: 'found dup' });
+  }
+
+  // Search by customer ID or phone number
+  for (let i = 1; i < allValues.length; i++) {
+    const customerId = allValues[i][customerIdIndex];
+    
+    // Check customer ID first (faster)
+    if (customerId === searchValueUpper) {
+      const obj = rowToObject(allValues[i], header);
+      obj.status = 'found';
+      obj.member_id = customerId;
+      return createJsonResponse(obj);
+    }
+    
+    // Check phone number (more expensive operation)
+    const phone = allValues[i][phoneIndex];
+    if (phone) {
+      // Remove dashes and split by comma
+      const phoneString = phone.toString().replace(/-/g, '');
+      const phones = phoneString.split(',');
+      
+      // Check each phone number
+      for (let j = 0; j < phones.length; j++) {
+        const normalizedPhone = phones[j].trim().padStart(10, '0');
+        if (normalizedPhone === searchValue) {
+          const obj = rowToObject(allValues[i], header);
+          obj.status = 'found';
+          obj.member_id = customerId;
+          return createJsonResponse(obj);
+        }
+      }
+    }
+  }
+  
+  return createJsonResponse({ status: 'not found' });
 }
 
 function checkAuth(id) {
