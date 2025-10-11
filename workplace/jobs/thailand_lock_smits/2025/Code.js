@@ -1,4 +1,7 @@
-const LINE_ACCESS_TOKEN = '7Zq0bQKGGJVUnuzLQyjf/235++1jYMhjthNroXkPcqSBeb6TzbgKYHpW5WkJrckE5dw2pGiMKKNIaax9rU9P0oMlHtpReUzs3WSO9LANtbMHoSHiqkt5czf044y3zTJon/UoxyPI5BUBot8VmenDIwdB04t89/1O/w1cDnyilFU='
+const FOR_TEST = true
+
+// const LINE_ACCESS_TOKEN = '7Zq0bQKGGJVUnuzLQyjf/235++1jYMhjthNroXkPcqSBeb6TzbgKYHpW5WkJrckE5dw2pGiMKKNIaax9rU9P0oMlHtpReUzs3WSO9LANtbMHoSHiqkt5czf044y3zTJon/UoxyPI5BUBot8VmenDIwdB04t89/1O/w1cDnyilFU='
+const LINE_ACCESS_TOKEN = '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU='
 
 // Constants
 const SHEET_NAME = 'ลูกค้าได้สิทธิ์เข้างาน';
@@ -42,6 +45,8 @@ function doPost(e) {
         return userAuthen(e);
       case 'checkMemberId':
         return checkMemberId(e)
+      case 'checkRegist':
+        return checkRegist(e);
       case 'searchCustomer':
         return searchCustomer(e);
       case 'memberRegist':
@@ -66,6 +71,8 @@ function doPost(e) {
         return delRichMenu(e);
       case 'sendFlex':
         return sendFlex(e);
+      case 'sendWelcomeMessage':
+        return sendWelcomeMessage(e);
       default:
         return ContentService.createTextOutput('No option').setMimeType(ContentService.MimeType.JSON);
     }
@@ -90,14 +97,14 @@ function getAuth_users() {
   const allValues = sh.getDataRange().getValues();
   const header = allValues[0].filter(r => r != '');
   const headerIndices = getHeaderIndices(header);
-  const customerIdIndex = headerIndices['customer-id'];
-  
+  const customerIdIndex = headerIndices['รหัสลูกค้า'];
+
   const obj = {};
-  for (let i = 2; i < allValues.length; i++) {
+  for (let i = 1; i < allValues.length; i++) {
     const row = allValues[i];
     obj[row[customerIdIndex]] = rowToObject(row, header);
   }
-  
+
   return createJsonResponse(obj);
 }
 
@@ -107,8 +114,8 @@ function checkMemberId(e) {
   const allValues = sh.getDataRange().getValues();
   const header = allValues[0];
   const headerIndices = getHeaderIndices(header);
-  const customerIdIndex = headerIndices['customer-id'];
-  
+  const customerIdIndex = headerIndices['รหัสลูกค้า'];
+
   // Search in memory instead of using TextFinder
   for (let i = 1; i < allValues.length; i++) {
     if (allValues[i][customerIdIndex] === id) {
@@ -117,13 +124,38 @@ function checkMemberId(e) {
       return createJsonResponse(obj);
     }
   }
-  
+
+  return createJsonResponse({ status: 'not found' });
+}
+
+function checkRegist(e) {
+  const uid = e.parameter.uid;
+  const sheet = getSheetWithCache(SHEET_NAME);
+  const allValues = sheet.getDataRange().getValues();
+  const header = allValues[0];
+  const headerIndices = getHeaderIndices(header);
+  const uidIndex = headerIndices['uid'];
+  for (let i = 1; i < allValues.length; i++) {
+    if (allValues[i][uidIndex] === uid) {
+      const obj = rowToObject(allValues[i], header);
+      obj.status = 'already registed';
+      obj.member_id = allValues[i][headerIndices['รหัสลูกค้า']];
+      return createJsonResponse(obj);
+    }
+  }
+
   return createJsonResponse({ status: 'not found' });
 }
 
 function searchCustomer(e) {
+  //  e = {
+  //   parameter: {
+  //     uid: 'Ua55431b2d9be5d104c316ccb8ef54e80',
+  //     searchValue: '0904017402'
+  //   }
+  // }
   const searchValue = e.parameter.searchValue.toString().trim();
-  let uid = e.parameter.uid;
+  const uid = e.parameter.uid;
   const searchValueUpper = searchValue.toUpperCase();
   const sh = getSheetWithCache(SHEET_NAME);
   const allValues = sh.getDataRange().getValues();
@@ -132,43 +164,111 @@ function searchCustomer(e) {
   const customerIdIndex = headerIndices['รหัสลูกค้า'];
   const phoneIndex = headerIndices['เบอร์โทร'];
   const uidIndex = headerIndices['uid'];
-  if(allValues.map(v => v[uidIndex]).indexOf(uid) > 0) {
-    return createJsonResponse({ status: 'found dup' });
-  }
 
-  // Search by customer ID or phone number
-  for (let i = 1; i < allValues.length; i++) {
-    const customerId = allValues[i][customerIdIndex];
-    
-    // Check customer ID first (faster)
-    if (customerId === searchValueUpper) {
-      const obj = rowToObject(allValues[i], header);
-      obj.status = 'found';
-      obj.member_id = customerId;
-      return createJsonResponse(obj);
-    }
-    
-    // Check phone number (more expensive operation)
-    const phone = allValues[i][phoneIndex];
-    if (phone) {
-      // Remove dashes and split by comma
-      const phoneString = phone.toString().replace(/-/g, '');
-      const phones = phoneString.split(',');
+  // Determine if we're searching by phone (numeric only) or customer ID
+  const isPhoneSearch = /^\d+$/.test(searchValue);
+
+  if (isPhoneSearch) {
+    const searchValuePadded = searchValue.padStart(10, '0');
+    let foundRow = null;
+    let userRow = null;
+
+    // Single pass through data
+    for (let i = 1; i < allValues.length; i++) {
+      const row = allValues[i];
       
-      // Check each phone number
-      for (let j = 0; j < phones.length; j++) {
-        const normalizedPhone = phones[j].trim().padStart(10, '0');
-        if (normalizedPhone === searchValue) {
-          const obj = rowToObject(allValues[i], header);
-          obj.status = 'found';
-          obj.member_id = customerId;
-          return createJsonResponse(obj);
+      // Check if this row belongs to the current user
+      if (row[uidIndex] === uid) {
+        userRow = row;
+      }
+
+      // Check if phone matches
+      const phone = row[phoneIndex];
+      if (phone && phone !== '') {
+        const phones = phone.toString().replace(/-/g, '').split(',').map(p => p.trim().padStart(10, '0'));
+        if (phones.includes(searchValuePadded)) {
+          foundRow = row;
+          // If we found both user row and matching phone, we can decide early
+          if (userRow && userRow !== foundRow) {
+            return createJsonResponse({ status: 'already registed uid' });
+          }
         }
       }
     }
+
+    if (!foundRow) {
+      if(userRow) {
+        return createJsonResponse({ status: 'already registed uid' });
+      }
+      return createJsonResponse({ status: 'not found' });
+    }
+
+    // If user has a row and it matches the found phone
+    if (userRow && userRow === foundRow) {
+      const obj = rowToObject(foundRow, header);
+      obj.status = 'found';
+      obj.member_id = foundRow[customerIdIndex];
+      return createJsonResponse(obj);
+    }
+
+    // User has different row
+    if (userRow) {
+      return createJsonResponse({ status: 'already registed uid' });
+    }else{
+      if(foundRow[uidIndex] !== '' && foundRow[uidIndex] !== uid) {
+        return createJsonResponse({ status: 'already registed customerId' });
+      }
+    }
+
+    // User not registered yet
+    const obj = rowToObject(foundRow, header);
+    obj.status = 'found';
+    obj.member_id = foundRow[customerIdIndex];
+    return createJsonResponse(obj);
+
+  } else {
+    let foundRow = null;
+    let hasConflictingUid = false;
+
+    // Single pass through data
+    for (let i = 1; i < allValues.length; i++) {
+      const row = allValues[i];
+      
+      if (row[customerIdIndex] === searchValueUpper) {
+        foundRow = row;
+        if(row[uidIndex] !== "" && row[uidIndex] !== uid) {
+          hasConflictingUid = true;
+        }
+      } else if (row[uidIndex] === uid && row[customerIdIndex] !== "" && row[customerIdIndex] !== searchValueUpper) {
+        hasConflictingUid = true;
+      }
+
+      // Early exit if we found both conditions
+      if (foundRow && hasConflictingUid) {
+        if(foundRow[uidIndex] !== '' && foundRow[uidIndex] !== uid) {
+          return createJsonResponse({ status: 'already registed customerId' });
+        }else{
+          return createJsonResponse({ status: 'already registed uid' });
+        }
+      }
+    }
+
+    if (!foundRow) {
+      if(hasConflictingUid) {
+        return createJsonResponse({ status: 'already registed uid' });
+      }
+      return createJsonResponse({ status: 'not found' });
+    }
+
+    if (hasConflictingUid) {
+      return createJsonResponse({ status: 'already registed uid' });
+    }
+
+    const obj = rowToObject(foundRow, header);
+    obj.status = 'found';
+    obj.member_id = foundRow[customerIdIndex];
+    return createJsonResponse(obj);
   }
-  
-  return createJsonResponse({ status: 'not found' });
 }
 
 function checkAuth(id) {
@@ -178,13 +278,13 @@ function checkAuth(id) {
   const headerIndices = getHeaderIndices(header);
   const customerIdIndex = headerIndices['customer-id'];
   const uidIndex = headerIndices['UID'];
-  
+
   for (let i = 1; i < allValues.length; i++) {
     if (allValues[i][customerIdIndex] === id) {
       return allValues[i][uidIndex] === '' ? 'not regist' : 'authen';
     }
   }
-  
+
   return false;
 }
 
@@ -195,19 +295,19 @@ function userAuthen(e) {
   const headerIndices = getHeaderIndices(header);
   const customerIdIndex = headerIndices['customer-id'];
   const uidIndex = headerIndices['uid'];
-  
+
   const customer_id = e.parameter.customer_id_auth ? e.parameter.customer_id_auth.toUpperCase() : null;
-  
+
   if (customer_id) {
     // Search by customer ID
     for (let i = 1; i < allValues.length; i++) {
       if (allValues[i][customerIdIndex] === customer_id) {
         const obj = rowToObject(allValues[i], header);
-        
+
         if (allValues[i][uidIndex] !== '') {
           return createJsonResponse({ status: 'validated', data: obj });
         }
-        
+
         obj.uid = e.parameter.uid;
         return createJsonResponse({ status: 'success', data: obj });
       }
@@ -227,57 +327,101 @@ function userAuthen(e) {
 }
 
 function memberRegist(e) {
+  // e = {parameter: {"member_id": "WS0004", "name": "ชูชัย  วรรณโกมลวัฒน", "province": "-- -- -- --", "phone": "081-731-6676, 02-460-0121", "date": "เข้าร่วมทั้ง 2 วัน", "follower": "", "uid": "Ua55431b2d9be5d104c316ccb8ef54e81", "opt": "memberRegist"}}
   const sh = getSheetWithCache(SHEET_NAME);
   const allValues = sh.getDataRange().getValues();
   const header = allValues[0];
   const headerIndices = getHeaderIndices(header);
-  const data = allValues.slice(2);
-  
+  const data = allValues.slice(1);
+
   const memberId = e.parameter['member_id'].toUpperCase();
   const paramUid = e.parameter['uid'];
-  const customerIdIndex = headerIndices['customer-id'];
+  const customerIdIndex = headerIndices['รหัสลูกค้า'];
   const uidIndex = headerIndices['uid'];
-  
-  // Find member by ID
-  const memberIndex = data.findIndex(v => v[customerIdIndex] === memberId);
+
+  Logger.log('Looking for member: ' + memberId + ', UID: ' + paramUid);
+  Logger.log('customerIdIndex: ' + customerIdIndex + ', uidIndex: ' + uidIndex);
+
+  let memberIndex = -1;
+  let memberRow = null;
+  let hasUidConflict = false;
+
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
+    const rowCustomerId = row[customerIdIndex];
+    const rowUid = row[uidIndex];
+
+    // Find target member
+    if (rowCustomerId === memberId) {
+      memberIndex = i;
+      memberRow = row;
+      Logger.log('Found member at index: ' + i + ', existing UID: "' + rowUid + '"');
+
+      // Check if member already has UID (early exit)
+      if (rowUid !== '' && rowUid != null) {
+        Logger.log('Member already has UID, returning...');
+        return createJsonResponse({ status: 'member id already validated' });
+      }
+    }
+
+    // Check for UID conflict
+    if (rowUid === paramUid) {
+      hasUidConflict = true;
+      Logger.log('UID conflict found at row index: ' + i + ', customer: ' + rowCustomerId);
+      // If we already found the member and there's a conflict, exit immediately
+      if (memberIndex >= 0) {
+        return createJsonResponse({ status: 'userid already validated' });
+      }
+    }
+
+    // Early exit if we found member and checked all UIDs up to this point
+    if (memberIndex >= 0 && hasUidConflict) {
+      return createJsonResponse({ status: 'userid already validated' });
+    }
+  }
+
+  // Member not found
   if (memberIndex < 0) {
     return createJsonResponse({ status: 'not validated' });
   }
-  
-  // Check if member already has UID
-  if (data[memberIndex][uidIndex] !== '') {
-    return createJsonResponse({ status: 'member id already validated' });
-  }
-  
-  // Check if UID already exists
-  if (data.some(v => v[uidIndex] === paramUid)) {
+
+  // UID already exists
+  if (hasUidConflict) {
     return createJsonResponse({ status: 'userid already validated' });
   }
-  
-  // Update the row
-  const row = memberIndex + 3; // +2 for header and slice offset, +1 for 1-based index
-  const d = [...data[memberIndex]]; // Create copy
+
+  // Cache header indices for faster access
+  const nameIndex = headerIndices['ชื่อ นามสกุล'];
+  const provinceIndex = headerIndices['จังหวัด'];
+  const visitDateIndex = headerIndices['ลงทะเบียนเข้างานวันที่'];
+  const phoneIndex = headerIndices['เบอร์โทร'];
+  const followerIndex = headerIndices['ผู้ติดตาม'];
+  const checkInIndex = headerIndices['เช็คอิน'];
+
+  // Update the row (avoid array spread for better performance)
+  const row = memberIndex + 2;
+  const d = memberRow.slice(); // Faster than spread operator
   d[uidIndex] = paramUid;
-  d[headerIndices['name']] = e.parameter['name'];
-  d[headerIndices['province']] = e.parameter['province'];
-  d[headerIndices['visit-date']] = e.parameter['date'];
-  d[headerIndices['phone']] = e.parameter['phone'];
-  d[headerIndices['follower']] = e.parameter['follower'];
-  d[headerIndices['check-in']] = `=IF( COUNTIF({'${SHEET_SATURDAY}'!C:C;'${SHEET_SUNDAY}'!C:C},B${row}) > 0,"YES","NO")`;
-  
+  d[nameIndex] = e.parameter['name'];
+  d[provinceIndex] = e.parameter['province'];
+  d[visitDateIndex] = e.parameter['date'];
+  d[phoneIndex] = e.parameter['phone'] ? ("'" + e.parameter['phone']) : "";
+  d[followerIndex] = e.parameter['follower'];
+  d[checkInIndex] = `=IF( COUNTIF({'${SHEET_SATURDAY}'!C:C;'${SHEET_SUNDAY}'!C:C},B${row}) > 0,"YES","NO")`;
+
   sh.getRange(row, 1, 1, d.length).setValues([d]);
-  
+
   // // Send LINE message with registration card
   // sendMessage('member', {
-  //   member_id: d[headerIndices['customer-id'] || 0],
-  //   name: d[headerIndices['name'] || 1],
-  //   province: d[headerIndices['province'] || 2],
-  //   phone: d[headerIndices['phone'] || 3],
-  //   date: d[headerIndices['visit-date'] || 4],
-  //   follower: d[headerIndices['follower'] || 5] || '',
+  //   member_id: d[customerIdIndex],
+  //   name: d[nameIndex],
+  //   province: d[provinceIndex],
+  //   phone: d[phoneIndex],
+  //   date: d[visitDateIndex],
+  //   follower: d[followerIndex] || '',
   //   uid: d[uidIndex]
   // });
-  
+
   return createJsonResponse({ status: 'success' });
 }
 // https://liff.line.me/1656187634-ZrAvz5Q9 staff
@@ -285,42 +429,61 @@ function memberRegist(e) {
 
 function guestRegist(e) {
   const lock = LockService.getScriptLock();
-  
+
   try {
     if (!lock.tryLock(10000)) {
       return createJsonResponse({ status: 'system busy' });
     }
-    
+
     const sh = getSheetWithCache(SHEET_NAME);
     const allValues = sh.getDataRange().getValues();
     const header = allValues[0];
     const headerIndices = getHeaderIndices(header);
-    const data = allValues.slice(2);
+    const data = allValues.slice(1);
     const uidIndex = headerIndices['uid'];
     const paramUid = e.parameter['uid'];
-    
+
     // Check if UID already registered
     if (data.some(v => v[uidIndex] === paramUid)) {
       return createJsonResponse({ status: 'already register' });
     }
-    
+
     const row = SuperScript.getRealLastRow('A', sh);
     const guest_id = '#G' + ('0000' + getGuestId()).slice(-4);
-    const new_row = [
-      guest_id,
-      e.parameter['name'],
-      e.parameter['province'],
-      e.parameter['phone'],
-      e.parameter['date'],
-      e.parameter['follower'] || '',
-      e.parameter['occupation'],
-      e.parameter['interest'],
-      paramUid,
-      `=IF( COUNTIF({'${SHEET_SATURDAY}'!B:B;'${SHEET_SUNDAY}'!B:B},A${row + 1}) > 0,"YES","NO")`
-    ];
-    
+    const nameIndex = headerIndices['ชื่อ นามสกุล'];
+    const provinceIndex = headerIndices['จังหวัด'];
+    const visitDateIndex = headerIndices['ลงทะเบียนเข้างานวันที่'];
+    const phoneIndex = headerIndices['เบอร์โทร'];
+    const followerIndex = headerIndices['ผู้ติดตาม'];
+    const checkInIndex = headerIndices['เช็คอิน'];
+    const occupationIndex = headerIndices['อาชีพ'];
+    const interestIndex = headerIndices['สินค้าที่สนใจ'];
+    // const new_row = [
+    //   guest_id,
+    //   e.parameter['name'],
+    //   e.parameter['province'],
+    //   e.parameter['phone'] ? ("'" + e.parameter['phone'] ) : "",
+    //   e.parameter['date'],
+    //   e.parameter['follower'] || '',
+    //   e.parameter['occupation'],
+    //   e.parameter['interest'],
+    //   paramUid,
+    //   `=IF( COUNTIF({'${SHEET_SATURDAY}'!B:B;'${SHEET_SUNDAY}'!B:B},A${row + 1}) > 0,"YES","NO")`
+    // ];
+    const new_row = new Array(header.length).fill('');
+    new_row[0] = guest_id;
+    new_row[nameIndex] = e.parameter['name'];
+    new_row[provinceIndex] = e.parameter['province'];
+    new_row[phoneIndex] = e.parameter['phone'] ? ("'" + e.parameter['phone']) : "";
+    new_row[visitDateIndex] = e.parameter['date'];
+    new_row[followerIndex] = e.parameter['follower'] || '';
+    new_row[occupationIndex] = e.parameter['occupation'];
+    new_row[interestIndex] = e.parameter['interest'];
+    new_row[uidIndex] = paramUid;
+    new_row[checkInIndex] = `=IF( COUNTIF({'${SHEET_SATURDAY}'!B:B;'${SHEET_SUNDAY}'!B:B},A${row + 1}) > 0,"YES","NO")`;
+
     sh.getRange(row + 1, 1, 1, 10).setValues([new_row]);
-    
+
     // // Send LINE message with registration card
     // sendMessage('guest', {
     //   guest_id: guest_id,
@@ -333,7 +496,7 @@ function guestRegist(e) {
     //   interest: e.parameter['interest'],
     //   uid: paramUid
     // });
-    
+
     return createJsonResponse({ status: 'success', guest_id });
   } finally {
     lock.releaseLock();
@@ -342,25 +505,25 @@ function guestRegist(e) {
 
 function guest_reRegist(e) {
   const lock = LockService.getScriptLock();
-  
+
   try {
     if (!lock.tryLock(10000)) {
       SpreadsheetApp.getUi().alert('System busy, please try again');
       return;
     }
-    
+
     const sh = getSheetWithCache(SHEET_NAME);
     const active_row = sh.getActiveRange().getRow();
     const data = sh.getRange(active_row, 1, 1, sh.getLastColumn()).getValues()[0];
     const guest_id = '#G' + ('0000' + getGuestId()).slice(-4);
-    
+
     data[0] = guest_id;
     data[9] = `=IF( COUNTIF({'${SHEET_SATURDAY}'!B:B;'${SHEET_SUNDAY}'!B:B},A${active_row}) > 0,"YES","NO")`;
-    
+
     const lastRow = SuperScript.getRealLastRow('A', sh);
     sh.getRange(lastRow + 1, 1, 1, data.length).setValues([data]);
     sh.deleteRow(active_row);
-    
+
     const guestData = {
       guest_id: data[0],
       name: data[1],
@@ -372,7 +535,7 @@ function guest_reRegist(e) {
       interest: data[7],
       uid: data[8]
     };
-    
+
     sendMessage('guest', guestData);
   } finally {
     lock.releaseLock();
@@ -565,7 +728,7 @@ function sendMessage(type, data) {
       "adjustMode": "shrink-to-fit"
     })
   }
-  
+
   const idToShow = type == 'member' ? data.member_id : data.guest_id;
   const msg = [
     {
@@ -574,7 +737,7 @@ function sendMessage(type, data) {
       "contents": flex
     }
   ];
-  
+
   Logger.log(JSON.stringify(msg));
   LineBotWebhook.push(data.uid, LINE_ACCESS_TOKEN, msg);
 }
@@ -582,7 +745,7 @@ function sendMessage(type, data) {
 function getGuestId() {
   const sh = getSheetWithCache(SHEET_NAME);
   const data = sh.getDataRange().getValues().slice(2);
-  
+
   let maxId = 0;
   for (let i = 0; i < data.length; i++) {
     const cellValue = data[i][0].toString();
@@ -591,7 +754,7 @@ function getGuestId() {
       if (id > maxId) maxId = id;
     }
   }
-  
+
   return maxId + 1;
 }
 
@@ -606,70 +769,210 @@ function getFolderAndToken() {
 
 function checkin(e) {
   const lock = LockService.getScriptLock();
-  
+
   try {
-    if (!lock.tryLock(5000)) {
+    if (!lock.tryLock(10000)) {
       return createJsonResponse({ status: 'system busy' });
     }
-    
+
     const date = new Date();
     const year = date.getFullYear();
     const month = date.getMonth();
     const day = date.getDate();
-    
+
     let sh;
     if (year === 2024 && month === 11 && day === 14) {
       sh = getSheetWithCache(SHEET_SATURDAY);
     } else if (year === 2024 && month === 11 && day === 15) {
       sh = getSheetWithCache(SHEET_SUNDAY);
+    } else if (FOR_TEST) {
+      sh = getSheetWithCache(SHEET_SATURDAY);
     } else {
-      return createJsonResponse({ status: 'not allowed' });
+      return createJsonResponse({ 
+        status: 'not allowed', 
+        message: 'กรุณาเช็คอินใน' + SHEET_SATURDAY + ' หรือ ' + SHEET_SUNDAY + ' เท่านั้น' 
+      });
     }
-    
+
     const customer_id = e.parameter.id;
-    
-    // Check if already checked in - read all data once
     const allValues = sh.getDataRange().getValues();
+    const header = allValues[0];
+    
+    // Check if already checked in
     for (let i = 1; i < allValues.length; i++) {
       if (allValues[i][1] === customer_id) {
         return createJsonResponse({ status: 'already checked', time_in: allValues[i][0] });
       }
     }
-    
+
+    // Add new check-in
     const lastRow = sh.getRange('L1').getValue() + 2;
     const formula = `=XLOOKUP(B${lastRow}, '${SHEET_NAME}'!A:A, '${SHEET_NAME}'!B:I, "ไม่มีสิทธื์เข้างาน")`;
-    
+
     sh.getRange(lastRow, 1, 1, 3)
       .setNumberFormats([['dd/MM/yyyy, HH:mm:ss', '@', '']])
       .setValues([[date, customer_id, formula]]);
-    
+
     SpreadsheetApp.flush();
-    
+
     const data = sh.getRange(lastRow, 1, 1, sh.getLastColumn()).getValues()[0];
-    const header = allValues[0].slice(0, sh.getLastColumn() - 2);
-    const obj = rowToObject(data, header);
+    const headerSlice = header.slice(0, sh.getLastColumn() - 2);
+    const obj = rowToObject(data, headerSlice);
     const uid = sh.getRange('J' + lastRow).getValue();
-    
-    LineBotWebhook.push(uid, LINE_ACCESS_TOKEN, ['ยินดีต้อนรับเข้าสู่งาน THAILAND LOCKSMITH 2024']);
-    
-    return createJsonResponse({ status: 'success', time_in: date, data: obj });
-  } finally {
+
     lock.releaseLock();
+    return createJsonResponse({ status: 'success', time_in: date, data: obj, uid: uid });
+  } catch(e) {
+    Logger.log(e)
+    lock.releaseLock();
+    return createJsonResponse({ status: 'error', message: e.message });
   }
+}
+
+function sendWelcomeMessage(e){
+  // const uid = e.parameter.uid;  
+  const uid = 'Ua55431b2d9be5d104c316ccb8ef54e81'
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+
+  let eventDate = '';
+  if (year === 2024 && month === 11 && day === 14) {
+    eventDate = 'วันเสาร์ที่ 14 ธันวาคม 2567';
+  } else if (year === 2024 && month === 11 && day === 15) {
+    eventDate = 'วันอาทิตย์ที่ 15 ธันวาคม 2567';
+  } else if (FOR_TEST) {
+    eventDate = 'วันเสาร์ที่ 14 ธันวาคม 2567';
+  }
+
+  const msg = [
+    {
+      "type": "flex",
+      "altText": "ยินดีต้อนรับเข้าสู่งาน THAILAND LOCKSMITH 2025",
+      "contents": {
+        "type": "bubble",
+        "body": {
+          "type": "box",
+          "layout": "vertical",
+          "contents": [
+            {
+              "type": "box",
+              "layout": "vertical",
+              "contents": [
+                {
+                  "type": "image",
+                  "url": "https://img2.pic.in.th/pic/1730737040513.png",
+                  "size": "md",
+                  "aspectMode": "fit",
+                  "margin": "none"
+                }
+              ],
+              "alignItems": "center",
+              "paddingAll": "sm"
+            },
+            {
+              "type": "box",
+              "layout": "vertical",
+              "contents": [
+                {
+                  "type": "text",
+                  "text": "ยินดีต้อนรับเข้าสู่งาน",
+                  "weight": "bold",
+                  "size": "lg",
+                  "color": "#ff8f04",
+                  "align": "center",
+                  "wrap": true
+                },
+                {
+                  "type": "text",
+                  "text": "THAILAND LOCKSMITH 2025",
+                  "weight": "bold",
+                  "size": "xxl",
+                  "color": "#000000",
+                  "align": "center",
+                  "wrap": true,
+                  "margin": "md",
+                  "scaling": true,
+                  "adjustMode": "shrink-to-fit"
+                }
+              ],
+              "spacing": "none",
+              "margin": "lg"
+            },
+            {
+              "type": "separator",
+              "margin": "xl",
+              "color": "#ff8f04"
+            },
+            {
+              "type": "box",
+              "layout": "vertical",
+              "contents": [
+                {
+                  "type": "box",
+                  "layout": "horizontal",
+                  "contents": [
+                    {
+                      "type": "box",
+                      "layout": "vertical",
+                      "contents": [
+                        {
+                          "type": "filler"
+                        }
+                      ],
+                      "width": "12px",
+                      "height": "12px",
+                      "backgroundColor": "#ff8f04",
+                      "cornerRadius": "30px"
+                    },
+                    {
+                      "type": "text",
+                      "text": eventDate,
+                      "size": "md",
+                      "color": "#333333",
+                      "weight": "bold",
+                      "flex": 1,
+                      "gravity": "center",
+                      "margin": "md"
+                    }
+                  ],
+                  "alignItems": "center"
+                }
+              ],
+              "margin": "xl",
+              "paddingAll": "md"
+            }
+          ],
+          "paddingAll": "none",
+          "backgroundColor": "#ffffff",
+          "spacing": "none"
+        },
+        "styles": {
+          "body": {
+            "backgroundColor": "#ffffff"
+          }
+        }
+      }
+    }
+  ];
+
+  LineBotWebhook.push(uid, LINE_ACCESS_TOKEN, msg);
+  return createJsonResponse({ status: 'success' });
 }
 
 
 function getCustomers_in() {
   const sh2 = getSheetWithCache(SHEET_SATURDAY);
   const sh3 = getSheetWithCache(SHEET_SUNDAY);
-  
+
   const data2 = sh2.getDataRange().getValues();
   const data3 = sh3.getDataRange().getValues();
   const header = data2[0];
-  
+
   const allData = [...data2.slice(1), ...data3.slice(1)];
   const obj = allData.map(row => rowToObject(row, header));
-  
+
   return createJsonResponse({ status: 'success', data: obj, header: header });
 }
 
@@ -677,7 +980,7 @@ function setRichMenu(e) {
   const uid = e.parameter.uid;
   const richmenu_id = 'richmenu-0e47da3aafd3d862885cc45ac86a8aa1';
   const endpoint = `https://api.line.me/v2/bot/user/${uid}/richmenu/${richmenu_id}`;
-  
+
   const options = {
     method: 'POST',
     headers: {
@@ -686,17 +989,17 @@ function setRichMenu(e) {
     },
     muteHttpExceptions: true
   };
-  
+
   const response = UrlFetchApp.fetch(endpoint, options);
   const status = response.getResponseCode() === 200 ? 'success' : 'fail';
-  
+
   return createJsonResponse({ status: status });
 }
 
 function delRichMenu(e) {
   const uid = e.parameter.uid;
   const endpoint = `https://api.line.me/v2/bot/user/${uid}/richmenu`;
-  
+
   const options = {
     method: 'DELETE',
     headers: {
@@ -705,10 +1008,10 @@ function delRichMenu(e) {
     },
     muteHttpExceptions: true
   };
-  
+
   const response = UrlFetchApp.fetch(endpoint, options);
   const status = response.getResponseCode() === 200 ? 'success' : 'fail';
-  
+
   return createJsonResponse({ status: status });
 }
 
