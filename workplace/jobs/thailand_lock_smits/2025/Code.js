@@ -4,6 +4,7 @@ const FOR_TEST = true
 const LINE_ACCESS_TOKEN = '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU='
 
 // Constants
+const HELPER_SHEET_NAME = 'Helper';
 const SHEET_NAME = 'ลูกค้าได้สิทธิ์เข้างาน';
 const SHEET_SATURDAY = 'วันเสาร์ที่ 14 ธันวาคม 2567';
 const SHEET_SUNDAY = 'วันอาทิตย์ที่ 15 ธันวาคม 2567';
@@ -130,7 +131,7 @@ function checkMemberId(e) {
 
 function checkRegist(e) {
   const uid = e.parameter.uid;
-  const sheet = getSheetWithCache(SHEET_NAME);
+  const sheet = getSheetWithCache(HELPER_SHEET_NAME);
   const allValues = sheet.getDataRange().getValues();
   const header = allValues[0];
   const headerIndices = getHeaderIndices(header);
