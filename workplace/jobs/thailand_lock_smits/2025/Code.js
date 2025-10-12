@@ -773,11 +773,20 @@ function getFolderAndToken() {
 
 function checkin(e) {
   const lock = LockService.getScriptLock();
-
-  try {
-    if (!lock.tryLock(10000)) {
+  let retries = 0;
+  const maxRetries = 3;
+  while (retries < maxRetries) {
+    if (lock.tryLock(30000)) {
+      break;
+    }
+    retries++;
+    if (retries >= maxRetries) {
       return createJsonResponse({ status: 'system busy' });
     }
+    Utilities.sleep(1000);
+  }
+  try {
+
 
     const date = new Date();
     const year = date.getFullYear();
