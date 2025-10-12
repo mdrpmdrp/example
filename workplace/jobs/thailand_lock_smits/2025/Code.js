@@ -6,8 +6,8 @@ const LINE_ACCESS_TOKEN = '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi
 // Constants
 const HELPER_SHEET_NAME = 'Helper';
 const SHEET_NAME = 'ลูกค้าได้สิทธิ์เข้างาน';
-const SHEET_SATURDAY = 'วันเสาร์ที่ 14 ธันวาคม 2567';
-const SHEET_SUNDAY = 'วันอาทิตย์ที่ 15 ธันวาคม 2567';
+const SHEET_SATURDAY = 'วันเสาร์ที่ 13 ธันวาคม 2568';
+const SHEET_SUNDAY = 'วันอาทิตย์ที่ 14 ธันวาคม 2568';
 
 // Helper functions
 function createJsonResponse(data) {
@@ -599,7 +599,7 @@ function sendMessage(type, data) {
                     },
                     {
                       "type": "text",
-                      "text": "THAILAND LOCKSMITH 2024",
+                      "text": "THAILAND LOCKSMITH 2025",
                       "color": "#FFFFFF",
                       "size": "lg",
                       "align": "start",
@@ -795,9 +795,9 @@ function checkin(e) {
     const day = date.getDate();
 
     let sh;
-    if (year === 2024 && month === 11 && day === 14) {
+    if (year === 2025 && month === 11 && day === 13) {
       sh = getSheetWithCache(SHEET_SATURDAY);
-    } else if (year === 2024 && month === 11 && day === 15) {
+    } else if (year === 2025 && month === 11 && day === 14) {
       sh = getSheetWithCache(SHEET_SUNDAY);
     } else if (FOR_TEST) {
       sh = getSheetWithCache(SHEET_SATURDAY);
@@ -852,12 +852,12 @@ function sendWelcomeMessage(e) {
   const day = date.getDate();
 
   let eventDate = '';
-  if (year === 2024 && month === 11 && day === 14) {
-    eventDate = 'วันเสาร์ที่ 14 ธันวาคม 2567';
-  } else if (year === 2024 && month === 11 && day === 15) {
-    eventDate = 'วันอาทิตย์ที่ 15 ธันวาคม 2567';
+  if (year === 2025 && month === 11 && day === 13) {
+    eventDate = 'วันเสาร์ที่ 13 ธันวาคม 2568';
+  } else if (year === 2025 && month === 11 && day === 14) {
+    eventDate = 'วันอาทิตย์ที่ 14 ธันวาคม 2568';
   } else if (FOR_TEST) {
-    eventDate = 'วันเสาร์ที่ 14 ธันวาคม 2567';
+    eventDate = 'วันเสาร์ที่ 13 ธันวาคม 2568';
   }
 
   const msg = [
