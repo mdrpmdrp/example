@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concurrent Guest Registration Test - THAILAND LOCKSMITH 2025</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7/dist/jquery.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Prompt', sans-serif;
+            background: linear-gradient(135deg, #ff8f04 0%, #ffad42 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+        }
+
+        .header-modern {
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            border-radius: 24px;
+            padding: 32px 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            margin-bottom: 24px;
+            color: #ff8f04;
+            text-align: center;
+        }
+
+        .card-modern {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .btn-test {
+            background: linear-gradient(135deg, #ff8f04 0%, #ff6f00 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 16px 48px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(255, 143, 4, 0.5);
+        }
+
+        .btn-test:hover {
+            background: linear-gradient(135deg, #ff6f00 0%, #e65100 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(255, 143, 4, 0.8);
+        }
+
+        .btn-test:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: #ff8f04;
+            transform: translateY(-2px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #000;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        .success {
+            color: #28a745;
+        }
+
+        .error {
+            color: #dc3545;
+        }
+
+        .pending {
+            color: #ffc107;
+        }
+
+        .log-container {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 16px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .log-time {
+            color: #888;
+            margin-right: 8px;
+        }
+
+        .log-success {
+            color: #28a745;
+        }
+
+        .log-error {
+            color: #dc3545;
+        }
+
+        .log-info {
+            color: #17a2b8;
+        }
+
+        .log-warning {
+            color: #ffc107;
+        }
+
+        .progress-modern {
+            height: 30px;
+            border-radius: 15px;
+            background: #e9ecef;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .progress-bar-modern {
+            height: 100%;
+            background: linear-gradient(90deg, #ff8f04 0%, #ffad42 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .form-control {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 10px 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: #ff8f04;
+            box-shadow: 0 0 0 4px rgba(255, 143, 4, 0.15);
+            outline: none;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header-modern">
+            <h2 class="mb-0">
+                <i class="bi bi-speedometer2 me-2"></i>
+                Concurrent Guest Registration Test
+            </h2>
+            <p class="mb-0 mt-2" style="color: #ffad42;">THAILAND LOCKSMITH 2025</p>
+        </div>
+
+        <div class="card-modern">
+            <h4 class="mb-3"><i class="bi bi-gear-fill text-warning me-2"></i>Test Configuration</h4>
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label for="registrationType" class="form-label">Registration Type</label>
+                    <select class="form-control" id="registrationType">
+                        <option value="guest">Guest Registration (ลูกค้าทั่วไป)</option>
+                        <option value="member">Member Registration (ลูกค้าผลเลิศ)</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="numGuests" class="form-label">Number of Concurrent Users</label>
+                    <input type="number" class="form-control" id="numGuests" value="50" min="1" max="100">
+                </div>
+                <div class="col-md-3">
+                    <label for="delay" class="form-label">Delay Between Requests (ms)</label>
+                    <input type="number" class="form-control" id="delay" value="0" min="0" max="5000" step="100">
+                </div>
+                <div class="col-md-3">
+                    <label for="testMode" class="form-label">Test Mode</label>
+                    <select class="form-control" id="testMode">
+                        <option value="simultaneous">Simultaneous (All at once)</option>
+                        <option value="sequential">Sequential (One by one)</option>
+                        <option value="batch">Batch (Groups of 10)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="text-center">
+                <button class="btn-test" id="startTest">
+                    <i class="bi bi-play-fill me-2"></i>Start Test
+                </button>
+                <button class="btn-test" id="clearLogs" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">
+                    <i class="bi bi-trash me-2"></i>Clear Logs
+                </button>
+            </div>
+        </div>
+
+        <div class="card-modern">
+            <h4 class="mb-3"><i class="bi bi-bar-chart-fill text-info me-2"></i>Test Statistics</h4>
+            <div class="progress-modern mb-3">
+                <div class="progress-bar-modern" id="progressBar" style="width: 0%">0%</div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value pending" id="statTotal">0</div>
+                    <div class="stat-label">Total Requests</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value success" id="statSuccess">0</div>
+                    <div class="stat-label">Successful</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value error" id="statFailed">0</div>
+                    <div class="stat-label">Failed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statDuration" style="color: #17a2b8;">0s</div>
+                    <div class="stat-label">Duration</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statAvgTime" style="color: #6610f2;">0ms</div>
+                    <div class="stat-label">Avg Response Time</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-modern">
+            <h4 class="mb-3"><i class="bi bi-terminal-fill text-success me-2"></i>Test Logs</h4>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry">
+                    <span class="log-time">[Ready]</span>
+                    <span class="log-info">System ready for testing. Click "Start Test" to begin.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const scriptUrl = 'https://script.google.com/macros/s/AKfycbxeQVWU7m3laqQowhev9487Ize_SAW8zy7qj-IlneYSz-DHwUBMnpb73CTnVc9ADFg/exec';
+        
+        let testStats = {
+            total: 0,
+            success: 0,
+            failed: 0,
+            startTime: 0,
+            endTime: 0,
+            responseTimes: []
+        };
+
+        // Generate random Thai names
+        const firstNames = ['สมชาย', 'สมหญิง', 'วิชัย', 'วิภา', 'ชาตรี', 'ชาดา', 'ประเสริฐ', 'ประภา', 'สุชาติ', 'สุดา'];
+        const lastNames = ['ใจดี', 'มั่นคง', 'วงศ์ดี', 'สุขใส', 'ทองดี', 'เจริญสุข', 'รุ่งเรือง', 'ศรีสุข', 'มั่งมี', 'สมบูรณ์'];
+        const provinces = ['กรุงเทพมหานคร', 'เชียงใหม่', 'นครราชสีมา', 'ขอนแก่น', 'อุบลราชธานี', 'สงขลา', 'ชลบุรี', 'นครศรีธรรมราช', 'สุราษฎร์ธานี', 'เชียงราย'];
+        const occupations = ['ช่างกุญแจ', 'ช่างมอเตอร์ไซค์', 'ช่างซ่อมรถยนต์'];
+        const interests = ['เครื่องตัดกุญแจอัตโนมัติ', 'เครื่องตัดกุญแจมาตรฐาน', 'อุปกรณ์ช่างกุญแจ', 'เครื่องโปรแกรมชิพและรีโมท'];
+        const dates = ['วันเสาร์ที่ 14 ธันวาคม 2567', 'วันอาทิตย์ที่ 15 ธันวาคม 2567', 'เข้าร่วมทั้ง 2 วัน'];
+        
+        // Sample member IDs for testing (you can add more)
+        const memberIds = ['WS0001', 'WS0002', 'WS0003', 'WS0004', 'WS0005', 'TH0001', 'TH0002', 'TH0003', 'BK0001', 'BK0002'];
+
+        function generateRandomGuest(index) {
+            const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+            const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+            const phone = '08' + Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+            
+            return {
+                name: `${firstName} ${lastName}`,
+                province: provinces[Math.floor(Math.random() * provinces.length)],
+                phone: phone,
+                occupation: occupations[Math.floor(Math.random() * occupations.length)],
+                interest: interests[Math.floor(Math.random() * interests.length)],
+                date: dates[Math.floor(Math.random() * dates.length)],
+                uid: `TEST_UID_GUEST_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+                opt: 'guestRegist'
+            };
+        }
+
+        function generateRandomMember(index) {
+            const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+            const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+            const phone = '08' + Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+            const memberId = memberIds[index % memberIds.length]; // Cycle through member IDs
+            
+            return {
+                member_id: memberId,
+                name: `${firstName} ${lastName}`,
+                province: provinces[Math.floor(Math.random() * provinces.length)],
+                phone: phone,
+                date: dates[Math.floor(Math.random() * dates.length)],
+                follower: Math.random() > 0.7 ? `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}` : '',
+                uid: `TEST_UID_MEMBER_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+                opt: 'memberRegist'
+            };
+        }
+
+        function generateRandomRegistration(index, type) {
+            return type === 'guest' ? generateRandomGuest(index) : generateRandomMember(index);
+        }
+
+        function log(message, type = 'info') {
+            const time = new Date().toLocaleTimeString('th-TH');
+            const logClass = `log-${type}`;
+            const entry = `<div class="log-entry"><span class="log-time">[${time}]</span><span class="${logClass}">${message}</span></div>`;
+            $('#logContainer').append(entry);
+            $('#logContainer').scrollTop($('#logContainer')[0].scrollHeight);
+        }
+
+        function updateStats() {
+            $('#statTotal').text(testStats.total);
+            $('#statSuccess').text(testStats.success);
+            $('#statFailed').text(testStats.failed);
+            
+            if (testStats.endTime > 0) {
+                const duration = ((testStats.endTime - testStats.startTime) / 1000).toFixed(2);
+                $('#statDuration').text(duration + 's');
+            }
+            
+            if (testStats.responseTimes.length > 0) {
+                const avgTime = (testStats.responseTimes.reduce((a, b) => a + b, 0) / testStats.responseTimes.length).toFixed(0);
+                $('#statAvgTime').text(avgTime + 'ms');
+            }
+            
+            const progress = testStats.total > 0 ? ((testStats.success + testStats.failed) / testStats.total * 100).toFixed(0) : 0;
+            $('#progressBar').css('width', progress + '%').text(progress + '%');
+        }
+
+        function resetStats() {
+            testStats = {
+                total: 0,
+                success: 0,
+                failed: 0,
+                startTime: 0,
+                endTime: 0,
+                responseTimes: []
+            };
+            updateStats();
+        }
+
+        async function submitRegistration(userData, index, type) {
+            const requestStartTime = Date.now();
+            const userType = type === 'guest' ? 'Guest' : 'Member';
+            const userId = type === 'guest' ? 'Guest' : userData.member_id;
+            
+            try {
+                log(`[${userType} ${index + 1}] Submitting: ${userData.name} ${type === 'member' ? '(ID: ' + userData.member_id + ')' : ''}`, 'info');
+                
+                const response = await $.ajax({
+                    url: scriptUrl,
+                    method: 'POST',
+                    data: userData
+                });
+                
+                const responseTime = Date.now() - requestStartTime;
+                testStats.responseTimes.push(responseTime);
+                
+                if (response.status === 'success') {
+                    testStats.success++;
+                    const resultId = type === 'guest' ? response.guest_id : userData.member_id;
+                    log(`[${userType} ${index + 1}] ✓ Success: ${userData.name} (ID: ${resultId}) - ${responseTime}ms`, 'success');
+                } else if (response.status === 'already register' || response.status === 'already registed') {
+                    testStats.success++;
+                    log(`[${userType} ${index + 1}] ⚠ Already registered: ${userData.name} - ${responseTime}ms`, 'warning');
+                } else if (response.status === 'member id already validated' || response.status === 'userid already validated') {
+                    testStats.failed++;
+                    log(`[${userType} ${index + 1}] ✗ Already validated: ${userData.name} - ${responseTime}ms`, 'error');
+                } else if (response.status === 'system busy') {
+                    testStats.failed++;
+                    log(`[${userType} ${index + 1}] ⏱ System busy: ${userData.name} - ${responseTime}ms`, 'warning');
+                } else {
+                    testStats.failed++;
+                    log(`[${userType} ${index + 1}] ✗ Failed: ${userData.name} - Status: ${response.status} - ${responseTime}ms`, 'error');
+                }
+                
+            } catch (error) {
+                const responseTime = Date.now() - requestStartTime;
+                testStats.failed++;
+                log(`[${userType} ${index + 1}] ✗ Error: ${userData.name} - ${error.statusText || error.message} - ${responseTime}ms`, 'error');
+            }
+            
+            updateStats();
+        }
+
+        async function runSimultaneousTest(numUsers, delay, type) {
+            const userType = type === 'guest' ? 'guests' : 'members';
+            log(`Starting SIMULTANEOUS test with ${numUsers} ${userType}...`, 'info');
+            testStats.startTime = Date.now();
+            
+            const promises = [];
+            for (let i = 0; i < numUsers; i++) {
+                const userData = generateRandomRegistration(i, type);
+                
+                if (delay > 0 && i > 0) {
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+                
+                promises.push(submitRegistration(userData, i, type));
+            }
+            
+            await Promise.all(promises);
+            testStats.endTime = Date.now();
+            updateStats();
+            
+            log(`Test completed! Total: ${testStats.total}, Success: ${testStats.success}, Failed: ${testStats.failed}`, 'info');
+        }
+
+        async function runSequentialTest(numUsers, delay, type) {
+            const userType = type === 'guest' ? 'guests' : 'members';
+            log(`Starting SEQUENTIAL test with ${numUsers} ${userType}...`, 'info');
+            testStats.startTime = Date.now();
+            
+            for (let i = 0; i < numUsers; i++) {
+                const userData = generateRandomRegistration(i, type);
+                await submitRegistration(userData, i, type);
+                
+                if (delay > 0 && i < numUsers - 1) {
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            
+            testStats.endTime = Date.now();
+            updateStats();
+            
+            log(`Test completed! Total: ${testStats.total}, Success: ${testStats.success}, Failed: ${testStats.failed}`, 'info');
+        }
+
+        async function runBatchTest(numUsers, delay, type) {
+            const userType = type === 'guest' ? 'guests' : 'members';
+            log(`Starting BATCH test with ${numUsers} ${userType} (batches of 10)...`, 'info');
+            testStats.startTime = Date.now();
+            
+            const batchSize = 10;
+            const numBatches = Math.ceil(numUsers / batchSize);
+            
+            for (let batch = 0; batch < numBatches; batch++) {
+                const startIdx = batch * batchSize;
+                const endIdx = Math.min(startIdx + batchSize, numUsers);
+                
+                log(`Processing batch ${batch + 1}/${numBatches} (${userType.charAt(0).toUpperCase() + userType.slice(1)} ${startIdx + 1}-${endIdx})...`, 'warning');
+                
+                const promises = [];
+                for (let i = startIdx; i < endIdx; i++) {
+                    const userData = generateRandomRegistration(i, type);
+                    promises.push(submitRegistration(userData, i, type));
+                }
+                
+                await Promise.all(promises);
+                
+                if (delay > 0 && batch < numBatches - 1) {
+                    log(`Waiting ${delay}ms before next batch...`, 'info');
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            
+            testStats.endTime = Date.now();
+            updateStats();
+            
+            log(`Test completed! Total: ${testStats.total}, Success: ${testStats.success}, Failed: ${testStats.failed}`, 'info');
+        }
+
+        $('#startTest').on('click', async function () {
+            const numUsers = parseInt($('#numGuests').val());
+            const delay = parseInt($('#delay').val());
+            const testMode = $('#testMode').val();
+            const registrationType = $('#registrationType').val();
+            
+            if (numUsers < 1 || numUsers > 100) {
+                alert('Please enter a number between 1 and 100');
+                return;
+            }
+            
+            // Disable button
+            $(this).prop('disabled', true).html('<span class="spinner me-2"></span>Running Test...');
+            
+            // Reset stats
+            resetStats();
+            testStats.total = numUsers;
+            updateStats();
+            
+            // Clear previous logs except the first one
+            const typeLabel = registrationType === 'guest' ? 'Guest Registration (ลูกค้าทั่วไป)' : 'Member Registration (ลูกค้าผลเลิศ)';
+            $('#logContainer').html(`<div class="log-entry"><span class="log-time">[Start]</span><span class="log-info">Test started... Type: ${typeLabel}</span></div>`);
+            
+            try {
+                if (testMode === 'simultaneous') {
+                    await runSimultaneousTest(numUsers, delay, registrationType);
+                } else if (testMode === 'sequential') {
+                    await runSequentialTest(numUsers, delay, registrationType);
+                } else if (testMode === 'batch') {
+                    await runBatchTest(numUsers, delay, registrationType);
+                }
+                
+                const duration = ((testStats.endTime - testStats.startTime) / 1000).toFixed(2);
+                const successRate = ((testStats.success / testStats.total) * 100).toFixed(1);
+                
+                log(`========================================`, 'info');
+                log(`FINAL RESULTS (${typeLabel}):`, 'success');
+                log(`Total Requests: ${testStats.total}`, 'info');
+                log(`Successful: ${testStats.success} (${successRate}%)`, 'success');
+                log(`Failed: ${testStats.failed}`, 'error');
+                log(`Duration: ${duration}s`, 'info');
+                log(`Average Response Time: ${$('#statAvgTime').text()}`, 'info');
+                log(`========================================`, 'info');
+                
+            } catch (error) {
+                log(`Test encountered an error: ${error.message}`, 'error');
+            }
+            
+            // Re-enable button
+            $(this).prop('disabled', false).html('<i class="bi bi-play-fill me-2"></i>Start Test');
+        });
+
+        $('#clearLogs').on('click', function () {
+            $('#logContainer').html('<div class="log-entry"><span class="log-time">[Cleared]</span><span class="log-info">Logs cleared. Ready for new test.</span></div>');
+            resetStats();
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

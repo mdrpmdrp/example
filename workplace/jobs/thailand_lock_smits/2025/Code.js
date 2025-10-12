@@ -176,7 +176,7 @@ function searchCustomer(e) {
     // Single pass through data
     for (let i = 1; i < allValues.length; i++) {
       const row = allValues[i];
-      
+
       // Check if this row belongs to the current user
       if (row[uidIndex] === uid) {
         userRow = row;
@@ -197,7 +197,7 @@ function searchCustomer(e) {
     }
 
     if (!foundRow) {
-      if(userRow) {
+      if (userRow) {
         return createJsonResponse({ status: 'already registed uid' });
       }
       return createJsonResponse({ status: 'not found' });
@@ -214,8 +214,8 @@ function searchCustomer(e) {
     // User has different row
     if (userRow) {
       return createJsonResponse({ status: 'already registed uid' });
-    }else{
-      if(foundRow[uidIndex] !== '' && foundRow[uidIndex] !== uid) {
+    } else {
+      if (foundRow[uidIndex] !== '' && foundRow[uidIndex] !== uid) {
         return createJsonResponse({ status: 'already registed customerId' });
       }
     }
@@ -233,10 +233,10 @@ function searchCustomer(e) {
     // Single pass through data
     for (let i = 1; i < allValues.length; i++) {
       const row = allValues[i];
-      
+
       if (row[customerIdIndex] === searchValueUpper) {
         foundRow = row;
-        if(row[uidIndex] !== "" && row[uidIndex] !== uid) {
+        if (row[uidIndex] !== "" && row[uidIndex] !== uid) {
           hasConflictingUid = true;
         }
       } else if (row[uidIndex] === uid && row[customerIdIndex] !== "" && row[customerIdIndex] !== searchValueUpper) {
@@ -245,16 +245,16 @@ function searchCustomer(e) {
 
       // Early exit if we found both conditions
       if (foundRow && hasConflictingUid) {
-        if(foundRow[uidIndex] !== '' && foundRow[uidIndex] !== uid) {
+        if (foundRow[uidIndex] !== '' && foundRow[uidIndex] !== uid) {
           return createJsonResponse({ status: 'already registed customerId' });
-        }else{
+        } else {
           return createJsonResponse({ status: 'already registed uid' });
         }
       }
     }
 
     if (!foundRow) {
-      if(hasConflictingUid) {
+      if (hasConflictingUid) {
         return createJsonResponse({ status: 'already registed uid' });
       }
       return createJsonResponse({ status: 'not found' });
@@ -328,101 +328,121 @@ function userAuthen(e) {
 
 function memberRegist(e) {
   // e = {parameter: {"member_id": "WS0004", "name": "ชูชัย  วรรณโกมลวัฒน", "province": "-- -- -- --", "phone": "081-731-6676, 02-460-0121", "date": "เข้าร่วมทั้ง 2 วัน", "follower": "", "uid": "Ua55431b2d9be5d104c316ccb8ef54e81", "opt": "memberRegist"}}
-  const sh = getSheetWithCache(SHEET_NAME);
-  const allValues = sh.getDataRange().getValues();
-  const header = allValues[0];
-  const headerIndices = getHeaderIndices(header);
-  const data = allValues.slice(1);
-
-  const memberId = e.parameter['member_id'].toUpperCase();
-  const paramUid = e.parameter['uid'];
-  const customerIdIndex = headerIndices['รหัสลูกค้า'];
-  const uidIndex = headerIndices['uid'];
-
-  Logger.log('Looking for member: ' + memberId + ', UID: ' + paramUid);
-  Logger.log('customerIdIndex: ' + customerIdIndex + ', uidIndex: ' + uidIndex);
-
-  let memberIndex = -1;
-  let memberRow = null;
-  let hasUidConflict = false;
-
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i];
-    const rowCustomerId = row[customerIdIndex];
-    const rowUid = row[uidIndex];
-
-    // Find target member
-    if (rowCustomerId === memberId) {
-      memberIndex = i;
-      memberRow = row;
-      Logger.log('Found member at index: ' + i + ', existing UID: "' + rowUid + '"');
-
-      // Check if member already has UID (early exit)
-      if (rowUid !== '' && rowUid != null) {
-        Logger.log('Member already has UID, returning...');
-        return createJsonResponse({ status: 'member id already validated' });
-      }
+  let lock = LockService.getScriptLock();
+  let retries = 0;
+  const maxRetries = 3;
+  while (retries < maxRetries) {
+    if (lock.tryLock(30000)) {
+      break;
     }
+    retries++;
+    if (retries >= maxRetries) {
+      return createJsonResponse({ status: 'system busy' });
+    }
+    Utilities.sleep(1000);
+  }
+  try {
+    const sh = getSheetWithCache(SHEET_NAME);
+    const allValues = sh.getDataRange().getValues();
+    const header = allValues[0];
+    const headerIndices = getHeaderIndices(header);
+    const data = allValues.slice(1);
 
-    // Check for UID conflict
-    if (rowUid === paramUid) {
-      hasUidConflict = true;
-      Logger.log('UID conflict found at row index: ' + i + ', customer: ' + rowCustomerId);
-      // If we already found the member and there's a conflict, exit immediately
-      if (memberIndex >= 0) {
+    const memberId = e.parameter['member_id'].toUpperCase();
+    const paramUid = e.parameter['uid'];
+    const customerIdIndex = headerIndices['รหัสลูกค้า'];
+    const uidIndex = headerIndices['uid'];
+
+    Logger.log('Looking for member: ' + memberId + ', UID: ' + paramUid);
+    Logger.log('customerIdIndex: ' + customerIdIndex + ', uidIndex: ' + uidIndex);
+
+    let memberIndex = -1;
+    let memberRow = null;
+    let hasUidConflict = false;
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowCustomerId = row[customerIdIndex];
+      const rowUid = row[uidIndex];
+
+      // Find target member
+      if (rowCustomerId === memberId) {
+        memberIndex = i;
+        memberRow = row;
+        Logger.log('Found member at index: ' + i + ', existing UID: "' + rowUid + '"');
+
+        // Check if member already has UID (early exit)
+        if (rowUid !== '' && rowUid != null) {
+          Logger.log('Member already has UID, returning...');
+          return createJsonResponse({ status: 'member id already validated' });
+        }
+      }
+
+      // Check for UID conflict
+      if (rowUid === paramUid) {
+        hasUidConflict = true;
+        Logger.log('UID conflict found at row index: ' + i + ', customer: ' + rowCustomerId);
+        // If we already found the member and there's a conflict, exit immediately
+        if (memberIndex >= 0) {
+          return createJsonResponse({ status: 'userid already validated' });
+        }
+      }
+
+      // Early exit if we found member and checked all UIDs up to this point
+      if (memberIndex >= 0 && hasUidConflict) {
         return createJsonResponse({ status: 'userid already validated' });
       }
     }
 
-    // Early exit if we found member and checked all UIDs up to this point
-    if (memberIndex >= 0 && hasUidConflict) {
+    // Member not found
+    if (memberIndex < 0) {
+      return createJsonResponse({ status: 'not validated' });
+    }
+
+    // UID already exists
+    if (hasUidConflict) {
       return createJsonResponse({ status: 'userid already validated' });
     }
+
+    // Cache header indices for faster access
+    const nameIndex = headerIndices['ชื่อ นามสกุล'];
+    const provinceIndex = headerIndices['จังหวัด'];
+    const visitDateIndex = headerIndices['ลงทะเบียนเข้างานวันที่'];
+    const phoneIndex = headerIndices['เบอร์โทร'];
+    const followerIndex = headerIndices['ผู้ติดตาม'];
+    const checkInIndex = headerIndices['เช็คอิน'];
+
+    // Update the row (avoid array spread for better performance)
+    const row = memberIndex + 2;
+    const d = memberRow.slice(); // Faster than spread operator
+    d[uidIndex] = paramUid;
+    d[nameIndex] = e.parameter['name'];
+    d[provinceIndex] = e.parameter['province'];
+    d[visitDateIndex] = e.parameter['date'];
+    d[phoneIndex] = e.parameter['phone'] ? ("'" + e.parameter['phone']) : "";
+    d[followerIndex] = e.parameter['follower'];
+    d[checkInIndex] = `=IF( COUNTIF({'${SHEET_SATURDAY}'!C:C;'${SHEET_SUNDAY}'!C:C},B${row}) > 0,"YES","NO")`;
+
+    sh.getRange(row, 1, 1, d.length).setValues([d]);
+
+    // // Send LINE message with registration card
+    // sendMessage('member', {
+    //   member_id: d[customerIdIndex],
+    //   name: d[nameIndex],
+    //   province: d[provinceIndex],
+    //   phone: d[phoneIndex],
+    //   date: d[visitDateIndex],
+    //   follower: d[followerIndex] || '',
+    //   uid: d[uidIndex]
+    // });
+    lock.releaseLock();
+    return createJsonResponse({ status: 'success' });
+  } catch (err) {
+    lock.releaseLock();
+    throw err;
+  } finally {
+    lock.releaseLock();
   }
-
-  // Member not found
-  if (memberIndex < 0) {
-    return createJsonResponse({ status: 'not validated' });
-  }
-
-  // UID already exists
-  if (hasUidConflict) {
-    return createJsonResponse({ status: 'userid already validated' });
-  }
-
-  // Cache header indices for faster access
-  const nameIndex = headerIndices['ชื่อ นามสกุล'];
-  const provinceIndex = headerIndices['จังหวัด'];
-  const visitDateIndex = headerIndices['ลงทะเบียนเข้างานวันที่'];
-  const phoneIndex = headerIndices['เบอร์โทร'];
-  const followerIndex = headerIndices['ผู้ติดตาม'];
-  const checkInIndex = headerIndices['เช็คอิน'];
-
-  // Update the row (avoid array spread for better performance)
-  const row = memberIndex + 2;
-  const d = memberRow.slice(); // Faster than spread operator
-  d[uidIndex] = paramUid;
-  d[nameIndex] = e.parameter['name'];
-  d[provinceIndex] = e.parameter['province'];
-  d[visitDateIndex] = e.parameter['date'];
-  d[phoneIndex] = e.parameter['phone'] ? ("'" + e.parameter['phone']) : "";
-  d[followerIndex] = e.parameter['follower'];
-  d[checkInIndex] = `=IF( COUNTIF({'${SHEET_SATURDAY}'!C:C;'${SHEET_SUNDAY}'!C:C},B${row}) > 0,"YES","NO")`;
-
-  sh.getRange(row, 1, 1, d.length).setValues([d]);
-
-  // // Send LINE message with registration card
-  // sendMessage('member', {
-  //   member_id: d[customerIdIndex],
-  //   name: d[nameIndex],
-  //   province: d[provinceIndex],
-  //   phone: d[phoneIndex],
-  //   date: d[visitDateIndex],
-  //   follower: d[followerIndex] || '',
-  //   uid: d[uidIndex]
-  // });
-
-  return createJsonResponse({ status: 'success' });
 }
 // https://liff.line.me/1656187634-ZrAvz5Q9 staff
 // https://liff.line.me/1656187634-ZVB4KEdw login
@@ -430,11 +450,19 @@ function memberRegist(e) {
 function guestRegist(e) {
   const lock = LockService.getScriptLock();
 
-  try {
-    if (!lock.tryLock(10000)) {
+  let retries = 0;
+  const maxRetries = 3;
+  while (retries < maxRetries) {
+    if (lock.tryLock(30000)) {
+      break;
+    }
+    retries++;
+    if (retries >= maxRetries) {
       return createJsonResponse({ status: 'system busy' });
     }
-
+    Utilities.sleep(1000);
+  }
+  try {
     const sh = getSheetWithCache(SHEET_NAME);
     const allValues = sh.getDataRange().getValues();
     const header = allValues[0];
@@ -458,18 +486,6 @@ function guestRegist(e) {
     const checkInIndex = headerIndices['เช็คอิน'];
     const occupationIndex = headerIndices['อาชีพ'];
     const interestIndex = headerIndices['สินค้าที่สนใจ'];
-    // const new_row = [
-    //   guest_id,
-    //   e.parameter['name'],
-    //   e.parameter['province'],
-    //   e.parameter['phone'] ? ("'" + e.parameter['phone'] ) : "",
-    //   e.parameter['date'],
-    //   e.parameter['follower'] || '',
-    //   e.parameter['occupation'],
-    //   e.parameter['interest'],
-    //   paramUid,
-    //   `=IF( COUNTIF({'${SHEET_SATURDAY}'!B:B;'${SHEET_SUNDAY}'!B:B},A${row + 1}) > 0,"YES","NO")`
-    // ];
     const new_row = new Array(header.length).fill('');
     new_row[0] = guest_id;
     new_row[nameIndex] = e.parameter['name'];
@@ -483,22 +499,15 @@ function guestRegist(e) {
     new_row[checkInIndex] = `=IF( COUNTIF({'${SHEET_SATURDAY}'!B:B;'${SHEET_SUNDAY}'!B:B},A${row + 1}) > 0,"YES","NO")`;
 
     sh.getRange(row + 1, 1, 1, 10).setValues([new_row]);
-
-    // // Send LINE message with registration card
-    // sendMessage('guest', {
-    //   guest_id: guest_id,
-    //   name: e.parameter['name'],
-    //   province: e.parameter['province'],
-    //   phone: e.parameter['phone'],
-    //   date: e.parameter['date'],
-    //   follower: e.parameter['follower'] || '',
-    //   occupation: e.parameter['occupation'],
-    //   interest: e.parameter['interest'],
-    //   uid: paramUid
-    // });
-
+    PropertiesService.getScriptProperties().setProperty('lastGuestID', guest_id.replace('#G', ''));
+    lock.releaseLock();
     return createJsonResponse({ status: 'success', guest_id });
-  } finally {
+  }
+  catch (err) {
+    lock.releaseLock();
+    throw err;
+  }
+  finally {
     lock.releaseLock();
   }
 }
@@ -506,11 +515,11 @@ function guestRegist(e) {
 function guest_reRegist(e) {
   const lock = LockService.getScriptLock();
 
+  if (!lock.tryLock(10000)) {
+    SpreadsheetApp.getUi().alert('System busy, please try again');
+    return;
+  }
   try {
-    if (!lock.tryLock(10000)) {
-      SpreadsheetApp.getUi().alert('System busy, please try again');
-      return;
-    }
 
     const sh = getSheetWithCache(SHEET_NAME);
     const active_row = sh.getActiveRange().getRow();
@@ -535,9 +544,14 @@ function guest_reRegist(e) {
       interest: data[7],
       uid: data[8]
     };
-
+    lock.releaseLock();
     sendMessage('guest', guestData);
-  } finally {
+  }
+  catch (err) {
+    lock.releaseLock();
+    throw err;
+  }
+  finally {
     lock.releaseLock();
   }
 }
@@ -743,19 +757,9 @@ function sendMessage(type, data) {
 }
 
 function getGuestId() {
-  const sh = getSheetWithCache(SHEET_NAME);
-  const data = sh.getDataRange().getValues().slice(2);
-
-  let maxId = 0;
-  for (let i = 0; i < data.length; i++) {
-    const cellValue = data[i][0].toString();
-    if (cellValue.includes('#G')) {
-      const id = parseInt(cellValue.split('#G')[1]);
-      if (id > maxId) maxId = id;
-    }
-  }
-
-  return maxId + 1;
+  const lastGuestID = PropertiesService.getScriptProperties().getProperty('lastGuestID');
+  let newGuestID = lastGuestID ? parseInt(lastGuestID) + 1 : 1;
+  return newGuestID;
 }
 
 function getFolderAndToken() {
@@ -788,16 +792,16 @@ function checkin(e) {
     } else if (FOR_TEST) {
       sh = getSheetWithCache(SHEET_SATURDAY);
     } else {
-      return createJsonResponse({ 
-        status: 'not allowed', 
-        message: 'กรุณาเช็คอินใน' + SHEET_SATURDAY + ' หรือ ' + SHEET_SUNDAY + ' เท่านั้น' 
+      return createJsonResponse({
+        status: 'not allowed',
+        message: 'กรุณาเช็คอินใน' + SHEET_SATURDAY + ' หรือ ' + SHEET_SUNDAY + ' เท่านั้น'
       });
     }
 
     const customer_id = e.parameter.id;
     const allValues = sh.getDataRange().getValues();
     const header = allValues[0];
-    
+
     // Check if already checked in
     for (let i = 1; i < allValues.length; i++) {
       if (allValues[i][1] === customer_id) {
@@ -822,14 +826,14 @@ function checkin(e) {
 
     lock.releaseLock();
     return createJsonResponse({ status: 'success', time_in: date, data: obj, uid: uid });
-  } catch(e) {
+  } catch (e) {
     Logger.log(e)
     lock.releaseLock();
     return createJsonResponse({ status: 'error', message: e.message });
   }
 }
 
-function sendWelcomeMessage(e){
+function sendWelcomeMessage(e) {
   // const uid = e.parameter.uid;  
   const uid = 'Ua55431b2d9be5d104c316ccb8ef54e81'
   const date = new Date();
