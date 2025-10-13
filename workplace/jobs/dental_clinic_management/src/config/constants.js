@@ -39,4 +39,4 @@ const CACHE_DURATION = 30000; // 30 seconds cache
 const CACHE_WARMING_COOLDOWN = 10000; // 10 seconds cooldown between warming attempts
 const CACHE_WARMING_TIMEOUT = 5000; // 5 seconds max for cache warming
 
-const LINE_CHANNEL_ACCESS_TOKEN = "19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU="
+const LINE_CHANNEL_ACCESS_TOKEN = "ecVNzBBPjFD49raGTWwnPF8OHJFXAEHZ1wnGM6Iq7sMRzJhDFeeg0SEzcbosvSMPTQkkQNtstPGbsJasKBz64VtHCIox8/5B9RpSeJNe2/UFNQqnGHKC+fDnG7WVgOTzoh1JIxyAeR8KZuRN+NW0EQdB04t89/1O/w1cDnyilFU="

@@ -77,7 +77,28 @@ function addRevenue(revenueData, currentUser = null) {
 
     const revenueSheet = getSheet(SHEET_NAMES.REVENUE);
     const lastRow = revenueSheet.getLastRow();
-    const newId = "R" + String(lastRow).padStart(3, "0");
+
+    const getNewRevenueId = () => {
+        let existingIds = revenueSheet
+        .getRange(2, 1, Math.max(lastRow - 1, 1), 1)
+        .getValues()
+        .flat()
+        .filter(id => id);
+
+        let yearMonth_prefix = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyMM");
+        existingIds = existingIds.filter(id => id.startsWith("R" + yearMonth_prefix));
+        let idPrefix = "R" + yearMonth_prefix;
+        let counter = 1;
+        let newId;
+        do {
+            newId = idPrefix + String(counter).padStart(4, "0");
+            counter++;
+        } while (existingIds.includes(newId));
+
+        return newId;
+    }
+
+    const newId = getNewRevenueId();
 
     // Handle the new detailed revenue structure with individual payment columns
     const newRevenue = [

@@ -65,16 +65,19 @@ function addPatient(patientData, currentUser = null) {
 
     // Optimized ID generation
     const getNewPatientId = () => {
-      const existingIds = patientsSheet
+      let existingIds = patientsSheet
         .getRange(2, 1, Math.max(lastRow - 1, 1), 1)
         .getValues()
         .flat()
         .filter(id => id);
-
+      
+      let yearMonth_prefix = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyMM");
+      existingIds = existingIds.filter(id => id.startsWith("P" + yearMonth_prefix));
+      let idPrefix = "P" + yearMonth_prefix;
       let counter = 1;
       let newId;
       do {
-        newId = "P" + String(counter).padStart(3, "0");
+        newId = idPrefix + String(counter).padStart(4, "0");
         counter++;
       } while (existingIds.includes(newId));
 

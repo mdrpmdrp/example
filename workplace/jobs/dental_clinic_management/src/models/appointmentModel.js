@@ -65,16 +65,19 @@ function addAppointment(appointmentData, currentUser = null) {
 
     // Optimized ID generation
     const getNewAppointmentId = () => {
-      const existingIds = appointmentsSheet
+      let existingIds = appointmentsSheet
         .getRange(2, 1, Math.max(lastRow - 1, 1), 1)
         .getValues()
         .flat()
         .filter(id => id);
 
+      let yearMonth_prefix = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyMM");
+      existingIds = existingIds.filter(id => id.startsWith("A" + yearMonth_prefix));
+      let idPrefix = "A" + yearMonth_prefix;
       let counter = 1;
       let newId;
       do {
-        newId = "A" + String(counter).padStart(3, "0");
+        newId = idPrefix + String(counter).padStart(4, "0");
         counter++;
       } while (existingIds.includes(newId));
 

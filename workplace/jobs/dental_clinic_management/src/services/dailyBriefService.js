@@ -135,6 +135,14 @@ function sendDailyPatientBrief() {
 
     const appointments = appointmentsResult.appointments;
 
+    if(appointments.length === 0) {
+      const message = `🎉 วันนี้ไม่มีการนัดหมาย\nได้พักผ่อนกันเถอะ! 😊\n`;
+      const title = `📋 สรุปคนไข้ประจำวัน - ไม่มีการนัดหมาย`;
+
+      sendGoogleChatNotification(message, title);
+      return { success: true, message: "No appointments to report" };
+    }
+
     // Group appointments by branch
     const appointmentsByBranch = Object.groupBy(appointments,(a) => a.branch || "ไม่ระบุสาขา");
 
