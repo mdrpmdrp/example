@@ -1,7 +1,6 @@
 const FOR_TEST = true
 
-// const LINE_ACCESS_TOKEN = '7Zq0bQKGGJVUnuzLQyjf/235++1jYMhjthNroXkPcqSBeb6TzbgKYHpW5WkJrckE5dw2pGiMKKNIaax9rU9P0oMlHtpReUzs3WSO9LANtbMHoSHiqkt5czf044y3zTJon/UoxyPI5BUBot8VmenDIwdB04t89/1O/w1cDnyilFU='
-const LINE_ACCESS_TOKEN = '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU='
+const LINE_ACCESS_TOKEN = '7Zq0bQKGGJVUnuzLQyjf/235++1jYMhjthNroXkPcqSBeb6TzbgKYHpW5WkJrckE5dw2pGiMKKNIaax9rU9P0oMlHtpReUzs3WSO9LANtbMHoSHiqkt5czf044y3zTJon/UoxyPI5BUBot8VmenDIwdB04t89/1O/w1cDnyilFU='
 
 // Constants
 const HELPER_SHEET_NAME = 'Helper';
