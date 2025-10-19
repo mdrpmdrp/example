@@ -161,39 +161,39 @@ function updateDailyPatientBriefTrigger(hour = 8, minute = 0) {
 
 /**
  * Create automated trigger for 7-day appointment reminders
- * Runs daily at 10:00 AM to send reminders for appointments 7 days ahead
+ * Runs daily at 10:00 AM to send reminders for appointments 1 day ahead
  */
-function createSevenDayAppointmentReminderTrigger() {
+function createAppointmentReminderTrigger() {
   try {
     // Delete existing 7-day reminder triggers
     const existingTriggers = ScriptApp.getProjectTriggers();
     existingTriggers.forEach(trigger => {
-      if (trigger.getHandlerFunction() === 'sendSevenDayAppointmentReminders') {
+      if (trigger.getHandlerFunction() === 'sendAppointmentReminders') {
         ScriptApp.deleteTrigger(trigger);
       }
     });
     
     // Create daily trigger for 7-day reminders (runs at 10:00 AM)
-    ScriptApp.newTrigger('sendSevenDayAppointmentReminders')
+    ScriptApp.newTrigger('sendAppointmentReminders')
       .timeBased()
       .everyDays(1)
       .atHour(10)
       .create();
     
-    console.log("7-day appointment reminder trigger created successfully");
+    console.log("Appointment reminder trigger created successfully");
     
     return {
       success: true,
-      message: "สร้างการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติเรียบร้อย",
+      message: "สร้างการแจ้งเตือนล่วงหน้าอัตโนมัติเรียบร้อย",
       schedule: "Daily at 10:00 AM",
-      description: "ส่งการแจ้งเตือนให้ผู้ป่วยที่ลงทะเบียน LINE สำหรับการนัดหมายที่จะมาถึงในอีก 7 วัน"
+      description: "ส่งการแจ้งเตือนให้คนไข้ที่ลงทะเบียน LINE สำหรับการนัดหมายที่จะมาถึงในวันพรุ่งนี้"
     };
     
   } catch (error) {
     console.error("Error creating 7-day appointment reminder trigger:", error);
     return {
       success: false,
-      message: "เกิดข้อผิดพลาดในการสร้างการแจ้งเตือน 7 วันล่วงหน้าอัตโนมัติ",
+      message: "เกิดข้อผิดพลาดในการสร้างการแจ้งเตือนล่วงหน้าอัตโนมัติ",
       error: error.toString()
     };
   }
@@ -202,7 +202,7 @@ function createSevenDayAppointmentReminderTrigger() {
 /**
  * Delete 7-day appointment reminder trigger
  */
-function deleteSevenDayAppointmentReminderTrigger() {
+function deleteAppointmentReminderTrigger() {
   try {
     const existingTriggers = ScriptApp.getProjectTriggers();
     let deletedCount = 0;

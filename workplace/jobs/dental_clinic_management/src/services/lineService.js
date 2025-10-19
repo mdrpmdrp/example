@@ -83,7 +83,7 @@ function registerPatientLineId(patientId, lineUserId) {
 function createPatientNotFoundFlexMessage(patientId) {
     return {
         type: "flex",
-        altText: "ไม่พบข้อมูลผู้ป่วย",
+        altText: "ไม่พบข้อมูลคนไข้",
         contents: {
             type: "bubble",
             size: "kilo",
@@ -104,7 +104,7 @@ function createPatientNotFoundFlexMessage(patientId) {
                             },
                             {
                                 type: "text",
-                                text: "ค้นหาข้อมูลผู้ป่วย",
+                                text: "ค้นหาข้อมูลคนไข้",
                                 weight: "bold",
                                 color: "#2B5797",
                                 size: "lg",
@@ -148,7 +148,7 @@ function createPatientNotFoundFlexMessage(patientId) {
                                 contents: [
                                     {
                                         type: "text",
-                                        text: "ไม่พบข้อมูลผู้ป่วย",
+                                        text: "ไม่พบข้อมูลคนไข้",
                                         weight: "bold",
                                         size: "xl",
                                         color: "#E74C3C",
@@ -157,7 +157,7 @@ function createPatientNotFoundFlexMessage(patientId) {
                                     },
                                     {
                                         type: "text",
-                                        text: `รหัสผู้ป่วย: ${patientId}`,
+                                        text: `รหัสคนไข้: ${patientId}`,
                                         size: "md",
                                         color: "#7F8C8D",
                                         margin: "sm",
@@ -170,7 +170,7 @@ function createPatientNotFoundFlexMessage(patientId) {
                                     },
                                     {
                                         type: "text",
-                                        text: "กรุณาตรวจสอบรหัสผู้ป่วยให้ถูกต้อง หรือติดต่อเจ้าหน้าที่เพื่อขอความช่วยเหลือ",
+                                        text: "กรุณาตรวจสอบรหัสคนไข้ให้ถูกต้อง หรือติดต่อเจ้าหน้าที่เพื่อขอความช่วยเหลือ",
                                         size: "sm",
                                         color: "#34495E",
                                         wrap: true,
@@ -262,7 +262,7 @@ function createPatientAlreadyRegisteredFlexMessage(patientId, patientName, branc
                                     },
                                     {
                                         type: "text",
-                                        text: `${patientName || 'ผู้ป่วย'}`,
+                                        text: `${patientName || 'คนไข้'}`,
                                         size: "md",
                                         color: "#2B5797",
                                         weight: "bold",
@@ -272,7 +272,7 @@ function createPatientAlreadyRegisteredFlexMessage(patientId, patientName, branc
                                     },
                                     {
                                         type: "text",
-                                        text: `รหัสผู้ป่วย: ${patientId}`,
+                                        text: `รหัสคนไข้: ${patientId}`,
                                         size: "sm",
                                         color: "#7F8C8D",
                                         margin: "xs",
@@ -294,7 +294,7 @@ function createPatientAlreadyRegisteredFlexMessage(patientId, patientName, branc
                                     },
                                     {
                                         type: "text",
-                                        text: "รหัสผู้ป่วยนี้ได้ลงทะเบียน LINE แล้ว หากมีปัญหาในการใช้งาน กรุณาติดต่อเจ้าหน้าที่",
+                                        text: "รหัสคนไข้นี้ได้ลงทะเบียน LINE แล้ว หากมีปัญหาในการใช้งาน กรุณาติดต่อเจ้าหน้าที่",
                                         size: "xs",
                                         color: "#34495E",
                                         wrap: true,
@@ -396,7 +396,7 @@ function createPatientSuccessFlexMessage(patientId, patientName, branch) {
                                 contents: [
                                     {
                                         type: "text",
-                                        text: `${patientName || 'ผู้ป่วย'}`,
+                                        text: `${patientName || 'คนไข้'}`,
                                         size: "lg",
                                         color: "#2B5797",
                                         weight: "bold",
@@ -406,7 +406,7 @@ function createPatientSuccessFlexMessage(patientId, patientName, branch) {
                                     },
                                     {
                                         type: "text",
-                                        text: `รหัสผู้ป่วย: ${patientId}`,
+                                        text: `รหัสคนไข้: ${patientId}`,
                                         size: "md",
                                         color: "#7F8C8D",
                                         margin: "xs",
@@ -471,251 +471,6 @@ function createPatientSuccessFlexMessage(patientId, patientName, branch) {
                     backgroundColor: "#F8F9FA",
                 }
             },
-        },
-    };
-}
-
-// Additional Flex Message Templates for Dental Clinic System
-function createAppointmentReminderFlexMessage(appointmentData) {
-    const {
-        patientName,
-        doctorName,
-        appointmentDate,
-        appointmentTime,
-        treatmentType,
-        location,
-    } = appointmentData;
-
-    return {
-        type: "flex",
-        altText: `การนัดหมาย ${appointmentDate} ${appointmentTime}`,
-        contents: {
-            type: "bubble",
-            size: "kilo",
-            header: {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                    {
-                        type: "box",
-                        layout: "horizontal",
-                        contents: [
-                            {
-                                type: "image",
-                                url: "https://img.icons8.com/fluency/48/calendar.png",
-                                size: "sm",
-                            },
-                            {
-                                type: "text",
-                                text: "การนัดหมายของคุณ",
-                                weight: "bold",
-                                color: "#FFFFFF",
-                                size: "lg",
-                                flex: 1,
-                                margin: "sm",
-                                scaling: true,
-                            },
-                        ],
-                    },
-                ],
-                backgroundColor: "#2B5797",
-                paddingAll: "15px",
-            },
-            body: {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                    {
-                        type: "box",
-                        layout: "horizontal",
-                        contents: [
-                            {
-                                type: "box",
-                                layout: "vertical",
-                                contents: [
-                                    {
-                                        type: "image",
-                                        url: "https://img.icons8.com/fluency/96/tooth.png",
-                                        size: "xxl", aspectMode: "fit",
-                                    },
-                                ],
-                                alignItems: "center",
-                                flex: 0,
-                            },
-                            {
-                                type: "box",
-                                layout: "vertical",
-                                contents: [
-                                    {
-                                        type: "text",
-                                        text: treatmentType || "การตรวจทั่วไป",
-                                        weight: "bold",
-                                        size: "xl",
-                                        color: "#2B5797",
-                                        wrap: true,
-                                        scaling: true,
-                                    },
-                                    {
-                                        type: "text",
-                                        text: `คุณ ${patientName}`,
-                                        size: "sm",
-                                        color: "#7F8C8D",
-                                        margin: "xs",
-                                        scaling: true,
-                                    },
-                                ],
-                                flex: 1,
-                                margin: "md",
-                            },
-                        ],
-                    },
-                    {
-                        type: "separator",
-                        margin: "lg",
-                    },
-                    {
-                        type: "box",
-                        layout: "vertical",
-                        contents: [
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    {
-                                        type: "image",
-                                        url: "https://img.icons8.com/fluency/24/calendar.png",
-                                        flex: 0,
-                                        margin: "none",
-                                        size: "sm"
-                                    },
-                                    {
-                                        type: "text",
-                                        text: "วันที่",
-                                        size: "sm",
-                                        color: "#7F8C8D",
-                                        flex: 1,
-                                        margin: "sm",
-                                        scaling: true,
-                                    },
-                                    {
-                                        type: "text",
-                                        text: appointmentDate,
-                                        size: "sm",
-                                        color: "#2C3E50",
-                                        weight: "bold",
-                                        flex: 2,
-                                        align: "end",
-                                        scaling: true,
-                                    },
-                                ],
-                                spacing: "sm",
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    {
-                                        type: "image",
-                                        url: "https://img.icons8.com/fluency/24/clock.png",
-                                        flex: 0,
-                                        margin: "none",
-                                        size: "sm"
-                                    },
-                                    {
-                                        type: "text",
-                                        text: "เวลา",
-                                        size: "sm",
-                                        color: "#7F8C8D",
-                                        flex: 1,
-                                        margin: "sm",
-                                        scaling: true,
-                                    },
-                                    {
-                                        type: "text",
-                                        text: appointmentTime,
-                                        size: "sm",
-                                        color: "#2C3E50",
-                                        weight: "bold",
-                                        flex: 2,
-                                        align: "end",
-                                        scaling: true,
-                                    },
-                                ],
-                                spacing: "sm",
-                                margin: "sm",
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    {
-                                        type: "image",
-                                        url: "https://img.icons8.com/fluency/24/doctor-male.png",
-                                        flex: 0,
-                                        margin: "none",
-                                        size: "sm"
-                                    },
-                                    {
-                                        type: "text",
-                                        text: "แพทย์",
-                                        size: "sm",
-                                        color: "#7F8C8D",
-                                        flex: 1,
-                                        margin: "sm",
-                                        scaling: true,
-                                    },
-                                    {
-                                        type: "text",
-                                        text: doctorName,
-                                        size: "sm",
-                                        color: "#2C3E50",
-                                        weight: "bold",
-                                        flex: 2,
-                                        align: "end",
-                                        scaling: true,
-                                    },
-                                ],
-                                spacing: "sm",
-                                margin: "sm",
-                            },
-                            {
-                                type: "box",
-                                layout: "baseline",
-                                contents: [
-                                    {
-                                        type: "image",
-                                        url: "https://img.icons8.com/fluency/24/map-pin.png",
-                                        size: "sm",
-                                    },
-                                    {
-                                        type: "text",
-                                        text: "สถานที่",
-                                        size: "sm",
-                                        color: "#7F8C8D",
-                                        flex: 1,
-                                        margin: "sm",
-                                        scaling: true,
-                                    },
-                                    {
-                                        type: "text",
-                                        text: location || "คลินิกทันตกรรม",
-                                        size: "sm",
-                                        color: "#2C3E50",
-                                        weight: "bold",
-                                        flex: 2,
-                                        align: "end",
-                                        scaling: true,
-                                    },
-                                ],
-                                spacing: "sm",
-                                margin: "sm",
-                            },
-                        ],
-                        margin: "lg",
-                    },
-                ],
-                paddingAll: "15px",
-            }
         },
     };
 }
@@ -802,7 +557,7 @@ function createWelcomeFlexMessage(clinicName = "Smile Focus", branch = null) {
                             },
                             {
                                 type: "text",
-                                text: "1️⃣ พิมพ์รหัสผู้ป่วยของคุณ (เช่น P12345678)\n2️⃣ ลงทะเบียน LINE เพื่อใช้บริการ\n3️⃣ รับการแจ้งเตือนและข้อมูลการนัดหมาย",
+                                text: "1️⃣ พิมพ์รหัสคนไข้ของคุณ (เช่น P12345678)\n2️⃣ ลงทะเบียน LINE เพื่อใช้บริการ\n3️⃣ รับการแจ้งเตือนและข้อมูลการนัดหมาย",
                                 size: "sm",
                                 color: "#34495E",
                                 wrap: true,
@@ -823,11 +578,11 @@ function createWelcomeFlexMessage(clinicName = "Smile Focus", branch = null) {
 /**
  * Create specialized Flex Message for 7-day appointment reminder
  */
-function createSevenDayReminderFlexMessage(appointmentData) {
+function createAppointmentReminderFlexMessage(appointmentData) {
     const { patientName, doctorName, appointmentDate, appointmentTime, caseDetails, branch } = appointmentData;
     return {
         type: "flex",
-        altText: `การนัดหมาย ${appointmentDate} ${appointmentTime} (อีก 7 วัน)`,
+        altText: `การนัดหมาย ${appointmentDate} ${appointmentTime} (วันพรุ่งนี้)`,
         contents: {
             "type": "bubble",
             "size": "kilo",
@@ -860,7 +615,7 @@ function createSevenDayReminderFlexMessage(appointmentData) {
                     },
                     {
                         "type": "text",
-                        "text": "อีก 7 วันข้างหน้า",
+                        "text": "วันพรุ่งนี้",
                         "color": "#FFFFFF",
                         "size": "sm",
                         "align": "center",
@@ -892,7 +647,7 @@ function createSevenDayReminderFlexMessage(appointmentData) {
                                 "contents": [
                                     {
                                         "type": "text",
-                                        "text": patientName || "คุณผู้ป่วย",
+                                        "text": patientName || "คุณคนไข้",
                                         "size": "md",
                                         "color": "#2B5797",
                                         "weight": "bold",
@@ -1085,14 +840,14 @@ function createSevenDayReminderFlexMessage(appointmentData) {
 /**
  * Create summary message for 7-day reminders
  */
-function createSevenDayReminderSummary(sentCount, failedCount, totalCount, targetDate, results) {
+function createAppointmentReminderSummary(sentCount, failedCount, totalCount, targetDate, results) {
     let message = `*🔔 การแจ้งเตือนการนัดหมาย (7 วันล่วงหน้า)*\n`;
     message += `*วันที่นัดหมาย:* ${formatDateThai(targetDate)}\n\n`;
     message += `📊 *สรุปผลการส่ง:*\n`;
     message += `✅ ส่งสำเร็จ: ${sentCount} ราย\n`;
     message += `❌ ส่งไม่สำเร็จ: ${failedCount} ราย\n`;
     message += `📋 การนัดหมายทั้งหมด: ${totalCount} ราย\n`;
-    message += `📱 ผู้ป่วยที่ลงทะเบียน LINE: ${sentCount + failedCount} ราย\n\n`;
+    message += `📱 คนไข้ที่ลงทะเบียน LINE: ${sentCount + failedCount} ราย\n\n`;
 
     // Add successful sends
     if (sentCount > 0) {
@@ -1181,7 +936,7 @@ function createAppointmentConfirmationFlexMessage(appointmentData, patient, doct
                                 contents: [
                                     {
                                         type: "text",
-                                        text: patient ? (patient.title_prefix + patient.first_name + " " + patient.last_name) : "คุณผู้ป่วย",
+                                        text: patient ? (patient.title_prefix + patient.first_name + " " + patient.last_name) : "คุณคนไข้",
                                         size: "md",
                                         color: "#20a4e6",
                                         weight: "bold",
@@ -1424,7 +1179,7 @@ function createAppointmentEditFlexMessage(appointmentData, patient, doctor) {
                                 contents: [
                                     {
                                         type: "text",
-                                        text: patient ? (patient.title_prefix + patient.first_name + " " + patient.last_name) : "คุณผู้ป่วย",
+                                        text: patient ? (patient.title_prefix + patient.first_name + " " + patient.last_name) : "คุณคนไข้",
                                         size: "md",
                                         color: "#20a4e6",
                                         weight: "bold",
@@ -1657,10 +1412,10 @@ function formatTimeThai(timeString) {
 /**
  * Test 7-day appointment reminder system
  */
-function testSevenDayAppointmentReminders() {
+function testAppointmentReminders() {
     console.log("Testing 7-day appointment reminder system...");
 
-    const result = sendSevenDayAppointmentReminders();
+    const result = sendAppointmentReminders();
     console.log("7-day reminders test result:", JSON.stringify(result, null, 2));
 
     return result;

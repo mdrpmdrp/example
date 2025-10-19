@@ -180,15 +180,15 @@ function getStatusTextThai(status) {
 
 // 7-Day Appointment Reminder Functions
 /**
- * Send appointment reminders to registered patients 7 days ahead
+ * Send appointment reminders to registered patients 1 day ahead
  * @returns {Object} Result object with success status and message details
  */
-function sendSevenDayAppointmentReminders() {
+function sendAppointmentReminders() {
   try {
-    console.log("Starting 7-day appointment reminder process...");
+    console.log("Starting Appointment reminder process...");
 
     // Get appointments for the target date
-    const appointmentsResult = getSevenDaysAheadAppointments();
+    const appointmentsResult = getAppointmentReminders();
 
     if (!appointmentsResult.success) {
       console.error("Failed to retrieve appointments:", appointmentsResult.message);
@@ -205,7 +205,7 @@ function sendSevenDayAppointmentReminders() {
     if (appointments.length === 0) {
       return {
         success: true,
-        message: "ไม่มีการนัดหมายในวันที่ 7 วันข้างหน้า",
+        message: "ไม่มีการนัดหมายในวันพรุ่งนี้",
         sentCount: 0,
         totalCount: 0,
         targetDate: targetDateString
@@ -218,7 +218,7 @@ function sendSevenDayAppointmentReminders() {
       console.error("Failed to retrieve patients:", patientsResult.message);
       return {
         success: false,
-        message: "ไม่สามารถดึงข้อมูลผู้ป่วยได้"
+        message: "ไม่สามารถดึงข้อมูลคนไข้ได้"
       };
     }
 
@@ -228,7 +228,7 @@ function sendSevenDayAppointmentReminders() {
     // Create patient lookup map
     patients.forEach(patient => {
       if (patient.userid && patient.userid.trim() !== "") {
-        patientMap[patient.patient_id] = {
+        patientMap[patient.id] = {
           lineUserId: patient.userid.trim(),
           patientName: `${patient.title_name || ''} ${patient.first_name || ''} ${patient.last_name || ''}`.trim(),
           branch: patient.branch || 'สาขาหลัก',
@@ -243,7 +243,7 @@ function sendSevenDayAppointmentReminders() {
 
     // Process each appointment
     for (const appointment of appointments) {
-      const patientId = appointment.patient_id;
+      const patientId = appointment.patientId;
       const patientInfo = patientMap[patientId];
 
       if (!patientInfo) {
@@ -251,7 +251,7 @@ function sendSevenDayAppointmentReminders() {
         results.push({
           patientId: patientId,
           status: 'skipped',
-          reason: 'ผู้ป่วยไม่ได้ลงทะเบียน LINE'
+          reason: 'คนไข้ไม่ได้ลงทะเบียน LINE'
         });
         continue;
       }
@@ -264,12 +264,12 @@ function sendSevenDayAppointmentReminders() {
         appointmentTime: formatTimeThai(appointment.appointmentTime),
         caseDetails: appointment.caseDetails || 'ทั่วไป',
         branch: patientInfo.branch,
-        daysAhead: 7
+        daysAhead: 1
       };
 
       try {
-        // Create 7-day reminder Flex Message
-        const reminderMessage = createSevenDayReminderFlexMessage(appointmentData);
+        // Create reminder Flex Message
+        const reminderMessage = createAppointmentReminderFlexMessage(appointmentData);
         Logger.log(JSON.stringify(reminderMessage));
         const sendResult = LineBotWebhook.push(patientInfo.lineUserId, LINE_CHANNEL_ACCESS_TOKEN, [reminderMessage]);
         // Add delay between messages to avoid rate limiting
@@ -281,14 +281,14 @@ function sendSevenDayAppointmentReminders() {
           status: 'error',
           reason: error.toString()
         });
-        console.error(`Error sending 7-day reminder to ${patientId}:`, error);
+        console.error(`Error sending reminder to ${patientId}:`, error);
       }
     }
   } catch (error) {
-    console.error("Error in sendSevenDayAppointmentReminders:", error);
+    console.error("Error in sendAppointmentReminders:", error);
     return {
       success: false,
-      message: "เกิดข้อผิดพลาดในการส่งการแจ้งเตือน 7 วันล่วงหน้า",
+      message: "เกิดข้อผิดพลาดในการส่งการแจ้งเตือนล่วงหน้า",
       error: error.toString()
     };
   }

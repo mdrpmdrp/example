@@ -359,13 +359,13 @@ function getTodayAppointments() {
   return { success: true, appointments };
 }
 
-function getSevenDaysAheadAppointments() {
-  let sheet = getSheet(SHEET_NAMES.SEVEN_DAYS_AHEAD_APPOINTMENTS);
+function getAppointmentReminders() {
+  let sheet = getSheet(SHEET_NAMES.APPOINTMENT_REMINDERS);
   let [header, ...data] = sheet
     .getDataRange()
     .getValues()
     .filter((x) => x[0] != ""); // Remove empty rows
-  if (data.length <= 1) {
+  if (data.length < 1) {
     return { success: true, appointments: [] };
   }
   let appointments = data.map((row) => ({

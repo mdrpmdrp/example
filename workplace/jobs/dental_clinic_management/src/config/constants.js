@@ -12,7 +12,7 @@ const SHEET_NAMES = {
   DOCTORS: "Doctors",
   OPTION_LIST: "Option List",
   TODAY_APPOINTMENTS: "Today Appointments",
-  SEVEN_DAYS_AHEAD_APPOINTMENTS: "7 Days Appointments",
+  APPOINTMENT_REMINDERS: "Appointment Reminders",
 };
 
 // Users sheet column indices (0-based)
