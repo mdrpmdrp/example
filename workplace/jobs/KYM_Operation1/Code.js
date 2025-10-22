@@ -409,7 +409,7 @@ function saveKYMRecord(record) {
     Logger.log('✅ Validation passed - all required fields present');
 
     const id = record.id || Date.now();
-    const timestamp = record.timestamp ? new Date(record.timestamp) : new Date();
+    const timestamp = new Date();
 
     // Ensure assessment object exists
     const assessment = record.assessment || {};
@@ -422,6 +422,7 @@ function saveKYMRecord(record) {
     const productService = assessment.productService || false;
     const storeNameCheck = assessment.storeNameCheck || false;
     const professionalLicense = assessment.professionalLicense || false;
+    const onlineStorePhoto = assessment.onlineStorePhoto || false;  
 
     // ตรวจสอบเงื่อนไข Reject
     if (prohibitedStore || repeatApplication) {
@@ -460,6 +461,7 @@ function saveKYMRecord(record) {
       record.salesChannel || '',             // E: Sales_Channel
       record.category || '',                 // F: Category
       record.subCategory || '',              // G: Sub_Category
+      onlineStorePhoto ? 'Yes' : 'No',      // New Column for Online Store Photo
       storePhoto ? 'Yes' : 'No',            // H: Assessment_Store_Photo
       productService ? 'Yes' : 'No',        // I: Assessment_Product_Service
       storeNameCheck ? 'Yes' : 'No',        // J: Assessment_Store_Name
@@ -528,20 +530,21 @@ function getKYMRecords(startDate, endDate) {
           category: data[i][5],
           subCategory: data[i][6],
           assessment: {
-            storePhoto: data[i][7] === 'Yes',
-            productService: data[i][8] === 'Yes',
-            storeNameCheck: data[i][9] === 'Yes',
-            businessReg: data[i][10] === 'Yes',
-            professionalLicense: data[i][11] === 'Yes',
-            prohibitedStore: data[i][12] === 'Yes',
-            repeatApplication: data[i][13] === 'Yes'
+            onlineStorePhoto: data[i][7] === 'Yes',
+            storePhoto: data[i][8] === 'Yes',
+            productService: data[i][9] === 'Yes',
+            storeNameCheck: data[i][10] === 'Yes',
+            businessReg: data[i][11] === 'Yes',
+            professionalLicense: data[i][12] === 'Yes',
+            prohibitedStore: data[i][13] === 'Yes',
+            repeatApplication: data[i][14] === 'Yes'
           },
-          recommendationStatus: data[i][14],
-          status: data[i][15],
-          reason: data[i][16],
-          notes: data[i][17],
-          operator: data[i][18],
-          operatorName: data[i][19]
+          recommendationStatus: data[i][15],
+          status: data[i][16],
+          reason: data[i][17],
+          notes: data[i][18],
+          operator: data[i][19],
+          operatorName: data[i][20]
         });
       }
     }
@@ -576,7 +579,7 @@ function saveCallLog(record) {
     }
 
     const id = record.id || Date.now();
-    const timestamp = record.timestamp ? new Date(record.timestamp) : new Date();
+    const timestamp = new Date();
 
     // บันทึกตามลำดับคอลัมน์ที่ถูกต้อง
     callSheet.appendRow([

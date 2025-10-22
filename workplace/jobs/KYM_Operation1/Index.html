@@ -1745,42 +1745,6 @@
                 }
             });
 
-            // google.script.run
-            //     .withSuccessHandler(function (result) {
-            //         result = JSON.parse(result);
-            //         console.log(result)
-            //         if (result.success) {
-            //             kymData = result.data.kym || [];
-            //             callData = result.data.calls || [];
-            //             userData = result.data.users || [];
-            //             Swal.close();
-            //         } else {
-            //             Swal.fire({
-            //                 icon: 'warning',
-            //                 title: 'แจ้งเตือน',
-            //                 text: 'โหลดข้อมูลบางส่วนไม่สำเร็จ: ' + result.error,
-            //                 confirmButtonColor: '#FF6B35',
-            //                 customClass: {
-            //                     popup: 'rounded-2xl'
-            //                 }
-            //             });
-            //         }
-            //     })
-            //     .withFailureHandler(function (error) {
-            //         console.error('Load data error:', error);
-            //         Swal.fire({
-            //             icon: 'warning',
-            //             title: 'แจ้งเตือน',
-            //             text: 'โหลดข้อมูลจากเซิร์ฟเวอร์ไม่สำเร็จ กำลังใช้ข้อมูลจาก Cache',
-            //             timer: 3000,
-            //             confirmButtonColor: '#FF6B35',
-            //             customClass: {
-            //                 popup: 'rounded-2xl'
-            //             }
-            //         });
-            //         // loadAllData();
-            //     })
-            //     .getAllData(currentUser.role);
 
             Promise.all([
                 // getUsersData(),
@@ -2628,6 +2592,7 @@
         }
 
         // Additional missing functions
+
         function switchTab(tabName) {
             console.log(`Switching to tab: ${tabName}`);
             // Hide all tabs
@@ -2637,7 +2602,7 @@
 
             // Remove active class from all nav buttons
             document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('border-primary', 'text-primary');
+                btn.classList.remove('border-primary', 'text-primary', 'border-b-2');
                 btn.classList.add('text-gray-600');
             });
 
@@ -2646,7 +2611,7 @@
 
             // Add active class to selected nav button
             const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
-            activeBtn.classList.add('border-primary', 'text-primary');
+            activeBtn.classList.add('border-primary', 'text-primary', 'border-b-2');
             activeBtn.classList.remove('text-gray-600');
 
             // Load data for specific tabs
@@ -2823,7 +2788,9 @@
                                 <div class="flex-grow">
                                     <div class="flex justify-between items-start mb-2">
                                         <h6 class="font-semibold text-gray-800">การโทรครั้งแรก</h6>
-                                        <span class="text-xs text-gray-500">${new Date(call.timestamp).toLocaleString('th-TH')}</span>
+                                        <span class="text-xs text-gray-500">
+                                            ${new Date(call.timestamp).toLocaleString('th-TH')}
+                                        </span>
                                     </div>
                                     <div class="text-sm text-gray-600 space-y-1">
                                         <p><span class="font-medium">ผลการโทร:</span> ${call.callResult}</p>
@@ -2959,9 +2926,8 @@
                 });
             }
             if (retryDatePicker._flatpickr) {
-                retryDatePicker._flatpickr.setDate(new Date(), true)
+                retryDatePicker._flatpickr.clear()
             } else {
-                console.log("Initializing retry date picker", call.retryCallDate)
                 retryDatePicker.flatpickr({
                     locale: 'th',
                     dateFormat: "Y-m-d",
@@ -2969,7 +2935,6 @@
                     altInput: true,
                     allowInput: true,
                     minDate: "today",
-                    defaultDate: moment(call.retryCallDate || new Date()).toDate()
                 });
             }
         }
@@ -2992,25 +2957,89 @@
                 if (result.isConfirmed) {
                     const callIndex = callData.findIndex(c => c.id == caseId);
                     if (callIndex !== -1) {
-                        callData[callIndex].caseStatus = 'Closed';
-                        callData[callIndex].closedAt = new Date().toISOString();
-                        callData[callIndex].closedBy = currentUser.username;
-
-                        loadPendingCases();
-                        closeCaseDetailModal();
+                        let existingCall = callData[callIndex];
+                        const activity = {
+                            id: Date.now(),
+                            callResult: "ปิดเคส",
+                            callDetails: document.getElementById('followUpCallDetails').value,
+                            rescheduleDateTime: document.getElementById('followUpRescheduleDateTime').value,
+                            retryCallDate: "",
+                            retryTimeSlot: document.getElementById('followUpRetryTimeSlot').value,
+                            operator: currentUser.username,
+                            operatorName: currentUser.name,
+                            timestamp: new Date().toISOString()
+                        };
+                        existingCall.activities = existingCall.activities || [];
+                        existingCall.activities.push(activity);
+                        existingCall.caseStatus = "Closed";
+                        existingCall.closedAt = moment().format('DD/MM/YYYY, HH:mm:ss');
+                        existingCall.lastOperator = currentUser.username;
+                        existingCall.lastActivity = activity.timestamp;
+                        existingCall.lastOperator = activity.operatorName;
 
                         Swal.fire({
-                            icon: 'success',
-                            title: 'ปิดเคสสำเร็จ',
-                            text: 'เคสได้รับการปิดเรียบร้อยแล้ว',
-                            timer: 2000,
+                            icon: 'info',
+                            title: 'กำลังบันทึก...',
                             allowOutsideClick: false,
-                            showConfirmButton: false,
-                            confirmButtonColor: '#FF6B35',
                             customClass: {
                                 popup: 'rounded-2xl'
+                            },
+                            didOpen: () => {
+                                Swal.showLoading();
                             }
                         });
+                        console.log('Submitting follow-up for case ID:', caseId, existingCall);
+
+                        google.script.run
+                            .withSuccessHandler(async function (result) {
+                                result = JSON.parse(result);
+                                if (result.success) {
+                                    closeCaseDetailModal();
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'บันทึกการโทรติดตามสำเร็จ',
+                                        text: `กำลังโหลดข้อมูลใหม่...`,
+                                        allowOutsideClick: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                        customClass: {
+                                            popup: 'rounded-2xl'
+                                        }
+                                    });
+                                    await loadPendingCases();
+                                    Swal.close()
+                                    if (currentUser && (currentUser.role === 'Supervisor' || currentUser.role === 'Admin')) {
+                                        updateDashboard();
+                                    }
+
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'เกิดข้อผิดพลาด',
+                                        text: result.error,
+                                        allowOutsideClick: false,
+                                        confirmButtonColor: '#FF6B35',
+                                        customClass: {
+                                            popup: 'rounded-2xl'
+                                        }
+                                    });
+                                }
+                            })
+                            .withFailureHandler(function (error) {
+                                console.error('Follow-up submit error:', error);
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'เกิดข้อผิดพลาด',
+                                    text: 'ไม่สามารถบันทึกการโทรติดตามได้: ' + error.message,
+                                    allowOutsideClick: false,
+                                    confirmButtonColor: '#FF6B35',
+                                    customClass: {
+                                        popup: 'rounded-2xl'
+                                    }
+                                });
+                            })
+                            .updateCallLog(existingCall);
                     }
                 }
             });
@@ -3951,6 +3980,7 @@
             const category = document.getElementById('category').value;
             const subCategory = document.getElementById('subCategory').value;
             const licenseSection = document.getElementById('licenseSection');
+            console.log(category, subCategory);
 
             let requiresLicense = false;
 
@@ -4159,8 +4189,8 @@
                 delete existingCall.followUpDate;
                 delete existingCall.nextCallTimeSlot;
                 delete existingCall.retryNotes;
-                existingCall.closedAt = new Date().toISOString();
-                existingCall.closedBy = currentUser.username;
+                existingCall.closedAt = moment().format('DD/MM/YYYY, HH:mm:ss');
+                existingCall.lastOperator = currentUser.username;
             }
             existingCall.retryCallDate = retryCallDate ? moment(retryCallDate).format('YYYY-MM-DD') : '';
             existingCall.lastActivity = activity.timestamp;
@@ -4183,6 +4213,7 @@
                 .withSuccessHandler(async function (result) {
                     result = JSON.parse(result);
                     if (result.success) {
+                        closeFollowUpModal();
                         Swal.fire({
                             icon: 'success',
                             title: 'บันทึกการโทรติดตามสำเร็จ',
@@ -4195,13 +4226,12 @@
                                 popup: 'rounded-2xl'
                             }
                         });
-                        await getCallData();
+                        await loadPendingCases();
                         Swal.close()
                         if (currentUser && (currentUser.role === 'Supervisor' || currentUser.role === 'Admin')) {
                             updateDashboard();
                         }
 
-                        closeFollowUpModal();
 
                     } else {
                         Swal.fire({
@@ -4242,7 +4272,7 @@
             const assessmentInfo = document.getElementById('assessmentInfo');
             const checklistItems = document.querySelectorAll('.checklist-item');
             checklistItems.forEach(item => item.remove());
-            const checklist = checklists[channel];
+            const checklist = JSON.parse(JSON.stringify(checklists[channel]))
             if (!checklist) {
                 assessmentInfo.classList.remove('hidden');
                 return
@@ -4265,7 +4295,7 @@
                                     ${(checklist.length - i)}. ${item.title}
                                 </h4>
                                 <span
-                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.important ? 'bg-red-100 text-red-800' : (item.required ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800')}">
+                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.important ? 'bg-red-100 text-red-800' : (item.required ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800')}">
                                     ${item.important ? ('ตรวจสอบ • สำคัญ') : (`${item.score} คะแนน • ${item.required ? 'จำเป็น' : 'ไม่จำเป็น'}`)}
                                 </span>
                             </div>
@@ -4291,6 +4321,7 @@
                 }
             });
             setupAssessmentSystem();
+            checkLicenseRequirement()
         }
 
 
@@ -4476,13 +4507,14 @@
                 reason: document.getElementById('reason').value,
                 notes: document.getElementById('notes').value,
                 assessment: {
-                    storePhoto: document.getElementById('storePhoto').checked,
-                    productService: document.getElementById('productService').checked,
-                    storeNameCheck: document.getElementById('storeNameCheck').checked,
-                    businessReg: document.getElementById('businessReg').checked,
-                    professionalLicense: document.getElementById('professionalLicense').checked,
-                    prohibitedStore: document.getElementById('prohibitedStore').checked,
-                    repeatApplication: document.getElementById('repeatApplication').checked
+                    onlineStorePhoto: document.getElementById('onlineStorePhoto')?.checked,
+                    storePhoto: document.getElementById('storePhoto')?.checked,
+                    productService: document.getElementById('productService')?.checked,
+                    storeNameCheck: document.getElementById('storeNameCheck')?.checked,
+                    businessReg: document.getElementById('businessReg')?.checked,
+                    professionalLicense: document.getElementById('professionalLicense')?.checked,
+                    prohibitedStore: document.getElementById('prohibitedStore')?.checked,
+                    repeatApplication: document.getElementById('repeatApplication')?.checked
                 },
                 operator: currentUser.username,
                 operatorName: currentUser.name,
@@ -4522,7 +4554,6 @@
                         if (currentUser && (currentUser.role === 'Supervisor' || currentUser.role === 'Admin')) {
                             updateDashboard();
                         }
-
 
                         // Reset form
                         document.getElementById('kymForm').reset();
