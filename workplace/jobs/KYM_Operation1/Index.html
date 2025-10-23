@@ -256,9 +256,11 @@
 
                             <!-- Quick Status Buttons -->
                             <div class="space-y-3">
-                                <label class="block text-sm font-medium text-orange-800">เลือกสถานะ KYM:</label>
+                                <label class="block text-lg font-medium text-orange-800">เลือกสถานะ KYM: <span
+                                        class="text-orange-600 font-medium"
+                                        id="userSelectStatus">กรุณาเลือกสถานะ</span></label>
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <button type="button" id="approveBtn"
+                                    <button type="button" id="approvedBtn"
                                         class="status-btn bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg">
                                         <div class="flex items-center justify-center space-x-2">
                                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -272,7 +274,7 @@
                                             </div>
                                         </div>
                                     </button>
-                                    <button type="button" id="reviseBtn"
+                                    <button type="button" id="revisedBtn"
                                         class="status-btn bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg">
                                         <div class="flex items-center justify-center space-x-2">
                                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -286,7 +288,7 @@
                                             </div>
                                         </div>
                                     </button>
-                                    <button type="button" id="rejectBtn"
+                                    <button type="button" id="rejectedBtn"
                                         class="status-btn bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg">
                                         <div class="flex items-center justify-center space-x-2">
                                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -401,8 +403,8 @@
                                     <option value="ไม่รับสาย">ไม่รับสาย</option>
                                     <option value="เบอร์ผิด">เบอร์ผิด</option>
                                     <option value="ปิดเครื่อง">ปิดเครื่อง</option>
-                                    <option value="ไม่สะดวก ขอนัดหมายใหม่">ไม่สะดวก ขอนัดหมายใหม่</option>
-                                    <option value="ติดต่อไม่ได้ - ต้องโทรใหม่">ติดต่อไม่ได้ - ต้องโทรใหม่</option>
+                                    <option value="ไม่สะดวก">ไม่สะดวก ขอนัดหมายใหม่</option>
+                                    <option value="ติดต่อไม่ได้">ติดต่อไม่ได้ - ต้องโทรใหม่</option>
                                 </select>
                             </div>
 
@@ -1384,12 +1386,12 @@
         let currentDashboardPeriod = 'today';
 
         // for test
-        window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('username').value = 'admin';
-            document.getElementById('password').value = 'admin123';
-            handleLogin()
+        // window.addEventListener('DOMContentLoaded', () => {
+        //     document.getElementById('username').value = 'admin';
+        //     document.getElementById('password').value = 'admin123';
+        //     handleLogin()
 
-        });
+        // });
 
         // Password hashing function
         function hashPassword(password) {
@@ -1701,6 +1703,8 @@
             updateDateTime();
             setInterval(updateDateTime, 1000); // Update every second
             moment.locale('th');
+
+           
         });
 
         function updateDateTime() {
@@ -1745,47 +1749,11 @@
                 }
             });
 
-            // google.script.run
-            //     .withSuccessHandler(function (result) {
-            //         result = JSON.parse(result);
-            //         console.log(result)
-            //         if (result.success) {
-            //             kymData = result.data.kym || [];
-            //             callData = result.data.calls || [];
-            //             userData = result.data.users || [];
-            //             Swal.close();
-            //         } else {
-            //             Swal.fire({
-            //                 icon: 'warning',
-            //                 title: 'แจ้งเตือน',
-            //                 text: 'โหลดข้อมูลบางส่วนไม่สำเร็จ: ' + result.error,
-            //                 confirmButtonColor: '#FF6B35',
-            //                 customClass: {
-            //                     popup: 'rounded-2xl'
-            //                 }
-            //             });
-            //         }
-            //     })
-            //     .withFailureHandler(function (error) {
-            //         console.error('Load data error:', error);
-            //         Swal.fire({
-            //             icon: 'warning',
-            //             title: 'แจ้งเตือน',
-            //             text: 'โหลดข้อมูลจากเซิร์ฟเวอร์ไม่สำเร็จ กำลังใช้ข้อมูลจาก Cache',
-            //             timer: 3000,
-            //             confirmButtonColor: '#FF6B35',
-            //             customClass: {
-            //                 popup: 'rounded-2xl'
-            //             }
-            //         });
-            //         // loadAllData();
-            //     })
-            //     .getAllData(currentUser.role);
 
             Promise.all([
                 // getUsersData(),
                 getKymData(),
-                // getCallData()
+                getCallData()
             ]).then(() => {
                 Swal.close();
             }).catch((error) => {
@@ -2628,6 +2596,7 @@
         }
 
         // Additional missing functions
+
         function switchTab(tabName) {
             console.log(`Switching to tab: ${tabName}`);
             // Hide all tabs
@@ -2637,7 +2606,7 @@
 
             // Remove active class from all nav buttons
             document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('border-primary', 'text-primary');
+                btn.classList.remove('border-primary', 'text-primary', 'border-b-2');
                 btn.classList.add('text-gray-600');
             });
 
@@ -2646,7 +2615,7 @@
 
             // Add active class to selected nav button
             const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
-            activeBtn.classList.add('border-primary', 'text-primary');
+            activeBtn.classList.add('border-primary', 'text-primary', 'border-b-2');
             activeBtn.classList.remove('text-gray-600');
 
             // Load data for specific tabs
@@ -2657,8 +2626,9 @@
             } else if (tabName === 'calls') {
                 loadPendingCases();
                 let datePicker = document.getElementById('retryCallDate');
+                const reschedulePicker = document.getElementById('rescheduleDateTime');
                 if (datePicker._flatpickr) {
-                    datePicker._flatpickr.setDate(new Date(), true)
+                    datePicker._flatpickr.setDate(moment().add(1, 'days').toDate());
                 } else {
                     datePicker.flatpickr({
                         locale: 'th',
@@ -2667,6 +2637,20 @@
                         altInput: true,
                         minDate: "today",
                         defaultDate: new Date()
+                    });
+                }
+                if(reschedulePicker._flatpickr) {
+                    reschedulePicker._flatpickr.setDate(null);
+                }else{
+                    reschedulePicker.flatpickr({
+                        locale: 'th',
+                        enableTime: true,
+                        dateFormat: "Y-m-d H:i",
+                        altFormat: "j F Y H:i",
+                        altInput: true,
+                        allowInput: true,
+                        minDate: "today",
+                        minuteIncrement: 15
                     });
                 }
             } else if (tabName === 'reports') {
@@ -2823,7 +2807,9 @@
                                 <div class="flex-grow">
                                     <div class="flex justify-between items-start mb-2">
                                         <h6 class="font-semibold text-gray-800">การโทรครั้งแรก</h6>
-                                        <span class="text-xs text-gray-500">${new Date(call.timestamp).toLocaleString('th-TH')}</span>
+                                        <span class="text-xs text-gray-500">
+                                            ${new Date(call.timestamp).toLocaleString('th-TH')}
+                                        </span>
                                     </div>
                                     <div class="text-sm text-gray-600 space-y-1">
                                         <p><span class="font-medium">ผลการโทร:</span> ${call.callResult}</p>
@@ -2901,6 +2887,8 @@
 
             // Display case information
             const caseInfo = document.getElementById('followUpCaseInfo');
+            // Set the data-call-count attribute
+            caseInfo.setAttribute('data-call-count', (call.activities?.length || 0) + 1);
             caseInfo.innerHTML = `
                 <div class="flex items-center justify-between mb-3">
                     <h4 class="text-lg font-bold text-blue-800">ข้อมูลเคส</h4>
@@ -2959,9 +2947,8 @@
                 });
             }
             if (retryDatePicker._flatpickr) {
-                retryDatePicker._flatpickr.setDate(new Date(), true)
+                retryDatePicker._flatpickr.clear()
             } else {
-                console.log("Initializing retry date picker", call.retryCallDate)
                 retryDatePicker.flatpickr({
                     locale: 'th',
                     dateFormat: "Y-m-d",
@@ -2969,7 +2956,6 @@
                     altInput: true,
                     allowInput: true,
                     minDate: "today",
-                    defaultDate: moment(call.retryCallDate || new Date()).toDate()
                 });
             }
         }
@@ -2992,25 +2978,89 @@
                 if (result.isConfirmed) {
                     const callIndex = callData.findIndex(c => c.id == caseId);
                     if (callIndex !== -1) {
-                        callData[callIndex].caseStatus = 'Closed';
-                        callData[callIndex].closedAt = new Date().toISOString();
-                        callData[callIndex].closedBy = currentUser.username;
-
-                        loadPendingCases();
-                        closeCaseDetailModal();
+                        let existingCall = callData[callIndex];
+                        const activity = {
+                            id: Date.now(),
+                            callResult: "ปิดเคส",
+                            callDetails: document.getElementById('followUpCallDetails').value,
+                            rescheduleDateTime: document.getElementById('followUpRescheduleDateTime').value,
+                            retryCallDate: "",
+                            retryTimeSlot: document.getElementById('followUpRetryTimeSlot').value,
+                            operator: currentUser.username,
+                            operatorName: currentUser.name,
+                            timestamp: new Date().toISOString()
+                        };
+                        existingCall.activities = existingCall.activities || [];
+                        existingCall.activities.push(activity);
+                        existingCall.caseStatus = "Closed";
+                        existingCall.closedAt = moment().format('DD/MM/YYYY, HH:mm:ss');
+                        existingCall.lastOperator = currentUser.username;
+                        existingCall.lastActivity = activity.timestamp;
+                        existingCall.lastOperator = activity.operatorName;
 
                         Swal.fire({
-                            icon: 'success',
-                            title: 'ปิดเคสสำเร็จ',
-                            text: 'เคสได้รับการปิดเรียบร้อยแล้ว',
-                            timer: 2000,
+                            icon: 'info',
+                            title: 'กำลังบันทึก...',
                             allowOutsideClick: false,
-                            showConfirmButton: false,
-                            confirmButtonColor: '#FF6B35',
                             customClass: {
                                 popup: 'rounded-2xl'
+                            },
+                            didOpen: () => {
+                                Swal.showLoading();
                             }
                         });
+                        console.log('Submitting follow-up for case ID:', caseId, existingCall);
+
+                        google.script.run
+                            .withSuccessHandler(async function (result) {
+                                result = JSON.parse(result);
+                                if (result.success) {
+                                    closeCaseDetailModal();
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'บันทึกการโทรติดตามสำเร็จ',
+                                        text: `กำลังโหลดข้อมูลใหม่...`,
+                                        allowOutsideClick: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                        customClass: {
+                                            popup: 'rounded-2xl'
+                                        }
+                                    });
+                                    await loadPendingCases();
+                                    Swal.close()
+                                    if (currentUser && (currentUser.role === 'Supervisor' || currentUser.role === 'Admin')) {
+                                        updateDashboard();
+                                    }
+
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'เกิดข้อผิดพลาด',
+                                        text: result.error,
+                                        allowOutsideClick: false,
+                                        confirmButtonColor: '#FF6B35',
+                                        customClass: {
+                                            popup: 'rounded-2xl'
+                                        }
+                                    });
+                                }
+                            })
+                            .withFailureHandler(function (error) {
+                                console.error('Follow-up submit error:', error);
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'เกิดข้อผิดพลาด',
+                                    text: 'ไม่สามารถบันทึกการโทรติดตามได้: ' + error.message,
+                                    allowOutsideClick: false,
+                                    confirmButtonColor: '#FF6B35',
+                                    customClass: {
+                                        popup: 'rounded-2xl'
+                                    }
+                                });
+                            })
+                            .updateCallLog(existingCall);
                     }
                 }
             });
@@ -3023,6 +3073,11 @@
 
             // Get current period dates
             const { startDate, endDate } = getDashboardPeriodDates(currentDashboardPeriod);
+            console.log('Current period:', startDate, endDate);
+
+            // get previous period dates for comparison (not used in this simplified version)
+            const { startDate: prevStartDate, endDate: prevEndDate } = getDashboardPeriodDates(getPreviousPeriod(currentDashboardPeriod));
+            console.log('Previous period:', prevStartDate, prevEndDate);
 
             // Filter data by current period
             const filteredKymData = kymData.filter(record => {
@@ -3030,28 +3085,39 @@
                 return recordDate >= startDate && recordDate <= endDate;
             });
 
+            const filteredKymPreviousData = kymData.filter(record => {
+                const recordDate = new Date(record.timestamp);
+                return recordDate >= prevStartDate && recordDate <= prevEndDate;
+            });
+
             const filteredCallData = callData.filter(record => {
                 const recordDate = new Date(record.timestamp);
                 return recordDate >= startDate && recordDate <= endDate;
             });
 
+            const filteredCallPreviousData = callData.filter(record => {
+                const recordDate = new Date(record.timestamp);
+                return recordDate >= prevStartDate && recordDate <= prevEndDate;
+            });
+
             // Update summary cards
-            updateDashboardSummary(filteredKymData, filteredCallData);
+            updateDashboardSummary(filteredKymData, filteredCallData, filteredKymPreviousData, filteredCallPreviousData);
 
             // Update performance table
-            updatePerformanceTable(filteredKymData, filteredCallData);
+            updatePerformanceTable(filteredKymData, filteredCallData, filteredKymPreviousData, filteredCallPreviousData);
 
             // Update top performers
-            updateTopPerformers(filteredKymData, filteredCallData);
+            updateTopPerformers(filteredKymData, filteredCallData, filteredKymPreviousData, filteredCallPreviousData);
 
             // Update KYM status chart
-            updateKymStatusChart(filteredKymData);
+            updateKymStatusChart(filteredKymData, filteredKymPreviousData);
 
             // Update alerts
             updateAlertsSection();
         }
 
         function getDashboardPeriodDates(period) {
+            console.log('Calculating dates for period:', period);
             const now = new Date();
             let startDate, endDate;
 
@@ -3071,6 +3137,35 @@
                 case '30days':
                     startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
                     endDate = now;
+                    break;
+                case '2daysago':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2);
+                    endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+                    break;
+                case '7daysprior':
+                    startDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+                    endDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    break;
+                case '30daysprior':
+                    startDate = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+                    endDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    break;
+                case 'customprior':
+                    const customStartDateStr = document.getElementById('dashStartDate').value;
+                    const customEndDateStr = document.getElementById('dashEndDate').value;
+                    if (customStartDateStr && customEndDateStr) {
+                        const customStartDate = new Date(customStartDateStr);
+                        const customEndDate = new Date(customEndDateStr);
+                        const diffTime = customEndDate - customStartDate;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                        endDate = new Date(customStartDate.getTime());
+                        startDate = new Date(customStartDate.getTime() - diffDays * 24 * 60 * 60 * 1000);
+                    } else {
+                        // Default to yesterday if custom dates not set
+                        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+                        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    }
                     break;
                 case 'custom':
                     const startDateStr = document.getElementById('dashStartDate').value;
@@ -3092,18 +3187,41 @@
             return { startDate, endDate };
         }
 
-        function updateDashboardSummary(kymData, callData) {
+        function getPreviousPeriod(period) {
+            switch (period) {
+                case 'today':
+                    return 'yesterday';
+                case 'yesterday':
+                    return '2daysago';
+                case '7days':
+                    return '7daysprior';
+                case '30days':
+                    return '30daysprior';
+                case 'custom':
+                    return 'customprior';
+                default:
+                    return 'yesterday';
+            }
+        }
+
+        function updateDashboardSummary(kymData, callData, kymPreviousData, callPreviousData) {
             // KYM Statistics
             const totalKym = kymData.length;
             const approvedKym = kymData.filter(r => r.status === 'Approved').length;
+            const totalPreviousKym = kymPreviousData.length;
+            const approvedPreviousKym = kymPreviousData.filter(r => r.status === 'Approved').length;
 
             // Call Statistics
             const totalCalls = callData.length;
             const contactedCalls = callData.filter(r => r.callResult === 'ติดต่อได้').length;
             const pendingCases = callData.filter(r => r.caseStatus === 'Pending').length;
+            const totalPreviousCalls = callPreviousData.length;
+            const contactedPreviousCalls = callPreviousData.filter(r => r.callResult === 'ติดต่อได้').length;
+            const pendingPreviousCases = callPreviousData.filter(r => r.caseStatus === 'Pending').length;
 
             // Calculate success rate
             const successRate = totalCalls > 0 ? Math.round((contactedCalls / totalCalls) * 100) : 0;
+            const previousSuccessRate = totalPreviousCalls > 0 ? Math.round((contactedPreviousCalls / totalPreviousCalls) * 100) : 0;
 
             // Update DOM elements
             document.getElementById('totalKym').textContent = totalKym;
@@ -3113,9 +3231,12 @@
 
             // Calculate growth (simplified - comparing with previous period)
             // For demo purposes, showing static growth indicators
-            document.getElementById('kymGrowth').textContent = '+12%';
-            document.getElementById('callsGrowth').textContent = '+8%';
-            document.getElementById('successGrowth').textContent = '+5%';
+            let kymGrowthRate = totalPreviousKym > 0 ? (totalKym - totalPreviousKym) / totalPreviousKym : 'N/A';
+            let callsGrowthRate = totalPreviousCalls > 0 ? (totalCalls - totalPreviousCalls) / totalPreviousCalls : 'N/A';
+            let successGrowthRate = previousSuccessRate > 0 ? (successRate - previousSuccessRate) / previousSuccessRate : 'N/A';
+            document.getElementById('kymGrowth').textContent = kymGrowthRate !== 'N/A' ? kymGrowthRate >= 0 ? '+' + Math.floor(kymGrowthRate * 100) + '%' : Math.floor(kymGrowthRate * 100) + '%' : 'N/A';
+            document.getElementById('callsGrowth').textContent = callsGrowthRate !== 'N/A' ? callsGrowthRate >= 0 ? '+' + Math.floor(callsGrowthRate * 100) + '%' : Math.floor(callsGrowthRate * 100) + '%' : 'N/A';
+            document.getElementById('successGrowth').textContent = successGrowthRate !== 'N/A' ? successGrowthRate >= 0 ? '+' + Math.floor(successGrowthRate * 100) + '%' : Math.floor(successGrowthRate * 100) + '%' : 'N/A';
 
             // Update SLA expired count (cases pending for more than 24 hours)
             const now = new Date();
@@ -3398,6 +3519,7 @@
             currentDashboardPeriod = period;
             // Update dashboard based on period
             console.log('Dashboard period updated to:', period);
+            updateDashboard();
         }
 
         function toggleDashboardCustomRange() {
@@ -3928,6 +4050,8 @@
                 section.classList.remove('hidden');
             } else {
                 section.classList.add('hidden');
+                document.getElementById('followUpDate').value = '';
+                document.getElementById('followUpNotes').value = '';
             }
         }
 
@@ -3951,6 +4075,7 @@
             const category = document.getElementById('category').value;
             const subCategory = document.getElementById('subCategory').value;
             const licenseSection = document.getElementById('licenseSection');
+            console.log(category, subCategory);
 
             let requiresLicense = false;
 
@@ -4079,9 +4204,12 @@
             if (result === 'ไม่สะดวก') {
                 rescheduleSection.classList.remove('hidden');
                 document.getElementById('followUpRescheduleDateTime').required = true;
-            } else if (result === 'ติดต่อไม่ได้' || result === 'ไม่รับสาย' || result === 'ปิดเครื่อง') {
-                retrySection.classList.remove('hidden');
-                document.getElementById('followUpRetryCallDate').required = true;
+            } else if ((result === 'ติดต่อไม่ได้' || result === 'ไม่รับสาย' || result === 'ปิดเครื่อง')) {
+                let callCount = parseInt(document.getElementById('followUpCaseInfo').dataset['callCount']) || 0;
+                if(callCount < 3){
+                    retrySection.classList.remove('hidden');
+                    document.getElementById('followUpRetryCallDate').required = true;
+                }
 
             }
         }
@@ -4146,7 +4274,7 @@
 
             if (nextCallDate) {
                 console.log('Setting next call date for follow-up:', nextCallDate);
-                existingCall.followUpDate = nextCallDate;
+                existingCall.followUpDate = moment(nextCallDate).format('YYYY-MM-DD');
                 existingCall.nextCallTimeSlot = document.getElementById('followUpNextCallTimeSlot').value;
             } else if (retryCallDate) {
                 console.log('Setting retry call date for follow-up:', retryCallDate);
@@ -4159,8 +4287,8 @@
                 delete existingCall.followUpDate;
                 delete existingCall.nextCallTimeSlot;
                 delete existingCall.retryNotes;
-                existingCall.closedAt = new Date().toISOString();
-                existingCall.closedBy = currentUser.username;
+                existingCall.closedAt = moment().format('DD/MM/YYYY, HH:mm:ss');
+                existingCall.lastOperator = currentUser.username;
             }
             existingCall.retryCallDate = retryCallDate ? moment(retryCallDate).format('YYYY-MM-DD') : '';
             existingCall.lastActivity = activity.timestamp;
@@ -4183,6 +4311,7 @@
                 .withSuccessHandler(async function (result) {
                     result = JSON.parse(result);
                     if (result.success) {
+                        closeFollowUpModal();
                         Swal.fire({
                             icon: 'success',
                             title: 'บันทึกการโทรติดตามสำเร็จ',
@@ -4195,13 +4324,12 @@
                                 popup: 'rounded-2xl'
                             }
                         });
-                        await getCallData();
+                        await loadPendingCases();
                         Swal.close()
                         if (currentUser && (currentUser.role === 'Supervisor' || currentUser.role === 'Admin')) {
                             updateDashboard();
                         }
 
-                        closeFollowUpModal();
 
                     } else {
                         Swal.fire({
@@ -4242,7 +4370,7 @@
             const assessmentInfo = document.getElementById('assessmentInfo');
             const checklistItems = document.querySelectorAll('.checklist-item');
             checklistItems.forEach(item => item.remove());
-            const checklist = checklists[channel];
+            const checklist = JSON.parse(JSON.stringify(checklists[channel]))
             if (!checklist) {
                 assessmentInfo.classList.remove('hidden');
                 return
@@ -4265,7 +4393,7 @@
                                     ${(checklist.length - i)}. ${item.title}
                                 </h4>
                                 <span
-                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.important ? 'bg-red-100 text-red-800' : (item.required ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800')}">
+                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.important ? 'bg-red-100 text-red-800' : (item.required ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800')}">
                                     ${item.important ? ('ตรวจสอบ • สำคัญ') : (`${item.score} คะแนน • ${item.required ? 'จำเป็น' : 'ไม่จำเป็น'}`)}
                                 </span>
                             </div>
@@ -4291,6 +4419,7 @@
                 }
             });
             setupAssessmentSystem();
+            checkLicenseRequirement()
         }
 
 
@@ -4301,9 +4430,9 @@
             });
 
             // Status buttons
-            document.getElementById('approveBtn').addEventListener('click', () => setKymStatus('Approve'));
-            document.getElementById('reviseBtn').addEventListener('click', () => setKymStatus('Revise'));
-            document.getElementById('rejectBtn').addEventListener('click', () => setKymStatus('Reject'));
+            document.getElementById('approvedBtn').addEventListener('click', () => setKymStatus('Approved'));
+            document.getElementById('revisedBtn').addEventListener('click', () => setKymStatus('Revised'));
+            document.getElementById('rejectedBtn').addEventListener('click', () => setKymStatus('Rejected'));
         }
 
         function updateRecommendedStatus() {
@@ -4394,6 +4523,7 @@
         }
 
         function setKymStatus(status) {
+            console.log('Setting KYM status to:', status);
             document.getElementById('kymStatus').value = status;
 
             // Update button styles - make selection much more obvious
@@ -4404,52 +4534,28 @@
             });
 
             const selectedBtn = document.getElementById(status.toLowerCase() + 'Btn');
-            selectedBtn.classList.add('ring-4', 'ring-opacity-75', 'bg-opacity-90', 'transform', 'scale-105');
+            selectedBtn.classList.add('ring-4', 'bg-opacity-90', 'transform', 'scale-105');
+            const userSelectStatus = document.getElementById('userSelectStatus');
 
             // Add specific ring colors and enhanced styling
             if (status === 'Approved') {
                 selectedBtn.classList.add('ring-green-400');
-                selectedBtn.style.boxShadow = '0 0 20px rgba(34, 197, 94, 0.4)';
+                selectedBtn.style.boxShadow = '0 0 20px rgba(34, 197, 94, 0.7)';
+                userSelectStatus.textContent = 'สถานะที่เลือก: Approved';
             } else if (status === 'Revised') {
                 selectedBtn.classList.add('ring-yellow-400');
-                selectedBtn.style.boxShadow = '0 0 20px rgba(251, 191, 36, 0.4)';
+                selectedBtn.style.boxShadow = '0 0 20px rgba(251, 191, 36, 0.7)';
+                userSelectStatus.textContent = 'สถานะที่เลือก: Revised';
             } else if (status === 'Rejected') {
                 selectedBtn.classList.add('ring-red-400');
-                selectedBtn.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.4)';
+                selectedBtn.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.7)';
+                userSelectStatus.textContent = 'สถานะที่เลือก: Rejected';
             }
 
             // Update recommended status display to show selected status with enhanced styling
             const statusElement = document.getElementById('recommendedStatus');
             const reasonElement = document.getElementById('statusReason');
 
-            if (status === 'Approved') {
-                statusElement.textContent = '✅ Approved';
-                statusElement.className = 'text-2xl font-bold text-green-700 mb-2';
-                reasonElement.innerHTML = `
-                    <div class="bg-green-100 border border-green-300 rounded-lg p-3">
-                        <div class="text-green-800 font-semibold">✅ คุณได้เลือกสถานะ: อนุมัติ</div>
-                        <div class="text-green-600 text-sm mt-1">สถานะนี้จะถูกบันทึกเมื่อกดปุ่ม "บันทึกข้อมูล KYM"</div>
-                    </div>
-                `;
-            } else if (status === 'Revised') {
-                statusElement.textContent = '⚠️ Revised';
-                statusElement.className = 'text-2xl font-bold text-yellow-700 mb-2';
-                reasonElement.innerHTML = `
-                    <div class="bg-yellow-100 border border-yellow-300 rounded-lg p-3">
-                        <div class="text-yellow-800 font-semibold">⚠️ คุณได้เลือกสถานะ: แก้ไขข้อมูล</div>
-                        <div class="text-yellow-600 text-sm mt-1">กรุณาระบุเหตุผลในช่องด้านล่าง</div>
-                    </div>
-                `;
-            } else if (status === 'Rejected') {
-                statusElement.textContent = '❌ Rejected';
-                statusElement.className = 'text-2xl font-bold text-red-700 mb-2';
-                reasonElement.innerHTML = `
-                    <div class="bg-red-100 border border-red-300 rounded-lg p-3">
-                        <div class="text-red-800 font-semibold">❌ คุณได้เลือกสถานะ: ไม่อนุมัติ</div>
-                        <div class="text-red-600 text-sm mt-1">กรุณาระบุเหตุผลในช่องด้านล่าง</div>
-                    </div>
-                `;
-            }
 
             // Show/hide reason section
             const reasonSection = document.getElementById('reasonSection');
@@ -4472,17 +4578,19 @@
                 salesChannel: document.getElementById('salesChannel').value,
                 category: document.getElementById('category').value,
                 subCategory: document.getElementById('subCategory').value,
+                recommendedStatus: document.getElementById('recommendedStatus').textContent.trim(),
                 status: document.getElementById('kymStatus').value,
                 reason: document.getElementById('reason').value,
                 notes: document.getElementById('notes').value,
                 assessment: {
-                    storePhoto: document.getElementById('storePhoto').checked,
-                    productService: document.getElementById('productService').checked,
-                    storeNameCheck: document.getElementById('storeNameCheck').checked,
-                    businessReg: document.getElementById('businessReg').checked,
-                    professionalLicense: document.getElementById('professionalLicense').checked,
-                    prohibitedStore: document.getElementById('prohibitedStore').checked,
-                    repeatApplication: document.getElementById('repeatApplication').checked
+                    onlineStorePhoto: document.getElementById('onlineStorePhoto')?.checked,
+                    storePhoto: document.getElementById('storePhoto')?.checked,
+                    productService: document.getElementById('productService')?.checked,
+                    storeNameCheck: document.getElementById('storeNameCheck')?.checked,
+                    businessReg: document.getElementById('businessReg')?.checked,
+                    professionalLicense: document.getElementById('professionalLicense')?.checked,
+                    prohibitedStore: document.getElementById('prohibitedStore')?.checked,
+                    repeatApplication: document.getElementById('repeatApplication')?.checked
                 },
                 operator: currentUser.username,
                 operatorName: currentUser.name,
@@ -4523,7 +4631,6 @@
                             updateDashboard();
                         }
 
-
                         // Reset form
                         document.getElementById('kymForm').reset();
                         document.getElementById('reasonSection').classList.add('hidden');
@@ -4531,6 +4638,8 @@
                         document.getElementById('subCategory').innerHTML = '<option value="">เลือกหมวดหมู่ย่อย</option>';
                         document.getElementById('recommendedStatus').textContent = 'กรุณาประเมินข้อมูล';
                         document.getElementById('statusReason').textContent = '';
+                        document.getElementById('userSelectStatus').textContent = '';
+                        document.getElementById('kymStatus').value = '';
                         document.querySelectorAll('.status-btn').forEach(btn => {
                             btn.classList.remove('ring-4', 'ring-opacity-50');
                             btn.style.boxShadow = '';
@@ -5016,6 +5125,7 @@ ${generateOperatorCallStats(filteredCallData)}
                 'ช่องทางการขาย',
                 'หมวดหมู่หลัก',
                 'หมวดหมู่ย่อย',
+                'รูปร้านค้าออนไลน์',
                 'รูปร้านค้าจริง',
                 'ประเภทสินค้า/บริการ',
                 'ชื่อร้านค้า',
@@ -5038,7 +5148,7 @@ ${generateOperatorCallStats(filteredCallData)}
                     // Calculate recommended status
                     let recommendedStatus = 'N/A';
                     if (record.assessment) {
-                        const { prohibitedStore, repeatApplication, storePhoto, productService, storeNameCheck, professionalLicense } = record.assessment;
+                        const { prohibitedStore, repeatApplication, storePhoto, productService, storeNameCheck, professionalLicense, onlineStorePhoto } = record.assessment;
 
                         if (prohibitedStore || repeatApplication) {
                             recommendedStatus = 'Rejected';
@@ -5053,6 +5163,10 @@ ${generateOperatorCallStats(filteredCallData)}
                                 record.subCategory.includes('ขายยา') ||
                                 record.subCategory.includes('สัตวแพทย์')
                             );
+
+                            if (record.salesChannel === 'ขายออนไลน์' || record.salesChannel === 'มีหน้าร้านและขายออนไลน์') {
+                                requiredItems.push(onlineStorePhoto);
+                            }
 
                             if (licenseRequired) {
                                 requiredItems.push(professionalLicense);
@@ -5071,6 +5185,7 @@ ${generateOperatorCallStats(filteredCallData)}
                         `"${record.salesChannel}"`,
                         `"${record.category}"`,
                         `"${record.subCategory}"`,
+                        `"${record.assessment?.onlineStorePhoto ? 'ผ่าน' : 'ไม่ผ่าน'}"`,
                         `"${record.assessment?.storePhoto ? 'ผ่าน' : 'ไม่ผ่าน'}"`,
                         `"${record.assessment?.productService ? 'ผ่าน' : 'ไม่ผ่าน'}"`,
                         `"${record.assessment?.storeNameCheck ? 'ผ่าน' : 'ไม่ผ่าน'}"`,
