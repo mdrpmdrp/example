@@ -90,6 +90,7 @@ function setupSheets() {
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('KYM & Call Log System')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -422,7 +423,6 @@ function saveKYMRecord(record) {
     const storeNameCheck = assessment.storeNameCheck || false;
     const professionalLicense = assessment.professionalLicense || false;
     const onlineStorePhoto = assessment.onlineStorePhoto || false;  
-<<<<<<< HEAD
     const recommendationStatus = record.recommendedStatus || '';
     // // ตรวจสอบเงื่อนไข Reject
     // if (prohibitedStore || repeatApplication) {
@@ -430,8 +430,6 @@ function saveKYMRecord(record) {
     // } else {
     //   // ตรวจสอบข้อจำเป็น
     //   const requiredItems = [storePhoto, productService, storeNameCheck];
-=======
->>>>>>> c2ddfa301ca50b700f74ee887fd28b9a1055708c
 
     //   // เช็คว่าต้องมีใบประกอบวิชาชีพหรือไม่
     //   const licenseRequired = record.subCategory && (
