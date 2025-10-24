@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบจัดการการลา</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- FullCalendar and Moment.js -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/th.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+  <style>
+    body {
+      font-family: 'Kanit', sans-serif;
+      background: linear-gradient(135deg, #1e3a8a, #7c3aed);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .card {
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    input,
+    select,
+    textarea {
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+      outline: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(to right, #2563eb, #3b82f6);
+      transition: background 0.3s;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(to right, #1e40af, #2563eb);
+    }
+
+    .status-รอพิจารณา {
+      background-color: #fefcbf;
+      color: #d97706;
+    }
+
+    .status-อนุมัติ {
+      background-color: #d1fae5;
+      color: #059669;
+    }
+
+    .status-ไม่อนุมัติ {
+      background-color: #fee2e2;
+      color: #dc2626;
+    }
+
+    .leave-ลาป่วย {
+      background-color: #e0f2fe;
+      color: #0369a1;
+    }
+
+    .leave-ลากิจ {
+      background-color: #f3e8ff;
+      color: #6b21a8;
+    }
+
+    .leave-ลาพักร้อน {
+      background-color: #ffedd5;
+      color: #c2410c;
+    }
+
+    .leave-ลาคลอด {
+      background-color: #fce7f3;
+      color: #be185d;
+    }
+
+    .leave-อื่นๆ {
+      background-color: #e4e4e7;
+      color: #3f3f46;
+    }
+
+    .navbar {
+      background: linear-gradient(to right, #1e3a8a, #4c1d95);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-link:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Toggle Switch Styles */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.4s;
+      border-radius: 24px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+
+    input:checked+.toggle-slider {
+      background-color: #10b981;
+    }
+
+    input:checked+.toggle-slider:before {
+      transform: translateX(26px);
+    }
+
+    input:disabled+.toggle-slider {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .mobile-menu {
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .duration-box {
+      background-color: #f0f9ff;
+      border: 1px solid #bfdbfe;
+    }
+
+    /* Calendar Styles */
+    #calendar {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .fc {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1rem;
+    }
+
+    .fc-daygrid-event {
+      cursor: pointer;
+    }
+
+    .fc-event-title {
+      font-size: 0.9rem;
+    }
+
+    .fc-daygrid-day {
+      border-radius: 0.25rem;
+    }
+
+    .fc-daygrid-day:hover {
+      background-color: #f9fafb;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+  <!-- Navbar -->
+  <nav id="navbar" class="navbar  top-0 left-0 right-0 z-50 text-white p-4">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="text-xl font-semibold">ระบบจัดการการลา</div>
+      <button id="mobile-menu-btn" class="sm:hidden focus:outline-none">
+        <i class="fas fa-bars text-2xl"></i>
+      </button>
+      <div id="nav-links" class="hidden sm:flex space-x-4">
+        <a href="#" onclick="showSection('login-section')" class="nav-link px-3 py-2 rounded-lg"><i
+            class="fas fa-user-lock mr-2"></i> เข้าสู่ระบบ</a>
+        <a href="#" onclick="showSection('dashboard-section')"
+          class="nav-link px-3 py-2 rounded-lg hidden admin-only"><i class="fas fa-tachometer-alt mr-2"></i>
+          แดชบอร์ด</a>
+        <a href="#" onclick="showSection('manage-users-section')"
+          class="nav-link px-3 py-2 rounded-lg hidden admin-only"><i class="fas fa-users mr-2"></i> จัดการผู้ใช้งาน</a>
+        <a href="#" onclick="showSection('leave-form-section')"
+          class="nav-link px-3 py-2 rounded-lg hidden user-only"><i class="fas fa-plus mr-2"></i> บันทึกการลา</a>
+        <a href="#" onclick="showSection('leave-status-section')"
+          class="nav-link px-3 py-2 rounded-lg hidden logged-in"><i class="fas fa-list mr-2"></i> สถานะการลา</a>
+        <a href="#" onclick="showSection('statistics-section')"
+          class="nav-link px-3 py-2 rounded-lg hidden logged-in"><i class="fas fa-chart-bar mr-2"></i> สถิติ</a>
+        <a href="#" onclick="logout()" class="nav-link px-3 py-2 rounded-lg hidden logged-in"><i
+            class="fas fa-sign-out-alt mr-2"></i> ออกจากระบบ</a>
+      </div>
+    </div>
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="hidden sm:hidden mobile-menu bg-gray-800 text-white p-4">
+      <a href="#" onclick="showSection('login-section')" class="nav-link block px-3 py-2 rounded-lg"><i
+          class="fas fa-user-lock mr-2"></i> เข้าสู่ระบบ</a>
+      <a href="#" onclick="showSection('dashboard-section')"
+        class="nav-link block px-3 py-2 rounded-lg hidden admin-only"><i class="fas fa-tachometer-alt mr-2"></i>
+        แดชบอร์ด</a>
+      <a href="#" onclick="showSection('manage-users-section')"
+        class="nav-link block px-3 py-2 rounded-lg hidden admin-only"><i class="fas fa-users mr-2"></i>
+        จัดการผู้ใช้งาน</a>
+      <a href="#" onclick="showSection('leave-form-section')"
+        class="nav-link block px-3 py-2 rounded-lg hidden user-only"><i class="fas fa-plus mr-2"></i> บันทึกการลา</a>
+      <a href="#" onclick="showSection('leave-status-section')"
+        class="nav-link block px-3 py-2 rounded-lg hidden logged-in"><i class="fas fa-list mr-2"></i> สถานะการลา</a>
+      <a href="#" onclick="showSection('statistics-section')"
+        class="nav-link block px-3 py-2 rounded-lg hidden logged-in"><i class="fas fa-chart-bar mr-2"></i> สถิติ</a>
+      <a href="#" onclick="logout()" class="nav-link block px-3 py-2 rounded-lg hidden logged-in"><i
+          class="fas fa-sign-out-alt mr-2"></i> ออกจากระบบ</a>
+    </div>
+  </nav>
+
+  <div id="app" class="w-full p-4 sm:p-6 pt-16">
+    <!-- Loading Indicator -->
+    <div id="loading" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden z-[1001]">
+      <i class="fas fa-spinner fa-spin text-white text-4xl"></i>
+    </div>
+
+    <!-- Login Section -->
+    <section id="login-section" class="mt-4 flex items-center justify-center min-h-screen">
+      <div class="bg-white p-8 rounded-2xl shadow-2xl card w-full max-w-md sm:max-w-lg">
+        <center>
+          <img src="https://img5.pic.in.th/file/secure-sv1/387000231_815935796943134_5917156405231254873_n.md.jpg"
+            alt="Company logo" width="120px">
+          <h3>ระบบลาออนไลน์ บจก.สหะชัยวัสดุก่อสร้าง</h3>
+        </center>
+        <h1 class="text-3xl sm:text-4xl font-semibold text-center text-gray-800 mb-8">
+          <i class="fas fa-user-lock mr-2"></i> เข้าสู่ระบบ
+        </h1>
+        <form id="login-form" class="space-y-6" onsubmit="handleLogin(event)">
+          <div class="relative">
+            <label for="username" class="block text-sm font-medium text-gray-700">ชื่อผู้ใช้งาน</label>
+            <div class="mt-1 flex items-center border rounded-lg">
+              <i class="fas fa-user text-gray-400 pl-3"></i>
+              <input type="text" id="username" name="username" required
+                class="w-full p-3 border-0 rounded-lg focus:ring-0">
+            </div>
+          </div>
+          <div class="relative">
+            <label for="password" class="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
+            <div class="mt-1 flex items-center border rounded-lg">
+              <i class="fas fa-lock text-gray-400 pl-3"></i>
+              <input type="password" id="password" name="password" required
+                class="w-full p-3 border-0 rounded-lg focus:ring-0">
+            </div>
+          </div>
+          <button type="submit" class="w-full btn-primary text-white p-3 rounded-lg flex items-center justify-center">
+            <i class="fas fa-sign-in-alt mr-2"></i> เข้าสู่ระบบ
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Dashboard Section (Admin Only) -->
+    <section id="dashboard-section"
+      class="mt-4 hidden bg-white p-6 sm:p-8 rounded-2xl shadow-lg card mx-auto max-w-full">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl sm:text-3xl font-semibold text-gray-800">แดชบอร์ด</h1>
+      </div>
+      <!-- Leave Status Summary -->
+      <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">สรุปสถานะการลา</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="p-4 bg-gray-50 rounded-lg shadow card flex items-center">
+            <i class="fas fa-clock text-yellow-600 text-2xl mr-3"></i>
+            <div>
+              <p class="text-sm text-gray-600">รอพิจารณา</p>
+              <p id="pending-count" class="text-lg font-semibold text-gray-800">0</p>
+            </div>
+          </div>
+          <div class="p-4 bg-gray-50 rounded-lg shadow card flex items-center">
+            <i class="fas fa-check-circle text-green-600 text-2xl mr-3"></i>
+            <div>
+              <p class="text-sm text-gray-600">อนุมัติ</p>
+              <p id="approved-count" class="text-lg font-semibold text-gray-800">0</p>
+            </div>
+          </div>
+          <div class="p-4 bg-gray-50 rounded-lg shadow card flex items-center">
+            <i class="fas fa-times-circle text-red-600 text-2xl mr-3"></i>
+            <div>
+              <p class="text-sm text-gray-600">ไม่อนุมัติ</p>
+              <p id="rejected-count" class="text-lg font-semibold text-gray-800">0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Leave Statistics -->
+      <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">สถิติการลา</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="bg-gray-100">
+                <th class="p-3 text-left text-sm font-medium text-gray-700">ประเภทการลา</th>
+                <th class="p-3 text-left text-sm font-medium text-gray-700">จำนวนครั้ง</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-statistics-table"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Leave Calendar -->
+      <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">ปฏิทินการลา</h2>
+        <div id="calendar"></div>
+      </div>
+      <!-- Quick Actions -->
+      <div>
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">การจัดการด่วน</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button onclick="showSection('manage-users-section')"
+            class="p-4 bg-gray-50 rounded-lg shadow card text-left hover:bg-gray-100">
+            <h3 class="text-lg font-medium text-gray-800"><i class="fas fa-users mr-2"></i> จัดการผู้ใช้งาน</h3>
+            <p class="text-sm text-gray-600">เพิ่ม, แก้ไข, หรือลบผู้ใช้งาน</p>
+          </button>
+          <button onclick="showSection('leave-status-section')"
+            class="p-4 bg-gray-50 rounded-lg shadow card text-left hover:bg-gray-100">
+            <h3 class="text-lg font-medium text-gray-800"><i class="fas fa-list mr-2"></i> ตรวจสอบการลา</h3>
+            <p class="text-sm text-gray-600">ดูและจัดการสถานะการลา</p>
+          </button>
+          <button onclick="showSection('statistics-section')"
+            class="p-4 bg-gray-50 rounded-lg shadow card text-left hover:bg-gray-100">
+            <h3 class="text-lg font-medium text-gray-800"><i class="fas fa-chart-bar mr-2"></i> สถิติ</h3>
+            <p class="text-sm text-gray-600">ดูสรุปการลาและสถิติส่วนตัว</p>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Manage Users Section (Admin Only) -->
+    <section id="manage-users-section"
+      class="mt-4 hidden bg-white p-6 sm:p-8 rounded-2xl shadow-lg card mx-auto max-w-full">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl sm:text-3xl font-semibold text-gray-800">จัดการผู้ใช้งาน</h1>
+        <button onclick="showAddUserModal()" class="btn-primary text-white px-4 py-2 rounded-lg flex items-center">
+          <i class="fas fa-user-plus mr-2"></i> เพิ่มผู้ใช้งาน
+        </button>
+      </div>
+      <div class="mb-4">
+        <label for="user-search" class="block text-sm font-medium text-gray-700 mb-1">ค้นหาผู้ใช้งาน</label>
+        <div class="relative">
+          <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+          <input type="text" id="user-search"
+            placeholder="ค้นหาด้วยชื่อผู้ใช้งาน, บทบาท, เลขประจำตัว, ชื่อ, หรือเบอร์โทร"
+            class="w-full pl-10 p-3 border rounded-lg">
+        </div>
+      </div>
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">รายการผู้ใช้งาน</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="p-3 text-left text-sm font-medium text-gray-700">ชื่อผู้ใช้งาน</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">บทบาท</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">เลขประจำตัว</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">ชื่อ-นามสกุล</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">เบอร์โทร</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">สถานะ</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">การจัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="users-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Leave Form Section -->
+    <section id="leave-form-section"
+      class="mt-4 hidden bg-white p-6 sm:p-8 rounded-2xl shadow-lg card mx-auto max-w-full">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl sm:text-3xl font-semibold text-gray-800">บันทึกการลา</h1>
+      </div>
+      <form id="leave-form" class="space-y-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label for="leave-member-id" class="block text-sm font-medium text-gray-700 mb-1">เลขประจำตัว</label>
+            <div class="relative">
+              <i class="fas fa-id-card absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input type="text" id="leave-member-id" name="memberId" required
+                class="w-full pl-10 p-3 border rounded-lg bg-gray-100" readonly>
+            </div>
+          </div>
+          <div>
+            <label for="leave-name" class="block text-sm font-medium text-gray-700 mb-1">ชื่อ-นามสกุล</label>
+            <div class="relative">
+              <i class="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input type="text" id="leave-name" name="name" readonly
+                class="w-full pl-10 p-3 border rounded-lg bg-gray-100">
+            </div>
+          </div>
+          <div class="sm:col-span-2">
+            <label for="leave-type" class="block text-sm font-medium text-gray-700 mb-1">ประเภทการลา</label>
+            <div class="relative">
+              <i class="fas fa-list absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <select id="leave-type" name="leaveType" required class="w-full pl-10 p-3 border rounded-lg">
+                <option value="">เลือกประเภทการลา</option>
+                <option value="ลาป่วย">ลาป่วย</option>
+                <option value="ลากิจ">ลากิจ</option>
+                <option value="ลาพักร้อน">ลาพักร้อน</option>
+                <option value="ลาคลอด">ลาคลอด</option>
+                <option value="อื่นๆ">อื่นๆ</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label for="start-date-time" class="block text-sm font-medium text-gray-700 mb-1">วันเวลาเริ่ม</label>
+            <div class="relative">
+              <i class="fas fa-calendar-alt absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input type="datetime-local" id="start-date-time" name="startDateTime" required
+                class="w-full pl-10 p-3 border rounded-lg">
+            </div>
+          </div>
+          <div>
+            <label for="end-date-time"
+              class="block text-sm font-medium text-gray-700 mb-1">วันเวลาที่กลับมาทำงาน</label>
+            <div class="relative">
+              <i class="fas fa-calendar-alt absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input type="datetime-local" id="end-date-time" name="endDateTime" required
+                class="w-full pl-10 p-3 border rounded-lg">
+            </div>
+          </div>
+          <div class="sm:col-span-2">
+            <div id="duration-display" class="duration-box p-4 rounded-lg text-gray-800">
+              <p class="text-sm font-medium">ระยะเวลา:</p>
+              <p id="duration-text" class="text-lg font-semibold">0 วัน 0 ชม. 0 นาที</p>
+            </div>
+          </div>
+          <div class="sm:col-span-2">
+            <label for="leave-reason" class="block text-sm font-medium text-gray-700 mb-1">เหตุผล</label>
+            <div class="relative">
+              <i class="fas fa-comment absolute left-3 top-4 text-gray-400"></i>
+              <textarea id="leave-reason" name="reason"
+                class="w-full pl-10 p-3 border rounded-lg min-h-[100px]"></textarea>
+            </div>
+          </div>
+          <div class="sm:col-span-2">
+            <label for="leave-file" class="block text-sm font-medium text-gray-700 mb-1">เอกสารแนบ (ถ้ามี)</label>
+            <div class="relative">
+              <i class="fas fa-file-upload absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input type="file" id="leave-file" name="file" class="w-full pl-10 p-3 border rounded-lg">
+            </div>
+          </div>
+        </div>
+        <div class="flex space-x-4">
+          <button type="submit" class="flex-1 btn-primary text-white p-3 rounded-lg flex items-center justify-center">
+            <i class="fas fa-save mr-2"></i> บันทึก
+          </button>
+          <button type="reset"
+            class="flex-1 bg-gray-600 text-white p-3 rounded-lg hover:bg-gray-700 flex items-center justify-center">
+            <i class="fas fa-undo mr-2"></i> ล้าง
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Leave Status Section -->
+    <section id="leave-status-section"
+      class="mt-4 hidden bg-white p-6 sm:p-8 rounded-2xl shadow-lg card mx-auto max-w-full">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl sm:text-3xl font-semibold text-gray-800">สถานะการลา</h1>
+      </div>
+      <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
+        <div class="flex items-center space-x-2">
+          <label for="entries-per-page" class="text-sm font-medium text-gray-700">แสดง:</label>
+          <select id="entries-per-page" onchange="loadLeaves()" class="p-2 border rounded-lg">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+        <div class="flex items-center space-x-2">
+          <label for="status-filter" class="text-sm font-medium text-gray-700">กรองสถานะ:</label>
+          <select id="status-filter" onchange="renderLeaves()" class="p-2 border rounded-lg">
+            <option value="">ทั้งหมด</option>
+            <option value="รอพิจารณา">รอพิจารณา</option>
+            <option value="อนุมัติ">อนุมัติ</option>
+            <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
+          </select>
+        </div>
+        <div class="flex items-center space-x-2">
+          <label class="text-sm font-medium text-gray-700">แสดงสถานะ:</label>
+          <label class="flex items-center">
+            <input type="checkbox" id="show-pending" checked onchange="renderLeaves()" class="mr-1">
+            รอพิจารณา
+          </label>
+          <label class="flex items-center">
+            <input type="checkbox" id="show-approved" checked onchange="renderLeaves()" class="mr-1">
+            อนุมัติ
+          </label>
+          <label class="flex items-center">
+            <input type="checkbox" id="show-rejected" checked onchange="renderLeaves()" class="mr-1">
+            ไม่อนุมัติ
+          </label>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="p-3 text-left text-sm font-medium text-gray-700">เลขประจำตัว</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">ชื่อ-นามสกุล</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">ประเภท</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">เริ่ม</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">สิ้นสุด</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">ระยะเวลา</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">เอกสาร</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">วันที่บันทึก</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">สถานะ</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">เหตุผล</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">เหตุผล (Admin)</th>
+              <th class="p-3 text-left text-sm font-medium text-gray-700">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="leaves-table"></tbody>
+        </table>
+      </div>
+      <div class="flex justify-between mt-4">
+        <button onclick="prevPage()" class="btn-primary text-white px-4 py-2 rounded-lg">ก่อนหน้า</button>
+        <button onclick="nextPage()" class="btn-primary text-white px-4 py-2 rounded-lg">ถัดไป</button>
+      </div>
+    </section>
+
+    <!-- Statistics Section -->
+    <section id="statistics-section"
+      class="mt-4 hidden bg-white p-6 sm:p-8 rounded-2xl shadow-lg card mx-auto max-w-full">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl sm:text-3xl font-semibold text-gray-800">สถิติ</h1>
+      </div>
+
+      <!-- Leave Statistics by Type -->
+      <div class="mb-8">
+        <h2
+          class="text-xl font-semibold text-gray-800 mb-4 cursor-pointer flex items-center justify-between bg-gray-50 p-4 rounded-lg hover:bg-gray-100">
+          <span>สถิติการลาแยกตามประเภท (อนุมัติแล้ว)</span>
+          <i id="leave-stats-icon" class="fas fa-chevron-down transition-transform" onclick="toggleSection('leave-stats-content', 'leave-stats-icon')"></i>
+        </h2>
+        <div id="leave-stats-content" class="overflow-x-auto">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="bg-gray-100">
+                <th class="p-3 text-left text-sm font-medium text-gray-700">ประเภทการลา</th>
+                <th class="p-3 text-left text-sm font-medium text-gray-700">จำนวนครั้ง</th>
+              </tr>
+            </thead>
+            <tbody id="leave-statistics-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Personal Statistics -->
+      <div class="mb-8">
+        <h2
+          class="text-xl font-semibold text-gray-800 mb-4 cursor-pointer flex items-center justify-between bg-gray-50 p-4 rounded-lg hover:bg-gray-100">
+          <span>สถิติส่วนตัว (อนุมัติแล้ว)</span>
+          <i id="personal-stats-icon" class="fas fa-chevron-right transition-transform" 
+          onclick="toggleSection('personal-stats-content', 'personal-stats-icon')"></i>
+        </h2>
+        <div id="personal-stats-content" class="overflow-x-auto hidden">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="bg-gray-100">
+                <th class="p-3 text-left text-sm font-medium text-gray-700">เลขประจำตัว</th>
+                <th class="p-3 text-left text-sm font-medium text-gray-700">ชื่อ-นามสกุล</th>
+                <th class="p-3 text-left text-sm font-medium text-gray-700">จำนวนครั้ง</th>
+                <th class="p-3 text-left text-sm font-medium text-gray-700">ชั่วโมงรวม</th>
+              </tr>
+            </thead>
+            <tbody id="personal-statistics-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Filtered Leave Details -->
+      <div class="mb-8">
+        <h2
+          class="text-xl font-semibold text-gray-800 mb-4 cursor-pointer flex items-center justify-between bg-gray-50 p-4 rounded-lg hover:bg-gray-100">
+          <div class="flex items-center space-x-2">
+            <span>รายละเอียดการลา (อนุมัติแล้ว)</span>
+            <button onclick="exportToExcel()" class="btn-primary text-white px-4 py-2 rounded-lg text-sm flex items-center hover:opacity-90 hidden" title="ส่งออกเป็น Excel" id="export-excel-btn">
+              <i class="fas fa-file-excel mr-2"></i> ส่งออก Excel
+            </button>
+          </div>
+          <i id="filtered-details-icon" class="fas fa-chevron-right transition-transform" 
+        onclick="toggleSection('filtered-details-content', 'filtered-details-icon')"></i>
+        </h2>
+        <div id="filtered-details-content" class="hidden">
+
+          <!-- Summary Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div class="p-4 bg-blue-50 rounded-lg">
+              <p class="text-sm text-gray-600">จำนวนครั้งการลาทั้งหมด</p>
+              <p id="total-leave-count" class="text-2xl font-bold text-blue-600">0</p>
+            </div>
+            <div class="p-4 bg-green-50 rounded-lg hidden" id="total-hours-employee">
+              <p class="text-sm text-gray-600">ชั่วโมงรวมทั้งหมด</p>
+              <p id="total-leave-hours" class="text-2xl font-bold text-green-600">0.00</p>
+            </div>
+          </div>
+
+          <!-- Filter Section -->
+          <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">กรองข้อมูล</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="filter-employee" class="block text-sm font-medium text-gray-700 mb-1">ชื่อพนักงาน</label>
+                <select id="filter-employee" onchange="filterStatistics()" class="w-full p-2 border rounded-lg">
+                  <option value="">ทุกคน</option>
+                </select>
+              </div>
+              <div>
+                <label for="filter-month" class="block text-sm font-medium text-gray-700 mb-1">เดือนที่ลา</label>
+                <select id="filter-month" onchange="filterStatistics()" class="w-full p-2 border rounded-lg">
+                  <option value="">ทุกเดือน</option>
+                  <option value="0">มกราคม</option>
+                  <option value="1">กุมภาพันธ์</option>
+                  <option value="2">มีนาคม</option>
+                  <option value="3">เมษายน</option>
+                  <option value="4">พฤษภาคม</option>
+                  <option value="5">มิถุนายน</option>
+                  <option value="6">กรกฎาคม</option>
+                  <option value="7">สิงหาคม</option>
+                  <option value="8">กันยายน</option>
+                  <option value="9">ตุลาคม</option>
+                  <option value="10">พฤศจิกายน</option>
+                  <option value="11">ธันวาคม</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="p-3 text-left text-sm font-medium text-gray-700">เลขประจำตัว</th>
+                  <th class="p-3 text-left text-sm font-medium text-gray-700">ชื่อ-นามสกุล</th>
+                  <th class="p-3 text-left text-sm font-medium text-gray-700">ตั้งแต่</th>
+                  <th class="p-3 text-left text-sm font-medium text-gray-700">ถึง</th>
+                  <th class="p-3 text-left text-sm font-medium text-gray-700">ระยะเวลา (วัน/ชม./นาที)</th>
+                  <th class="p-3 text-left text-sm font-medium text-gray-700">ประเภทการลา</th>
+                </tr>
+              </thead>
+              <tbody id="filtered-leave-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let currentPage = 1;
+    let entriesPerPage = 10;
+    let leavesData = [];
+    let usersData = [];
+    let allLeavesForStatistics = []; // Store all leaves for filtering
+
+    // Thai Date Formatter
+    const thaiDateFormatter = new Intl.DateTimeFormat('th-TH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+
+    function formatThaiDate(dateStr) {
+      if (!dateStr) return '-';
+      try {
+        return thaiDateFormatter.format(new Date(dateStr));
+      } catch (e) {
+        console.error('Invalid date format:', dateStr, e);
+        return '-';
+      }
+    }
+
+    function showLoading(show) {
+      document.getElementById('loading').classList.toggle('hidden', !show);
+    }
+
+    function updateNavbar() {
+      const isLoggedIn = !!currentUser;
+      const isAdmin = currentUser && currentUser.role === 'Admin';
+      const isUser = currentUser && currentUser.role === 'User';
+
+      document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.add('hidden');
+        if (!isLoggedIn && link.textContent.includes('เข้าสู่ระบบ')) {
+          link.classList.remove('hidden');
+        }
+        if (isLoggedIn && link.textContent.includes('ออกจากระบบ')) {
+          link.classList.remove('hidden');
+        }
+        if (isLoggedIn && link.textContent.includes('สถานะการลา')) {
+          link.classList.remove('hidden');
+        }
+        if (isLoggedIn && link.textContent.includes('สถิติ')) {
+          link.classList.remove('hidden');
+        }
+        if (isAdmin && link.classList.contains('admin-only')) {
+          link.classList.remove('hidden');
+        }
+        if (isUser && link.classList.contains('user-only')) {
+          link.classList.remove('hidden');
+        }
+      });
+    }
+
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      menu.classList.toggle('hidden');
+      menu.classList.toggle('transform', menu.classList.contains('hidden'));
+      menu.classList.toggle('translate-y-0');
+    }
+
+    function showSection(sectionId) {
+      document.querySelectorAll('section').forEach(section => section.classList.add('hidden'));
+      const section = document.getElementById(sectionId);
+      section.classList.remove('hidden');
+      section.classList.add('fade-in');
+      setTimeout(() => section.classList.remove('fade-in'), 500);
+      if (sectionId === 'dashboard-section' && currentUser.role === 'Admin') loadDashboardData();
+      if (sectionId === 'manage-users-section' && currentUser.role === 'Admin') loadUsers();
+      if (sectionId === 'leave-status-section') loadLeaves();
+      if (sectionId === 'statistics-section') loadStatistics();
+      if (sectionId === 'leave-form-section' && currentUser.role === 'User') {
+        document.getElementById('leave-member-id').value = currentUser.memberId;
+        document.getElementById('leave-name').value = currentUser.name;
+      }
+      if (document.getElementById('mobile-menu').classList.contains('sm:hidden') && !document.getElementById('mobile-menu').classList.contains('hidden')) {
+        toggleMobileMenu();
+      }
+    }
+
+    function handleLogin(event) {
+      event.preventDefault();
+      showLoading(true);
+      const formData = new FormData(event.target);
+      const username = formData.get('username');
+      const password = formData.get('password');
+      google.script.run
+        .withSuccessHandler(user => {
+          currentUser = user;
+          showLoading(false);
+          updateNavbar();
+          showSection(user.role === 'Admin' ? 'dashboard-section' : 'leave-form-section');
+        })
+        .withFailureHandler(err => {
+          showLoading(false);
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: err.message,
+            customClass: { popup: 'rounded-lg' }
+          });
+        })
+        .authenticateUser(username, password);
+    }
+
+    function logout() {
+      currentUser = null;
+      updateNavbar();
+      showSection('login-section');
+    }
+
+    // Color mapping for leave types
+    const leaveTypeColors = {
+      'ลาป่วย': { background: '#e0f2fe', border: '#0369a1', text: '#0369a1' },
+      'ลากิจ': { background: '#f3e8ff', border: '#6b21a8', text: '#6b21a8' },
+      'ลาพักร้อน': { background: '#ffedd5', border: '#c2410c', text: '#c2410c' },
+      'ลาคลอด': { background: '#fce7f3', border: '#be185d', text: '#be185d' },
+      'อื่นๆ': { background: '#e4e4e7', border: '#3f3f46', text: '#3f3f46' }
+    };
+
+
+    function loadDashboardData() {
+      showLoading(true);
+      // Load dashboard statistics
+      google.script.run
+        .withSuccessHandler(data => {
+          document.getElementById('pending-count').textContent = data.statusCounts.pending || 0;
+          document.getElementById('approved-count').textContent = data.statusCounts.approved || 0;
+          document.getElementById('rejected-count').textContent = data.statusCounts.rejected || 0;
+          const tbody = document.getElementById('dashboard-statistics-table');
+          tbody.innerHTML = '';
+          data.statistics.forEach(stat => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+          <td class="p-3 border">${stat.leaveType}</td>
+          <td class="p-3 border">${stat.count}</td>
+        `;
+            tbody.appendChild(row);
+          });
+          // Load calendar events
+          google.script.run
+            .withSuccessHandler(events => {
+              showLoading(false);
+              console.log('Raw calendar events:', events);
+              // Define possible date formats
+              const dateFormats = [
+                'ddd MMM DD YYYY HH:mm:ss [GMT]Z',
+                'YYYY-MM-DD HH:mm:ss',
+                'YYYY-MM-DDTHH:mm:ssZ',
+                'DD/MM/YYYY HH:mm',
+                'DD-MM-YYYY HH:mm:ss'
+              ];
+              // Convert date formats and assign colors
+              const formattedEvents = events.map((event, index) => {
+                try {
+                  if (!event.extendedProps || !event.extendedProps.leaveType) {
+                    console.error(`Event ${index} missing extendedProps or leaveType:`, event);
+                    return null;
+                  }
+                  let startMoment, endMoment;
+                  for (const format of dateFormats) {
+                    startMoment = moment(event.start, format, true);
+                    endMoment = moment(event.end, format, true);
+                    if (startMoment.isValid() && endMoment.isValid()) {
+                      console.log(`Event ${index} parsed with format: ${format}`);
+                      break;
+                    }
+                  }
+                  if (!startMoment.isValid() || !endMoment.isValid()) {
+                    console.warn(`Strict parsing failed for event ${index}, trying non-strict`);
+                    startMoment = moment(event.start);
+                    endMoment = moment(event.end);
+                  }
+                  if (!startMoment.isValid() || !endMoment.isValid()) {
+                    console.error(`Invalid date format for event ${index}:`, event);
+                    return null;
+                  }
+                  const formattedEvent = {
+                    ...event,
+                    title: event.title || `${event.extendedProps.memberName} - ${event.extendedProps.leaveType}`,
+                    start: startMoment.toISOString(),
+                    end: endMoment.toISOString(),
+                    backgroundColor: leaveTypeColors[event.extendedProps.leaveType]?.background || '#e4e4e7',
+                    borderColor: leaveTypeColors[event.extendedProps.leaveType]?.border || '#3f3f46',
+                    textColor: leaveTypeColors[event.extendedProps.leaveType]?.text || '#3f3f46'
+                  };
+                  console.log(`Formatted event ${index}:`, formattedEvent);
+                  return formattedEvent;
+                } catch (e) {
+                  console.error(`Error processing event ${index}:`, event, e);
+                  return null;
+                }
+              }).filter(event => event !== null && event.extendedProps.status === 'อนุมัติ'); // กรองเฉพาะสถานะ "อนุมัติ"
+              console.log('Formatted calendar events (approved only):', formattedEvents);
+              if (formattedEvents.length === 0) {
+                console.warn('No approved events to display in calendar');
+              }
+              const calendarEl = document.getElementById('calendar');
+              const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'th',
+                events: formattedEvents,
+                eventClick: function (info) {
+                  const props = info.event.extendedProps;
+                  const duration = `${props.days} วัน ${props.hours} ชม. ${props.minutes} นาที`;
+                  const fileLink = props.fileUrl ? `<a href="${props.fileUrl}" target="_blank" class="text-blue-600 hover:underline">ดูเอกสาร</a>` : '-';
+                  Swal.fire({
+                    title: 'รายละเอียดการลา',
+                    html: `
+                  <div class="text-left">
+                    <p><strong>เลขประจำตัว:</strong> ${props.memberId}</p>
+                    <p><strong>ชื่อ-นามสกุล:</strong> ${props.memberName}</p>
+                    <p><strong>ประเภทการลา:</strong> <span class="leave-${props.leaveType} p-1 rounded">${props.leaveType}</span></p>
+                    <p><strong>วันเวลาเริ่ม:</strong> ${formatThaiDate(props.startDateTime)}</p>
+                    <p><strong>วันเวลาที่กลับมาทำงาน:</strong> ${formatThaiDate(props.endDateTime)}</p>
+                    <p><strong>ระยะเวลา:</strong> ${duration}</p>
+                    <p><strong>วันที่บันทึก:</strong> ${formatThaiDate(props.requestDate)}</p>
+                    <p><strong>สถานะ:</strong> <span class="status-${props.status} p-1 rounded">${props.status}</span></p>
+                    <p><strong>เหตุผล:</strong> ${props.reason || '-'}</p>
+                    <p><strong>เหตุผล (Admin):</strong> ${props.adminReason || '-'}</p>
+                    <p><strong>เอกสาร:</strong> ${fileLink}</p>
+                  </div>
+                `,
+                    confirmButtonText: 'ปิด',
+                    showCancelButton: currentUser.role === 'Admin',
+                    preConfirm: () => true,
+                    preCancel: () => {
+                      updateLeaveStatus(props.memberId, props.leaveType, props.startDateTime);
+                      return false;
+                    },
+                    customClass: { popup: 'rounded-lg' }
+                  });
+                },
+                eventDidMount: function (info) {
+                  const props = info.event.extendedProps || {};
+                  info.el.style.backgroundColor = leaveTypeColors[props.leaveType]?.background || '#e4e4e7';
+                  info.el.style.borderColor = leaveTypeColors[props.leaveType]?.border || '#3f3f46';
+                  info.el.style.color = leaveTypeColors[props.leaveType]?.text || '#3f3f46';
+                },
+                eventTimeFormat: {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false
+                },
+                headerToolbar: {
+                  left: 'prev,next today',
+                  center: 'title',
+                  right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                height: 'auto',
+                dayMaxEvents: true,
+                datesSet: function () {
+                  console.log('Calendar view rendered with approved events:', formattedEvents);
+                }
+              });
+              calendar.render();
+            })
+            .withFailureHandler(err => {
+              showLoading(false);
+              console.error('Failed to load calendar events:', err);
+              Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: 'ไม่สามารถโหลดปฏิทินการลา: ' + (err.message || 'เกิดข้อผิดพลาด'),
+                customClass: { popup: 'rounded-lg' }
+              });
+            })
+            .getLeaveCalendarEvents(currentUser.memberId, currentUser.role);
+        })
+        .withFailureHandler(err => {
+          showLoading(false);
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: err.message || 'ไม่สามารถโหลดข้อมูลแดชบอร์ด',
+            customClass: { popup: 'rounded-lg' }
+          });
+        })
+        .getDashboardData(currentUser.role);
+    }
+
+    function showAddUserModal() {
+      Swal.fire({
+        title: 'เพิ่มผู้ใช้งาน',
+        html: `
+          <div class="text-left mb-4">
+            <label for="swal-username" class="block text-sm font-medium text-gray-700">ชื่อผู้ใช้งาน</label>
+            <input id="swal-username" class="w-full p-2 border rounded-lg" placeholder="กรอกชื่อผู้ใช้งาน">
+          </div>
+          <div class="text-left mb-4">
+            <label for="swal-password" class="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
+            <input id="swal-password" type="password" class="w-full p-2 border rounded-lg" placeholder="กรอกรหัสผ่าน">
+          </div>
+          <div class="text-left mb-4">
+            <label for="swal-role" class="block text-sm font-medium text-gray-700">บทบาท</label>
+            <select id="swal-role" class="w-full p-2 border rounded-lg">
+              <option value="Admin">Admin</option>
+              <option value="User">User</option>
+            </select>
+          </div>
+          <div class="text-left mb-4">
+            <label for="swal-name" class="block text-sm font-medium text-gray-700">ชื่อ-นามสกุล (สำหรับ User)</label>
+            <input id="swal-name" class="w-full p-2 border rounded-lg" placeholder="กรอกชื่อ-นามสกุล">
+          </div>
+          <div class="text-left">
+            <label for="swal-phone" class="block text-sm font-medium text-gray-700">เบอร์โทร</label>
+            <input id="swal-phone" class="w-full p-2 border rounded-lg" placeholder="กรอกเบอร์โทร">
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'บันทึก',
+        cancelButtonText: 'ยกเลิก',
+        preConfirm: () => {
+          const username = document.getElementById('swal-username').value;
+          const password = document.getElementById('swal-password').value;
+          const role = document.getElementById('swal-role').value;
+          const name = document.getElementById('swal-name').value;
+          const phone = document.getElementById('swal-phone').value;
+          if (!username || !password || !phone) {
+            Swal.showValidationMessage('กรุณากรอกชื่อผู้ใช้งาน, รหัสผ่าน, และเบอร์โทร');
+            return false;
+          }
+          if (role === 'User' && !name) {
+            Swal.showValidationMessage('กรุณากรอกชื่อ-นามสกุลสำหรับผู้ใช้งาน');
+            return false;
+          }
+          return { username, password, role, name, phone };
+        },
+        customClass: { popup: 'rounded-lg' }
+      }).then(result => {
+        if (result.isConfirmed) {
+          showLoading(true);
+          google.script.run
+            .withSuccessHandler(msg => {
+              showLoading(false);
+              Swal.fire({
+                icon: 'success',
+                title: 'สำเร็จ',
+                text: msg,
+                customClass: { popup: 'rounded-lg' }
+              });
+              loadUsers();
+            })
+            .withFailureHandler(err => {
+              showLoading(false);
+              Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: err.message,
+                customClass: { popup: 'rounded-lg' }
+              });
+            })
+            .addUser(result.value, currentUser.role);
+        }
+      });
+    }
+
+    function editUser(username, password, role, memberId, name, phone, status) {
+      Swal.fire({
+        title: 'แก้ไขผู้ใช้งาน',
+        html: `
+          <div class="text-left mb-4">
+            <label for="swal-username" class="block text-sm font-medium text-gray-700">ชื่อผู้ใช้งาน</label>
+            <input id="swal-username" class="w-full p-2 border rounded-lg" value="${username}" readonly>
+          </div>
+          <div class="text-left mb-4">
+            <label for="swal-password" class="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
+            <input id="swal-password" type="password" class="w-full p-2 border rounded-lg" value="${password}">
+          </div>
+          <div class="text-left mb-4">
+            <label for="swal-role" class="block text-sm font-medium text-gray-700">บทบาท</label>
+            <select id="swal-role" class="w-full p-2 border rounded-lg">
+              <option value="Admin" ${role === 'Admin' ? 'selected' : ''}>Admin</option>
+              <option value="User" ${role === 'User' ? 'selected' : ''}>User</option>
+            </select>
+          </div>
+          <div class="text-left mb-4">
+            <label for="swal-name" class="block text-sm font-medium text-gray-700">ชื่อ-นามสกุล (สำหรับ User)</label>
+            <input id="swal-name" class="w-full p-2 border rounded-lg" value="${name}">
+          </div>
+          <div class="text-left">
+            <label for="swal-phone" class="block text-sm font-medium text-gray-700">เบอร์โทร</label>
+            <input id="swal-phone" class="w-full p-2 border rounded-lg" value="${phone}">
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'บันทึก',
+        cancelButtonText: 'ยกเลิก',
+        preConfirm: () => {
+          const username = document.getElementById('swal-username').value;
+          const password = document.getElementById('swal-password').value;
+          const role = document.getElementById('swal-role').value;
+          const name = document.getElementById('swal-name').value;
+          const phone = document.getElementById('swal-phone').value;
+          if (!password || !phone) {
+            Swal.showValidationMessage('กรุณากรอกรหัสผ่านและเบอร์โทร');
+            return false;
+          }
+          if (role === 'User' && !name) {
+            Swal.showValidationMessage('กรุณากรอกชื่อ-นามสกุลสำหรับผู้ใช้งาน');
+            return false;
+          }
+          return { username, password, role, name, phone, status: status || 'Active' };
+        },
+        customClass: { popup: 'rounded-lg' }
+      }).then(result => {
+        if (result.isConfirmed) {
+          showLoading(true);
+          google.script.run
+            .withSuccessHandler(msg => {
+              showLoading(false);
+              Swal.fire({
+                icon: 'success',
+                title: 'สำเร็จ',
+                text: msg,
+                customClass: { popup: 'rounded-lg' }
+              });
+              loadUsers();
+            })
+            .withFailureHandler(err => {
+              showLoading(false);
+              Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: err.message,
+                customClass: { popup: 'rounded-lg' }
+              });
+            })
+            .updateUser(result.value, currentUser.role);
+        }
+      });
+    }
+
+    function deleteUser(username) {
+      Swal.fire({
+        title: 'คุณแน่ใจหรือไม่?',
+        text: `คุณต้องการลบผู้ใช้งาน ${username} หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'ลบ',
+        cancelButtonText: 'ยกเลิก',
+        customClass: { popup: 'rounded-lg' }
+      }).then(result => {
+        if (result.isConfirmed) {
+          showLoading(true);
+          google.script.run
+            .withSuccessHandler(msg => {
+              showLoading(false);
+              Swal.fire({
+                icon: 'success',
+                title: 'สำเร็จ',
+                text: msg,
+                customClass: { popup: 'rounded-lg' }
+              });
+              loadUsers();
+            })
+            .withFailureHandler(err => {
+              showLoading(false);
+              Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: err.message,
+                customClass: { popup: 'rounded-lg' }
+              });
+            })
+            .deleteUser(username, currentUser.role);
+        }
+      });
+    }
+
+    function toggleUserStatus(username, isActive) {
+      showLoading(true);
+      const status = isActive ? 'Active' : 'Inactive';
+      google.script.run
+        .withSuccessHandler(msg => {
+          showLoading(false);
+          userData_index = usersData.findIndex(user => user[0] === username);
+          if (userData_index !== -1) {
+            usersData[userData_index][6] = status;
+            renderUsers();
+          }
+          Swal.fire({
+            icon: 'success',
+            title: 'สำเร็จ',
+            text: msg,
+            timer: 1000,
+            showConfirmButton: false,
+            customClass: { popup: 'rounded-lg' }
+          });
+        })
+        .withFailureHandler(err => {
+          showLoading(false);
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: err.message,
+            customClass: { popup: 'rounded-lg' }
+          });
+          loadUsers();
+        })
+        .toggleUserStatus(username, status, currentUser.role);
+    }
+
+    function loadUsers() {
+      showLoading(true);
+      google.script.run
+        .withSuccessHandler(users => {
+          showLoading(false);
+          usersData = users;
+          renderUsers();
+        })
+        .withFailureHandler(err => {
+          showLoading(false);
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: err.message,
+            customClass: { popup: 'rounded-lg' }
+          });
+        })
+        .getUsers(currentUser.role);
+    }
+
+    function renderUsers() {
+      const tbody = document.getElementById('users-table');
+      tbody.innerHTML = '';
+      const search = document.getElementById('user-search').value.toLowerCase();
+      usersData
+        .filter(user =>
+          user[0].toLowerCase().includes(search) ||
+          user[2].toLowerCase().includes(search) ||
+          (user[3] && user[3].toLowerCase().includes(search)) ||
+          (user[4] && user[4].toLowerCase().includes(search)) ||
+          (user[5] && user[5].toLowerCase().includes(search))
+        )
+        .forEach(user => {
+          const row = document.createElement('tr');
+          const isActive = user[6] === 'Active';
+          row.innerHTML = `
+            <td class="p-3 border">${user[0]}</td>
+            <td class="p-3 border">${user[2]}</td>
+            <td class="p-3 border">${user[3] || '-'}</td>
+            <td class="p-3 border">${user[4] || '-'}</td>
+            <td class="p-3 border">${user[5] || '-'}</td>
+            <td class="p-3 border">
+              <label class="toggle-switch">
+                <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleUserStatus('${user[0]}', this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="ml-2 text-sm ${isActive ? 'text-green-600' : 'text-red-600'}">${isActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</span>
+            </td>
+            <td class="p-3 border">
+              <button onclick="editUser('${user[0]}', '${user[1]}', '${user[2]}', '${user[3] || ''}', '${user[4] || ''}', '${user[5] || ''}', '${user[6] || 'Active'}')" class="text-blue-600 hover:text-blue-800 mr-2">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button onclick="deleteUser('${user[0]}')" class="text-red-600 hover:text-red-800">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+    }
+
+    function calculateDuration() {
+      const start = document.getElementById('start-date-time').value;
+      const end = document.getElementById('end-date-time').value;
+      if (start && end) {
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        const diffMs = endDate - startDate;
+        if (diffMs > 0) {
+          const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+          document.getElementById('duration-text').textContent = `${days} วัน ${hours} ชม. ${minutes} นาที`;
+        } else {
+          document.getElementById('duration-text').textContent = 'กรุณาเลือกวันเวลาที่ถูกต้อง';
+        }
+      }
+    }
+
+    document.getElementById('leave-form').addEventListener('submit', function (event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const fileInput = document.getElementById('leave-file');
+      const reader = new FileReader();
+      showLoading(true);
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        reader.onload = function (e) {
+          const data = e.target.result.split(',')[1];
+          const fileData = {
+            name: file.name,
+            mimeType: file.type,
+            data: data
+          };
+          const leaveData = {
+            memberId: formData.get('memberId'),
+            leaveType: formData.get('leaveType'),
+            startDateTime: formData.get('startDateTime'),
+            endDateTime: formData.get('endDateTime'),
+            reason: formData.get('reason')
+          };
+          google.script.run
+            .withSuccessHandler(msg => {
+              showLoading(false);
+              Swal.fire({
+                icon: 'success',
+                title: 'สำเร็จ',
+                text: msg,
+                customClass: { popup: 'rounded-lg' }
+              });
+              event.target.reset();
+              document.getElementById('duration-text').textContent = '0 วัน 0 ชม. 0 นาที';
+            })
+            .withFailureHandler(err => {
+              showLoading(false);
+              Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: err.message,
+                customClass: { popup: 'rounded-lg' }
+              });
+            })
+            .saveLeave(leaveData, fileData);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const leaveData = {
+          memberId: formData.get('memberId'),
+          leaveType: formData.get('leaveType'),
+          startDateTime: formData.get('startDateTime'),
+          endDateTime: formData.get('endDateTime'),
+          reason: formData.get('reason')
+        };
+        google.script.run
+          .withSuccessHandler(msg => {
+            showLoading(false);
+            Swal.fire({
+              icon: 'success',
+              title: 'สำเร็จ',
+              text: msg,
+              customClass: { popup: 'rounded-lg' }
+            });
+            event.target.reset();
+            document.getElementById('duration-text').textContent = '0 วัน 0 ชม. 0 นาที';
+          })
+          .withFailureHandler(err => {
+            showLoading(false);
+            Swal.fire({
+              icon: 'error',
+              title: 'ข้อผิดพลาด',
+              text: err.message,
+              customClass: { popup: 'rounded-lg' }
+            });
+          })
+          .saveLeave(leaveData, null);
+      }
+    });
+
+    document.getElementById('start-date-time').addEventListener('change', calculateDuration);
+    document.getElementById('end-date-time').addEventListener('change', calculateDuration);
+
+    function loadLeaves() {
+      showLoading(true);
+      entriesPerPage = parseInt(document.getElementById('entries-per-page').value);
+      google.script.run
+        .withSuccessHandler(leaves => {
+          showLoading(false);
+          leavesData = leaves;
+          renderLeaves();
+        })
+        .withFailureHandler(err => {
+          showLoading(false);
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: err.message,
+            customClass: { popup: 'rounded-lg' }
+          });
+        })
+        .getLeaves(currentUser.memberId, currentUser.role);
+    }
+
+    function renderLeaves() {
+      const tbody = document.getElementById('leaves-table');
+      tbody.innerHTML = '';
+      const statusFilter = document.getElementById('status-filter').value;
+      const showPending = document.getElementById('show-pending').checked;
+      const showApproved = document.getElementById('show-approved').checked;
+      const showRejected = document.getElementById('show-rejected').checked;
+      const filteredLeaves = leavesData.filter(leave => {
+        const status = leave[10];
+        if (statusFilter && status !== statusFilter) return false;
+        if (!showPending && status === 'รอพิจารณา') return false;
+        if (!showApproved && status === 'อนุมัติ') return false;
+        if (!showRejected && status === 'ไม่อนุมัติ') return false;
+        return true;
+      });
+      const start = (currentPage - 1) * entriesPerPage;
+      const end = start + entriesPerPage;
+      filteredLeaves.slice(start, end).forEach(leave => {
+        const row = document.createElement('tr');
+        const duration = `${leave[5]} วัน ${leave[6]} ชม. ${leave[7]} นาที`;
+        const fileLink = leave[8] ? `<a href="${leave[8]}" target="_blank" class="text-blue-600 hover:underline">ดูเอกสาร</a>` : '-';
+        const statusClass = `status-${leave[10]} p-1 rounded`;
+        const leaveTypeClass = `leave-${leave[2]} p-1 rounded`;
+        row.innerHTML = `
+          <td class="p-3 border">${leave[0]}</td>
+          <td class="p-3 border">${leave[1]}</td>
+          <td class="p-3 border"><span class="${leaveTypeClass}">${leave[2]}</span></td>
+          <td class="p-3 border">${formatThaiDate(leave[3])}</td>
+          <td class="p-3 border">${formatThaiDate(leave[4])}</td>
+          <td class="p-3 border">${duration}</td>
+          <td class="p-3 border">${fileLink}</td>
+          <td class="p-3 border">${formatThaiDate(leave[9])}</td>
+          <td class="p-3 border"><span class="${statusClass}">${leave[10]}</span></td>
+          <td class="p-3 border">${leave[11] || '-'}</td>
+          <td class="p-3 border">${leave[12] || '-'}</td>
+          <td class="p-3 border">
+            ${currentUser.role === 'Admin' ? `
+              <button onclick="updateLeaveStatus('${leave[0]}', '${leave[2]}', '${leave[3]}')" class="text-blue-600 hover:text-blue-800">
+                <i class="fas fa-edit"></i>
+              </button>
+            ` : ''}
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderLeaves();
+      }
+    }
+
+    function nextPage() {
+      const filteredLeaves = leavesData.filter(leave => {
+        const status = leave[10];
+        const statusFilter = document.getElementById('status-filter').value;
+        const showPending = document.getElementById('show-pending').checked;
+        const showApproved = document.getElementById('show-approved').checked;
+        const showRejected = document.getElementById('show-rejected').checked;
+        if (statusFilter && status !== statusFilter) return false;
+        if (!showPending && status === 'รอพิจารณา') return false;
+        if (!showApproved && status === 'อนุมัติ') return false;
+        if (!showRejected && status === 'ไม่อนุมัติ') return false;
+        return true;
+      });
+      if (currentPage * entriesPerPage < filteredLeaves.length) {
+        currentPage++;
+        renderLeaves();
+      }
+    }
+
+    function updateLeaveStatus(memberId, leaveType, startDateTime) {
+      Swal.fire({
+        title: 'อัปเดตสถานะการลา',
+        html: `
+          <div class="text-left mb-4">
+            <label for="swal-status" class="block text-sm font-medium text-gray-700">สถานะ</label>
+            <select id="swal-status" class="w-full p-2 border rounded-lg">
+              <option value="รอพิจารณา">รอพิจารณา</option>
+              <option value="อนุมัติ">อนุมัติ</option>
+              <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
+            </select>
+          </div>
+          <div class="text-left">
+            <label for="swal-admin-reason" class="block text-sm font-medium text-gray-700">เหตุผล (Admin)</label>
+            <textarea id="swal-admin-reason" class="w-full p-2 border rounded-lg"></textarea>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'บันทึก',
+        cancelButtonText: 'ยกเลิก',
+        preConfirm: () => {
+          const status = document.getElementById('swal-status').value;
+          const adminReason = document.getElementById('swal-admin-reason').value;
+          if (status === 'ไม่อนุมัติ' && !adminReason) {
+            Swal.showValidationMessage('กรุณาระบุเหตุผลสำหรับสถานะไม่อนุมัติ');
+            return false;
+          }
+          return { memberId, leaveType, startDateTime, status, adminReason };
+        },
+        customClass: { popup: 'rounded-lg' }
+      }).then(result => {
+        if (result.isConfirmed) {
+          showLoading(true);
+          google.script.run
+            .withSuccessHandler(msg => {
+              showLoading(false);
+              Swal.fire({
+                icon: 'success',
+                title: 'สำเร็จ',
+                text: msg,
+                customClass: { popup: 'rounded-lg' }
+              });
+              loadLeaves();
+              if (document.getElementById('dashboard-section').classList.contains('hidden') === false) {
+                loadDashboardData();
+              }
+            })
+            .withFailureHandler(err => {
+              showLoading(false);
+              Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: err.message,
+                customClass: { popup: 'rounded-lg' }
+              });
+            })
+            .updateLeaveStatus(result.value, currentUser.role);
+        }
+      });
+    }
+
+    function loadStatistics() {
+      showLoading(true);
+      google.script.run
+        .withSuccessHandler(data => {
+          data = JSON.parse(data);
+          console.log('Statistics data:', data);
+          showLoading(false);
+
+          // Store all leaves data for filtering
+          allLeavesForStatistics = data.allLeaves || [];
+
+          // Populate employee filter dropdown
+          const employeeFilter = document.getElementById('filter-employee');
+          employeeFilter.innerHTML = '<option value="">ทุกคน</option>';
+          const uniqueEmployees = {};
+          allLeavesForStatistics.forEach(leave => {
+            if (!uniqueEmployees[leave.memberId]) {
+              uniqueEmployees[leave.memberId] = leave.name;
+              const option = document.createElement('option');
+              option.value = leave.memberId;
+              option.textContent = leave.name;
+              employeeFilter.appendChild(option);
+            }
+          });
+
+          // Render statistics by type
+          const leaveTbody = document.getElementById('leave-statistics-table');
+          leaveTbody.innerHTML = '';
+          data.leaveStatistics.forEach(stat => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td class="p-3 border">${stat.leaveType}</td>
+              <td class="p-3 border">${stat.count}</td>
+            `;
+            leaveTbody.appendChild(row);
+          });
+
+          // Render personal statistics
+          const personalTbody = document.getElementById('personal-statistics-table');
+          personalTbody.innerHTML = '';
+          data.personalStatistics.forEach(stat => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td class="p-3 border">${stat.memberId}</td>
+              <td class="p-3 border">${stat.name}</td>
+              <td class="p-3 border">${stat.leaveCount}</td>
+              <td class="p-3 border">${stat.totalHours.toFixed(2)}</td>
+            `;
+            personalTbody.appendChild(row);
+          });
+
+          // Initial filter render
+          filterStatistics();
+        })
+        .withFailureHandler(err => {
+          showLoading(false);
+          Swal.fire({
+            icon: 'error',
+            title: 'ข้อผิดพลาด',
+            text: err.message,
+            customClass: { popup: 'rounded-lg' },
+          });
+        })
+        .getAllStatistics(currentUser.memberId, currentUser.role);
+    }
+
+    function filterStatistics() {
+      const selectedEmployee = document.getElementById('filter-employee').value;
+      const selectedMonth = document.getElementById('filter-month').value;
+
+      if (selectedEmployee) {
+        console.log('Filtering statistics for employee:', selectedEmployee);
+        document.getElementById('total-hours-employee').classList.remove('hidden');
+      } else {
+        console.log('No employee filter applied');
+        document.getElementById('total-hours-employee').classList.add('hidden');
+      }
+
+      // Filter leaves based on selected criteria
+      let filteredLeaves = allLeavesForStatistics.filter(leave => {
+        // Filter by employee
+        if (selectedEmployee && leave.memberId !== selectedEmployee) {
+          return false;
+        }
+
+        // Filter by month
+        if (selectedMonth !== '') {
+          const leaveDate = new Date(leave.startDateTime);
+          if (leaveDate.getMonth() !== parseInt(selectedMonth)) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      // Calculate totals
+      let totalCount = filteredLeaves.length;
+      let totalHours = 0;
+      let totalMinutes = 0;
+      filteredLeaves.forEach(leave => {
+        totalHours += leave.days * 8; // Assuming 1 day = 8 hours
+        totalHours += leave.hours;
+        totalMinutes += leave.minutes;
+      });
+      // Convert minutes to hours
+      if (totalMinutes >= 60) {
+        totalHours += Math.floor(totalMinutes / 60);
+        totalMinutes = totalMinutes % 60;
+      }
+      // Update summary
+      document.getElementById('total-leave-count').textContent = totalCount;
+      document.getElementById('total-leave-hours').textContent = totalHours + ' ชั่วโมง ' + totalMinutes + ' นาที';
+
+      // Render filtered table
+      const tbody = document.getElementById('filtered-leave-table');
+      tbody.innerHTML = '';
+
+      if (filteredLeaves.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-3 border text-center text-gray-500">ไม่พบข้อมูล</td></tr>';
+      } else {
+        filteredLeaves.forEach(leave => {
+          const row = document.createElement('tr');
+          const leaveTypeClass = `leave-${leave.leaveType} p-1 rounded`;
+          // const dateRange = `${formatThaiDate(leave.startDateTime)} - ${formatThaiDate(leave.endDateTime)}`;
+          const fromDate = moment(leave.startDateTime).format('DD/MM/YYYY HH:mm');
+          const toDate = moment(leave.endDateTime).format('DD/MM/YYYY HH:mm');
+          const duration = `${leave.days} วัน ${leave.hours} ชม. ${leave.minutes} นาที`;
+
+          row.innerHTML = `
+            <td class="p-3 border">${leave.memberId}</td>
+            <td class="p-3 border">${leave.name}</td>
+            <td class="p-3 border">${fromDate}</td>
+            <td class="p-3 border">${toDate}</td>
+            <td class="p-3 border">${duration}</td>
+            <td class="p-3 border"><span class="${leaveTypeClass}">${leave.leaveType}</span></td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+    }
+
+    // Toggle collapsible sections
+    function toggleSection(contentId, iconId) {
+      const content = document.getElementById(contentId);
+      const icon = document.getElementById(iconId);
+      
+      content.classList.toggle('hidden');
+      
+      if (content.classList.contains('hidden')) {
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-right');
+      } else {
+        icon.classList.remove('fa-chevron-right');
+        icon.classList.add('fa-chevron-down');
+      }
+
+      if(contentId === 'filtered-details-content') {
+        // show or hide export button
+        const exportBtn = document.getElementById('export-excel-btn');
+        if(content.classList.contains('hidden')) {
+          exportBtn.classList.add('hidden');
+        } else {
+          exportBtn.classList.remove('hidden');
+        }
+      }
+    }
+
+    // Export to Excel function
+    function exportToExcel() {
+      const selectedEmployee = document.getElementById('filter-employee').value;
+      const selectedMonth = document.getElementById('filter-month').value;
+
+      // Filter leaves based on selected criteria (same logic as filterStatistics)
+      let filteredLeaves = allLeavesForStatistics.filter(leave => {
+        if (selectedEmployee && leave.memberId !== selectedEmployee) {
+          return false;
+        }
+        if (selectedMonth !== '') {
+          const leaveDate = new Date(leave.startDateTime);
+          if (leaveDate.getMonth() !== parseInt(selectedMonth)) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if (filteredLeaves.length === 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ไม่มีข้อมูล',
+          text: 'ไม่พบข้อมูลสำหรับส่งออก',
+          customClass: { popup: 'rounded-lg' }
+        });
+        return;
+      }
+
+      // Create CSV content
+      let csvContent = '\uFEFF'; // UTF-8 BOM for Excel to recognize Thai characters
+      
+      // Add title
+      csvContent += 'รายละเอียดการลา\n';
+      // Add filter info
+      csvContent += 'วันที่ส่งออก,' + moment().format('DD/MM/YYYY HH:mm:ss') + '\n';
+      csvContent += 'รหัสประจำตัว,' + (selectedEmployee || '-') + '\n';
+      csvContent += 'ชื่อ,' + (selectedEmployee ? document.getElementById('filter-employee').options[document.getElementById('filter-employee').selectedIndex].text : 'ทุกคน') + '\n';
+      csvContent += 'เดือน,' + (selectedMonth !== '' ? document.getElementById('filter-month').options[parseInt(selectedMonth) + 1].text : 'ทุกเดือน') + '\n\n';
+      // Add header
+      csvContent += 'รวมจำนวนการลา,' + filteredLeaves.length + ',ครั้ง\n';
+      let sumHours = 0, sumMinutes = 0;
+      filteredLeaves.forEach(leave => {
+        sumHours += leave.days * 8; // Assuming 1 day = 8 hours
+        sumHours += leave.hours;
+        sumMinutes += leave.minutes;
+      });
+      if(sumMinutes >= 60) {
+        sumHours += Math.floor(sumMinutes / 60);
+        sumMinutes = sumMinutes % 60;
+      }
+      csvContent += 'รวมชั่วโมงการลา,' + sumHours.toFixed(2) + ',ชั่วโมง, ' + sumMinutes + ',นาที\n\n';
+      csvContent += 'เลขประจำตัว,ชื่อ-นามสกุล,ตั้งแต่,ถึง,วัน,ชั่วโมง,นาที,ประเภทการลา\n';
+      
+      // Add data rows
+      filteredLeaves.forEach(leave => {
+        const fromDate = moment(leave.startDateTime).format('DD/MM/YYYY HH:mm');
+        const toDate = moment(leave.endDateTime).format('DD/MM/YYYY HH:mm');
+        
+        csvContent += `"${leave.memberId}","${leave.name}","${fromDate}","${toDate}",${leave.days},${leave.hours},${leave.minutes},"${leave.leaveType}"\n`;
+      });
+
+      // add summary row
+      let totalDays = 0;
+      let totalHours = 0;
+      let totalMinutes = 0;
+      filteredLeaves.forEach(leave => {
+        totalDays += leave.days;
+        totalHours += leave.hours;
+        totalMinutes += leave.minutes;
+      });
+      if(totalMinutes >= 60) {
+        totalHours += Math.floor(totalMinutes / 60);
+        totalMinutes = totalMinutes % 60;
+      }
+      if(totalHours >= 8) {
+        totalDays += Math.floor(totalHours / 8);
+        totalHours = totalHours % 8;
+      }
+      csvContent += `,,,รวม,${totalDays},${totalHours},${totalMinutes}\n`;
+
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      // Generate filename with current date and filter info
+      let filename = 'รายละเอียดการลา';
+      if (selectedEmployee) {
+        const employeeName = document.getElementById('filter-employee').options[document.getElementById('filter-employee').selectedIndex].text;
+        filename += `_${employeeName}`;
+      }
+      if (selectedMonth !== '') {
+        const monthName = document.getElementById('filter-month').options[parseInt(selectedMonth) + 1].text;
+        filename += `_${monthName}`;
+      }
+      filename += `_${moment().format('YYYYMMDD_HHmmss')}.csv`;
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      Swal.fire({
+        icon: 'success',
+        title: 'สำเร็จ',
+        text: 'ส่งออกข้อมูลเรียบร้อยแล้ว',
+        timer: 1500,
+        showConfirmButton: false,
+        customClass: { popup: 'rounded-lg' }
+      });
+    }    // Event Listeners
+    document.getElementById('mobile-menu-btn').addEventListener('click', toggleMobileMenu);
+    document.getElementById('user-search').addEventListener('input', renderUsers);
+    window.addEventListener('load', function () {
+      moment.locale('th');
+    });
+  </script>
+</body>
+
+</html>

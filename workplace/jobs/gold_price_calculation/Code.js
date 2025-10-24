@@ -71,10 +71,10 @@ function handleTextMessage(event) {
     return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
   }
 
-  let regex = /(เงิน|ทอง|แพลตตินัม)\s{0,}\d{1,3}%\s{0,}\@\s{0,}\d{1,3}\.\d{0,2}/g
+  let regex = /(เงิน|ทอง|แพลตตินัม|รูปพรรณ)\s{0,}\d{1,3}%\s{0,}\@\s{0,}\d{1,3}\.\d{0,2}/g
   let match = message.match(regex);
   if (match) {
-    let type = match[0].match(/(เงิน|ทอง|แพลตตินัม)/)[0];
+    let type = match[0].match(/(เงิน|ทอง|แพลตตินัม|รูปพรรณ)/)[0];
     let percent = match[0].match(/\d{1,3}%/)[0];
     let weight = match[0].match(/\@\s{0,}\d{1,3}\.\d{0,2}/)[0].replace('@', '').trim();
     if (!type || !percent || !weight) {
@@ -90,11 +90,13 @@ function handleTextMessage(event) {
 
     percent = Number(percent.replace('%', ''));
     weight = Number(weight);
-    let estimatedPrice, price
-    if (type === 'ทอง') {
-      price = getGoldPrice();
+    let estimatedPrice, goldPrice, price
+    let [silverPrice, platinumPrice, percentOfOrnament] = sheet.getRange('H1:H3').getValues().flat().map(Number)
+    if (type === 'ทอง' || type === 'รูปพรรณ') {
+      goldPrice = getGoldPrice(type);
+      if(type === 'รูปพรรณ') price = goldPrice - (goldPrice * (Math.abs(percentOfOrnament) / 100));
+      else price = goldPrice;
     } else {
-      let [silverPrice, platinumPrice] = sheet.getRange('H1:H2').getValues().flat().map(Number)
       if (type === 'เงิน') price = silverPrice
       else if (type === 'แพลตตินัม') price = platinumPrice;
     }
@@ -102,7 +104,7 @@ function handleTextMessage(event) {
     estimatedPrice = Math.round(estimatedPrice * 100) / 100;
 
     event.replyToline([`ประเภท: ${type} (${percent}%)
-น้ำหนัก: ${weight} กรัม${type === 'ทอง' ? ('\n\nราคาทอง: ' + price.toLocaleString() + " บาท") : ""}
+น้ำหนัก: ${weight} กรัม${type === 'ทอง' ? ('\n\nราคาทอง: ' + goldPrice.toLocaleString() + " บาท") : ""}${type === 'รูปพรรณ' ? ('\n\nราคารูปพรรณ: ' + price.toLocaleString() + " บาท") : ""}
 
 👉 ราคาประเมิน: 
 ${estimatedPrice.toLocaleString()} บาท`], true);

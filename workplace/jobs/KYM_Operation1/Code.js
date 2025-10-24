@@ -643,8 +643,8 @@ function updateCallLog(callData) {
         rowData[3] = callData.storeName || rowData[3];                     // D: Store_Name
         rowData[4] = "'" + callData.contactNumber || rowData[4];            // E: Contact_Number
         rowData[9] = callData.caseStatus || rowData[9];                     // J: Case_Status
-        rowData[10] = callData.rescheduleDateTime || rowData[10];           // K: Reschedule_DateTime
-        rowData[11] = callData.followUpDate || rowData[11];                 // L: Follow_Up_Date
+        rowData[10] = callData.rescheduleDateTime ? new Date(callData.rescheduleDateTime) : rowData[10];           // K: Reschedule_DateTime
+        rowData[11] = callData.followUpDate ? new Date(callData.followUpDate) : rowData[11];                 // L: Follow_Up_Date
         rowData[12] = callData.nextCallTimeSlot || rowData[12];             // M: Next_Call_Time_Slot
         rowData[15] = callData.retryNotes || rowData[15];                   // P: Retry_Notes
         rowData[16] = JSON.stringify(callData.activities || []);             // Q: Activities_JSON
