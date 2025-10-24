@@ -1,5 +1,5 @@
-const USER_SHEET_NAME = 'users temp' //for testing only
-const LEAVE_SHEET_NAME = 'leaves temp' //for testing only
+const USER_SHEET_NAME = 'users'
+const LEAVE_SHEET_NAME = 'leaves'
 const ss = SpreadsheetApp.getActiveSpreadsheet();
 const userSheet = ss.getSheetByName(USER_SHEET_NAME) || ss.insertSheet(USER_SHEET_NAME);
 const leaveSheet = ss.getSheetByName(LEAVE_SHEET_NAME) || ss.insertSheet(LEAVE_SHEET_NAME);
@@ -71,8 +71,8 @@ function setupSheets() {
     }
     if (!leaveSheet.getRange("A1").getValue()) {
       leaveSheet.getRange("A1:M1").setValues([
-        ["เลขประจำตัว", "ชื่อ-นามสกุล", "ประเภทการลา", "วันเวลาเริ่ม", "วันเวลาสิ้นสุด", 
-         "จำนวนวัน", "จำนวนชั่วโมง", "จำนวนนาที", "เอกสารแนบ", "วันที่บันทึก", "สถานะ", "เหตุผล", "เหตุผล (Admin)"]
+        ["เลขประจำตัว", "ชื่อ-นามสกุล", "ประเภทการลา", "วันเวลาเริ่ม", "วันเวลาสิ้นสุด",
+          "จำนวนวัน", "จำนวนชั่วโมง", "จำนวนนาที", "เอกสารแนบ", "วันที่บันทึก", "สถานะ", "เหตุผล", "เหตุผล (Admin)"]
       ]);
     }
     Logger.log("Sheets initialized: users = " + userSheet.getName() + ", leaves = " + leaveSheet.getName());
@@ -107,11 +107,11 @@ function authenticateUser(username, password) {
     if (!user) throw new Error("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง!");
     if (user[6] !== "Active") throw new Error("บัญชีผู้ใช้งานนี้ถูกระงับการใช้งาน!");
     Logger.log("User authenticated: " + username + ", Role: " + user[2] + ", MemberId: " + user[3]);
-    return { 
-      username: user[0], 
-      role: user[2], 
-      memberId: user[3], 
-      name: user[4], 
+    return {
+      username: user[0],
+      role: user[2],
+      memberId: user[3],
+      name: user[4],
       phone: user[5],
       status: user[6]
     };
@@ -124,7 +124,7 @@ function authenticateUser(username, password) {
 // Add User
 function addUser(data, currentUserRole) {
   let lock = LockService.getScriptLock();
-  if(!lock.tryLock(30000)){
+  if (!lock.tryLock(30000)) {
     Logger.log("Could not obtain lock");
     throw new Error("ระบบกำลังมีผู้ใช้งานจำนวนมาก กรุณาลองใหม่อีกครั้งในภายหลัง");
   }
@@ -146,11 +146,11 @@ function addUser(data, currentUserRole) {
       memberId = generateRandomMemberId(existingIds);
     }
     userSheet.appendRow([
-      data.username.trim(), 
-      data.password.trim(), 
-      data.role, 
-      memberId, 
-      data.name ? data.name.trim() : "", 
+      data.username.trim(),
+      data.password.trim(),
+      data.role,
+      memberId,
+      data.name ? data.name.trim() : "",
       data.phone.trim(),
       "Active",
       getThaiTimestamp()
@@ -158,11 +158,11 @@ function addUser(data, currentUserRole) {
 
     // ส่งแจ้งเตือนไปยัง Telegram
     const message = `<b>👤 ผู้ใช้งานใหม่</b>\n` +
-                    `<b>ชื่อผู้ใช้งาน:</b> ${data.username}\n` +
-                    `<b>บทบาท:</b> ${data.role}\n` +
-                    `<b>เลขประจำตัว:</b> ${memberId || '-'}\n` +
-                    `<b>ชื่อ-นามสกุล:</b> ${data.name || '-'}\n` +
-                    `<b>เบอร์โทร:</b> ${data.phone}`;
+      `<b>ชื่อผู้ใช้งาน:</b> ${data.username}\n` +
+      `<b>บทบาท:</b> ${data.role}\n` +
+      `<b>เลขประจำตัว:</b> ${memberId || '-'}\n` +
+      `<b>ชื่อ-นามสกุล:</b> ${data.name || '-'}\n` +
+      `<b>เบอร์โทร:</b> ${data.phone}`;
     sendTelegramMessage(message);
 
     Logger.log("User added: " + data.username + ", MemberId: " + memberId);
@@ -201,11 +201,11 @@ function updateUser(data, role) {
       data.name = "";
     }
     userSheet.getRange(rowIndex, 1, 1, 7).setValues([[
-      data.username, 
-      data.password.trim(), 
-      data.role, 
-      memberId, 
-      data.name ? data.name.trim() : "", 
+      data.username,
+      data.password.trim(),
+      data.role,
+      memberId,
+      data.name ? data.name.trim() : "",
       data.phone.trim(),
       data.status || "Active",
       getThaiTimestamp()
@@ -213,12 +213,12 @@ function updateUser(data, role) {
 
     // ส่งแจ้งเตือนไปยัง Telegram
     const message = `<b>🔄 อัปเดตผู้ใช้งาน</b>\n` +
-                    `<b>ชื่อผู้ใช้งาน:</b> ${data.username}\n` +
-                    `<b>บทบาท:</b> ${data.role}\n` +
-                    `<b>เลขประจำตัว:</b> ${memberId || '-'}\n` +
-                    `<b>ชื่อ-นามสกุล:</b> ${data.name || '-'}\n` +
-                    `<b>เบอร์โทร:</b> ${data.phone}`+
-                    `\n<b>สถานะ:</b> ${data.active}`;
+      `<b>ชื่อผู้ใช้งาน:</b> ${data.username}\n` +
+      `<b>บทบาท:</b> ${data.role}\n` +
+      `<b>เลขประจำตัว:</b> ${memberId || '-'}\n` +
+      `<b>ชื่อ-นามสกุล:</b> ${data.name || '-'}\n` +
+      `<b>เบอร์โทร:</b> ${data.phone}` +
+      `\n<b>สถานะ:</b> ${data.active}`;
     sendTelegramMessage(message);
 
     Logger.log("User updated: " + data.username + ", MemberId: " + memberId);
@@ -240,7 +240,7 @@ function deleteUser(username, currentUserRole) {
 
         // ส่งแจ้งเตือนไปยัง Telegram
         const message = `<b>🗑️ ลบผู้ใช้งาน</b>\n` +
-                        `<b>ชื่อผู้ใช้งาน:</b> ${username}`;
+          `<b>ชื่อผู้ใช้งาน:</b> ${username}`;
         sendTelegramMessage(message);
 
         Logger.log("User deleted: " + username);
@@ -265,8 +265,8 @@ function toggleUserStatus(username, status, currentUserRole) {
 
         // ส่งแจ้งเตือนไปยัง Telegram
         const message = `<b>🔄 เปลี่ยนสถานะผู้ใช้งาน</b>\n` +
-                        `<b>ชื่อผู้ใช้งาน:</b> ${username}\n` +
-                        `<b>สถานะใหม่:</b> ${status === 'Active' ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}`;
+          `<b>ชื่อผู้ใช้งาน:</b> ${username}\n` +
+          `<b>สถานะใหม่:</b> ${status === 'Active' ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}`;
         sendTelegramMessage(message);
 
         Logger.log("User status toggled: " + username + " -> " + status);
@@ -313,7 +313,7 @@ function saveLeave(data, fileData) {
       Logger.log("Invalid memberId: " + data.memberId + ", Available IDs: " + JSON.stringify(users.map(row => row[3]).filter(id => id)));
       throw new Error("เลขประจำตัวไม่ถูกต้อง!");
     }
-    if(user[6] !== "Active") {
+    if (user[6] !== "Active") {
       throw new Error("บัญชีผู้ใช้งานนี้ถูกระงับการใช้งาน!");
     }
     const memberName = user[4];
@@ -361,15 +361,15 @@ function saveLeave(data, fileData) {
 
     // ส่งแจ้งเตือนไปยัง Telegram
     const message = `<b>📋 การลาใหม่</b>\n` +
-                    `<b>เลขประจำตัว:</b> ${data.memberId}\n` +
-                    `<b>ชื่อ:</b> ${memberName}\n` +
-                    `<b>ประเภท:</b> ${data.leaveType}\n` +
-                    `<b>เริ่ม:</b> ${Utilities.formatDate(start, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm')}\n` +
-                    `<b>สิ้นสุด:</b> ${Utilities.formatDate(end, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm')}\n` +
-                    `<b>ระยะเวลา:</b> ${days} วัน ${hours} ชม. ${minutes} นาที\n` +
-                    `<b>เหตุผล:</b> ${data.reason || '-'}\n` +
-                    `<b>เอกสาร:</b> ${fileUrl ? `<a href="${fileUrl}">ดูเอกสาร</a>` : '-'}\n` +
-                    `<b>สถานะ:</b> รอพิจารณา`;
+      `<b>เลขประจำตัว:</b> ${data.memberId}\n` +
+      `<b>ชื่อ:</b> ${memberName}\n` +
+      `<b>ประเภท:</b> ${data.leaveType}\n` +
+      `<b>เริ่ม:</b> ${Utilities.formatDate(start, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm')}\n` +
+      `<b>สิ้นสุด:</b> ${Utilities.formatDate(end, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm')}\n` +
+      `<b>ระยะเวลา:</b> ${days} วัน ${hours} ชม. ${minutes} นาที\n` +
+      `<b>เหตุผล:</b> ${data.reason || '-'}\n` +
+      `<b>เอกสาร:</b> ${fileUrl ? `<a href="${fileUrl}">ดูเอกสาร</a>` : '-'}\n` +
+      `<b>สถานะ:</b> รอพิจารณา`;
     sendTelegramMessage(message);
 
     Logger.log("Leave saved: memberId: " + data.memberId + ", Type: " + data.leaveType);
@@ -540,15 +540,15 @@ function updateLeaveStatus(data, currentUserRole) {
         const start = new Date(startDateTime);
         const end = new Date(endDateTime);
         const message = `<b>🔄 อัปเดตสถานะการลา</b>\n` +
-                        `<b>เลขประจำตัว:</b> ${data.memberId}\n` +
-                        `<b>ชื่อ:</b> ${memberName}\n` +
-                        `<b>ประเภท:</b> ${data.leaveType}\n` +
-                        `<b>เริ่ม:</b> ${Utilities.formatDate(start, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm')}\n` +
-                        `<b>สิ้นสุด:</b> ${Utilities.formatDate(end, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm')}\n` +
-                        `<b>ระยะเวลา:</b> ${days} วัน ${hours} ชม. ${minutes} นาที\n` +
-                        `<b>เหตุผล:</b> ${reason || '-'}\n` +
-                        `<b>สถานะใหม่:</b> ${data.status}\n` +
-                        `<b>เหตุผล (Admin):</b> ${data.adminReason || '-'}`;
+          `<b>เลขประจำตัว:</b> ${data.memberId}\n` +
+          `<b>ชื่อ:</b> ${memberName}\n` +
+          `<b>ประเภท:</b> ${data.leaveType}\n` +
+          `<b>เริ่ม:</b> ${Utilities.formatDate(start, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm')}\n` +
+          `<b>สิ้นสุด:</b> ${Utilities.formatDate(end, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm')}\n` +
+          `<b>ระยะเวลา:</b> ${days} วัน ${hours} ชม. ${minutes} นาที\n` +
+          `<b>เหตุผล:</b> ${reason || '-'}\n` +
+          `<b>สถานะใหม่:</b> ${data.status}\n` +
+          `<b>เหตุผล (Admin):</b> ${data.adminReason || '-'}`;
         sendTelegramMessage(message);
 
         Logger.log("Leave status updated: memberId: " + data.memberId + ", Status: " + data.status);
@@ -598,13 +598,12 @@ function getDashboardData(userRole) {
 }
 
 // Get Personal Leave Statistics
-function getPersonalLeaveStatistics(memberId, userRole) {
+function getPersonalLeaveStatistics(memberId, userRole, leaveData = null) {
   Logger.log('getPersonalLeaveStatistics called with memberId: ' + memberId + ', userRole: ' + userRole);
   try {
-    const leaveData = leaveSheet.getDataRange().getValues();
     Logger.log('Leave data rows: ' + leaveData.length);
-    const statsMap = {};
-    leaveData.slice(1).forEach((row, index) => {
+    let statsMap = {}, leftMinutes = 0;
+    leaveData.forEach((row, index) => {
       const currentMemberId = row[0];
       const name = row[1];
       const startDateTime = row[3];
@@ -615,20 +614,40 @@ function getPersonalLeaveStatistics(memberId, userRole) {
           memberId: currentMemberId,
           name: name,
           leaveCount: 0,
-          totalHours: 0
+          totalHours: 0,
+          totalMinutes: 0
         };
       }
       if (status === 'อนุมัติ') {
         const start = new Date(startDateTime);
         const end = new Date(endDateTime);
-        const hours = (end - start) / (1000 * 60 * 60);
+        let countDays = Math.floor((end - start) / (1000 * 60 * 60 * 24));
+        let countHours = Math.floor(((end - start) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        let countMinutes = Math.floor(((end - start) % (1000 * 60 * 60)) / (1000 * 60));
+        if (countDays > 0) {
+          countHours += countDays * 8; // สมมติ 1 วัน = 8 ชั่วโมง
+        }
+        if (countMinutes >= 60) {
+          countHours += Math.floor(countMinutes / 60);
+          countMinutes = countMinutes % 60;
+        }
         statsMap[currentMemberId].leaveCount++;
-        statsMap[currentMemberId].totalHours += hours;
-        Logger.log(`Row ${index + 2}: memberId=${currentMemberId}, status=${status}, hours=${hours.toFixed(2)}`);
+        statsMap[currentMemberId].totalHours += countHours;
+        statsMap[currentMemberId].totalMinutes += countMinutes;
+        Logger.log(`Row ${index + 2}: memberId=${currentMemberId}, status=${status}, hours=${countHours.toFixed(2)}`);
       } else {
         Logger.log(`Row ${index + 2}: memberId=${currentMemberId}, status=${status}, hours=0`);
       }
     });
+    // รวมชั่วโมงจากนาทีที่เหลือ
+    for (let key in statsMap) {
+      if (statsMap[key].totalMinutes >= 60) {
+        const extraHours = Math.floor(statsMap[key].totalMinutes / 60);
+        statsMap[key].totalHours += extraHours;
+        statsMap[key].totalMinutes = statsMap[key].totalMinutes % 60;
+      }
+    }
+    // เพิ่มชั่วโมงจากนาทีที่เหลือ
     const stats = Object.values(statsMap).filter(stat => {
       return userRole === 'Admin' || stat.memberId === memberId;
     });
@@ -641,13 +660,12 @@ function getPersonalLeaveStatistics(memberId, userRole) {
 }
 
 // Get Leave Statistics
-function getLeaveStatistics(memberId, userRole) {
+function getLeaveStatistics(memberId, userRole, leaveData = null) {
   Logger.log('getLeaveStatistics called with memberId: ' + memberId + ', userRole: ' + userRole);
   try {
-    const leaveData = leaveSheet.getDataRange().getValues();
     Logger.log('Leave data rows: ' + leaveData.length);
     const statisticsMap = {};
-    leaveData.slice(1).forEach((row, index) => {
+    leaveData.forEach((row, index) => {
       const currentMemberId = row[0];
       const leaveType = row[2];
       const status = row[10];
@@ -672,17 +690,17 @@ function getLeaveStatistics(memberId, userRole) {
 function getAllStatistics(memberId, userRole) {
   Logger.log('getAllStatistics called with memberId: ' + memberId + ', userRole: ' + userRole);
   try {
-    const leaveStatistics = getLeaveStatistics(memberId, userRole);
-    const personalStatistics = getPersonalLeaveStatistics(memberId, userRole);
-    
+    const leaveData = leaveSheet.getDataRange().getValues().slice(1);
+    const leaveStatistics = getLeaveStatistics(memberId, userRole, leaveData.filter(row => row[0] === memberId || userRole === 'Admin')); // กรองแถวที่มี memberId
+    const personalStatistics = getPersonalLeaveStatistics(memberId, userRole, leaveData.filter(row => row[0] === memberId || userRole === 'Admin')); // กรองแถวที่มี memberId
+
     // Get all approved leaves for filtering
-    const leaveData = leaveSheet.getDataRange().getValues();
     const allLeaves = [];
-    
-    leaveData.slice(1).forEach((row, index) => {
+
+    leaveData.forEach((row, index) => {
       const currentMemberId = row[0];
       const status = row[10];
-      
+
       if (status === 'อนุมัติ' && (userRole === 'Admin' || currentMemberId === memberId)) {
         allLeaves.push({
           memberId: currentMemberId,
@@ -696,7 +714,7 @@ function getAllStatistics(memberId, userRole) {
         });
       }
     });
-    
+
     Logger.log('Returning all stats with ' + allLeaves.length + ' approved leaves');
     return JSON.stringify({ leaveStatistics, personalStatistics, allLeaves });
   } catch (error) {
@@ -724,7 +742,7 @@ function testDriveAccess() {
     let fileList = [];
     while (files.hasNext()) {
       const file = files.next();
-      fileList.push({name: file.getName(), url: file.getUrl()});
+      fileList.push({ name: file.getName(), url: file.getUrl() });
     }
     Logger.log("Drive files: " + JSON.stringify(fileList));
     return fileList;
