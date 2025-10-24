@@ -71,12 +71,12 @@ function handleTextMessage(event) {
     return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
   }
 
-  let regex = /(เงิน|ทอง|แพลตตินัม|รูปพรรณ)\s{0,}\d{1,3}%\s{0,}\@\s{0,}\d{1,3}\.\d{0,2}/g
+  let regex = /(เงิน|ทอง|แพลตตินัม|รูปพรรณ)\s{0,}\d{1,3}\.{0,1}\d{0,2}%\s{0,}\@\s{0,}\d{1,3}\.{0,1}\d{0,2}/g
   let match = message.match(regex);
   if (match) {
     let type = match[0].match(/(เงิน|ทอง|แพลตตินัม|รูปพรรณ)/)[0];
-    let percent = match[0].match(/\d{1,3}%/)[0];
-    let weight = match[0].match(/\@\s{0,}\d{1,3}\.\d{0,2}/)[0].replace('@', '').trim();
+    let percent = match[0].match(/\d{1,3}\.{0,1}\d{0,2}%/)[0];
+    let weight = match[0].match(/\@\s{0,}\d{1,3}\.{0,1}\d{0,2}/)[0].replace('@', '').trim();
     if (!type || !percent || !weight) {
       return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
     }
@@ -122,7 +122,7 @@ function getGoldPrice() {
 function getCriteria(type, percent) {
   let ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('Sheet1');
-  let data = sheet.getRange('A2:D4').getValues();
+  let data = sheet.getRange('A2:D').getValues();
   for (let i = 0; i < data.length; i++) {
     if (data[i][0] === "ปกติ" && data[i][1] === type) {
       return {
