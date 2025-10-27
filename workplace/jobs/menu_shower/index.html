@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <base target="_top">
+    <!-- no cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!-- no cache -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เมนูไอศกรีมวันนี้ | Today's Ice Cream Menu</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-red': '#6D0101',
+                        'primary-orange': '#F86C2F',
+                        'primary-cream': '#F7D797',
+                        'primary-dark': '#252120',
+                        'primary-beige': '#DCCFBE',
+                    },
+                    fontFamily: {
+                        'antonio': ['Antonio', 'sans-serif'],
+                        'ibm': ['IBM Plex Sans Thai', 'sans-serif'],
+                        'work': ['Work Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Antonio:wght@100..700&family=IBM+Plex+Sans+Thai:wght@100;200;300;400;500;600;700&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        /* Custom styles for gradients and special effects */
+        .gradient-red-orange {
+            background: linear-gradient(135deg, #6D0101, #8B0101);
+        }
+
+        .gradient-orange {
+            background: linear-gradient(135deg, #F86C2F, #FF8F5A);
+        }
+
+        .gradient-divider {
+            background: linear-gradient(90deg, transparent, #6D0101, #F86C2F, transparent);
+        }
+
+        .backdrop-blur-custom {
+            backdrop-filter: blur(10px);
+        }
+
+        /* Loading animation */
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #DCCFBE;
+            border-top: 6px solid #6D0101;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #F7D797;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Menu Grid Layout */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 10px;
+        }
+
+        /* Tablet - 3 columns */
+        @media (min-width: 768px) {
+            .menu-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+                max-width: 900px;
+            }
+        }
+
+        /* Desktop - 4 columns */
+        @media (min-width: 1024px) {
+            .menu-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 20px;
+                max-width: 1200px;
+            }
+        }
+
+        /* Large Desktop - 5 columns */
+        @media (min-width: 1280px) {
+            .menu-grid {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 25px;
+                max-width: 1400px;
+            }
+        }
+
+        /* Extra Large Desktop - 6 columns */
+        @media (min-width: 1536px) {
+            .menu-grid {
+                grid-template-columns: repeat(6, 1fr);
+                gap: 25px;
+                max-width: 1600px;
+            }
+        }
+
+        .menu-item {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .menu-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .menu-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+
+        @media (min-width: 768px) {
+            .menu-item img {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-primary-cream overflow-x-hidden font-work">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="text-center">
+            <div class="mb-8">
+                <img src="https://img2.pic.in.th/pic/Screenshot_from_2025-10-27_17-22-18-removebg-preview.png"
+                    alt="Logo" class="max-w-[150px] w-full h-auto mx-auto pulse">
+            </div>
+            <div class="loading-spinner mx-auto mb-6"></div>
+            <p class="text-xl md:text-2xl font-ibm font-semibold text-primary-red">Loading...</p>
+            <p class="text-base md:text-lg font-ibm text-primary-dark mt-2">กำลังโหลดข้อมูล</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="homePage" class="min-h-screen flex items-center justify-center p-5 relative">
+        <!-- Decorative Circles -->
+        <div class="absolute w-[300px] h-[300px] bg-primary-red rounded-full opacity-10 -top-24 -left-24"></div>
+        <div class="absolute w-[200px] h-[200px] bg-primary-orange rounded-full opacity-10 -bottom-12 -right-12"></div>
+        <div class="absolute w-[150px] h-[150px] bg-primary-red rounded-full opacity-10 top-1/2 right-[10%]"></div>
+
+        <!-- Content Card -->
+        <div class="max-w-[600px] w-full rounded-[30px] p-10 md:p-[60px_40px] relative z-10">
+            <!-- Logo and Heading -->
+            <div class="text-center mb-10">
+                <div class="mb-5">
+                    <img src="https://img2.pic.in.th/pic/Screenshot_from_2025-10-27_17-22-18-removebg-preview.png"
+                        alt="Logo" class="max-w-[200px] w-full h-auto mx-auto">
+                </div>
+                <h1 class="text-5xl md:text-6xl font-antonio font-bold text-primary-red mb-2 tracking-wide">
+                    TODAY'S MENU
+                </h1>
+                <h2 class="text-2xl md:text-3xl font-ibm font-semibold text-primary-dark mb-2">
+                    เมนูไอศกรีมวันนี้
+                </h2>
+                <div class="my-4">
+                    <p class="text-2xl md:text-3xl font-antonio font-bold text-primary-red tracking-wide">
+                        <i class="fas fa-store"></i>
+                        <span id="branchName">Branch Name</span>
+                    </p>
+                </div>
+                <div
+                    class="inline-block text-sm text-primary-dark px-4 py-2 bg-primary-beige/50 rounded-[15px] font-ibm">
+                    <i class="far fa-calendar-alt mr-1"></i>
+                    <span id="currentDate"></span>
+                </div>
+            </div>
+
+            <div class="h-[3px] gradient-divider my-10 rounded-sm"></div>
+
+            <!-- Menu Selection Buttons -->
+            <div class="flex flex-col gap-5 mt-10">
+                <button
+                    class="relative py-[30px] px-5 border-none rounded-[20px] text-lg cursor-pointer transition-all duration-300 overflow-hidden text-left shadow-[0_5px_15px_rgba(0,0,0,0.2)] hover:-translate-y-1.5 hover:shadow-[0_10px_25px_rgba(0,0,0,0.3)] gradient-red-orange text-white"
+                    onclick="selectMenu('scooped')">
+                    <div class="flex items-center justify-between relative z-[1]">
+                        <div class="flex-1">
+                            <span class="block mb-2 font-work font-bold">Freshly Scooped Flavors</span>
+                            <span class="block text-sm opacity-90 font-ibm">รสชาติพร้อมตัก/ชิมหน้าร้าน</span>
+                        </div>
+                        <div class="text-3xl opacity-80">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </div>
+                </button>
+
+                <button
+                    class="relative py-[30px] px-5 border-none rounded-[20px] text-lg cursor-pointer transition-all duration-300 overflow-hidden text-left shadow-[0_5px_15px_rgba(0,0,0,0.2)] hover:-translate-y-1.5 hover:shadow-[0_10px_25px_rgba(0,0,0,0.3)] gradient-orange text-white"
+                    onclick="selectMenu('takehome')">
+                    <div class="flex items-center justify-between relative z-[1]">
+                        <div class="flex-1">
+                            <span class="block mb-2 font-work font-bold">Take-Home Cups (4 oz.)</span>
+                            <span class="block text-sm opacity-90 font-ibm">รสชาติแบบถ้วย/กลับบ้าน</span>
+                        </div>
+                        <div class="text-3xl opacity-80">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </div>
+                </button>
+            </div>
+
+            <p class="text-center mt-8 text-primary-dark opacity-70 text-sm font-ibm">
+                <i class="fas fa-heart text-primary-orange"></i>
+                เลือกประเภทเมนูเพื่อดูรสชาติที่มีวันนี้
+            </p>
+        </div>
+    </div>
+
+    <!-- Fresh Scoop Menu Page -->
+    <div id="freshScoopMenuPage" class="hidden min-h-screen p-5 relative">
+        <!-- Back Button -->
+        <div class="max-w-[1600px] mx-auto mb-6">
+            <button onclick="goToHome()" 
+                    class="flex items-center gap-2 px-6 py-3 bg-white rounded-[15px] shadow-[0_4px_10px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_15px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-1 text-primary-red font-work font-bold">
+                <i class="fas fa-arrow-left text-xl"></i>
+                <span>Back to Home</span>
+            </button>
+        </div>
+
+        <!-- Menu Title -->
+        <div class="text-center mb-8">
+            <h2 class="text-4xl md:text-5xl font-antonio font-bold text-primary-red mb-2 tracking-wide">
+                Freshly Scooped Flavors
+            </h2>
+            <p class="text-xl md:text-2xl font-ibm font-semibold text-primary-dark">
+                รสชาติพร้อมตัก/ชิมหน้าร้าน
+            </p>
+        </div>
+
+        <!-- Fresh Scoop Menu -->
+        <div id="freshScoopMenu">
+            <!-- Dynamic content will be inserted here -->
+        </div>
+
+        <!-- Updated Date Footer -->
+        <div class="text-center mt-12 mb-6">
+            <p class="text-sm text-primary-dark opacity-70 font-ibm">
+                <i class="far fa-clock mr-1"></i>
+                Last Updated: <span id="freshScoopUpdateDate"></span>
+            </p>
+            <p class="text-xs text-primary-dark opacity-50 font-ibm mt-1">
+                อัพเดทล่าสุด: <span id="freshScoopUpdateDateTh"></span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Take Home Menu Page -->
+    <div id="takeHomeMenuPage" class="hidden min-h-screen p-5 relative">
+        <!-- Back Button -->
+        <div class="max-w-[1600px] mx-auto mb-6">
+            <button onclick="goToHome()" 
+                    class="flex items-center gap-2 px-6 py-3 bg-white rounded-[15px] shadow-[0_4px_10px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_15px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-1 text-primary-orange font-work font-bold">
+                <i class="fas fa-arrow-left text-xl"></i>
+                <span>Back to Home</span>
+            </button>
+        </div>
+
+        <!-- Menu Title -->
+        <div class="text-center mb-8">
+            <h2 class="text-4xl md:text-5xl font-antonio font-bold text-primary-orange mb-2 tracking-wide">
+                Take-Home Cups (4 oz.)
+            </h2>
+            <p class="text-xl md:text-2xl font-ibm font-semibold text-primary-dark">
+                รสชาติแบบถ้วย/กลับบ้าน
+            </p>
+        </div>
+
+        <!-- Take Home Menu -->
+        <div id="takeHomeMenu">
+            <!-- Dynamic content will be inserted here -->
+        </div>
+
+        <!-- Updated Date Footer -->
+        <div class="text-center mt-12 mb-6">
+            <p class="text-sm text-primary-dark opacity-70 font-ibm">
+                <i class="far fa-clock mr-1"></i>
+                Last Updated: <span id="takeHomeUpdateDate"></span>
+            </p>
+            <p class="text-xs text-primary-dark opacity-50 font-ibm mt-1">
+                อัพเดทล่าสุด: <span id="takeHomeUpdateDateTh"></span>
+            </p>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+
+    <script>
+        moment.locale('en');
+
+        $(document).ready(function () {
+            NProgress.done();
+            initializeApp();
+        });
+
+        async function initializeApp() {
+            // Get Data From Google Sheet
+            let params = await new Promise((resolve) => {
+                google.script.url.getLocation(function (location) {
+                    resolve(location.parameter);
+                });
+            });
+
+            google.script.run
+                .withFailureHandler(function (error) {
+                    console.error('Error fetching branch data:', error);
+                    $('#branchName').text('Unknown Branch');
+                    $('#currentDate').text(moment().format('dddd, MMMM D, YYYY'));
+
+                    // Hide loading overlay
+                    hideLoading();
+
+                    // Show error message
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
+                        confirmButtonColor: '#6D0101'
+                    });
+                })
+                .withSuccessHandler(function (branchData) {
+                    branchData = JSON.parse(branchData);
+                    console.log('Branch Data:', branchData);
+                    if (branchData.success) {
+                        $('#branchName').text(branchData.branchName);
+                        renderMenu(branchData);
+
+                        // Display current date in branch's preferred format
+                        const today = moment().format('dddd, MMMM D, YYYY');
+                        $('#currentDate').text(today);
+
+                        // Set update dates for menu pages
+                        const updateDate = moment().format('MMMM D, YYYY [at] h:mm A');
+                        const updateDateTh = moment().locale('th').format('D MMMM YYYY เวลา HH:mm น.');
+                        
+                        $('#freshScoopUpdateDate').text(updateDate);
+                        $('#freshScoopUpdateDateTh').text(updateDateTh);
+                        $('#takeHomeUpdateDate').text(updateDate);
+                        $('#takeHomeUpdateDateTh').text(updateDateTh);
+                    } else {
+                        $('#branchName').text('Unknown Branch');
+                        $('#currentDate').text(moment().format('dddd, MMMM D, YYYY'));
+                    }
+
+                    // Hide loading overlay after data is loaded
+                    hideLoading();
+                }).getBranchData(params.bid);
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.classList.add('hidden');
+        }
+
+        function selectMenu(menuType) {
+            const homePage = document.getElementById('homePage');
+            const freshScoopMenuPage = document.getElementById('freshScoopMenuPage');
+            const takeHomeMenuPage = document.getElementById('takeHomeMenuPage');
+
+            // Hide home page
+            homePage.classList.add('hidden');
+
+            if (menuType === 'scooped') {
+                freshScoopMenuPage.classList.remove('hidden');
+                takeHomeMenuPage.classList.add('hidden');
+            } else if (menuType === 'takehome') {
+                takeHomeMenuPage.classList.remove('hidden');
+                freshScoopMenuPage.classList.add('hidden');
+            }
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        function goToHome() {
+            const homePage = document.getElementById('homePage');
+            const freshScoopMenuPage = document.getElementById('freshScoopMenuPage');
+            const takeHomeMenuPage = document.getElementById('takeHomeMenuPage');
+
+            // Show home page
+            homePage.classList.remove('hidden');
+
+            // Hide menu pages
+            freshScoopMenuPage.classList.add('hidden');
+            takeHomeMenuPage.classList.add('hidden');
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        function renderMenu(branchData) {
+            let freshScoopMenu = document.getElementById('freshScoopMenu');
+            let takeHomeMenu = document.getElementById('takeHomeMenu');
+
+            // Clear existing menu items
+            freshScoopMenu.innerHTML = '';
+            takeHomeMenu.innerHTML = '';
+
+            // Create grid containers
+            let freshScoopGrid = document.createElement('div');
+            freshScoopGrid.classList.add('menu-grid');
+            
+            let takeHomeGrid = document.createElement('div');
+            takeHomeGrid.classList.add('menu-grid');
+
+            // Render Freshly Scooped Flavors
+            branchData.categories.forEach(category => {
+                let imageUrl = category.imageUrl || 'https://via.placeholder.com/150x200?text=No+Image';
+
+                if (category.plates > 0) {
+                    // its a fresh scoop item
+                    let menuItem = document.createElement('div');
+                    menuItem.classList.add('menu-item');
+                    menuItem.innerHTML = `
+                        <img src="${imageUrl}" alt="${category.name}" />
+                    `;
+                    freshScoopGrid.appendChild(menuItem);
+                }
+                if (category.cups > 0) {
+                    // its a take home item
+                    let menuItem = document.createElement('div');
+                    menuItem.classList.add('menu-item');
+                    menuItem.innerHTML = `
+                        <img src="${imageUrl}" alt="${category.name}" />
+                    `;
+                    takeHomeGrid.appendChild(menuItem);
+                }
+            });
+
+            // Append grids to containers
+            freshScoopMenu.appendChild(freshScoopGrid);
+            takeHomeMenu.appendChild(takeHomeGrid);
+        }
+
+    </script>
+</body>
+
+</html>
