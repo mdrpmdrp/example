@@ -160,7 +160,7 @@ function sendDailyPatientBrief() {
       );
       const title = `📋 สรุปคนไข้ประจำวัน - ${branch}`;
 
-      // sendGoogleChatNotification(message, title);
+      sendGoogleChatNotification(message, title);
 
       // Add delay between messages to avoid rate limiting
       if (i < branches.length - 1) {

@@ -14,8 +14,7 @@ function processLineEvent(event) {
     let regex = /p\d{8}/;
     let match = messageText.match(regex);
     if (!match) {
-        event.replyToline([createWelcomeFlexMessage()]);
-        return; // Send welcome message for unrecognized input
+        return;
     }
 
     let registerResult = registerPatientLineId(match[0].toUpperCase(), userId);
