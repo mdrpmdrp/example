@@ -101,7 +101,7 @@ function handleTextMessage(event) {
       else if (type === 'แพลตตินัม') price = platinumPrice;
     }
     estimatedPrice = (price - (price * (criteria.percent / 100)) - criteria.meltPrice) * (percent / 100) * 0.0656 * weight;
-    estimatedPrice = Math.round(estimatedPrice * 100) / 100;
+    estimatedPrice = Math.floor(estimatedPrice / 10) * 10;
 
     event.replyToline([`ประเภท: ${type} (${percent}%)
 น้ำหนัก: ${weight} กรัม${type === 'ทอง' ? ('\n\nราคาทอง: ' + goldPrice.toLocaleString() + " บาท") : ""}${type === 'รูปพรรณ' ? ('\n\nราคารูปพรรณ: ' + price.toLocaleString() + " บาท") : ""}
