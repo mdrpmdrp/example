@@ -95,42 +95,42 @@ function handleTextMessage(event) {
     let [silverPrice, platinumPrice, percentOfOrnament] = sheet.getRange('H1:H3').getValues().flat().map(Number)
     if (type === 'ทอง' || type === 'รูปพรรณ') {
       goldPrice = getGoldPrice(type);
+      // goldPrice = 60200
       if (type === 'รูปพรรณ') price = goldPrice - (goldPrice * (Math.abs(percentOfOrnament) / 100));
       else price = goldPrice;
     } else {
       if (type === 'เงิน') price = silverPrice
       else if (type === 'แพลตตินัม') price = platinumPrice;
     }
-    // estimatedPrice = (price - (price * (criteria.percent / 100)) - criteria.meltPrice) * (percent / 100) * 0.0656 * weight;
     estimatedPrice = (price - criteria.meltPrice) * 0.0656 * (percent / 100) * weight;
     estimatedPrice = estimatedPrice - (estimatedPrice * (criteria.percent / 100));
-    estimatedPrice = Math.floor(estimatedPrice / 10) * 10;
     if (type === 'ทอง') {
-        let commissions = sheet.getRange('J2:K').getDisplayValues().filter(r => r[0] != '').reduce((obj, row) => {
-          let [min, max] = row[0].split(/-|\s/g).map(x =>{
-            if(x.includes('ขึ้นไป')) {
-              return Number.MAX_SAFE_INTEGER;
-            }
-            return Number(x);
-          });
-          let commission = row[1]
-          obj.push({ min, max, commission });
-          return obj;
-        }, [])
-        for (let i = 0; i < commissions.length; i++) {
-          let range = commissions[i];
-          if(estimatedPrice >= range.min && estimatedPrice <= range.max) {
-            if(range.commission.includes('%')) {
-              let percentCommission = Number(range.commission.replace('%', ''));
-              estimatedPrice = estimatedPrice - (estimatedPrice * (percentCommission / 100));
-            } else {
-              let fixedCommission = Number(range.commission);
-              estimatedPrice = estimatedPrice - fixedCommission;
-            }
-            break;
+      let commissions = sheet.getRange('J2:K').getDisplayValues().filter(r => r[0] != '').reduce((obj, row) => {
+        let [min, max] = row[0].split(/-|\s/g).map(x => {
+          if (x.includes('ขึ้นไป')) {
+            return Number.MAX_SAFE_INTEGER;
           }
+          return Number(x);
+        });
+        let commission = row[1]
+        obj.push({ min, max, commission });
+        return obj;
+      }, [])
+      for (let i = 0; i < commissions.length; i++) {
+        let range = commissions[i];
+        if (estimatedPrice >= range.min && estimatedPrice <= range.max) {
+          if (range.commission.includes('%')) {
+            let percentCommission = Number(range.commission.replace('%', ''));
+            estimatedPrice = estimatedPrice - (estimatedPrice * (percentCommission / 100));
+          } else {
+            let fixedCommission = Number(range.commission);
+            estimatedPrice = estimatedPrice - fixedCommission;
+          }
+          break;
         }
       }
+    }
+    estimatedPrice = Math.floor(estimatedPrice * 100) / 100;
     event.replyToline([`ประเภท: ${type} (${percent}%)
 น้ำหนัก: ${weight} กรัม${type === 'ทอง' ? ('\n\nราคาทอง: ' + goldPrice.toLocaleString() + " บาท") : ""}${type === 'รูปพรรณ' ? ('\n\nราคารูปพรรณ: ' + price.toLocaleString() + " บาท") : ""}
 
