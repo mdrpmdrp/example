@@ -2,8 +2,9 @@ const EMPLOYEE_STATUS_COL = 2; // Column B
 const PREFIX_NAME_COL = 16; // Column O
 const NAME_COL = 19; // Column S
 const EMAIL_COL = 21; // Column U
-const DATE_SENT_COL = 27; // Column AA
-const EMPLOYEE_EMAIL_STATUS_COL = 28; // Column AB
+const MANAGER_EMAIL_COL = 22
+const DATE_SENT_COL = 28; // Column AA
+const EMPLOYEE_EMAIL_STATUS_COL = 29; // Column AB
 const MANAGER_EMAIL_STATUS_COL = 31; // Column AC
 function autoSendEmail() {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -15,7 +16,7 @@ function autoSendEmail() {
     for (let i = 1; i < data.length; i++) {
         let row = data[i];
         let dateSent = row[DATE_SENT_COL - 1];
-        if (!(dateSent instanceof Date) || Utilities.formatDate(dateSent, timezone, "yyyy-MM-dd") !== today) {
+        if (!dateSent.getTime || Utilities.formatDate(dateSent, timezone, "yyyy-MM-dd") !== today) {
             continue;
         }
         let employeeStatus = row[EMPLOYEE_STATUS_COL - 1];
@@ -24,20 +25,26 @@ function autoSendEmail() {
         let email = row[EMAIL_COL - 1];
         let employeeEmailStatus = row[EMPLOYEE_EMAIL_STATUS_COL - 1];
         let managerEmailStatus = row[MANAGER_EMAIL_STATUS_COL - 1];
-        if (employeeStatus !== "Active" || dateSent == "" || email === "" || (employeeEmailStatus === "Sent" && managerEmailStatus === "Sent")) {
+        if (employeeStatus !== "Active" || dateSent == "" || (employeeEmailStatus === "Sent" && managerEmailStatus === "Sent")) {
             continue;
         }
 
         if (employeeEmailStatus !== "Sent") {
-            let isSent = sendEmployeeEmail(email, name);
-            if (isSent) {
-                sheet.getRange(i + 1, EMPLOYEE_EMAIL_STATUS_COL).setValue("Sent");
+            let email = row[EMAIL_COL - 1];
+            if (email !== "") {
+                let isSent = sendEmployeeEmail(email, name);
+                if (isSent) {
+                    sheet.getRange(i + 1, EMPLOYEE_EMAIL_STATUS_COL).setValue("Sent");
+                }
             }
         }
         if (managerEmailStatus !== "Sent") {
-            let isSent = sendManagerEmail(email, name);
-            if (isSent) {
-                sheet.getRange(i + 1, MANAGER_EMAIL_STATUS_COL).setValue("Sent");
+            let email = row[MANAGER_EMAIL_COL - 1];
+            if (email !== "") {
+                let isSent = sendManagerEmail(email, name);
+                if (isSent) {
+                    sheet.getRange(i + 1, MANAGER_EMAIL_STATUS_COL).setValue("Sent");
+                }
             }
         }
     }
@@ -66,7 +73,7 @@ We're glad to have you as part of our team!
 <br><br>
 <i>Best regards,<br>
 Human Resources Department</i>`;
-        MailApp.sendEmail(email, subject, "", {htmlBody: html_body, name: 'Human Resources Department'});
+        MailApp.sendEmail(email, subject, "", { htmlBody: html_body, name: 'Human Resources Department' });
         return true
     } catch (e) {
         Logger.log("Error sending email to employee: " + e.message);
@@ -97,7 +104,7 @@ Thank you for your time and valuable input in supporting our people development 
 <i>Best regards,<br>
 Human Resources Department</i>`;
 
-        MailApp.sendEmail(email, subject, "", {htmlBody: html_body, name: 'Human Resources Department'});
+        MailApp.sendEmail(email, subject, "", { htmlBody: html_body, name: 'Human Resources Department' });
         return true
     } catch (e) {
         Logger.log("Error sending email to manager: " + e.message);
