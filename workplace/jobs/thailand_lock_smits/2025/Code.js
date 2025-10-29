@@ -410,7 +410,7 @@ function memberRegist(e) {
     const visitDateIndex = headerIndices['ลงทะเบียนเข้างานวันที่'];
     const phoneIndex = headerIndices['เบอร์โทร'];
     const followerIndex = headerIndices['ผู้ติดตาม'];
-    const checkInIndex = headerIndices['เช็คอิน'];
+    const checkInIndex = headerIndices['Check-In'];
 
     // Update the row (avoid array spread for better performance)
     const row = memberIndex + 2;
@@ -483,7 +483,7 @@ function guestRegist(e) {
     const visitDateIndex = headerIndices['ลงทะเบียนเข้างานวันที่'];
     const phoneIndex = headerIndices['เบอร์โทร'];
     const followerIndex = headerIndices['ผู้ติดตาม'];
-    const checkInIndex = headerIndices['เช็คอิน'];
+    const checkInIndex = headerIndices['Check-In'];
     const occupationIndex = headerIndices['อาชีพ'];
     const interestIndex = headerIndices['สินค้าที่สนใจ'];
     const new_row = new Array(header.length).fill('');
@@ -843,8 +843,8 @@ function checkin(e) {
 }
 
 function sendWelcomeMessage(e) {
-  // const uid = e.parameter.uid;  
-  const uid = 'Ua55431b2d9be5d104c316ccb8ef54e81'
+  const uid = e.parameter.uid;  
+  // const uid = 'Ua55431b2d9be5d104c316ccb8ef54e81'
   const date = new Date();
   const year = date.getFullYear();
   const month = date.getMonth();
