@@ -1087,6 +1087,7 @@
                                     <th class="text-center" style="width: 80px;">น้ำหนักก่อน</th>
                                     <th class="text-center" style="width: 80px;">น้ำหนักหลัง</th>
                                     <th class="text-center" style="width: 100px;">% หลังหลอม</th>
+                                    <th class="text-center" style="width: 100px;">% คำนวณ</th>
                                     <th class="text-center" style="width: 100px;">ยอดซื้อ</th>
                                     <th class="text-center" style="width: 100px;">ผู้บันทึก</th>
                                 </tr>
@@ -1100,6 +1101,7 @@
                                         <td class="text-end">${(item.beforeWeight || 0).toFixed(2)}</td>
                                         <td class="text-end">${(item.afterWeight || 0).toFixed(2)}</td>
                                         <td class="text-end">${(item.percentAfterMelt || 0).toFixed(2)}</td>
+                                        <td class="text-end">${(item.percentCalc || 0).toFixed(2)}</td>
                                         <td class="text-end">${(item.buyPrice || 0).toLocaleString('th-TH')}</td>
                                         <td class="text-center">${item.recorder || '-'}</td>
                                     </tr>
@@ -1177,6 +1179,7 @@
                                         <th class="text-center text-wrap">นน.ก่อน (ก.)</th>
                                         <th class="text-center text-wrap">นน.หลัง (ก.)</th>
                                         <th class="text-center text-wrap">% หลังหลอม</th>
+                                        <th class="text-center text-wrap">% คำนวณ</th>
                                         <th class="text-center text-wrap">ยอดซื้อ (บาท)</th>
                                         <th class="text-center text-wrap">ผู้บันทึก</th>
                                     </tr>
@@ -1190,6 +1193,7 @@
                                             <td class="text-end">${(item.beforeWeight || 0).toFixed(2)}</td>
                                             <td class="text-end">${(item.afterWeight || 0).toFixed(2)}</td>
                                             <td class="text-end">${(item.meltPercentAfterMelt || 0).toFixed(2)}</td>
+                                            <td class="text-end">${(item.percentCalc || 0).toFixed(2)}</td>
                                             <td class="text-end">${(item.buyPrice || 0).toLocaleString('th-TH')}</td>
                                             <td class="text-center">${item.recorder || '-'}</td>
                                         </tr>
@@ -1477,7 +1481,7 @@
                 serverSide: false,
                 responsive: true,
                 scrollX: true,
-                dom: "<'row justify-content-between'<'col-md-auto buttons-sec1'><'col-md-auto'f>>" +
+                dom: "<'row justify-content-between'<'col-md-auto buttons-sec1'><'col-md-auto filter-sec1'>>" +
                     "<'row mt-2'<'col-12't>>" +
                     "<'row justify-content-between mt-2'<'col-md-auto'i><'col-md-auto'p>>",
                 language: {
@@ -1535,11 +1539,11 @@
                     },
                     {
                         data: null,
-                        title: 'เลือก',
+                        title: 'เลือก <input type="checkbox" id="selectAllRows" />',
                         visible: false,
                         orderable: false,
                         searchable: false,
-                        className: 'text-center text-nowrap select-checkbox',
+                        className: 'text-center text-nowrap select-checkbox all',
                         render: function (data, type, row) {
                             return '';
                         }
@@ -1677,9 +1681,33 @@
                             </button>
                         </div>
                     `);
+                    $('.filter-sec1').html(`
+                        <div class="d-flex flex-wrap gap-2 w-100 mb-2 align-items-center justify-content-center" id="filterActions" role="group">
+                            <div class="input-group">
+                                <select class="form-select rounded-3" id="filterCategory">
+                                    <option value="" selected>หมวดหมู่ทั้งหมด</option>
+                                    ${[...new Set(json.data.map(item => item.category).filter(cat => cat && cat.trim() !== ''))].map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                                </select>
+                                <input type="search" class="form-control rounded-3 ms-2" id="searchText" placeholder="ค้นหาข้อมูล...">
+                            </div>
+                        </div>
+                    `);
                     $('#createMeltBillBtn').on('click', function () {
                         createMeltBillBtn();
                     });
+                    $('#filterCategory').on('change', function () {
+                        const searchValue = this.value;
+                        if (searchValue === '') {
+                            datatable.column(4).search('').draw();
+                        } else {
+                            // Use exact match with word boundaries
+                            datatable.column(4).search('^' + searchValue + '$', true, false).draw();
+                        }
+                    });
+                    $('#searchText').on('input', function () {
+                        datatable.search(this.value).draw();
+                    });
+
                 },
                 columnDefs: [
                     {
@@ -1700,6 +1728,18 @@
                     });
                 }
             })
+            // Use event delegation for select all checkbox since it's dynamically created
+            $(document).on('change', '#selectAllRows', function () {
+                console.log('Select All Rows checkbox changed:', this.checked);
+                if (this.checked) {
+                    // Select all visible/filtered rows that are not cancelled
+                    datatable.column(11).search('^(?!ยกเลิก$).*$', true, false); // Exclude 'ยกเลิก' rows
+                    datatable.rows({ search: 'applied' }).select();
+                    datatable.column(11).search(''); // Clear search
+                } else {
+                    datatable.rows().deselect();
+                }
+            });
         }
 
         async function initTransactionTable(selector) {
@@ -1921,13 +1961,17 @@
                 serverSide: false,
                 responsive: true,
                 scrollX: true,
-                dom: "<'row justify-content-between'<'col-md-auto buttons-sec3'><'col-md-auto'f>>" +
+                dom: "<'row justify-content-between'<'col-md-auto buttons-sec3'><'col-md-auto filter-sec3'>>" +
                     "<'row mt-2'<'col-12't>>" +
                     "<'row justify-content-between mt-2'<'col-md-auto'i><'col-md-auto'p>>",
                 language: {
                     url: 'https://cdn.datatables.net/plug-ins/2.3.2/i18n/th.json',
                     emptyTable: "ยังไม่มีข้อมูลบิลหลอม",
                     processing: 'กำลังโหลดข้อมูล...',
+                },
+                select: {
+                    style: 'multi+shift',
+                    selector: 'td:nth-child(2)'
                 },
                 pageLength: 30,
                 ajax: function (data, callback, settings) {
@@ -1965,9 +2009,20 @@
                         title: '#',
                         orderable: false,
                         searchable: false,
-                        className: 'text-center text-nowrap',
+                        className: 'text-center text-nowrap all',
                         render: function (data, type, row, meta) {
                             return meta.row + 1;
+                        }
+                    },
+                    {
+                        data: null,
+                        title: 'เลือก <input type="checkbox" id="selectAllMeltRows" />',
+                        visible: false,
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center text-nowrap select-checkbox all',
+                        render: function (data, type, row) {
+                            return '';
                         }
                     },
                     {
@@ -2027,6 +2082,13 @@
                         }
                     },
                     {
+                        data: 'percentCalc',
+                        title: '% คำนวณ',
+                        render: function (data) {
+                            return data ? parseFloat(data).toFixed(2) : '-';
+                        }
+                    },
+                    {
                         data: 'sellPrice',
                         title: 'ยอดขาย (บาท)',
                         visible: window.user.role === 'admin',
@@ -2080,7 +2142,33 @@
                 },
                 initComplete: function (settings, json) {
                     NProgress.done();
-                    // $('.buttons-sec3').html(``);
+                    $('.buttons-sec3').html(`
+                        <div class="d-flex flex-wrap gap-2 w-100 mb-2 align-items-center" id="addSellBill" role="group">
+                            <button class="btn btn-warning flex-fill text-nowrap d-flex align-items-center justify-content-center" id="createSellBillBtn">
+                                <i class="bi bi-file-earmark-plus-fill me-2"></i> บันทึกบิลขาย
+                            </button>
+                        </div>
+                        <div class="d-none flex-wrap gap-2 w-100 mb-2 align-items-center" id="sellBillActions" role="group">
+                            <button class="btn btn-primary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="createSellBillBtn" data-bs-toggle="modal" data-bs-target="#sellBillModal">
+                                <i class="bi bi-file-earmark-plus-fill me-2"></i> สร้างบิลขาย
+                            </button>
+                            <button class="btn btn-outline-secondary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="cancelSellBillSelectionBtn" onclick="meltTable.rows({ selected: true }).deselect(); showTableButtons('addSellBill');meltTable.column(1).visible(false);reloadTable('#meltTable');">
+                                <i class="bi bi-x-circle me-2"></i> ยกเลิกการเลือก
+                            </button>
+                        </div>
+                    `);
+
+                    $('.filter-sec3').html(`
+                        <div class="d-flex flex-wrap gap-2 w-100 mb-2 align-items-center" id="filterMeltActions" role="group">
+                            <input type="search" class="form-control rounded-3" id="searchMeltText" placeholder="ค้นหาข้อมูลบิลหลอม...">
+                        </div>
+                    `);
+                    $('#createSellBillBtn').on('click', function () {
+                        createSellBillBtn();
+                    });
+                    $('#searchMeltText').on('input', function () {
+                        meltTable.search(this.value).draw();
+                    });
                 },
                 columnDefs: [
                     {
@@ -2090,19 +2178,54 @@
                 ]
             });
 
+            $(document).on('change', '#selectAllMeltRows', function () {
+                console.log('Select All Melt Rows checkbox changed:', this.checked);
+                if (this.checked) {
+                    // Select all visible/filtered rows
+                    meltTable.rows({ search: 'applied' }).select();
+                } else {
+                    meltTable.rows().deselect();
+                }
+            });
+
         }
+
+
+        function createSellBillBtn() {
+            $('#meltTable').DataTable().column(1).visible(true);
+            showTableButtons('sell');
+        }
+
+
         function showTableButtons(buttonsToShow) {
-            const addActions = $('#addSellDataActions');
-            const meltActions = $('#meltBillActions');
-            addActions.removeClass('d-flex').addClass('d-none');
-            meltActions.removeClass('d-flex').addClass('d-none');
-            if (buttonsToShow === 'add') {
-                addActions.addClass('d-flex').removeClass('d-none');
-            } else if (buttonsToShow === 'melt') {
-                meltActions.addClass('d-flex').removeClass('d-none');
-            } else if (buttonsToShow === 'both') {
-                addActions.addClass('d-flex').removeClass('d-none');
-                meltActions.addClass('d-flex').removeClass('d-none');
+            const buttons = {
+                add: $('#addSellDataActions'),
+                melt: $('#meltBillActions'),
+                sell: $('#sellBillActions'),
+                addSellBill: $('#addSellBill')
+            };
+
+            // Hide all buttons first
+            Object.values(buttons).forEach(btn => btn.removeClass('d-flex').addClass('d-none'));
+
+            // Show specific buttons based on the parameter
+            switch (buttonsToShow) {
+                case 'add':
+                    buttons.add.addClass('d-flex').removeClass('d-none');
+                    break;
+                case 'melt':
+                    buttons.melt.addClass('d-flex').removeClass('d-none');
+                    break;
+                case 'both':
+                    buttons.add.addClass('d-flex').removeClass('d-none');
+                    buttons.melt.addClass('d-flex').removeClass('d-none');
+                    break;
+                case 'sell':
+                    buttons.sell.addClass('d-flex').removeClass('d-none');
+                    break;
+                case 'addSellBill':
+                    buttons.addSellBill.addClass('d-flex').removeClass('d-none');
+                    break;
             }
         }
 

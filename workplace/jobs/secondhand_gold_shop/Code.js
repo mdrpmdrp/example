@@ -277,6 +277,7 @@ function saveMeltBill(meltData) {
         '',
         meltData.meltWeight || '',
         meltData.meltSellPrice || '',
+        "", // sellBillNo
         meltData.recorder || '',
         meltData.branch || '',
         'รอส่ง',
@@ -537,11 +538,13 @@ function getMeltData(branch = 'สาขา 2') {
             buyPrice: row[4],
             afterWeight: row[5],
             sellPrice: row[6],
-            recorder: row[7],
-            branch: row[8],
-            status: row[9],
-            percentAfterMelt: row[10],
-            enableEdit: row[9] !== 'ยกเลิก' && (row[0] >= startOfWeek && row[0] <= endOfWeek),
+            sellBillNo: row[7],
+            recorder: row[8],
+            branch: row[9],
+            status: row[10],
+            percentAfterMelt: row[11],
+            percentCalc: row[12],
+            enableEdit: row[10] !== 'ยกเลิก' && (row[0] >= startOfWeek && row[0] <= endOfWeek),
         }
     }));
 }
@@ -581,7 +584,7 @@ function updateMeltBill(billNo, updateData, updater) {
             row[6] = parseFloat(updateData.sellPrice); 
         }
         if(updateData.percentAfterMelt !== undefined && updateData.percentAfterMelt !== null && updateData.percentAfterMelt !== ''){
-            row[10] = parseFloat(updateData.percentAfterMelt);
+            row[11] = parseFloat(updateData.percentAfterMelt);
         }
         row[3] = '';
         row[4] = '';
@@ -623,7 +626,7 @@ function cancelMeltBill(billNo, canceler) {
 
         let row = dataRange[rowIndex];
 
-        if (row[9] === 'ยกเลิก') {
+        if (row[10] === 'ยกเลิก') {
             return JSON.stringify({ success: false, message: 'บิลหลอมนี้ถูกยกเลิกไปแล้ว' });
         }
 
@@ -687,17 +690,9 @@ function getAccountBalance(branch = 'all') {
         dataRange2.forEach(row => {
             if (row[3] !== 'สด'+branch || row[8] !== 'เสร็จสิ้น') return;
             if (branch === 'all' || row[7] === branch) { // Column H (index 7) is branch
-                if (row[1] === 'รับ') { // Column B (index 1) is type
-                    accountBalance.summary += parseFloat(row[4]) || 0; // Column E (index 4) is amount
-                } else if (row[1] === 'จ่าย') {
-                    accountBalance.summary -= parseFloat(row[4]) || 0; // Column E (index 4) is amount
-                }
+                accountBalance.summary += parseFloat(row[4]) || 0; // Column E (index 4) is amount
                 if (Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today && row[8] === 'เสร็จสิ้น') {
-                    if (row[1] === 'รับ') {
-                        accountBalance.todaytrans += parseFloat(row[4]) || 0;
-                    } else if (row[1] === 'จ่าย') {
-                        accountBalance.todaytrans -= parseFloat(row[4]) || 0;
-                    }
+                    accountBalance.todaytrans += parseFloat(row[4]) || 0;
                 }
             }
         });
@@ -738,14 +733,14 @@ function getMeltSummaryReport(options) {
         // Filter data based on options
         let filteredData = allData.filter(row => {
             if (!row[0] || !(row[0] instanceof Date)) return false;
-            if (row[9] !== 'รอส่ง') return false; // Only include 'รอส่ง' status   
+            if (row[10] !== 'รอส่ง') return false; // Only include 'รอส่ง' status   
 
             // Check date range
             let rowDate = row[0];
             if (rowDate < startDate || rowDate > endDate) return false;
 
             // Check branch
-            if (branch !== 'all' && row[8] !== branch) return false;
+            if (branch !== 'all' && row[10] !== branch) return false;
             return true;
         });
         // Transform data to expected format xxxxxx
@@ -758,10 +753,12 @@ function getMeltSummaryReport(options) {
                 buyPrice: parseFloat(row[4]) || 0,
                 afterWeight: parseFloat(row[5]) || 0,
                 sellPrice: parseFloat(row[6]) || 0,
-                recorder: row[7] || '',
-                branch: row[8] || '',
-                status: row[9] || 'เสร็จสิ้น',
-                percentAfterMelt: parseFloat(row[10]) || 0,
+                sellBillNo: row[7] || '',
+                recorder: row[8] || '',
+                branch: row[9] || '',
+                status: row[10] || 'เสร็จสิ้น',
+                percentAfterMelt: parseFloat(row[11]) || 0,
+                percentCalc: parseFloat(row[12]) || 0,
             };
         });
         return JSON.stringify({
