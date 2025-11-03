@@ -1,3 +1,13 @@
+const SHEET_NAME ={
+    BUY: 'บันทึกซื้อ',
+    TRANSACTION: 'บันทึกการรับจ่าย',
+    SUMMARY: 'สรุป',
+    MELT: 'บันทึกหลอม',
+    LIST: 'List',
+    LOG: 'Event Log',
+    USER: 'Users',
+    BRANCH: 'สาขา',
+}
 function doGet() {
 
     let html = HtmlService.createTemplateFromFile('index');
@@ -18,7 +28,7 @@ function getBuyData(isAll = false, reports = false, branch = '') {
         return JSON.stringify([]);
     }
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('บันทึกซื้อ');
+    let sheet = ss.getSheetByName(SHEET_NAME.BUY);
     let today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
     let lastRow = SuperScript.getRealLastRow('A', sheet);
     if (lastRow < 2) {
@@ -74,7 +84,7 @@ function getBuyData(isAll = false, reports = false, branch = '') {
 
 function getBuySummaryData(isAll = true, branch = 'all') {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('บันทึกซื้อ');
+    let sheet = ss.getSheetByName(SHEET_NAME.BUY);
     let lastRow = SuperScript.getRealLastRow('A', sheet);
     if (lastRow < 2) {
         return JSON.stringify([]);
@@ -112,7 +122,7 @@ function saveSellData(data) {
         throw new Error('ไม่สามารถบันทึกข้อมูลได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง');
     }
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('บันทึกซื้อ');
+    let sheet = ss.getSheetByName(SHEET_NAME.BUY);
     if (data.category === 'ค่าบริการ') {
         data.weight = '';
         // inverse price sign for service fee
@@ -147,7 +157,7 @@ function cancelSellData(uuid, canceler) {
         });
     }
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('บันทึกซื้อ');
+    let sheet = ss.getSheetByName(SHEET_NAME.BUY);
     let finder = sheet.createTextFinder(uuid).findNext()
     if (!finder) {
         lock.releaseLock();
@@ -185,7 +195,7 @@ function cancelTransaction(uuid, canceler) {
         });
     }
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('บันทึกการรับจ่าย');
+    let sheet = ss.getSheetByName(SHEET_NAME.TRANSACTION);
     let finder = sheet.createTextFinder(uuid).findNext()
     if (!finder) {
         lock.releaseLock();
@@ -216,7 +226,7 @@ function cancelTransaction(uuid, canceler) {
 
 function getList() {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let listSheet = ss.getSheetByName('List');
+    let listSheet = ss.getSheetByName(SHEET_NAME.LIST);
     let [header, ...list] = listSheet.getDataRange().getValues()
     let obj = {}
     header.forEach((key, index) => {
@@ -227,7 +237,7 @@ function getList() {
 
 function generateUUID() {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('บันทึกซื้อ');
+    let sheet = ss.getSheetByName(SHEET_NAME.BUY);
     let lock = LockService.getScriptLock();
     if (!lock.tryLock(10000)) {
         throw new Error('ไม่สามารถสร้าง UUID ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง');
@@ -259,7 +269,7 @@ function saveMeltBill(meltData) {
         });
     }
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('บันทึกหลอม');
+    let sheet = ss.getSheetByName(SHEET_NAME.MELT);
     let lastRow = SuperScript.getRealLastRow('A', sheet);
     if (meltData.selectedRows.length === 0) {
         lock.releaseLock();
@@ -284,7 +294,7 @@ function saveMeltBill(meltData) {
         meltData.percentAfterMelt || '',
     ];
     sheet.getRange(lastRow + 1, 1, 1, newRow.length).setValues([newRow]);
-    let buySheet = ss.getSheetByName('บันทึกซื้อ');
+    let buySheet = ss.getSheetByName(SHEET_NAME.BUY);
     lastRow = SuperScript.getRealLastRow('A', buySheet);
     let dataRange = buySheet.getRange(2, 1, lastRow - 1, buySheet.getLastColumn()).getValues();
     meltData.selectedRows.forEach(uuid => {
@@ -320,7 +330,7 @@ function generateMeltBillNo(sheet) {
 
 function getTransactionData(report = true, branch = null) {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('บันทึกการรับจ่าย');
+    let sheet = ss.getSheetByName(SHEET_NAME.TRANSACTION);
     let lastRow = SuperScript.getRealLastRow('A', sheet);
     if (lastRow < 2) {
         return JSON.stringify([]);
@@ -372,7 +382,7 @@ function saveTransactionData(transactionData) {
         });
     }
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('บันทึกการรับจ่าย');
+    let sheet = ss.getSheetByName(SHEET_NAME.TRANSACTION);
     let lastRow = SuperScript.getRealLastRow('A', sheet);
     let newRow = [
         new Date(),
@@ -423,9 +433,9 @@ function getSummaryData(reports, branch) {
 
 function eventLog(message) {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let logSheet = ss.getSheetByName('Event Log');
+    let logSheet = ss.getSheetByName(SHEET_NAME.LOG);
     if (!logSheet) {
-        logSheet = ss.insertSheet('Event Log');
+        logSheet = ss.insertSheet(SHEET_NAME.LOG);
         logSheet.appendRow(['Timestamp', 'Message']);
     }
     logSheet.appendRow([new Date(), message]);
@@ -436,7 +446,7 @@ function onEdit(e) {
     let sheet = e.range.getSheet();
     let col = e.range.getColumn();
     let row = e.range.getRow();
-    if (sheet.getName() === 'บันทึกหลอม' && col === 9 && e.value === 'ยกเลิก') {
+    if (sheet.getName() === SHEET_NAME.MELT && col === 9 && e.value === 'ยกเลิก') {
         let meltBillNo = sheet.getRange(row, 2).getValue();
         cancelMeltBill(meltBillNo, 'ยกเลิกโดยตรงในชีท');
     }
@@ -444,7 +454,7 @@ function onEdit(e) {
 
 function generateMockupTransactionData() {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('บันทึกการรับจ่าย');
+    let sheet = ss.getSheetByName(SHEET_NAME.TRANSACTION);
     let lastRow = SuperScript.getRealLastRow('A', sheet);
     let mockupData = [];
     let mockupBank = ['สด', 'บช.เฮียเจี๋ย', 'บช.หน้าร้าน'];
@@ -467,7 +477,7 @@ function generateMockupTransactionData() {
 function loginUser(formObj) {
     const { username, password } = formObj;
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('Users');
+    let sheet = ss.getSheetByName(SHEET_NAME.USER);
     let data = sheet.getDataRange().getValues().slice(1)
     let userData = data.find(row => row[1] == username && row[2] == password);
     if (!userData) {
@@ -483,7 +493,7 @@ function loginUser(formObj) {
 }
 
 function getBranch() {
-    let branch = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('สาขา').getDataRange().getValues().filter(v => v[0]).map(branch => branch[0].trim()).slice(1);
+    let branch = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME.BRANCH).getDataRange().getValues().filter(v => v[0]).map(branch => branch[0].trim()).slice(1);
     branch.unshift('all');
     return branch;
 }
@@ -494,7 +504,7 @@ function getMeltData(branch = 'สาขา 2') {
     }
 
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('บันทึกหลอม');
+    let sheet = ss.getSheetByName(SHEET_NAME.MELT);
     let lastRow = SuperScript.getRealLastRow('A', sheet);
     if (lastRow < 2) {
         return JSON.stringify([]);
@@ -558,7 +568,7 @@ function updateMeltBill(billNo, updateData, updater) {
 
     try {
         let ss = SpreadsheetApp.getActiveSpreadsheet();
-        let sheet = ss.getSheetByName('บันทึกหลอม');
+        let sheet = ss.getSheetByName(SHEET_NAME.MELT);
         let lastRow = SuperScript.getRealLastRow('A', sheet);
         let dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
 
@@ -608,7 +618,7 @@ function cancelMeltBill(billNo, canceler) {
 
     try {
         let ss = SpreadsheetApp.getActiveSpreadsheet();
-        let meltSheet = ss.getSheetByName('บันทึกหลอม');
+        let meltSheet = ss.getSheetByName(SHEET_NAME.MELT);
         let lastRow = SuperScript.getRealLastRow('A', meltSheet);
         let dataRange = meltSheet.getRange(2, 1, lastRow - 1, meltSheet.getLastColumn()).getValues();
 
@@ -631,7 +641,7 @@ function cancelMeltBill(billNo, canceler) {
         }
 
         // Update buy records - reset bill number
-        let buySheet = ss.getSheetByName('บันทึกซื้อ');
+        let buySheet = ss.getSheetByName(SHEET_NAME.BUY);
         let buyLastRow = SuperScript.getRealLastRow('A', buySheet);
         let buyDataRange = buySheet.getRange(2, 1, buyLastRow - 1, buySheet.getLastColumn()).getValues();
 
@@ -664,8 +674,8 @@ function getAccountBalance(branch = 'all') {
 
     try {
         let ss = SpreadsheetApp.getActiveSpreadsheet();
-        let sheet = ss.getSheetByName('บันทึกซื้อ');
-        let sheet2 = ss.getSheetByName('บันทึกการรับจ่าย');
+        let sheet = ss.getSheetByName(SHEET_NAME.BUY);
+        let sheet2 = ss.getSheetByName(SHEET_NAME.TRANSACTION);
         let lastRow = SuperScript.getRealLastRow('A', sheet);
         let dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
         let lastRow2 = SuperScript.getRealLastRow('A', sheet2);
@@ -709,7 +719,7 @@ function getAccountBalance(branch = 'all') {
 function getMeltSummaryReport(options) {
     try {
         let ss = SpreadsheetApp.getActiveSpreadsheet();
-        let meltSheet = ss.getSheetByName('บันทึกหลอม');
+        let meltSheet = ss.getSheetByName(SHEET_NAME.MELT);
 
         if (!meltSheet) {
             return JSON.stringify({ success: false, message: 'ไม่พบแผ่นงานบันทึกหลอม' });
