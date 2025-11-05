@@ -1530,7 +1530,9 @@
                                         <option value="">-- เลือกนัดหมาย --</option>
                                     </select>
                                     <small class="form-text text-muted" style="font-size: 0.7rem;">
-                                        <span class="super-admin-only mt-2">กรุณาเลือกสาขาและวันที่ก่อน |</span> เมื่อเลือกนัดหมาย ข้อมูลลูกค้าและหมอจะถูกกรอกอัตโนมัติ และสถานะจะเปลี่ยนเป็น "เสร็จสิ้น"
+                                        <span class="super-admin-only mt-2">กรุณาเลือกสาขาและวันที่ก่อน |</span>
+                                        เมื่อเลือกนัดหมาย ข้อมูลลูกค้าและหมอจะถูกกรอกอัตโนมัติ และสถานะจะเปลี่ยนเป็น
+                                        "เสร็จสิ้น"
                                     </small>
                                 </div>
                             </div>
@@ -1616,7 +1618,16 @@
                                 </div>
                             </div>
                         </div>
-
+                        <h6 class="text-primary mb-3">ค่า LAB</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">ค่าทดสอบ LAB (บาท)</label>
+                                    <input type="number" class="form-control" name="labTestFee" min="0" step="1"
+                                        id="labTestFee">
+                                </div>
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">หมายเหตุ</label>
                             <textarea class="form-control" name="notes" rows="2"></textarea>
@@ -2216,7 +2227,7 @@
             });
 
             // Handle appointment selection change
-            $('#appointmentSelect').on('change', function() {
+            $('#appointmentSelect').on('change', function () {
                 const appointmentId = $(this).val();
                 if (appointmentId) {
                     populateRevenueFromAppointment(appointmentId);
@@ -2224,7 +2235,7 @@
             });
 
             // Handle date change in revenue form - reload appointments
-            $(SELECTORS.REVENUE_FORM + ' input[name="date"]').on('change', function() {
+            $(SELECTORS.REVENUE_FORM + ' input[name="date"]').on('change', function () {
                 loadAppointmentsForRevenue();
             });
         }
@@ -2401,7 +2412,7 @@
                 // Load patients and doctors for revenue form
                 loadPatientsForRevenue(); // Load all patients initially
                 loadDoctorsForRevenue();
-                
+
                 // Load appointments for the selected date
                 loadAppointmentsForRevenue();
 
@@ -2604,7 +2615,7 @@
                 loadPatientsForRevenue(selectedBranch);
                 // Clear patient selection when branch changes to avoid confusion
                 $(SELECTORS.REVENUE_FORM + ' select[name="patientId"]').val('').trigger('change').prop('disabled', false);
-                
+
                 // Reload appointments when branch changes (for super_admin)
                 loadAppointmentsForRevenue();
                 // Clear appointment selection when branch changes
@@ -2671,7 +2682,7 @@
                 currentUserType = userData.type;
                 currentUserBranch = userData.branch;
                 currentUserRole = userData.role;
-                
+
                 showMainApp();
             } else {
                 showLoginPage();
@@ -2720,7 +2731,7 @@
                             fullName: result.user.fullName,
                             expired: new Date().getTime() + (8 * 60 * 60 * 1000) // 2 hours expiry
                         }));
-                        
+
 
                         showMainApp();
                         Toast.fire({
@@ -2852,7 +2863,7 @@
 
             // Function to get Thai branch name
             const getBranchDisplayName = (branch) => {
-                
+
                 const branchObj = branches.find(b => b.id === branch);
                 return branchObj ? branchObj.name : (branch || '-');
             };
@@ -3014,7 +3025,7 @@
             google.script.run
                 .withSuccessHandler(function (result) {
                     result = JSON.parse(result);
-                    
+
                     if (result.success) {
                         appointments = result.appointments || [];
                         renderCalendar();
@@ -3083,7 +3094,7 @@
 
         // Doctor management functions
         function loadDoctors(needToCheck = true) {
-            
+
             google.script.run
                 .withSuccessHandler(function (result) {
                     result = JSON.parse(result);
@@ -3169,7 +3180,7 @@
             google.script.run
                 .withSuccessHandler(function (result) {
                     result = JSON.parse(result);
-                    
+
                     if (result.success) {
                         caseTypes = result.options.caseTypes || [];
                         caseDetails = result.options.caseDetails || [];
@@ -3423,7 +3434,7 @@
 
                 // Build options HTML
                 let optionsHtml = '<option value="">เลือกสาขา</option>';
-                
+
                 if (branches.length > 0) {
                     optionsHtml += branches.map(branch =>
                         `<option value="${branch}">${branch}</option>`
@@ -4227,7 +4238,7 @@
             let startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
             let selectedDate = $('#selectedDate').data('date') ? new Date($('#selectedDate').data('date')) : new Date();
-            
+
             let today = new Date();
             let todayStr = today.toDateString();
 
@@ -4323,7 +4334,7 @@
         function renderTodayAppointments() {
             const $container = $(SELECTORS.TODAY_APPOINTMENTS_LIST);
             let selectedDate = $('#selectedDate').data('date') ? new Date($('#selectedDate').data('date')) : null;
-            
+
             if (!selectedDate) selectedDate = new Date();
             const today = moment(selectedDate).format('YYYY-MM-DD');
             $('#selectedDate').text(new Date(today).toLocaleDateString(CONFIG.DATE_FORMAT_TH, {
@@ -4357,7 +4368,7 @@
                 acc[doctor.id] = `${doctor.first_name} ${doctor.last_name}`;
                 return acc;
             }, {});
-            
+
 
             // Build HTML array for single DOM update
             const htmlParts = todayAppts.map(apt => {
@@ -4370,7 +4381,7 @@
                 // Get branch display name
                 const branch = branches.find(b => b.value === apt.branch);
                 const branchName = branch ? branch.displayName : apt.branch || 'ไม่ระบุสาขา';
-                
+
 
                 return `<li class="list-group-item d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1 btn text-start" onclick="editAppointment('${apt.id}')">
@@ -4656,10 +4667,10 @@
                 return;
             }
 
-            
-            
+
+
             const doctor = doctors.find(d => d.id === doctorId);
-            
+
             if (!doctor) return;
 
             const form = $('#doctorForm')[0];
@@ -4847,7 +4858,7 @@
                 phone: formData.get('phone'),
                 status: formData.get('status') === 'active' ? 'active' : 'disable'
             };
-            
+
 
             const userId = e.target.dataset.userId;
             const isEdit = Boolean(userId);
@@ -4951,7 +4962,7 @@
         function editUser(username) {
             const user = users.find(u => u.username === username);
             if (!user) return;
-            
+
             const form = $(SELECTORS.USER_FORM)[0];
             form.dataset.userId = username;
 
@@ -5083,7 +5094,7 @@
                     originalAppointmentFormData[input.name] = input.value || '';
                 }
             });
-            
+
 
             isAppointmentFormDirty = false;
 
@@ -5544,7 +5555,7 @@
                     currentAppointmentFormData[input.name] = input.value || '';
                 }
             });
-            
+
             return JSON.stringify(currentAppointmentFormData) !== JSON.stringify(originalAppointmentFormData);
         }
 
@@ -5630,7 +5641,7 @@
                 status: formData.get('status'),
                 branch: currentUserRole === 'super_admin' ? formData.get('branch') : currentUserBranch // Use form branch for super_admin, otherwise use user's branch
             };
-            
+
 
             const showAppointmentLoading = () => {
                 NProgress.start();
@@ -5804,9 +5815,9 @@
         }
 
         function editAppointment(appointmentId) {
-            
+
             const appointment = appointments.find(a => a.id === appointmentId);
-            
+
             if (!appointment) return;
 
             const form = document.querySelector(SELECTORS.APPOINTMENT_FORM);
@@ -5855,7 +5866,7 @@
                 caseDetails.forEach(detail => {
                     if (detail.startsWith('อื่นๆ: ')) {
                         // Legacy "Other" option - skip since we removed this functionality
-                        
+
                     } else {
                         const pill = secondContainer.querySelector(`.case-details-pill[data-value="${detail}"]`);
                         if (pill) {
@@ -5889,7 +5900,7 @@
             $('[name="doctorId"]').val(appointment.doctor_id).trigger('change');
             form.querySelector('[name="appointmentDate"]')._flatpickr.setDate(moment(appointment.appointment_date).format('YYYY-MM-DD'), true);
             form.querySelector('[name="appointmentTime"]')._flatpickr.setDate(appointment.appointment_time, true);
-            
+
             // Show modal
             const modal = new bootstrap.Modal(document.querySelector(SELECTORS.APPOINTMENT_MODAL));
             modal.show();
@@ -5902,7 +5913,7 @@
             const dateInput = document.querySelector(SELECTORS.REVENUE_FORM + ' input[name="date"]');
             const selectedDate = dateInput ? dateInput.value : '';
             const appointmentSelect = $('#appointmentSelect');
-            
+
             if (!selectedDate) {
                 appointmentSelect.html('<option value="">-- เลือกวันที่ก่อน --</option>');
                 return;
@@ -5913,7 +5924,7 @@
             if (currentUserRole === 'super_admin') {
                 const branchInput = document.querySelector(SELECTORS.REVENUE_FORM + ' select[name="branch"]');
                 selectedBranch = branchInput ? branchInput.value : '';
-                
+
                 if (!selectedBranch) {
                     appointmentSelect.html('<option value="">-- เลือกสาขาก่อน --</option>');
                     return;
@@ -5925,7 +5936,7 @@
                 const aptDate = moment(apt.appointment_date).format('YYYY-MM-DD');
                 const matchDate = aptDate === selectedDate;
                 const isNotCompleted = apt.status !== 'completed' && apt.status !== 'cancelled';
-                
+
                 // Filter by branch
                 let matchBranch = true;
                 if (currentUserRole === 'super_admin') {
@@ -5935,27 +5946,27 @@
                     // For other users, filter by their own branch
                     matchBranch = apt.branch === currentUserBranch;
                 }
-                
+
                 return matchDate && isNotCompleted && matchBranch;
             });
 
             // Build options
             let options = '<option value="">-- เลือกนัดหมาย --</option>';
-            
+
             if (dateAppointments.length > 0) {
                 dateAppointments.forEach(apt => {
                     const patient = patients.find(p => p.id === apt.patient_id);
                     const doctor = doctors.find(d => d.id === apt.doctor_id);
-                    
-                    const patientName = patient ? 
-                        `${patient.title_prefix ? patient.title_prefix + ' ' : ''}${patient.first_name} ${patient.last_name}` : 
+
+                    const patientName = patient ?
+                        `${patient.title_prefix ? patient.title_prefix + ' ' : ''}${patient.first_name} ${patient.last_name}` :
                         'ไม่ระบุลูกค้า';
-                    const doctorName = doctor ? 
-                        `${doctor.first_name} ${doctor.last_name}` : 
+                    const doctorName = doctor ?
+                        `${doctor.first_name} ${doctor.last_name}` :
                         'ไม่ระบุหมอ';
                     const time = apt.appointment_time || 'ไม่ระบุเวลา';
                     const statusText = getStatusText(apt.status);
-                    
+
                     options += `<option value="${apt.id}">${time} - ${patientName} (หมอ: ${doctorName}) [${statusText}]</option>`;
                 });
             } else {
@@ -5966,21 +5977,21 @@
                     options = '<option value="">-- ไม่มีนัดหมายในวันที่เลือก --</option>';
                 }
             }
-            
+
             appointmentSelect.html(options);
         }
 
         // Function to populate revenue form from selected appointment
         function populateRevenueFromAppointment(appointmentId) {
             const appointment = appointments.find(a => a.id === appointmentId);
-            
+
             if (!appointment) return;
 
             const form = document.querySelector(SELECTORS.REVENUE_FORM);
-            
+
             // Store appointment ID for later status update
             form.dataset.linkedAppointmentId = appointmentId;
-            
+
             // Populate patient and doctor
             setTimeout(() => {
                 $('[name="patientId"]').val(appointment.patient_id).trigger('change');
@@ -5991,13 +6002,13 @@
             if (appointment.case_type) {
                 const caseTypes = appointment.case_type.split(', ');
                 const caseTypeContainer = form.querySelector('#revenueCaseTypeContainer');
-                
+
                 // Reset existing selections
                 caseTypeContainer.querySelectorAll('.pill-option').forEach(pill => {
                     pill.classList.remove('selected');
                 });
                 form.querySelectorAll('input[name="caseType"][type="hidden"]').forEach(input => input.remove());
-                
+
                 // Select case types
                 caseTypes.forEach(type => {
                     const pill = caseTypeContainer.querySelector(`.pill-option[data-value="${type}"]`);
@@ -6010,13 +6021,13 @@
             if (appointment.case_details) {
                 const caseDetails = appointment.case_details.split(', ');
                 const caseDetailsContainer = form.querySelector('#revenueCaseDetailsContainer');
-                
+
                 // Reset existing selections
                 caseDetailsContainer.querySelectorAll('.pill-option').forEach(pill => {
                     pill.classList.remove('selected');
                 });
                 form.querySelectorAll('input[name="caseDetails"][type="hidden"]').forEach(input => input.remove());
-                
+
                 // Select case details
                 caseDetails.forEach(detail => {
                     const pill = caseDetailsContainer.querySelector(`.pill-option[data-value="${detail}"]`);
@@ -6181,10 +6192,10 @@
                         if (result.success) {
                             // Check if there's a linked appointment to update
                             const linkedAppointmentId = e.target.dataset.linkedAppointmentId;
-                            
+
                             if (linkedAppointmentId) {
                                 // Update appointment status to completed
-                                updateAppointmentStatusToCompleted(linkedAppointmentId, function() {
+                                updateAppointmentStatusToCompleted(linkedAppointmentId, function () {
                                     loadRevenues(false);
                                     loadAppointments(false); // Reload appointments to show updated status
                                     closeRevenueModal(e.target);
@@ -6229,7 +6240,7 @@
         // Function to update appointment status to completed
         function updateAppointmentStatusToCompleted(appointmentId, callback) {
             const appointment = appointments.find(a => a.id === appointmentId);
-            
+
             if (!appointment) {
                 console.error('Appointment not found:', appointmentId);
                 if (callback) callback();
@@ -6265,11 +6276,11 @@
                     console.error('Error updating appointment status:', error);
                     if (callback) callback();
                 })
-                [API_METHODS.UPDATE_APPOINTMENT](appointmentId, appointmentData, {
-                    username: currentUser,
-                    branch: currentUserBranch,
-                    role: currentUserRole
-                });
+            [API_METHODS.UPDATE_APPOINTMENT](appointmentId, appointmentData, {
+                username: currentUser,
+                branch: currentUserBranch,
+                role: currentUserRole
+            });
         }
 
         function closeRevenueModal(form) {
@@ -6289,7 +6300,7 @@
                     $(select).val('').trigger('change');
                 }
             });
-            
+
             // Reset appointment select specifically
             $('#appointmentSelect').val('').trigger('change');
 
@@ -6477,7 +6488,7 @@
             }
 
             // Daily revenue
-            
+
             const dailyRev = filteredRevenues.filter(r => moment(r.date).format('YYYY-MM-DD') === todayStr)
                 .reduce((sum, r) => sum + calculateRevenueAmount(r), 0);
             $(SELECTORS.DAILY_REVENUE).text(`${dailyRev.toLocaleString()} ${UI_TEXT.LABELS.BAHT}`);
@@ -6660,11 +6671,11 @@
         function renderReports() {
             // Only admin and super_admin users should see reports
             if (currentUserRole === 'user') {
-                
+
                 return;
             }
 
-            
+
 
             // Get selected branch filter
             const selectedBranch = document.querySelector('#reportsBranchFilter')?.value || '';
