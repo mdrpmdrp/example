@@ -362,7 +362,7 @@
                                 รายการบิลหลอม
                             </button>
                         </li>
-                        <i class="nav-item">
+                        <i class="nav-item admin-only d-none">
                             <button class="nav-link px-3 fw-semibold text-secondary simple-popout"
                                 id="showSellBillSectionBtn">
                                 รายการบิลขาย
@@ -987,6 +987,85 @@
         </div>
     </div>
 
+    <!-- Modal for Edit Sell Bill -->
+    <div class="modal fade" id="editSellBillModal" tabindex="-1" aria-labelledby="editSellBillModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content gold-form-card">
+                <div class="modal-header border-0 bg-light">
+                    <h3 class="modal-title gold-title w-100 text-center" id="editSellBillModalLabel">
+                        แก้ไขข้อมูลบิลขาย</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                </div>
+                <div class="modal-body" style="background: #fff; color: #232526;">
+                    <form id="editSellBillForm" onsubmit="submitEditSellBillForm(event)">
+                        <div class="mb-3">
+                            <label for="editSellBillNo" class="form-label text-dark">หมายเลขบิลขาย</label>
+                            <input type="text" class="form-control bg-secondary-subtle" id="editSellBillNo"
+                                name="editSellBillNo" readonly
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editSellBillDate" class="form-label text-dark">วันที่</label>
+                            <input type="text" class="form-control" id="editSellBillDate" name="editSellBillDate"
+                                placeholder="เลือกวันที่" required
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editSellPercentAfterMelt" class="form-label text-dark">% ที่ได้</label>
+                                    <input type="number" class="form-control" id="editSellPercentAfterMelt"
+                                        name="editSellPercentAfterMelt" placeholder="กรอก % ที่ได้" min="0" step="0.01"
+                                        style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editSellBillPrice" class="form-label text-dark">ยอดขาย (บาท)</label>
+                                    <input type="number" class="form-control" id="editSellBillPrice" name="editSellBillPrice"
+                                        placeholder="กรอกยอดขาย" min="0" step="0.01" required
+                                        style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editSellBillStatus" class="form-label text-dark">สถานะบิลขาย</label>
+                                    <select class="form-select" id="editSellBillStatus" name="editSellBillStatus" required
+                                        style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                                        <option value="" disabled selected></option>
+                                        <option value="หลอมรวม">หลอมรวม</option>
+                                        <option value="สกัด">สกัด</option>
+                                        <option value="ส่งขาย">ส่งขาย</option>
+                                        <option value="ขายแล้ว">ขายแล้ว</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="editSellBillBank" class="form-label text-dark">ธนาคาร</label>
+                                    <select class="form-select" id="editSellBillBank" name="editSellBillBank" required
+                                        style="border: 1.5px solid #d4af37; background: #fff; color: #232526;">
+                                        <option value="" disabled selected></option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editSellBillNote" class="form-label text-dark">หมายเหตุ</label>
+                            <textarea class="form-control" id="editSellBillNote" name="editSellBillNote"
+                                rows="3" placeholder="กรอกหมายเหตุ (ถ้ามี)"
+                                style="border: 1.5px solid #d4af37; background: #fff; color: #232526;"></textarea>
+                        </div>
+                        <button type="submit" class="btn gold-btn w-100 py-2 fw-bold">บันทึกการแก้ไข</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal for Melt Summary Date Range Selection -->
     <div class="modal fade" id="meltSummaryModal" tabindex="-1" aria-labelledby="meltSummaryModalLabel"
         aria-hidden="true">
@@ -1431,6 +1510,12 @@
                 $('#editMeltBillForm').removeData('currentData');
             });
 
+            $('#editSellBillModal').on('hidden.bs.modal', function () {
+                $('#editSellBillForm')[0].reset();
+                $('#editSellBillForm').removeData('currentData');
+                $('#editSellBillDate')[0]._flatpickr.destroy();
+            });
+
             $('#category').change(function () {
                 if ($(this).val() === 'ค่าบริการ') {
                     $('#product, #weight').val("").removeAttr('required').parent('.mb-3').hide()
@@ -1441,7 +1526,7 @@
 
             $('#showSellSectionBtn').on('click', function () {
                 $('.nav-link').removeClass('active');
-                showTableButtons('add')
+                showTableButtons('addSellBill')
                 $('#showSellSectionBtn').addClass('active');
                 if (!$('#main-sec').is(':visible')) {
                     let currentShow = $('section:visible');
@@ -2306,6 +2391,11 @@
                         }
                     },
                     {
+                        data: 'sellBillNo',
+                        title: 'บิลขายที่สร้าง',
+                        visible: false,
+                    },
+                    {
                         data: null,
                         title: 'การดำเนินการ',
                         orderable: false,
@@ -2347,7 +2437,7 @@
                             <button class="btn btn-primary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="createSellBillBtn" data-bs-toggle="modal" data-bs-target="#sellBillModal">
                                 <i class="bi bi-file-earmark-plus-fill me-2"></i> สร้างบิลขาย
                             </button>
-                            <button class="btn btn-outline-secondary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="cancelSellBillSelectionBtn" onclick="meltTable.rows({ selected: true }).deselect(); showTableButtons('addSellBill');meltTable.column(1).visible(false);reloadTable('#meltTable');">
+                            <button class="btn btn-outline-secondary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="cancelSellBillSelectionBtn" onclick="meltTable.rows({ selected: true }).deselect(); showTableButtons('addSellBill');meltTable.column(1).visible(false);meltTable.column(14).search('').draw();reloadTable('#meltTable');">
                                 <i class="bi bi-x-circle me-2"></i> ยกเลิกการเลือก
                             </button>
                         </div>
@@ -2470,50 +2560,36 @@
                         }
                     },
                     {
-                        data: 'billNo',
-                        title: 'หมายเลขบิล',
+                        data: 'summaryWeightBefore',
+                        title: 'นน.รวมก่อนหลอม',
                         render: function (data) {
                             return data || 'ไม่ระบุ';
                         }
                     },
                     {
-                        data: 'meltType',
-                        title: 'หมวดหมู่',
+                        data: 'summaryWeightAfter',
+                        title: 'นน.รวมหลังหลอม',
                         render: function (data) {
                             return data || 'ไม่ระบุ';
-                        }
-                    },
-                    {
-                        data: 'beforeWeight',
-                        title: 'น้ำหนักก่อนหลอม (กรัม)',
-                        render: function (data) {
-                            return data ? parseFloat(data).toFixed(2) : '0.00';
-                        }
-                    },
-                    {
-                        data: 'buyPrice',
-                        title: 'ยอดซื้อ (บาท)',
-                        render: function (data) {
-                            return data ? parseInt(data).toLocaleString('th-TH') : '0';
-                        }
-                    },
-                    {
-                        data: 'afterWeight',
-                        title: 'น้ำหนักหลังหลอม (กรัม)',
-                        render: function (data) {
-                            return data ? parseFloat(data).toFixed(2) : '-';
-                        }
-                    },
-                    {
-                        data: 'percentAfterMelt',
-                        title: '% ที่ได้',
-                        render: function (data) {
-                            return data ? parseFloat(data).toFixed(1) + '%' : '-';
                         }
                     },
                     {
                         data: 'percentCalc',
                         title: '% คำนวณ',
+                        render: function (data) {
+                            return data ? parseFloat(data).toFixed(2) : '0.00';
+                        }
+                    },
+                    {
+                        data: 'summaryPrice',
+                        title: 'ยอดซื้อรวม (บาท)',
+                        render: function (data) {
+                            return data ? parseInt(data).toLocaleString('th-TH') : '0';
+                        }
+                    },
+                    {
+                        data: 'sellPercentAfterMelt',
+                        title: '% ที่ได้',
                         render: function (data) {
                             return data ? parseFloat(data).toFixed(1) + '%' : '-';
                         }
@@ -2527,15 +2603,22 @@
                         }
                     },
                     {
-                        data: 'recorder',
-                        title: 'ผู้บันทึก',
+                        data: 'sellBillBank',
+                        title: 'ธนาคาร',
                         render: function (data) {
                             return data || 'ไม่ระบุ';
                         }
                     },
                     {
-                        data: 'branch',
-                        title: 'สาขา',
+                        data: 'sellBillNote',
+                        title: 'หมายเหตุ',
+                        render: function (data) {
+                            return data || 'ไม่ระบุ';
+                        }
+                    },
+                    {
+                        data: 'recorder',
+                        title: 'ผู้บันทึก',
                         render: function (data) {
                             return data || 'ไม่ระบุ';
                         }
@@ -2547,19 +2630,10 @@
                         searchable: false,
                         render: function (data, type, row) {
                             let buttons = '';
-
-                            // แก้ไขข้อมูล - ทุกคนสามารถแก้ไขได้ (แต่สิทธิ์จะแตกต่างกัน)
-                            if (row.enableEdit) {
-                                buttons += '<button type="button" class="btn btn-sm btn-warning me-1 mb-1" onclick="editMeltBill(this);">' +
-                                    '<i class="bi bi-pencil-square"></i> แก้ไข</button>';
-                            }
-
-                            // ยกเลิกบิล - เฉพาะ admin
-                            if (window.user.role === 'admin' && row.status !== 'ยกเลิก') {
-                                buttons += '<button type="button" class="btn btn-sm btn-danger mb-1" onclick="cancelMeltBill(this);">' +
-                                    '<i class="bi bi-x-circle"></i> ยกเลิก</button>';
-                            }
-
+                            buttons += '<button type="button" class="btn btn-sm btn-warning me-1 mb-1" onclick="editSellBill(this);">' +
+                                '<i class="bi bi-pencil-square"></i> แก้ไข</button>';
+                            buttons += '<button type="button" class="btn btn-sm btn-danger mb-1" onclick="cancelSellBill(this);">' +
+                                '<i class="bi bi-x-circle"></i> ยกเลิก</button>';
                             return buttons || '<span class="text-muted">-</span>';
                         }
                     }
@@ -2623,7 +2697,8 @@
 
 
         function createSellBillBtn() {
-            $('#meltTable').DataTable().column(1).visible(true);
+            meltTable.column(14).search('^$', true, false).draw();
+            meltTable.column(1).visible(true);
             showTableButtons('sell');
         }
 
@@ -2862,6 +2937,91 @@
             $('#editMeltBillModal').modal('show');
         }
 
+        function editSellBill(button) {
+            const row = $(button).closest('tr');
+            const data = sellBillTable.row(row).data(); // Assuming sell bills are displayed in melt table or similar
+
+            if (!data) return;
+            console.log("🚀 ~ editSellBill ~ data:", data)
+
+            // Fill modal with current data
+            $('#editSellBillNo').val(data.sellBillNo || data.billNo);
+            // $('#editSellBillDate')._flatpickr.setDate(data.date || moment().format('YYYY-MM-DD'));
+            $('#editSellPercentAfterMelt').val(data.sellPercentAfterMelt || data.percentAfterMelt || '');
+            $('#editSellBillPrice').val(data.sellPrice || '');
+            $('#editSellBillStatus').val(data.sellBillStatus || '');
+            $('#editSellBillBank').val(data.sellBillBank || '');
+            $('#editSellBillNote').val(data.sellBillNote || '');
+            flatpickr('#editSellBillDate', {
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd/m/Y',
+                defaultDate: data.date || moment().format('YYYY-MM-DD'),
+                locale: 'th'
+            });
+
+            // Store current data for form submission
+            $('#editSellBillForm').data('currentData', data);
+
+            $('#editSellBillModal').modal('show');
+        }
+
+        function submitEditSellBillForm(e) {
+            e.preventDefault();
+            const form = document.getElementById('editSellBillForm');
+            const currentData = $('#editSellBillForm').data('currentData');
+
+            const updateData = {
+                sellBillDate: $('#editSellBillDate').data('date') || moment().format('YYYY-MM-DD'),
+                sellPercentAfterMelt: form.editSellPercentAfterMelt.value,
+                sellPrice: form.editSellBillPrice.value,
+                sellBillStatus: form.editSellBillStatus.value,
+                sellBillBank: form.editSellBillBank.value,
+                sellBillNote: form.editSellBillNote.value
+            };
+
+            NProgress.start();
+            goldSwal({
+                title: 'กำลังบันทึกการแก้ไข...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            google.script.run.withSuccessHandler(function (response) {
+                NProgress.done();
+                const result = JSON.parse(response);
+
+                if (result.success) {
+                    goldSwal({
+                        icon: 'success',
+                        title: 'แก้ไขข้อมูลสำเร็จ',
+                        text: result.message,
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                    $('#editSellBillModal').modal('hide');
+                    reloadTable('#sellBillTable'); // Reload the appropriate table
+                    refreshDashboard(); // อัปเดต Dashboard
+                } else {
+                    goldSwal({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: result.message
+                    });
+                }
+            }).withFailureHandler(function (error) {
+                NProgress.done();
+                goldSwal({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: error.message || error
+                });
+            }).updateSellBill(currentData.sellBillNo || currentData.billNo, updateData, window.user.name);
+        }
+
         function submitEditMeltBillForm(e) {
             e.preventDefault();
             const form = document.getElementById('editMeltBillForm');
@@ -2991,6 +3151,76 @@
             });
         }
 
+        function cancelSellBill(button) {
+            const row = $(button).closest('tr');
+            const data = sellBillTable.row(row).data();
+
+            if (!data) return;
+
+            goldSwal({
+                title: 'ยืนยันการยกเลิกบิลขาย',
+                html: `
+                    <div class="container-fluid">
+                        <p>คุณต้องการยกเลิกบิลขายนี้ใช่หรือไม่?</p>
+                        <table class="table table-bordered table-sm mb-4 table-light" style="border-color:#d4af37;">
+                            <tbody>
+                                <tr><td class="fw-bold">หมายเลขบิล:</td><td>${data.sellBillNo || data.billNo}</td></tr>
+                                <tr><td class="fw-bold">ยอดขาย:</td><td>${data.sellPrice ? parseInt(data.sellPrice).toLocaleString('th-TH') : '-'} บาท</td></tr>
+                                <tr><td class="fw-bold">ผู้บันทึก:</td><td>${data.recorder}</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยันยกเลิก',
+                cancelButtonText: 'ปิด',
+                confirmButtonColor: '#dc3545'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    NProgress.start();
+                    goldSwal({
+                        title: 'กำลังยกเลิกบิลขาย...',
+                        text: 'กรุณารอสักครู่',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    google.script.run.withSuccessHandler(function (response) {
+                        NProgress.done();
+                        const result = JSON.parse(response);
+
+                        if (result.success) {
+                            goldSwal({
+                                icon: 'success',
+                                title: 'ยกเลิกบิลขายสำเร็จ',
+                                text: result.message,
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
+                            reloadTable('#sellBillTable');
+                            refreshDashboard(); // อัปเดต Dashboard
+                        } else {
+                            goldSwal({
+                                icon: 'error',
+                                title: 'เกิดข้อผิดพลาด',
+                                text: result.message
+                            });
+                        }
+                    }).withFailureHandler(function (error) {
+                        NProgress.done();
+                        goldSwal({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: error.message || error
+                        });
+                    }).cancelSellBill(data.sellBillNo || data.billNo, window.user.name);
+                }
+            });
+        }
+
     </script>
     <script>
         function createMeltBillBtn() {
@@ -3018,18 +3248,8 @@
             // }).then((result) => {
             //     if (result.isConfirmed && result.value) {
             reloadTable('#goldTable', true);
-            goldSwal({
-                icon: 'success',
-                html: 'กรุณาเลือกแถวที่ต้องการสร้างบิลหลอม<br>และคลิกปุ่ม <span class="text-primary fw-bold">สร้างบิลหลอม</span>',
-                confirmButtonText: 'ตกลง',
-                showCancelButton: true,
-                cancelButtonText: 'ยกเลิก',
-            }).then((res) => {
-                if (res.isConfirmed) {
-                    datatable.column(1).visible(true);
-                    showTableButtons('melt');
-                }
-            });
+            datatable.column(1).visible(true);
+            showTableButtons('melt');
             //     }
             // });
         }
@@ -3141,6 +3361,23 @@
                 }
             });
 
+            flatpickr("#editSellBillDate", {
+                locale: "th",
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "d/m/Y",
+                onReady: function (selectedDates, dateStr, instance) {
+                    // Style the input with gold theme
+                    instance.altInput.style.borderColor = '#d4af37';
+                    instance.altInput.style.background = '#fff';
+                    instance.altInput.style.color = '#232526';
+                },
+                onChange: function(selectedDates, dateStr, instance) {
+                    // Update the data attribute when date changes
+                    $('#editSellBillDate').data('date', dateStr);
+                }
+            });
+
         })
             .on('hidden.bs.modal', function () {
                 $('#sellBillSelectedRowsTable tbody').empty();
@@ -3222,15 +3459,15 @@
                 recorder: window.user.name,
                 branch: window.user.branch || 'สาขาหลัก',
                 selectedRows: selectedRows.map(row => row.billNo),
-                sellPrice: form.find('#sellPrice').val(),
+                sellPrice: selectedRows.reduce((acc, row) => acc + (parseFloat(row.sellPrice) || 0), 0),
                 sellPercentAfterMelt: form.find('#sellPercentAfterMelt').val(),
                 percentCalc: selectedRows.reduce((acc, row) => acc + (parseFloat(row.percentCalc) || 0), 0) / selectedRows.length,
                 date: form.find('#sellBillDate').val(),
                 summaryWeightBefore: parseFloat($('#sellSummaryWeightBefore').text().replace(/,/g, '')),
                 summaryWeightAfter: parseFloat($('#sellSummaryWeightAfter').text().replace(/,/g, '')),
                 summaryPrice: parseFloat($('#sellSummaryPrice').text().replace(/,/g, '')),
-                sellBillStatus:  $('#sellBillStatus').val(),
-                sellBillBank : $('#sellBillBank').val(),
+                sellBillStatus: $('#sellBillStatus').val(),
+                sellBillBank: $('#sellBillBank').val(),
                 sellBillNote: $('#sellBillNote').val()
             };
             if (sellData.selectedRows.length === 0) {
@@ -3538,8 +3775,13 @@
                 $('#bank, #transactionBank').empty().append(new Option('เลือกบัญชี', '', true, true));
                 $('#bill-branch').text(user.branch || '-');
                 user.allowAccounts.forEach(bank => {
-                    $('#bank, #transactionBank, #sellBillBank').append(new Option(bank, bank));
+                    $('#bank, #transactionBank, #sellBillBank, #editSellBillBank').append(new Option(bank, bank));
                 });
+                if(user.role === 'staff') {
+                    $('.admin-only').remove();
+                }else{
+                    $('.admin-only').removeClass('d-none');
+                }
 
                 // โหลด Dashboard
                 loadDashboard();

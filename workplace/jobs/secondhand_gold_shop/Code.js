@@ -1,8 +1,9 @@
-const SHEET_NAME ={
+const SHEET_NAME = {
     BUY: 'บันทึกซื้อ',
     TRANSACTION: 'บันทึกการรับจ่าย',
     SUMMARY: 'สรุป',
     MELT: 'บันทึกหลอม',
+    SELL: 'บันทึกขาย',
     LIST: 'List',
     LOG: 'Event Log',
     USER: 'Users',
@@ -318,14 +319,83 @@ function generateMeltBillNo(sheet) {
     const year = now.getFullYear() > 2300 ? now.getFullYear() : now.getFullYear() + 543;
     const prefix = year.toString().slice(-2) + Utilities.formatDate(now, Session.getScriptTimeZone(), 'MMdd');
     const lastRow = SuperScript.getRealLastRow('A', sheet);
-    if (lastRow < 2) return prefix + '01';
+    if (lastRow < 2) return prefix + '001';
 
     const lastBillNo = String(sheet.getRange(lastRow, 2).getValue());
-    if (!lastBillNo.startsWith(prefix)) return prefix + '1';
+    if (!lastBillNo.startsWith(prefix)) return prefix + '001';
 
     const lastNumber = parseInt(lastBillNo.slice(prefix.length), 10);
-    if (isNaN(lastNumber)) return prefix + '1'; // Fallback if last number is not a valid number
-    return prefix + String(lastNumber + 1)
+    if (isNaN(lastNumber)) return prefix + '001'; // Fallback if last number is not a valid number
+    return prefix + String(lastNumber + 1).padStart(3, '0');
+}
+
+function saveSellBill(sellData) {
+    let lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+        return JSON.stringify({
+            success: false,
+            message: 'ไม่สามารถบันทึกข้อมูลได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง'
+        });
+    }
+    let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEET_NAME.SELL);
+    let lastRow = SuperScript.getRealLastRow('A', sheet);
+    if (sellData.selectedRows.length === 0) {
+        lock.releaseLock();
+        return JSON.stringify({
+            success: false,
+            message: 'กรุณาเลือกข้อมูลที่ต้องการขาย'
+        })
+    }
+    let sellBillNo = generateSellBillNo(sheet)
+    let newRow = [
+        new Date(),
+        sellBillNo,
+        sellData.summaryWeightBefore || '',
+        sellData.summaryWeightAfter || '',
+        sellData.percentCalc || '',
+        sellData.summaryPrice || '',
+        sellData.sellBillStatus || '',
+        sellData.sellPercentAfterMelt || '',
+        sellData.sellPrice || '',
+        sellData.sellBillBank || '',
+        sellData.sellBillNote || '',
+        sellData.recorder || ''
+    ];
+    sheet.getRange(lastRow + 1, 1, 1, newRow.length).setValues([newRow]);
+    let meltSheet = ss.getSheetByName(SHEET_NAME.MELT);
+    lastRow = SuperScript.getRealLastRow('A', meltSheet);
+    let dataRange = meltSheet.getRange(2, 1, lastRow - 1, meltSheet.getLastColumn()).getValues();
+    sellData.selectedRows.forEach(melt_id => {
+        let rowIndex = dataRange.findIndex(row => row[1] === melt_id); // Assuming UUID is in column B (index 1)
+        if (rowIndex !== -1) {
+            let row = dataRange[rowIndex];
+            row[7] = sellBillNo; // Update bill number
+            row[3] = row[4] = row[12] = row[15] = '';
+            meltSheet.getRange(rowIndex + 2, 1, 1, row.length).setValues([row]); // +2 because of header and zero-based index
+        }
+    });
+    eventLog('บันทึกข้อมูลการขาย\n' + newRow.join(', ') + '\nโดย ' + sellData.recorder);
+    lock.releaseLock();
+    return JSON.stringify({
+        success: true,
+        message: 'บันทึกข้อมูลการขายสำเร็จ<br>หมายเลขบิลขาย: ' + sellBillNo
+    });
+}
+
+function generateSellBillNo(sheet) {
+    const now = new Date();
+    const year = now.getFullYear() > 2300 ? now.getFullYear() : now.getFullYear() + 543;
+    const prefix = "S" + year.toString().slice(-2) + Utilities.formatDate(now, Session.getScriptTimeZone(), 'MMdd');
+    const lastRow = SuperScript.getRealLastRow('A', sheet);
+    if (lastRow < 2) return prefix + '001';
+
+    const lastBillNo = String(sheet.getRange(lastRow, 2).getValue());
+    if (!lastBillNo.startsWith(prefix)) return prefix + '001';
+
+    const lastNumber = parseInt(lastBillNo.slice(prefix.length), 10);
+    if (isNaN(lastNumber)) return prefix + '001'; // Fallback if last number is not a valid number
+    return prefix + String(lastNumber + 1).padStart(3, '0');
 }
 
 function getTransactionData(report = true, branch = null) {
@@ -518,7 +588,7 @@ function getMeltData(branch = 'สาขา 2') {
         // get last monday
         startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() - 1));
         endOfWeek.setDate(startOfWeek.getDate() + 6);
-    }else if (startOfWeek.getDay() === 0) { // If today is Sunday
+    } else if (startOfWeek.getDay() === 0) { // If today is Sunday
         // get last monday
         startOfWeek.setDate(startOfWeek.getDate() - 6);
         // endOfWeek.setDate(startOfWeek.getDate() + 6);
@@ -559,6 +629,48 @@ function getMeltData(branch = 'สาขา 2') {
     }));
 }
 
+function getSellBillData(branch = 'สาขา 2') {
+    if (!branch || branch === '') {
+        return JSON.stringify([]);
+    }
+    let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEET_NAME.SELL);
+    let lastRow = SuperScript.getRealLastRow('A', sheet);
+    if (lastRow < 2) {
+        return JSON.stringify([]);
+    }
+    let timezone = Session.getScriptTimeZone();
+    let today = Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd');
+    let data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues().filter(row => {
+        return row[0] && row[0] instanceof Date;
+    });
+
+    // Filter by branch
+    data = data.filter(row => {
+        return branch === 'all' || row[11] === branch; // Column L (index 11) is recorder/branch
+    });
+    // Sort by date descending
+    data = data.sort((a, b) => {
+        return b[0] - a[0];
+    });
+    return JSON.stringify(data.map(row => {
+        return {
+            date: row[0],
+            billNo: row[1],
+            summaryWeightBefore: row[2],
+            summaryWeightAfter: row[3],
+            percentCalc: row[4],
+            summaryPrice: row[5],
+            sellBillStatus: row[6],
+            sellPercentAfterMelt: row[7],
+            sellPrice: row[8],
+            sellBillBank: row[9],
+            sellBillNote: row[10],
+            recorder: row[11],
+        }
+    }));
+}
+
 
 function updateMeltBill(billNo, updateData, updater) {
     let lock = LockService.getScriptLock();
@@ -588,12 +700,12 @@ function updateMeltBill(billNo, updateData, updater) {
 
         // Update fields
         if (updateData.afterWeight !== undefined && updateData.afterWeight !== null && updateData.afterWeight !== '') {
-            row[5] = parseFloat(updateData.afterWeight); 
+            row[5] = parseFloat(updateData.afterWeight);
         }
         if (updateData.sellPrice !== undefined && updateData.sellPrice !== null && updateData.sellPrice !== '') {
-            row[6] = parseFloat(updateData.sellPrice); 
+            row[6] = parseFloat(updateData.sellPrice);
         }
-        if(updateData.percentAfterMelt !== undefined && updateData.percentAfterMelt !== null && updateData.percentAfterMelt !== ''){
+        if (updateData.percentAfterMelt !== undefined && updateData.percentAfterMelt !== null && updateData.percentAfterMelt !== '') {
             row[11] = parseFloat(updateData.percentAfterMelt);
         }
         row[3] = '';
@@ -603,6 +715,67 @@ function updateMeltBill(billNo, updateData, updater) {
         eventLog('แก้ไขข้อมูลบิลหลอม ' + billNo + '\n' + row.join(', ') + '\nโดย ' + updater);
 
         return JSON.stringify({ success: true, message: 'แก้ไขข้อมูลบิลหลอมสำเร็จ' });
+    } catch (error) {
+        return JSON.stringify({ success: false, message: 'เกิดข้อผิดพลาด: ' + error.message });
+    } finally {
+        lock.releaseLock();
+    }
+}
+
+function updateSellBill(sellBillNo, updateData, updater) {
+    let lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+        return JSON.stringify({ success: false, message: 'ไม่สามารถแก้ไขข้อมูลได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง' });
+    }
+
+    try {
+        let ss = SpreadsheetApp.getActiveSpreadsheet();
+        let sheet = ss.getSheetByName(SHEET_NAME.SELL);
+        let lastRow = SuperScript.getRealLastRow('A', sheet);
+        let dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+
+        let rowIndex = -1;
+        for (let i = 0; i < dataRange.length; i++) {
+            if (dataRange[i][1] === sellBillNo) { // Column B (index 1) is sell bill number
+                rowIndex = i;
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return JSON.stringify({ success: false, message: 'ไม่พบบิลขายที่ต้องการแก้ไข' });
+        }
+
+        let row = dataRange[rowIndex];
+
+        // Update fields based on the saveSellBill structure
+        // Column structure: [date, sellBillNo, summaryWeightBefore, summaryWeightAfter, percentCalc, summaryPrice, sellBillStatus, sellPercentAfterMelt, sellPrice, sellBillBank, sellBillNote, recorder]
+        
+        if (updateData.sellBillDate !== undefined && updateData.sellBillDate !== null && updateData.sellBillDate !== '') {
+            row[0] = new Date(updateData.sellBillDate);
+        }
+        if (updateData.sellPercentAfterMelt !== undefined && updateData.sellPercentAfterMelt !== null && updateData.sellPercentAfterMelt !== '') {
+            row[7] = parseFloat(updateData.sellPercentAfterMelt);
+        }
+        if (updateData.sellPrice !== undefined && updateData.sellPrice !== null && updateData.sellPrice !== '') {
+            row[8] = parseFloat(updateData.sellPrice);
+        }
+        if (updateData.sellBillStatus !== undefined && updateData.sellBillStatus !== null && updateData.sellBillStatus !== '') {
+            row[6] = updateData.sellBillStatus;
+        }
+        if (updateData.sellBillBank !== undefined && updateData.sellBillBank !== null && updateData.sellBillBank !== '') {
+            row[9] = updateData.sellBillBank;
+        }
+        if (updateData.sellBillNote !== undefined && updateData.sellBillNote !== null) {
+            row[10] = updateData.sellBillNote;
+        }
+
+
+        sheet.getRange(rowIndex + 2, 1, 1, row.length).setValues([row]);
+
+        eventLog('แก้ไขข้อมูลบิลขาย ' + sellBillNo + '\n' + row.join(', ') + '\nโดย ' + updater);
+
+        return JSON.stringify({ success: true, message: 'แก้ไขข้อมูลบิลขายสำเร็จ' });
     } catch (error) {
         return JSON.stringify({ success: false, message: 'เกิดข้อผิดพลาด: ' + error.message });
     } finally {
@@ -665,6 +838,62 @@ function cancelMeltBill(billNo, canceler) {
     }
 }
 
+function cancelSellBill(billNo, canceler) {
+    let lock = LockService.getScriptLock();
+    if (!lock.tryLock(10000)) {
+        return JSON.stringify({ success: false, message: 'ไม่สามารถยกเลิกบิลได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง' });
+    }
+
+    try {
+        let ss = SpreadsheetApp.getActiveSpreadsheet();
+        let sellSheet = ss.getSheetByName(SHEET_NAME.SELL);
+        let lastRow = SuperScript.getRealLastRow('A', sellSheet);
+        let dataRange = sellSheet.getRange(2, 1, lastRow - 1, sellSheet.getLastColumn()).getValues();
+
+        let rowIndex = -1;
+        for (let i = 0; i < dataRange.length; i++) {
+            if (dataRange[i][1] === billNo) { // Column B (index 1) is bill number
+                rowIndex = i;
+                break;
+            }
+        }
+
+        if (rowIndex === -1) {
+            return JSON.stringify({ success: false, message: 'ไม่พบบิลขายที่ต้องการยกเลิก' });
+        }
+
+        let row = dataRange[rowIndex];
+
+        if (row[6] === 'ยกเลิก') {
+            return JSON.stringify({ success: false, message: 'บิลขายนี้ถูกยกเลิกไปแล้ว' });
+        }
+
+        // Update buy records - reset bill number
+        let meltSheet = ss.getSheetByName(SHEET_NAME.MELT);
+        let meltLastRow = SuperScript.getRealLastRow('A', meltSheet);
+        let meltDataRange = meltSheet.getRange(2, 1, meltLastRow - 1, meltSheet.getLastColumn()).getValues();
+
+        meltDataRange.forEach((meltRow, meltIndex) => {
+            if (meltRow[7] === billNo) { // Column H (index 7) is bill number
+                meltRow[7] = ''; // Reset bill number
+                meltRow[3] = meltRow[4] = meltRow[12] = meltRow[15] = ''; // Clear related fields
+                meltSheet.getRange(meltIndex + 2, 1, 1, meltRow.length).setValues([meltRow]);
+            }
+        });
+
+        // Delete sell record row
+        sellSheet.deleteRow(rowIndex + 2);
+
+        eventLog('ยกเลิกบิลขาย ' + billNo + '\nโดย ' + canceler);
+
+        return JSON.stringify({ success: true, message: 'ยกเลิกบิลขายสำเร็จ' });
+    } catch (error) {
+        return JSON.stringify({ success: false, message: 'เกิดข้อผิดพลาด: ' + error.message });
+    } finally {
+        lock.releaseLock();
+    }
+}
+
 function getAccountBalance(branch = 'all') {
     let lock = LockService.getScriptLock();
     if (!lock.tryLock(10000)) {
@@ -688,7 +917,7 @@ function getAccountBalance(branch = 'all') {
             todaytrans: 0,
         }
         dataRange.forEach(row => {
-            if (row[7] !== 'สด'+branch || row[9] === 'ยกเลิก') return;
+            if (row[7] !== 'สด' + branch || row[9] === 'ยกเลิก') return;
             if (branch === 'all' || row[6] === branch) { // Column B (index 1) is branch
                 accountBalance.summary -= parseFloat(row[4]) || 0; // Column E (index 4) is amount
                 if (Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today && row[9] === 'เสร็จสิ้น') {
@@ -698,7 +927,7 @@ function getAccountBalance(branch = 'all') {
         });
 
         dataRange2.forEach(row => {
-            if (row[3] !== 'สด'+branch || row[8] !== 'เสร็จสิ้น') return;
+            if (row[3] !== 'สด' + branch || row[8] !== 'เสร็จสิ้น') return;
             if (branch === 'all' || row[7] === branch) { // Column H (index 7) is branch
                 accountBalance.summary += parseFloat(row[4]) || 0; // Column E (index 4) is amount
                 if (Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today && row[8] === 'เสร็จสิ้น') {
