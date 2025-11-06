@@ -25,119 +25,137 @@ function isFromRegisteredGroup(event) {
   let prop = PropertiesService.getScriptProperties();
   let groups = prop.getProperty('registeredGroups');
   let groupList = groups ? JSON.parse(groups) : [];
-  return groupList.includes(event.groupId);
+  return groupList.find(g => g.groupId === event.groupId);
 }
 
 function handleTextMessage(event) {
+  const ok = () => ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+  const reply = (messages, notify = false) => {
+    event.replyToline(Array.isArray(messages) ? messages : [messages], notify);
+    return ok();
+  };
 
-  let message = event.message;
-  // let message = "ทอง75% @5"
+  const { message, groupId } = event;
+  const prop = PropertiesService.getScriptProperties();
+  let groupList = JSON.parse(prop.getProperty('registeredGroups') || '[]');
+
   if (message === '#getGroupID') {
-    event.replyToline([`Group ID: ${event.groupId}`]);
-    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
-  } else if (message === "#registerGroup") {
-    if (!event.groupId) {
-      event.replyToline(["คำสั่งนี้ใช้ได้เฉพาะในกลุ่มเท่านั้น"]);
-      return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
-    }
-    let prop = PropertiesService.getScriptProperties();
-    let groups = prop.getProperty('registeredGroups');
-    let groupList = groups ? JSON.parse(groups) : [];
-    if (groupList.includes(event.groupId)) {
-      event.replyToline(["กลุ่มนี้ได้ลงทะเบียนไว้แล้ว"]);
-      return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
-    }
-    groupList.push(event.groupId);
-    prop.setProperty('registeredGroups', JSON.stringify(groupList));
-    event.replyToline(["ลงทะเบียนกลุ่มเรียบร้อยแล้ว"]);
-    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
-  } else if (message === "#unregisterGroup") {
-    if (!event.groupId) {
-      event.replyToline(["คำสั่งนี้ใช้ได้เฉพาะในกลุ่มเท่านั้น"]);
-      return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
-    }
-    let prop = PropertiesService.getScriptProperties();
-    let groups = prop.getProperty('registeredGroups');
-    let groupList = groups ? JSON.parse(groups) : [];
-    if (!groupList.includes(event.groupId)) {
-      event.replyToline(["กลุ่มนี้ยังไม่ได้ลงทะเบียน"]);
-      return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
-    }
-    groupList = groupList.filter(id => id !== event.groupId);
-    prop.setProperty('registeredGroups', JSON.stringify(groupList));
-    event.replyToline(["ยกเลิกการลงทะเบียนกลุ่มเรียบร้อยแล้ว"]);
-    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+    return reply(`Group ID: ${groupId}`);
   }
+
+  if (message.startsWith('#registerGroup')) {
+    if (!groupId) {
+      return reply('คำสั่งนี้ใช้ได้เฉพาะในกลุ่มเท่านั้น');
+    }
+    const [, rawBranch = ''] = message.split('=');
+    const branch = rawBranch.trim();
+    if (!branch) {
+      return reply('กรุณาระบุสาขาหลังเครื่องหมาย =');
+    }
+    if (groupList.some(g => g.groupId === groupId)) {
+      return reply('กลุ่มนี้ได้ลงทะเบียนไว้แล้ว');
+    }
+    groupList.push({ groupId, branch });
+    prop.setProperty('registeredGroups', JSON.stringify(groupList));
+    return reply('ลงทะเบียนกลุ่มเรียบร้อยแล้ว');
+  }
+
+  if (message === '#unregisterGroup') {
+    if (!groupId) {
+      return reply('คำสั่งนี้ใช้ได้เฉพาะในกลุ่มเท่านั้น');
+    }
+    if (!groupList.some(g => g.groupId === groupId)) {
+      return reply('กลุ่มนี้ยังไม่ได้ลงทะเบียน');
+    }
+    groupList = groupList.filter(g => g.groupId !== groupId);
+    prop.setProperty('registeredGroups', JSON.stringify(groupList));
+    return reply('ยกเลิกการลงทะเบียนกลุ่มเรียบร้อยแล้ว');
+  }
+
   if (!isFromRegisteredGroup(event)) {
-    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+    return ok();
   }
 
-  let regex = /(เงิน|ทอง|แพลตตินัม|รูปพรรณ)\s{0,}\d{1,3}\.{0,1}\d{0,2}%\s{0,}\@\s{0,}\d{1,3}\.{0,1}\d{0,2}/g
-  let match = message.match(regex);
-  if (match) {
-    let type = match[0].match(/(เงิน|ทอง|แพลตตินัม|รูปพรรณ)/)[0];
-    let percent = match[0].match(/\d{1,3}\.{0,1}\d{0,2}%/)[0];
-    let weight = match[0].match(/\@\s{0,}\d{1,3}\.{0,1}\d{0,2}/)[0].replace('@', '').trim();
-    if (!type || !percent || !weight) {
-      return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
-    }
-    let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('Sheet1');
+  if (message === '##') {
+    return getSummaryAssetInBranch(event);
+  }
 
-    let criteria = getCriteria(type, percent);
-    if (!criteria) {
-      return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
-    }
+  const userGroup = groupList.find(g => g.groupId === groupId);
+  if (!userGroup) {
+    return ok();
+  }
 
-    percent = Number(percent.replace('%', ''));
-    weight = Number(weight);
-    let estimatedPrice, goldPrice, price
-    let [silverPrice, platinumPrice, percentOfOrnament] = sheet.getRange('H1:H3').getValues().flat().map(Number)
-    if (type === 'ทอง' || type === 'รูปพรรณ') {
-      goldPrice = getGoldPrice(type);
-      // goldPrice = 60200
-      if (type === 'รูปพรรณ') price = goldPrice - (goldPrice * (Math.abs(percentOfOrnament) / 100));
-      else price = goldPrice;
-    } else {
-      if (type === 'เงิน') price = silverPrice
-      else if (type === 'แพลตตินัม') price = platinumPrice;
-    }
-    estimatedPrice = (price - criteria.meltPrice) * 0.0656 * (percent / 100) * weight;
-    estimatedPrice = estimatedPrice - (estimatedPrice * (criteria.percent / 100));
-    if (type === 'ทอง') {
-      let commissions = sheet.getRange('J2:K').getDisplayValues().filter(r => r[0] != '').reduce((obj, row) => {
-        let [min, max] = row[0].split(/-|\s/g).map(x => {
-          if (x.includes('ขึ้นไป')) {
-            return Number.MAX_SAFE_INTEGER;
-          }
-          return Number(x);
-        });
-        let commission = row[1]
-        obj.push({ min, max, commission });
-        return obj;
-      }, [])
-      for (let i = 0; i < commissions.length; i++) {
-        let range = commissions[i];
-        if (estimatedPrice >= range.min && estimatedPrice <= range.max) {
-          if (range.commission.includes('%')) {
-            let percentCommission = Number(range.commission.replace('%', ''));
-            estimatedPrice = estimatedPrice - (estimatedPrice * (percentCommission / 100));
-          } else {
-            let fixedCommission = Number(range.commission);
-            estimatedPrice = estimatedPrice - fixedCommission;
-          }
-          break;
+  const pattern = /(เงิน|ทอง|แพลตตินัม|รูปพรรณ)\s*\d{1,3}\.?\d{0,2}%\s*@\s*\d{1,3}\.?\d{0,2}/;
+  const matchedText = (message.match(pattern) || [])[0];
+  if (!matchedText) {
+    return ok();
+  }
+
+  const type = (matchedText.match(/(เงิน|ทอง|แพลตตินัม|รูปพรรณ)/) || [])[0];
+  const percentText = (matchedText.match(/\d{1,3}\.?\d{0,2}%/) || [])[0];
+  const weightText = (matchedText.match(/@\s*\d{1,3}\.?\d{0,2}/) || [])[0];
+  if (!type || !percentText || !weightText) {
+    return ok();
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sheet1');
+  const criteria = getCriteria(type, percentText);
+  if (!criteria) {
+    return ok();
+  }
+
+  const branch = userGroup.branch;
+  const percent = Number(percentText.replace('%', ''));
+  const weight = Number(weightText.replace('@', '').trim());
+  const [silverPrice = 0, platinumPrice = 0, percentOfOrnament = 0] = sheet.getRange('H1:H3').getValues().flat().map(Number);
+
+  let price = 0;
+  let goldPrice = 0;
+
+  if (type === 'ทอง' || type === 'รูปพรรณ') {
+    goldPrice = getGoldPrice(type);
+    price = type === 'รูปพรรณ'
+      ? goldPrice - (goldPrice * (Math.abs(percentOfOrnament) / 100))
+      : goldPrice;
+  } else if (type === 'เงิน') {
+    price = silverPrice;
+  } else if (type === 'แพลตตินัม') {
+    price = platinumPrice;
+  }
+
+  let estimatedPrice = (price - (branch === 'ร้อยเอ็ด' ? 0 : criteria.meltPrice)) * 0.0656 * (percent / 100) * weight;
+  estimatedPrice -= estimatedPrice * ((branch === 'ร้อยเอ็ด' ? 7 : criteria.percent) / 100);
+
+  if (type === 'ทอง') {
+    const range = branch === 'ร้อยเอ็ด' ? 'J14:K17' : 'J2:K6';
+    const commissions = sheet.getRange(range).getDisplayValues()
+      .filter(([rangeText]) => rangeText)
+      .map(([rangeText, commission]) => {
+        const numbers = rangeText.match(/\d+(?:\.\d+)?/g) || [0];
+        const min = Number(numbers[0] || 0);
+        const max = /ขึ้นไป/.test(rangeText) ? Number.MAX_SAFE_INTEGER : Number(numbers[1] || numbers[0]);
+        return { min, max, commission };
+      });
+
+    for (const { min, max, commission } of commissions) {
+      if (estimatedPrice >= min && estimatedPrice <= max) {
+        if (commission.includes('%')) {
+          estimatedPrice -= estimatedPrice * (Number(commission.replace('%', '')) / 100);
+        } else {
+          estimatedPrice -= Number(commission);
         }
+        break;
       }
     }
-    estimatedPrice = Math.floor(estimatedPrice * 100) / 100;
-    event.replyToline([`ประเภท: ${type} (${percent}%)
-น้ำหนัก: ${weight} กรัม${type === 'ทอง' ? ('\n\nราคาทอง: ' + goldPrice.toLocaleString() + " บาท") : ""}${type === 'รูปพรรณ' ? ('\n\nราคารูปพรรณ: ' + price.toLocaleString() + " บาท") : ""}
+  }
+
+  estimatedPrice = Math.floor(estimatedPrice);
+
+  return reply(`ประเภท: ${type} (${percent}%)
+น้ำหนัก: ${weight} กรัม${type === 'ทอง' ? `\n\nราคาทอง: ${goldPrice.toLocaleString()} บาท` : ''}${type === 'รูปพรรณ' ? `\n\nราคารูปพรรณ: ${price.toLocaleString()} บาท` : ''}
 
 👉 ราคาประเมิน: 
-${estimatedPrice.toLocaleString()} บาท`], true);
-  }
-  return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+${estimatedPrice.toLocaleString()} บาท`, true);
 }
 
 function getGoldPrice() {
@@ -160,4 +178,85 @@ function getCriteria(type, percent) {
     }
   }
   return null;
+}
+
+function getSummaryAssetInBranch(event) {
+  let prop = PropertiesService.getScriptProperties();
+  let groups = prop.getProperty('registeredGroups');
+  let groupList = groups ? JSON.parse(groups) : [];
+  let group = groupList.find(g => g.groupId === event.groupId);
+  if (!group) {
+    event.replyToline(["กลุ่มนี้ยังไม่ได้ลงทะเบียน"]);
+    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+  }
+  let branch = group.branch;
+  // let branch = "สาขา 1"
+  // Fetch summary asset from external API or database based on branch
+  // This is a placeholder response
+
+  let ss = SpreadsheetApp.openById('1Z1mHUQMc4N_bLOtXPBraOC3YJRWOcgFoDJgmLb_PafA');
+  let buySheet = ss.getSheetByName('บันทึกซื้อ');
+  let meltSheet = ss.getSheetByName('บันทึกหลอม');
+  let buyData = buySheet.getRange('A2:K').getDisplayValues().filter(r => r[0] != '' && r[6] === branch && r[9] !== 'ยกเลิก' && !r[10].match(/^\d{7,}$/)).map(r => percentExtract(r, 2));
+  let meltData = meltSheet.getRange('A2:L').getDisplayValues().filter(r => r[0] != '' && r[9] === branch && r[10] === 'รอส่ง')
+  let gold_equalOrMoreThan99 = [], gold_lessThan99 = [];
+  let silver_equalOrMoreThan90 = [], silver_lessThan90 = [];
+  let otherAssets = {}
+  buyData.forEach(row => {
+    let type = row[1];
+    let percent = row[2];
+    let weight = Number(row[3]);
+    if (type.indexOf('ทอง') !== -1) {
+      if (percent >= 99) {
+        gold_equalOrMoreThan99.push(weight);
+      }
+      else gold_lessThan99.push(weight);
+    } else if (type.indexOf('เงิน') !== -1) {
+      if (percent >= 90) silver_equalOrMoreThan90.push(weight);
+      else silver_lessThan90.push(weight);
+    } else {
+      if (!otherAssets[type]) {
+        otherAssets[type] = []
+      }
+      otherAssets[type].push(weight);
+    }
+  });
+  meltData.forEach(row => {
+    let type = row[2];
+    let percent = Number(row[11] || 0);
+    let weight = Number(row[5] || 0);
+    if (type.indexOf('ทอง') !== -1) {
+      if (percent >= 99) {
+        gold_equalOrMoreThan99.push(weight);
+      }
+      else gold_lessThan99.push(weight);
+    } else if (type.indexOf('เงิน') !== -1) {
+      if (percent >= 90) silver_equalOrMoreThan90.push(weight);
+      else silver_lessThan90.push(weight);
+    } else {
+      if (type === 'ค่าบริการ') return; // ข้ามค่าบริการ
+      if (!otherAssets[type]) {
+        otherAssets[type] = []
+      }
+      otherAssets[type].push(weight);
+    }
+  });
+  let replyMessages = [`สาขา: ${branch}\nสรุปสินทรัพย์:`];
+  replyMessages.push(`ทอง >=99%:\nจำนวน ${gold_equalOrMoreThan99.length} รายการ\nน้ำหนักรวม ${gold_equalOrMoreThan99.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`ทอง <99%:\nจำนวน ${gold_lessThan99.length} รายการ\nน้ำหนักรวม ${gold_lessThan99.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`เงิน >=90%:\nจำนวน ${silver_equalOrMoreThan90.length} รายการ\nน้ำหนักรวม ${silver_equalOrMoreThan90.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`เงิน <90%:\nจำนวน ${silver_lessThan90.length} รายการ\nน้ำหนักรวม ${silver_lessThan90.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  for (let [type, weights] of Object.entries(otherAssets)) {
+    if (type === 'ค่าบริการ') continue; // ข้ามค่าบริการ
+    replyMessages.push(`${type}:\nจำนวน ${weights.length} รายการ\nน้ำหนักรวม ${weights.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  }
+  event.replyToline([replyMessages.join('\n\n')], true);
+  return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+}
+
+function percentExtract(row, colIndex = 2) {
+  let col = row[colIndex]
+  let percent = col.split(' ')[1]
+  row[colIndex] = percent ? Number(percent.replace('%', '')) : 0
+  return row
 }
