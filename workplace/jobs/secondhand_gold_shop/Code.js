@@ -303,6 +303,7 @@ function saveMeltBill(meltData) {
         if (rowIndex !== -1) {
             let row = dataRange[rowIndex];
             row[10] = meltBillNo; // Update bill number
+            row[13] = row[14] = ""; // Clear sell-related fields
             buySheet.getRange(rowIndex + 2, 1, 1, row.length).setValues([row]); // +2 because of header and zero-based index
         }
     });
