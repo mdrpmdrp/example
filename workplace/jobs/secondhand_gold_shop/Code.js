@@ -709,8 +709,7 @@ function updateMeltBill(billNo, updateData, updater) {
         if (updateData.percentAfterMelt !== undefined && updateData.percentAfterMelt !== null && updateData.percentAfterMelt !== '') {
             row[11] = parseFloat(updateData.percentAfterMelt);
         }
-        row[3] = '';
-        row[4] = '';
+        row[3] = row[4] = row[12] = row[15] = '';
         sheet.getRange(rowIndex + 2, 1, 1, row.length).setValues([row]);
 
         eventLog('แก้ไขข้อมูลบิลหลอม ' + billNo + '\n' + row.join(', ') + '\nโดย ' + updater);
@@ -822,6 +821,7 @@ function cancelMeltBill(billNo, canceler) {
         buyDataRange.forEach((buyRow, buyIndex) => {
             if (buyRow[10] === billNo) { // Column K (index 10) is bill number
                 buyRow[10] = ''; // Reset bill number
+                buyRow[13] = buyRow[14] = ""; // Clear sell-related fields
                 buySheet.getRange(buyIndex + 2, 1, 1, buyRow.length).setValues([buyRow]);
             }
         });
