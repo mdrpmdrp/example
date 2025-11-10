@@ -39,9 +39,14 @@ function getAllDoctors(currentUser = null) {
  * Add new doctor (optimized with role-based access control)
  */
 function addDoctor(doctorData, currentUser = null) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถเพิ่มข้อมูลหมอได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     // Check permissions
     if (currentUser && !checkPermission(currentUser.role, "canManageDoctors")) {
+      lock.releaseLock();
       return { success: false, message: "คุณไม่มีสิทธิ์จัดการข้อมูลหมอ" };
     }
 
@@ -70,6 +75,12 @@ function addDoctor(doctorData, currentUser = null) {
       "'" + doctorData.phone,
       doctorData.email || "",
       doctorData.licenseNumber || "",
+      doctorData.bracesPercentage || "",
+      doctorData.gp1Percentage || "",
+      doctorData.gp2Percentage || "",
+      doctorData.gp3Percentage || "",
+      doctorData.rootCanalPercentage || "",
+      doctorData.productPurchasePercentage || "",
       doctorData.notes || "",
       "active",
       timestamp,
@@ -92,12 +103,14 @@ function addDoctor(doctorData, currentUser = null) {
       console.error("Notification error:", notificationError);
     }
 
+    lock.releaseLock();
     return {
       success: true,
       message: "เพิ่มข้อมูลหมอเรียบร้อย",
       doctorId: newId,
     };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error adding doctor:", error);
     return { success: false, message: error.toString() };
   }
@@ -107,9 +120,14 @@ function addDoctor(doctorData, currentUser = null) {
  * Update doctor information
  */
 function updateDoctor(doctorId, doctorData, currentUser = null) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถอัปเดตข้อมูลหมอได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     // Check permissions
     if (currentUser && !checkPermission(currentUser.role, "canManageDoctors")) {
+      lock.releaseLock();
       return { success: false, message: "คุณไม่มีสิทธิ์จัดการข้อมูลหมอ" };
     }
     
@@ -128,6 +146,7 @@ function updateDoctor(doctorId, doctorData, currentUser = null) {
     }
 
     if (rowIndex === -1) {
+      lock.releaseLock();
       return { success: false, message: "ไม่พบข้อมูลหมอ" };
     }
 
@@ -139,6 +158,12 @@ function updateDoctor(doctorId, doctorData, currentUser = null) {
       "'" + doctorData.phone,
       doctorData.email || "",
       doctorData.licenseNumber || "",
+      doctorData.bracesPercentage || "",
+      doctorData.gp1Percentage || "",
+      doctorData.gp2Percentage || "",
+      doctorData.gp3Percentage || "",
+      doctorData.rootCanalPercentage || "",
+      doctorData.productPurchasePercentage || "",
       doctorData.notes || "",
       doctorData.status || "active",
       existingDoctor[9], // Keep original created at
@@ -151,8 +176,10 @@ function updateDoctor(doctorId, doctorData, currentUser = null) {
       .getRange(rowIndex, 1, 1, updatedDoctor.length)
       .setValues([updatedDoctor]);
 
+    lock.releaseLock();
     return { success: true, message: "อัปเดตข้อมูลหมอเรียบร้อย" };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error updating doctor:", error);
     return { success: false, message: error.toString() };
   }
@@ -162,6 +189,10 @@ function updateDoctor(doctorId, doctorData, currentUser = null) {
  * Delete doctor
  */
 function deleteDoctor(doctorId) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถลบข้อมูลหมอได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     const doctorsSheet = getSheet(SHEET_NAMES.DOCTORS);
     const data = doctorsSheet.getDataRange().getValues();
@@ -176,6 +207,7 @@ function deleteDoctor(doctorId) {
     }
 
     if (rowIndex === -1) {
+      lock.releaseLock();
       return { success: false, message: "ไม่พบข้อมูลหมอ" };
     }
 
@@ -185,6 +217,7 @@ function deleteDoctor(doctorId) {
       appointmentsResult.success &&
       appointmentsResult.appointments.length > 0
     ) {
+      lock.releaseLock();
       return {
         success: false,
         message: "ไม่สามารถลบหมอที่มีการนัดหมายอยู่ได้",
@@ -193,8 +226,10 @@ function deleteDoctor(doctorId) {
 
     doctorsSheet.deleteRow(rowIndex);
 
+    lock.releaseLock();
     return { success: true, message: "ลบข้อมูลหมอเรียบร้อย" };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error deleting doctor:", error);
     return { success: false, message: error.toString() };
   }

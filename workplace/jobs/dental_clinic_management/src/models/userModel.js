@@ -60,13 +60,19 @@ function getAllUsers(currentUser = null) {
  * Add new user
  */
 function addUser(userData, currentUser = null) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถเพิ่มผู้ใช้ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     if (!currentUser) {
+      lock.releaseLock();
       return { success: false, message: "กรุณาเข้าสู่ระบบก่อน" };
     }
 
     // Check permissions
     if (!checkPermission(currentUser.role, "canManageUsers")) {
+      lock.releaseLock();
       return { success: false, message: "คุณไม่มีสิทธิ์จัดการผู้ใช้" };
     }
 
@@ -74,9 +80,11 @@ function addUser(userData, currentUser = null) {
     if (currentUser.role === "admin") {
       // Admin can only create users in same branch and cannot create super_admin
       if (userData.branch !== currentUser.branch) {
+
         return { success: false, message: "คุณไม่สามารถสร้างผู้ใช้ในสาขาอื่นได้" };
       }
       if (userData.role === "super_admin") {
+        lock.releaseLock();
         return { success: false, message: "คุณไม่สามารถสร้างผู้ใช้ระดับ Super Admin ได้" };
       }
     }
@@ -89,6 +97,7 @@ function addUser(userData, currentUser = null) {
       .slice(1)
       .find((row) => row[1] === userData.username);
     if (existingUser) {
+      lock.releaseLock();
       return { success: false, message: "ชื่อผู้ใช้นี้มีอยู่แล้ว" };
     }
 
@@ -115,8 +124,10 @@ function addUser(userData, currentUser = null) {
 
     usersSheet.getRange(lastRow + 1, 1, 1, newUser.length).setValues([newUser]);
 
+    lock.releaseLock();
     return { success: true, message: "เพิ่มผู้ใช้เรียบร้อย", userId: newId };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error adding user:", error);
     return { success: false, message: error.toString() };
   }
@@ -126,13 +137,19 @@ function addUser(userData, currentUser = null) {
  * Update user information
  */
 function updateUser(username, userData, currentUser = null) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถอัปเดตข้อมูลผู้ใช้ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     if (!currentUser) {
+      lock.releaseLock();
       return { success: false, message: "กรุณาเข้าสู่ระบบก่อน" };
     }
 
     // Check permissions
     if (!checkPermission(currentUser.role, "canManageUsers")) {
+      lock.releaseLock();
       return { success: false, message: "คุณไม่มีสิทธิ์จัดการผู้ใช้" };
     }
 
@@ -151,6 +168,7 @@ function updateUser(username, userData, currentUser = null) {
     }
 
     if (rowIndex === -1) {
+      lock.releaseLock();
       return { success: false, message: "ไม่พบผู้ใช้" };
     }
 
@@ -159,14 +177,17 @@ function updateUser(username, userData, currentUser = null) {
       // Admin can only edit users in same branch
       if (existingUser[USER_COLUMNS.BRANCH] !== currentUser.branch && 
           existingUser[USER_COLUMNS.USERNAME] !== currentUser.username) {
+        lock.releaseLock();
         return { success: false, message: "คุณไม่สามารถแก้ไขผู้ใช้ในสาขาอื่นได้" };
       }
       // Admin cannot change role to super_admin
       if (userData.role === "super_admin") {
+        lock.releaseLock();
         return { success: false, message: "คุณไม่สามารถเปลี่ยนสิทธิ์เป็น Super Admin ได้" };
       }
       // Admin cannot edit super_admin users
       if (existingUser[USER_COLUMNS.ROLE] === "super_admin") {
+        lock.releaseLock();
         return { success: false, message: "คุณไม่สามารถแก้ไขข้อมูล Super Admin ได้" };
       }
     }
@@ -192,9 +213,10 @@ function updateUser(username, userData, currentUser = null) {
     usersSheet
       .getRange(rowIndex, 1, 1, updatedUser.length)
       .setValues([updatedUser]);
-
+    lock.releaseLock();
     return { success: true, message: "อัปเดตข้อมูลผู้ใช้เรียบร้อย" };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error updating user:", error);
     return { success: false, message: error.toString() };
   }
@@ -204,18 +226,25 @@ function updateUser(username, userData, currentUser = null) {
  * Delete user
  */
 function deleteUser(username, currentUser = null) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถลบผู้ใช้ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     if (!currentUser) {
+      lock.releaseLock();
       return { success: false, message: "กรุณาเข้าสู่ระบบก่อน" };
     }
 
     // Check permissions
     if (!checkPermission(currentUser.role, "canManageUsers")) {
+      lock.releaseLock();
       return { success: false, message: "คุณไม่มีสิทธิ์จัดการผู้ใช้" };
     }
 
     // Prevent self-deletion
     if (username === currentUser.username) {
+      lock.releaseLock();
       return { success: false, message: "คุณไม่สามารถลบบัญชีของตัวเองได้" };
     }
 
@@ -234,6 +263,7 @@ function deleteUser(username, currentUser = null) {
     }
 
     if (rowIndex === -1) {
+      lock.releaseLock();
       return { success: false, message: "ไม่พบผู้ใช้" };
     }
 
@@ -241,9 +271,11 @@ function deleteUser(username, currentUser = null) {
     if (currentUser.role === "admin") {
       // Admin can only delete users in same branch and cannot delete super_admin
       if (existingUser[USER_COLUMNS.BRANCH] !== currentUser.branch) {
+        lock.releaseLock();
         return { success: false, message: "คุณไม่สามารถลบผู้ใช้ในสาขาอื่นได้" };
       }
       if (existingUser[USER_COLUMNS.ROLE] === "super_admin") {
+        lock.releaseLock();
         return { success: false, message: "คุณไม่สามารถลบ Super Admin ได้" };
       }
     } else if (currentUser.role === "super_admin") {
@@ -253,8 +285,10 @@ function deleteUser(username, currentUser = null) {
 
     usersSheet.deleteRow(rowIndex);
 
+    lock.releaseLock();
     return { success: true, message: "ลบผู้ใช้เรียบร้อย" };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error deleting user:", error);
     return { success: false, message: error.toString() };
   }

@@ -51,12 +51,17 @@ function getAllAppointments(currentUser = null) {
  * Add new appointment (optimized with role-based access control)
  */
 function addAppointment(appointmentData, currentUser = null) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถเพิ่มข้อมูลการนัดหมายได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     // Check permissions
     if (
       currentUser &&
       !checkPermission(currentUser.role, "canManageAppointments")
     ) {
+      lock.releaseLock();
       return { success: false, message: "คุณไม่มีสิทธิ์จัดการการนัดหมาย" };
     }
 
@@ -87,6 +92,7 @@ function addAppointment(appointmentData, currentUser = null) {
     // Validate patient exists and check branch access
     const patientResult = getPatientById(appointmentData.patientId);
     if (!patientResult.success) {
+      lock.releaseLock();
       return { success: false, message: "ไม่พบข้อมูลคนไข้" };
     }
 
@@ -94,6 +100,7 @@ function addAppointment(appointmentData, currentUser = null) {
     if (currentUser && currentUser.role !== "super_admin") {
       const patientBranch = patientResult.patient.branch;
       if (patientBranch && patientBranch !== currentUser.branch) {
+        lock.releaseLock();
         return { success: false, message: "คุณไม่มีสิทธิ์จัดการคนไข้ในสาขาอื่น" };
       }
     }
@@ -102,6 +109,7 @@ function addAppointment(appointmentData, currentUser = null) {
     if (appointmentData.doctorId) {
       const doctorResult = getDoctorById(appointmentData.doctorId);
       if (!doctorResult.success) {
+        lock.releaseLock();
         return { success: false, message: "ไม่พบข้อมูลหมอ" };
       }
     }
@@ -143,13 +151,14 @@ function addAppointment(appointmentData, currentUser = null) {
     } catch (notificationError) {
       console.error("Notification error:", notificationError);
     }
-
+    lock.releaseLock();
     return {
       success: true,
       message: "เพิ่มการนัดหมายเรียบร้อย",
       appointmentId: newId,
     };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error adding appointment:", error);
     return { success: false, message: error.toString() };
   }
@@ -159,6 +168,10 @@ function addAppointment(appointmentData, currentUser = null) {
  * Update appointment
  */
 function updateAppointment(appointmentId, appointmentData, currentUser = null) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถอัปเดตข้อมูลการนัดหมายได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     const appointmentsSheet = getSheet(SHEET_NAMES.APPOINTMENTS);
     const data = appointmentsSheet.getDataRange().getValues();
@@ -175,12 +188,14 @@ function updateAppointment(appointmentId, appointmentData, currentUser = null) {
     }
 
     if (rowIndex === -1) {
+      lock.releaseLock();
       return { success: false, message: "ไม่พบการนัดหมาย" };
     }
 
     // Validate patient exists
     const patientResult = getPatientById(appointmentData.patientId);
     if (!patientResult.success) {
+      lock.releaseLock();
       return { success: false, message: "ไม่พบข้อมูลคนไข้" };
     }
 
@@ -188,6 +203,7 @@ function updateAppointment(appointmentId, appointmentData, currentUser = null) {
     if (appointmentData.doctorId) {
       const doctorResult = getDoctorById(appointmentData.doctorId);
       if (!doctorResult.success) {
+        lock.releaseLock();
         return { success: false, message: "ไม่พบข้อมูลหมอ" };
       }
     }
@@ -224,9 +240,10 @@ function updateAppointment(appointmentId, appointmentData, currentUser = null) {
     } catch (notificationError) {
       console.error("Notification error:", notificationError);
     }
-
+    lock.releaseLock();
     return { success: true, message: "อัปเดตการนัดหมายเรียบร้อย" };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error updating appointment:", error);
     return { success: false, message: error.toString() };
   }
@@ -236,6 +253,10 @@ function updateAppointment(appointmentId, appointmentData, currentUser = null) {
  * Delete appointment
  */
 function deleteAppointment(appointmentId) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถลบข้อมูลการนัดหมายได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     const appointmentsSheet = getSheet(SHEET_NAMES.APPOINTMENTS);
     const data = appointmentsSheet.getDataRange().getValues();
@@ -250,13 +271,16 @@ function deleteAppointment(appointmentId) {
     }
 
     if (rowIndex === -1) {
+      lock.releaseLock();
       return { success: false, message: "ไม่พบการนัดหมาย" };
     }
 
     appointmentsSheet.deleteRow(rowIndex);
 
+    lock.releaseLock(); 
     return { success: true, message: "ลบการนัดหมายเรียบร้อย" };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error deleting appointment:", error);
     return { success: false, message: error.toString() };
   }

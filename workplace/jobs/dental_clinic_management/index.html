@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/material_red.css">
+
     <link
         href="https://cdn.datatables.net/v/bs5/dt-2.3.0/b-3.2.3/date-1.5.5/fh-4.0.1/r-3.0.4/sl-3.0.0/datatables.min.css"
         rel="stylesheet" integrity="sha384-pDoMXaoekHsQmb1L6aeyRL/WoJRQnDTYvUeWu4LbiTVT2Vhp2niYUKgdwBE/Tnl8"
@@ -1097,13 +1098,17 @@
                                         <table id="revenueTable" class="table table-striped">
                                             <thead>
                                                 <tr>
+                                                    <th>id</th>
                                                     <th>วันที่</th>
+                                                    <th>สถานะ</th>
                                                     <th>ลูกค้า</th>
                                                     <th>หมอ</th>
                                                     <th>ประเภทเคส</th>
                                                     <th>การชำระ</th>
                                                     <th>ยอดรวม</th>
                                                     <th>การจัดการ</th>
+                                                    <th>doctor id</th>
+                                                    <th>status</th>
                                                 </tr>
                                             </thead>
                                             <tbody></tbody>
@@ -1229,6 +1234,8 @@
             </div>
         </div>
     </div>
+
+    <div id="printArea"></div>
 
     <!-- Patient Modal -->
     <div class="modal fade" id="patientModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false"
@@ -1379,16 +1386,83 @@
                                     <input type="email" class="form-control" name="email">
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">ใบอนุญาตประกอบวิชาชีพ</label>
+                                    <input type="text" class="form-control" name="licenseNumber"
+                                        placeholder="หมายเลขใบอนุญาต">
+                                </div>
+                            </div>
                         </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="input-group">
+                                        <span class="input-group-text">%จัดฟัน</span>
+                                        <input type="number" class="form-control" name="bracesPercentage"
+                                            placeholder="จัดฟัน" min="0" max="100" step="0.01">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">ใบอนุญาตประกอบวิชาชีพ</label>
-                            <input type="text" class="form-control" name="licenseNumber" placeholder="หมายเลขใบอนุญาต">
-                        </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="input-group">
+                                        <span class="input-group-text">%GP1</span>
+                                        <input type="number" class="form-control" name="gp1Percentage" min="0" max="100"
+                                            step="0.01">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="input-group">
+                                        <span class="input-group-text">%GP2</span>
+                                        <input type="number" class="form-control" name="gp2Percentage" min="0" max="100"
+                                            step="0.01">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="input-group">
+                                        <span class="input-group-text">%GP3</span>
+                                        <input type="number" class="form-control" name="gp3Percentage" min="0" max="100"
+                                            step="0.01">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="input-group">
+                                        <span class="input-group-text">%รักษาราก</span>
+                                        <input type="number" class="form-control" name="rootCanalPercentage" min="0"
+                                            max="100" step="0.01">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="input-group">
+                                        <span class="input-group-text">%ซื้อผลิตภัณฑ์</span>
+                                        <input type="number" class="form-control" name="productPurchasePercentage"
+                                            min="0" max="100" step="0.01">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
 
-                        <div class="mb-3">
-                            <label class="form-label">หมายเหตุ</label>
-                            <textarea class="form-control" name="notes" rows="2"></textarea>
+                                <div class="mb-3">
+                                    <label class="form-label">หมายเหตุ</label>
+                                    <textarea class="form-control" name="notes" rows="2"></textarea>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -1609,6 +1683,17 @@
                             </div>
                         </div>
 
+                        <h6 class="text-primary mb-3">ค่า LAB</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">ค่า LAB (บาท)</label>
+                                    <input type="number" class="form-control" name="labFee" min="0" step="1"
+                                        id="labFee">
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -1618,16 +1703,7 @@
                                 </div>
                             </div>
                         </div>
-                        <h6 class="text-primary mb-3">ค่า LAB</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">ค่าทดสอบ LAB (บาท)</label>
-                                    <input type="number" class="form-control" name="labTestFee" min="0" step="1"
-                                        id="labTestFee">
-                                </div>
-                            </div>
-                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">หมายเหตุ</label>
                             <textarea class="form-control" name="notes" rows="2"></textarea>
@@ -1852,6 +1928,36 @@
             </div>
         </div>
     </div>
+
+    <!-- Revenue Report Modal -->
+    <div class="modal fade" id="revenueReportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-file-invoice-dollar me-2"></i>รายงานรายรับ-รายจ่ายหมอ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="reportPrintArea"></div>
+                <div class="modal-footer">
+                    <div class="row justify-content-between w-100">
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-danger me-2" onclick="updateRevenuePaidStatus()">
+                                <i class="fas fa-sync-alt me-1"></i>
+                                อัพเดทรายการจ่ายแล้ว
+                            </button>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-primary" onclick="printRevenueReport()">
+                                <i class="fas fa-print me-1"></i>พิมพ์รายงาน
+                            </button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous">
         </script>
@@ -1860,6 +1966,7 @@
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/plugins/rangePlugin.js"></script>
     <script
         src="https://cdn.datatables.net/v/bs5/dt-2.3.0/b-3.2.3/date-1.5.5/fh-4.0.1/r-3.0.4/sl-3.0.0/datatables.min.js"
         integrity="sha384-NGgUUnjETvXZrx9vJMQOG/C654mzSDv63TrMt0zQmS1HW58fN4RdjorjyZqEMIZ9" crossorigin="anonymous">
@@ -1961,7 +2068,8 @@
             DELETE_REVENUE: 'deleteRevenue',
             ADD_USER: 'addUser',
             UPDATE_USER: 'updateUser',
-            DELETE_USER: 'deleteUser'
+            DELETE_USER: 'deleteUser',
+            UPDATE_REVENUE_PAID_STATUS: 'updateRevenuePaidStatus'
         };
 
         // Constants for DOM selectors and IDs
@@ -2109,34 +2217,39 @@
         }
 
         // Revenue calculation helper function
-        function calculateRevenueAmount(revenue) {
-            console.log('Calculating revenue amount for:', revenue);
-            let total = 0;
+        function calculateRevenueAmount(revenue, isSharedCal = false) {
+            if (!revenue) return 0;
 
-            // Add individual payment amounts (new format)
-            total += (parseFloat(revenue.cashAmount) || 0);
-            total += (parseFloat(revenue.transferAmount) || 0);
-            total += (parseFloat(revenue.socialSecurityAmount) || 0);
-            total += (parseFloat(revenue.visaAmount) || 0);
+            const toNumber = (value) => (value === undefined || value === null || value === '' ? 0 : Number(value) || 0);
 
-            // For backward compatibility with old paymentAmounts object
+            const paymentTotals = [
+                revenue.cashAmount,
+                revenue.transferClinicAmount,
+                revenue.transferDoctorAmount,
+                revenue.socialSecurityAmount,
+                revenue.visaAmount,
+            ].reduce((sum, value) => sum + toNumber(value), 0);
+
+            let total = paymentTotals;
+
             if (total === 0 && revenue.paymentAmounts && typeof revenue.paymentAmounts === 'object') {
-                Object.values(revenue.paymentAmounts).forEach(amount => {
-                    total += parseFloat(amount) || 0;
-                });
+                total = Object.values(revenue.paymentAmounts).reduce((sum, value) => sum + toNumber(value), 0);
             }
 
-            // Add additional fees
-            total += (parseFloat(revenue.xrayFee) || 0);
-            total += (parseFloat(revenue.medicineFee) || 0);
-            total += (parseFloat(revenue.otherProductFee) || 0);
+            if (!isSharedCal) {
+                total += toNumber(revenue.xrayFee);
+                total += toNumber(revenue.medicineFee);
+                total += toNumber(revenue.otherProductFee);
+            }
 
-            // Subtract discount
-            total -= (parseFloat(revenue.discount) || 0);
+            total -= toNumber(revenue.discount);
 
-            // Fallback to legacy fields if new calculation results in 0
+            if (isSharedCal) {
+                total -= toNumber(revenue.labFee);
+            }
+
             if (total === 0) {
-                total = revenue.grandTotalAmount || revenue.totalAmount || revenue.amount || 0;
+                total = toNumber(revenue.grandTotalAmount) || toNumber(revenue.totalAmount) || toNumber(revenue.amount);
             }
 
             return total;
@@ -2385,6 +2498,14 @@
                     revenueDatePicker.setDate(moment().toDate());
                 }
                 $('#revenueForm').removeClass('was-validated');
+            });
+
+            $('#revenueReportModal').on('hidden.bs.modal', function () {
+                // reset filter
+                $('#filterStartDate')[0]._flatpickr.clear();
+                $('#filterEndDate')[0]._flatpickr.clear();
+                $('#filterDoctor').val('').trigger('change');
+                loadRevenues(false)
             });
 
             // Revenue modal close button handlers
@@ -3326,9 +3447,9 @@
             // Hardcoded payment types - no longer reading from sheet
             const hardcodedPaymentTypes = [
                 { value: 'เงินสด' },
-                { value: 'เงินโอน' },
+                { value: 'เงินโอนบัญชีร้าน' },
+                { value: 'เงินโอนบัญชีหมอ' },
                 { value: 'ประกันสังคม' },
-                { value: 'Visa' }
             ];
 
             // Always use hardcoded payment types
@@ -3397,10 +3518,10 @@
 
             // Define payment type mappings to match backend column names
             const paymentTypeFields = {
-                'เงินสด': { label: 'ยอดชำระเงินสด', name: 'cashAmount' },
-                'เงินโอน': { label: 'ยอดชำระเงินโอน', name: 'transferAmount' },
-                'ประกันสังคม': { label: 'ยอดชำระประกันสังคม', name: 'socialSecurityAmount' },
-                'Visa': { label: 'ยอดชำระ Visa', name: 'visaAmount' }
+                'เงินสด': { label: 'จำนวนเงินสด', name: 'amountCash' },
+                'เงินโอนบัญชีร้าน': { label: 'จำนวนเงินโอนบัญชีร้าน', name: 'amountTransferClinic' },
+                'เงินโอนบัญชีหมอ': { label: 'จำนวนเงินโอนบัญชีหมอ', name: 'amountTransferDoctor' },
+                'ประกันสังคม': { label: 'จำนวนเงินประกันสังคม', name: 'amountSocialSecurity', default: 900 },
             };
 
             let fieldsHtml = '';
@@ -3413,7 +3534,8 @@
                         <div class="${colClass}">
                             <div class="mb-3">
                                 <label class="form-label">${fieldConfig.label} (บาท)</label>
-                                <input type="number" class="form-control" name="${fieldConfig.name}" min="0" step="0.01">
+                                <input type="number" class="form-control" name="${fieldConfig.name}" min="0" step="0.01" 
+                                    value="${fieldConfig.default ? fieldConfig.default : ''}">
                             </div>
                         </div>
                     `;
@@ -4542,6 +4664,12 @@
                 phone: formData.get('phone'),
                 email: formData.get('email'),
                 licenseNumber: formData.get('licenseNumber'),
+                bracesPercentage: formData.get('bracesPercentage'),
+                gp1Percentage: formData.get('gp1Percentage'),
+                gp2Percentage: formData.get('gp2Percentage'),
+                gp3Percentage: formData.get('gp3Percentage'),
+                rootCanalPercentage: formData.get('rootCanalPercentage'),
+                productPurchasePercentage: formData.get('productPurchasePercentage'),
                 notes: formData.get('notes')
             };
 
@@ -4558,6 +4686,12 @@
                         <strong>เบอร์โทร:</strong> ${doctorData.phone || '-'}<br>
                         <strong>อีเมล:</strong> ${doctorData.email || '-'}<br>
                         <strong>เลขใบประกอบวิชาชีพ:</strong> ${doctorData.licenseNumber || '-'}<br>
+                        <strong>%จัดฟัน:</strong> ${doctorData.bracesPercentage || '-'}<br>
+                        <strong>%GP1:</strong> ${doctorData.gp1Percentage || '-'}<br>
+                        <strong>%GP2:</strong> ${doctorData.gp2Percentage || '-'}<br>
+                        <strong>%GP3:</strong> ${doctorData.gp3Percentage || '-'}<br>
+                        <strong>%รักษาราก:</strong> ${doctorData.rootCanalPercentage || '-'}<br>
+                        <strong>%%ซื้อผลิตภัณฑ์:</strong> ${doctorData.productPurchasePercentage || '-'}<br>
                         ${doctorData.notes ? `<strong>หมายเหตุ:</strong> ${doctorData.notes}<br>` : ''}
                     </div>
                 `;
@@ -4673,6 +4807,7 @@
 
             if (!doctor) return;
 
+
             const form = $('#doctorForm')[0];
             form.dataset.doctorId = doctorId;
 
@@ -4683,6 +4818,12 @@
             form.querySelector('[name="phone"]').value = doctor.phone;
             form.querySelector('[name="email"]').value = doctor.email || '';
             form.querySelector('[name="licenseNumber"]').value = doctor.license_number || '';
+            form.querySelector('[name="bracesPercentage"]').value = doctor['%จัดฟัน'] || '';
+            form.querySelector('[name="gp1Percentage"]').value = doctor['%gp1'] || '';
+            form.querySelector('[name="gp2Percentage"]').value = doctor['%gp2'] || '';
+            form.querySelector('[name="gp3Percentage"]').value = doctor['%gp3'] || '';
+            form.querySelector('[name="rootCanalPercentage"]').value = doctor['%รักษาราก'] || '';
+            form.querySelector('[name="productPurchasePercentage"]').value = doctor['%ซื้อผลิตภัณฑ์'] || '';
             form.querySelector('[name="notes"]').value = doctor.notes || '';
 
             // Show modal
@@ -5277,7 +5418,7 @@
 
             google.script.run
                 .withSuccessHandler(function (result) {
-                    console.log('Notification status result:', result);
+
                     if (result.success) {
                         const isConfigured = result.status.webhookConfigured;
 
@@ -6087,9 +6228,10 @@
             paymentTypeInputs.forEach(input => paymentTypes.push(input.value));
 
             // Get individual payment amounts using standardized field names
-            const cashAmount = parseFloat(formData.get('cashAmount')) || 0;
-            const transferAmount = parseFloat(formData.get('transferAmount')) || 0;
-            const socialSecurityAmount = parseFloat(formData.get('socialSecurityAmount')) || 0;
+            const cashAmount = parseFloat(formData.get('amountCash')) || 0;
+            const transferClinicAmount = parseFloat(formData.get('amountTransferClinic')) || 0;
+            const transferDoctorAmount = parseFloat(formData.get('amountTransferDoctor')) || 0;
+            const socialSecurityAmount = parseFloat(formData.get('amountSocialSecurity')) || 0;
             const visaAmount = parseFloat(formData.get('visaAmount')) || 0;
 
             const revenueData = {
@@ -6100,7 +6242,8 @@
                 caseDetails: caseDetails.join(', '),
                 paymentType: paymentTypes.join(', '),
                 cashAmount: cashAmount,
-                transferAmount: transferAmount,
+                transferClinicAmount: transferClinicAmount,
+                transferDoctorAmount: transferDoctorAmount,
                 socialSecurityAmount: socialSecurityAmount,
                 visaAmount: visaAmount,
                 xrayFee: parseFloat(formData.get('xrayFee')) || 0,
@@ -6127,7 +6270,8 @@
             const paymentAmountItems = [];
 
             if (revenueData.cashAmount > 0) paymentAmountItems.push(`เงินสด: ${revenueData.cashAmount.toLocaleString()} บาท`);
-            if (revenueData.transferAmount > 0) paymentAmountItems.push(`เงินโอน: ${revenueData.transferAmount.toLocaleString()} บาท`);
+            if (revenueData.transferClinicAmount > 0) paymentAmountItems.push(`เงินโอนคลินิก: ${revenueData.transferClinicAmount.toLocaleString()} บาท`);
+            if (revenueData.transferDoctorAmount > 0) paymentAmountItems.push(`เงินโอนหมอ: ${revenueData.transferDoctorAmount.toLocaleString()} บาท`);
             if (revenueData.socialSecurityAmount > 0) paymentAmountItems.push(`ประกันสังคม: ${revenueData.socialSecurityAmount.toLocaleString()} บาท`);
             if (revenueData.visaAmount > 0) paymentAmountItems.push(`Visa: ${revenueData.visaAmount.toLocaleString()} บาท`);
 
@@ -6266,7 +6410,7 @@
             google.script.run
                 .withSuccessHandler(function (result) {
                     if (result.success) {
-                        console.log('Appointment status updated to completed:', appointmentId);
+
                     } else {
                         console.error('Failed to update appointment status:', result.message);
                     }
@@ -6314,7 +6458,12 @@
 
 
         function renderRevenueTable() {
-            const tbody = document.querySelector(`${SELECTORS.REVENUE_TABLE} tbody`);
+            const $tbody = $(`${SELECTORS.REVENUE_TABLE} tbody`);
+
+            // Destroy existing DataTable if it exists
+            if ($.fn.DataTable.isDataTable(SELECTORS.REVENUE_TABLE)) {
+                $(SELECTORS.REVENUE_TABLE).DataTable().destroy();
+            }
 
             // Get selected branch filter
             const selectedBranch = document.querySelector('#revenueBranchFilter')?.value || '';
@@ -6329,14 +6478,14 @@
             }
 
             if (filteredRevenues.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">${UI_TEXT.MESSAGES.NO_REVENUE_DATA}</td></tr>`;
+                $tbody.html(`<tr><td colspan="8" class="text-center text-muted">${UI_TEXT.MESSAGES.NO_REVENUE_DATA}</td></tr>`);
                 return;
             }
 
             const sortedRevenues = filteredRevenues.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             const html = sortedRevenues.map(revenue => {
-                const date = new Date(revenue.date).toLocaleDateString(CONFIG.DATE_FORMAT_TH);
+                const date = moment(revenue.date).isValid() ? moment(revenue.date).format('DD/MM/YYYY') : '-';
 
                 // Get patient and doctor names
                 const patient = patients.find(p => p.id == revenue.patientId);
@@ -6346,13 +6495,16 @@
 
                 // Payment type text - now supports multiple types
                 const paymentTypeText = revenue.paymentType || '-';
+                const status = revenue.status || '-';
 
                 // Calculate total amount using helper function
                 const totalAmount = calculateRevenueAmount(revenue);
 
                 return `
                         <tr>
+                            <td>${revenue.id}</td>
                             <td>${date}</td>
+                            <td class="text-center">${status === 'รอจ่ายหมอ' ? '<i class="fas fa-hourglass-half text-primary" title="รอจ่ายหมอ"></i>' : status === "จ่ายหมอแล้ว" ? '<i class="fas fa-check-circle text-success" title="จ่ายหมอแล้ว"></i>' : status}</td>
                             <td>${patientName}</td>
                             <td>${doctorName}</td>
                             <td>${revenue.caseType || '-'}</td>
@@ -6363,12 +6515,245 @@
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
+                            <td>${revenue.doctorId}</td>
+                            <td>${status}</td>
                         </tr>
                     `;
             }).join('');
 
-            tbody.innerHTML = html;
+            $tbody.html(html);
+            const convertDate = function (dateStr) {
+                // Convert date from DD/MM/YYYY to YYYY-MM-DD
+                let parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    if (Number(parts[2]) > 2500) {
+                        parts[2] = (Number(parts[2]) - 543).toString(); // Convert BE to CE
+                    }
+                    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                }
+                return dateStr; // Return as is if format is unexpected
+            };
+            const doFilter = function () {
+                let [startDate, endDate] = [$('#filterStartDate').val(), $('#filterEndDate').val()];
+                if (!endDate) endDate = startDate;
+                console.log('Filtering from', startDate, 'to', endDate);
+                const doctorName = $('#filterDoctor').val().toLowerCase();
+                const datatable = $(SELECTORS.REVENUE_TABLE).DataTable();
+                if(!startDate && !endDate && !doctorName) {
+                    // If no filters are set, clear existing filters
+                    $.fn.dataTable.ext.search = [];
+                    datatable.draw();
+                    return;
+                }
+
+                $.fn.dataTable.ext.search = [];
+                $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                    console.log('Filtering row data:', data);
+                    let date = convertDate(data[1]); // Date column
+                    const doctor = data[4].toLowerCase(); // Doctor column
+                    const status = data[10]; // Status column
+                    if (status !== "รอจ่ายหมอ") {
+                        return false; // Exclude paid revenues
+                    }
+                    // Filter by date range
+                    if (startDate) {
+                        const start = moment(startDate, 'YYYY-MM-DD');
+                        const rowDate = moment(date, 'YYYY-MM-DD');
+                        console.log(rowDate.isBefore(start, 'day'));
+                        if (rowDate.isBefore(start, 'day')) {
+                            return false;
+                        }
+                    }
+                    if (endDate) {
+                        const end = moment(endDate, 'YYYY-MM-DD');
+                        const rowDate = moment(date, 'YYYY-MM-DD');
+                        if (rowDate.isAfter(end, 'day')) {
+                            return false;
+                        }
+                    }
+
+                    // Filter by doctor name
+                    if (doctorName) {
+                        if (doctorName && !doctor.includes(doctorName)) {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                });
+                datatable.draw();
+                renderRevenueFilterSummary();
+            };
+
+            // Initialize DataTable with pagination
+            $(SELECTORS.REVENUE_TABLE).DataTable({
+                language: {
+                    url: CONFIG.DATATABLES_LANG_URL
+                },
+                // responsive: true,
+                order: [[1, 'desc']], // Sort by date descending
+                pageLength: 25, // Show 25 entries per page
+                scrollX: true,
+                dom: "<'row justify-content-between'<'col-md-auto buttons-revenue'><'col-md-auto filter-revenue'>>" +
+                    "<'row mt-2'<'col-12't>>" +
+                    "<'row justify-content-between mt-2'<'col-md-auto'i><'col-md-auto'p>>",
+                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
+                columnDefs: [
+                    { targets: [0, 9, 10], visible: false }, // Date column
+                    { targets: 1, type: 'date' }, // Date column
+                    { orderable: false, targets: [2, 8] }, // Disable sorting on action column
+                    { className: 'dt-head-nowrap dt-head-center dt-body-nowrap', targets: '_all' },
+                    { className: 'dt-body-center text-center', targets: [1, 2, 5, 6, 8] },
+                    { className: 'dt-body-left', targets: [3, 4] },
+                    { className: 'dt-body-right text-end', targets: 7 }
+                ],
+                initComplete: function (settings, json) {
+                    NProgress.done();
+
+                    // Get unique doctor names for filter
+                    const uniqueDoctors = [...new Set(filteredRevenues.map(r => {
+                        const doctor = doctors.find(d => d.id == r.doctorId);
+                        return doctor ? `${doctor.first_name} ${doctor.last_name}`.trim() : null;
+                    }).filter(name => name))].sort();
+
+                    const datatable = $(SELECTORS.REVENUE_TABLE).DataTable();
+                    $('.buttons-revenue').html(`
+                        <div class="d-flex flex-wrap gap-2 w-100 mb-2 align-items-center" id="revenueReportActions" role="group">
+                            <button class="btn btn-warning align-items-center justify-content-center" id="createRevenueReportBtn"
+                                title="สร้างรายงานรายรับ-รายจ่ายหมอ">
+                                <i class="bi bi-file-earmark-text-fill me-2"></i> สร้างรายงานรายรับ-รายจ่ายหมอ
+                            </button>
+                        </div>
+                        <div class="d-none row w-100 mb-2 align-items-center justify-content-center g-3" id="revenueReportFilter" role="group">
+                            <div class="col-md-6">
+                                <div class="input-group rounded-3">
+                                    <span class="input-group-text">เริ่มต้น</span>
+                                    <input type="text" class="form-control" id="filterStartDate" placeholder="วันที่เริ่มต้น">
+                                    <span class="input-group-text">สิ้นสุด</span>
+                                    <input type="text" class="form-control" id="filterEndDate" placeholder="วันที่สิ้นสุด">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="input-group rounded-3">
+                                    <span class="input-group-text">หมอ</span>
+                                    <select class="form-select" id="filterDoctor" style="min-width: 200px;">
+                                        <option value="" selected>หมอทั้งหมด</option>
+                                        ${uniqueDoctors.map(name => `<option value="${name}">${name}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="btn-group w-100" role="group">
+                                    <button type="button" class="btn btn-primary" id="filterToday">วันนี้</button>
+                                    <button type="button" class="btn btn-warning" id="filterThisWeek">สัปดาห์นี้</button>
+                                    <button type="button" class="btn btn-danger" id="filterThisMonth">เดือนนี้</button>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div id="reportResultContainer"></div>
+                            </div>
+                            <div class="col-auto">
+                                <button class="btn btn-primary rounded-3" id="createReportRevenue" title="สร้างรายงานรายรับ-รายจ่ายหมอ">
+                                    <i class="fas fa-file-invoice-dollar me-2"></i>สร้างรายงาน
+                                </button>
+                            </div>
+                            <div class="col-auto">
+                                <button class="btn btn-danger rounded-3" id="clearFiltersBtn" title="ยกเลิก">
+                                    <i class="fas fa-clear"></i>ยกเลิก
+                                </button>
+                            </div>
+                            <div class="col-12">
+                                <hr>
+                            </div>
+                           
+                        </div>
+                    `);
+                    $('.filter-revenue').html(`
+                        <div class="d-flex flex-wrap gap-2 w-100 mb-2 align-items-center justify-content-end" id="filterActions" role="group">
+                            <div class="input-group" style="max-width: 800px;">
+                                <input type="search" class="form-control rounded-3 ms-2" id="searchText" placeholder="ค้นหาข้อมูล...">
+                            </div>
+                        </div>
+                    `);
+                    $('#createRevenueReportBtn').on('click', function () {
+                        $('.filter-revenue').addClass('d-none')
+                        $('#revenueReportActions').addClass('d-none').removeClass('d-flex');
+                        $('#revenueReportFilter').removeClass('d-none')
+                        $('.buttons-revenue').removeClass('col-md-auto').addClass('col-md-12');
+                        $('#reportResultContainer').html('');
+                    });
+                    $('#clearFiltersBtn').on('click', function () {
+                        $('.filter-revenue').removeClass('d-none');
+                        $('#revenueReportActions').removeClass('d-none').addClass('d-flex');
+                        $('#revenueReportFilter').addClass('d-none');
+                        $('.buttons-revenue').removeClass('col-md-12').addClass('col-md-auto');
+                        // Reset filters
+                        $('#filterStartDate')[0]._flatpickr.clear();
+                        $('#filterEndDate')[0]._flatpickr.setDate(moment().format('YYYY-MM-DD'));
+                        $('#filterDoctor').val('').trigger('change');
+                        doFilter();
+                    });
+
+                    $('#createReportRevenue').on('click', function () {
+                        generateRevenueReport();
+                    });
+
+                    // Quick date filter buttons
+                    $('#filterToday').on('click', function () {
+                        const today = moment().format('YYYY-MM-DD');
+                        $('#filterStartDate')[0]._flatpickr.setDate(today);
+                        $('#filterEndDate')[0]._flatpickr.setDate(today);
+                        doFilter();
+                    });
+
+                    $('#filterThisWeek').on('click', function () {
+                        const startOfWeek = moment().startOf('week').format('YYYY-MM-DD');
+                        const endOfWeek = moment().endOf('week').format('YYYY-MM-DD');
+                        $('#filterStartDate')[0]._flatpickr.setDate(startOfWeek);
+                        $('#filterEndDate')[0]._flatpickr.setDate(endOfWeek);
+                        doFilter();
+                    });
+
+                    $('#filterThisMonth').on('click', function () {
+                        const startOfMonth = moment().startOf('month').format('YYYY-MM-DD');
+                        const endOfMonth = moment().endOf('month').format('YYYY-MM-DD');
+                        $('#filterStartDate')[0]._flatpickr.setDate(startOfMonth);
+                        $('#filterEndDate')[0]._flatpickr.setDate(endOfMonth);
+                        doFilter();
+                    });
+
+                    flatpickr('#filterStartDate', {
+                        locale: 'th',
+                        dateFormat: 'Y-m-d',
+                        altInput: true,
+                        altFormat: 'd/m/Y',
+                        onChange: function (selectedDates, dateStr, instance) {
+                            doFilter();
+                        }
+                    });
+                    flatpickr('#filterEndDate', {
+                        locale: 'th',
+                        dateFormat: 'Y-m-d',
+                        altInput: true,
+                        altFormat: 'd/m/Y',
+                        defaultDate: moment().format('YYYY-MM-DD'),
+                        onChange: function (selectedDates, dateStr, instance) {
+                            doFilter();
+                        }
+                    });
+                    $('#filterDoctor').on('change', function () {
+                        doFilter();
+                    });
+
+                    $('#searchText').on('input', function () {
+                        datatable.search(this.value).draw();
+                    });
+
+                },
+            });
         }
+
+
 
         function deleteRevenue(revenueId) {
             // Find revenue details
@@ -6386,7 +6771,8 @@
             // Build payment details display
             const paymentDetails = [];
             if (revenue?.cashAmount > 0) paymentDetails.push(`เงินสด: ${revenue.cashAmount.toLocaleString()} บาท`);
-            if (revenue?.transferAmount > 0) paymentDetails.push(`เงินโอน: ${revenue.transferAmount.toLocaleString()} บาท`);
+            if (revenue?.transferClinicAmount > 0) paymentDetails.push(`เงินโอนคลินิก: ${revenue.transferClinicAmount.toLocaleString()} บาท`);
+            if (revenue?.transferDoctorAmount > 0) paymentDetails.push(`เงินโอนหมอ: ${revenue.transferDoctorAmount.toLocaleString()} บาท`);
             if (revenue?.socialSecurityAmount > 0) paymentDetails.push(`ประกันสังคม: ${revenue.socialSecurityAmount.toLocaleString()} บาท`);
             if (revenue?.visaAmount > 0) paymentDetails.push(`Visa: ${revenue.visaAmount.toLocaleString()} บาท`);
 
@@ -6585,6 +6971,794 @@
                     }
                 }
             });
+        }
+
+        function renderRevenueFilterSummary() {
+            let datatable = $(SELECTORS.REVENUE_TABLE).DataTable();
+
+            // Calculate summary statistics
+            const filteredData = datatable.rows({ search: 'applied' }).data().toArray();
+            let totalRecords = filteredData.length;
+            let totalRevenueAmount = 0;
+            let totalDoctorShared = 0;
+            let totalClinicShared = 0;
+            let totalDoctorTransfer = 0;
+            let totalClinicTransfer = 0;
+
+            let revenueSharedData = {}
+            filteredData.forEach(row => {
+                let doctorId = row[9];
+                let doctorDetails = doctors.find(d => d.id === doctorId);
+                if (doctorDetails) {
+                    let revenue_id = row[0];
+                    let revenue = revenues.find(r => r.id === revenue_id);
+
+                    if (revenue) {
+                        let revenue_type = revenue.caseType;
+                        let revenue_amount = calculateRevenueAmount(revenue, true);
+
+                        // Determine doctor share percentage based on case type
+                        let doctorSharedPercent = 0;
+                        if (revenue_type) {
+                            const typeLower = revenue_type.toLowerCase();
+                            if (typeLower.includes('จัดฟัน')) {
+                                doctorSharedPercent = doctorDetails['%จัดฟัน'] || 0;
+                            } else if (typeLower.includes('gp1')) {
+                                doctorSharedPercent = doctorDetails['%gp1'] || 0;
+                            } else if (typeLower.includes('gp2')) {
+                                doctorSharedPercent = doctorDetails['%gp2'] || 0;
+                            } else if (typeLower.includes('gp3')) {
+                                doctorSharedPercent = doctorDetails['%gp3'] || 0;
+                            } else if (typeLower.includes('รักษาราก')) {
+                                doctorSharedPercent = doctorDetails['%รักษาราก'] || 0;
+                            } else if (typeLower.includes('ซื้อผลิตภัณฑ์')) {
+                                doctorSharedPercent = doctorDetails['%ซื้อผลิตภัณฑ์'] || 0;
+                            }
+                        }
+
+                        let doctorShared = revenue_amount * (doctorSharedPercent / 100);
+                        let clinicShared = revenue_amount - doctorShared;
+                        let clinicTransfer = revenue.transferClinicAmount || 0;
+                        let doctorTransfer = revenue.transferDoctorAmount || 0;
+
+                        revenueSharedData[revenue_id] = {
+                            sharedPercent: doctorSharedPercent,
+                            doctorShared: doctorShared,
+                            clinicShared: clinicShared,
+                            revenueAmount: revenue_amount,
+                            doctorTransfer: doctorTransfer,
+                            clinicTransfer: revenue_amount - doctorTransfer
+                        };
+
+                        totalRevenueAmount += revenue_amount;
+                        totalDoctorShared += doctorShared;
+                        totalClinicShared += clinicShared;
+                        totalDoctorTransfer += doctorTransfer;
+                        totalClinicTransfer += (revenue_amount - doctorTransfer);
+                    }
+                }
+            });
+
+            // Display summary
+            $('#reportResultContainer').html(`
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>สรุปผลการกรอง</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center g-3">
+                            <div class="col-md-3">
+                                <div class="p-3 border rounded bg-light h-100">
+                                    <h6 class="text-muted mb-2">จำนวนรายการ</h6>
+                                    <h3 class="text-primary mb-0">
+                                        <i class="fas fa-list-ul me-2"></i>${totalRecords.toLocaleString()}
+                                    </h3>
+                                    <small class="text-muted">รายการ</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-3 border rounded bg-light h-100">
+                                    <h6 class="text-muted mb-2">รวมยอดทั้งหมด</h6>
+                                    <h3 class="text-success mb-0">
+                                        <i class="fas fa-coins me-2"></i>${totalRevenueAmount.toLocaleString()}
+                                    </h3>
+                                    <small class="text-muted">บาท</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-3 border rounded bg-warning bg-opacity-10 h-100">
+                                    <h6 class="text-muted mb-2">ส่วนแบ่งหมอ</h6>
+                                    <h3 class="text-warning mb-0">
+                                        <i class="fas fa-user-md me-2"></i>${totalDoctorShared.toLocaleString()}
+                                    </h3>
+                                    <small class="text-muted">บาท</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-3 border rounded bg-info bg-opacity-10 h-100">
+                                    <h6 class="text-muted mb-2">ส่วนแบ่งคลินิก</h6>
+                                    <h3 class="text-info mb-0">
+                                        <i class="fas fa-hospital me-2"></i>${totalClinicShared.toLocaleString()}
+                                    </h3>
+                                    <small class="text-muted">บาท</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+
+        function generateRevenueReport() {
+            const datatable = $(SELECTORS.REVENUE_TABLE).DataTable();
+            const filteredData = datatable.rows({ search: 'applied' }).data().toArray();
+
+            if (filteredData.length === 0) {
+                Toast.fire({
+                    icon: 'warning',
+                    title: 'ไม่มีข้อมูลสำหรับสร้างรายงาน'
+                });
+                return;
+            }
+
+            // Group revenues by doctor
+            const doctorRevenues = {};
+
+            filteredData.forEach(row => {
+                const doctorId = row[9];
+                const revenue_id = row[0];
+                const revenue = revenues.find(r => r.id === revenue_id);
+                const doctor = doctors.find(d => d.id === doctorId);
+
+                if (revenue && doctor) {
+                    const doctorName = `${doctor.first_name} ${doctor.last_name}`.trim();
+
+                    if (!doctorRevenues[doctorName]) {
+                        doctorRevenues[doctorName] = {
+                            doctorId: doctorId,
+                            doctorDetails: doctor,
+                            revenues: [],
+                            totalRevenue: 0,
+                            totalDoctorShare: 0,
+                            totalClinicShare: 0,
+                            totalDoctorTransfer: 0
+                        };
+                    }
+
+                    const revenue_type = revenue.caseType;
+                    const revenue_amount = calculateRevenueAmount(revenue, true);
+
+                    // Determine doctor share percentage
+                    let doctorSharedPercent = 0;
+                    if (revenue_type) {
+                        const typeLower = revenue_type.toLowerCase();
+                        if (typeLower.includes('จัดฟัน')) {
+                            doctorSharedPercent = doctor['%จัดฟัน'] || 0;
+                        } else if (typeLower.includes('gp1')) {
+                            doctorSharedPercent = doctor['%gp1'] || 0;
+                        } else if (typeLower.includes('gp2')) {
+                            doctorSharedPercent = doctor['%gp2'] || 0;
+                        } else if (typeLower.includes('gp3')) {
+                            doctorSharedPercent = doctor['%gp3'] || 0;
+                        } else if (typeLower.includes('รักษาราก')) {
+                            doctorSharedPercent = doctor['%รักษาราก'] || 0;
+                        } else if (typeLower.includes('ซื้อผลิตภัณฑ์')) {
+                            doctorSharedPercent = doctor['%ซื้อผลิตภัณฑ์'] || 0;
+                        }
+                    }
+
+                    const doctorShared = revenue_amount * (doctorSharedPercent / 100);
+                    const clinicShared = revenue_amount - doctorShared;
+
+                    doctorRevenues[doctorName].revenues.push({
+                        id: revenue.id,
+                        date: revenue.date,
+                        patientId: revenue.patientId,
+                        caseType: revenue.caseType,
+                        amount: revenue_amount,
+                        percent: doctorSharedPercent,
+                        doctorShare: doctorShared,
+                        clinicShare: clinicShared,
+                        doctorTransfer: revenue.transferDoctorAmount || 0
+                    });
+
+                    doctorRevenues[doctorName].totalRevenue += revenue_amount;
+                    doctorRevenues[doctorName].totalDoctorShare += doctorShared;
+                    doctorRevenues[doctorName].totalClinicShare += clinicShared;
+                    doctorRevenues[doctorName].totalDoctorTransfer += (revenue.transferDoctorAmount || 0);
+                }
+            });
+
+            // Generate report HTML
+            let reportHTML = '';
+
+            // Overall summary
+            const grandTotalRevenue = Object.values(doctorRevenues).reduce((sum, d) => sum + d.totalRevenue, 0);
+            const grandTotalDoctorShare = Object.values(doctorRevenues).reduce((sum, d) => sum + d.totalDoctorShare, 0);
+            const grandTotalClinicShare = Object.values(doctorRevenues).reduce((sum, d) => sum + d.totalClinicShare, 0);
+
+            reportHTML += `
+                <div class="alert alert-info">
+                    <h6 class="mb-2"><i class="fas fa-info-circle me-2"></i>สรุปรวมทั้งหมด</h6>
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <strong>รายได้รวม:</strong> ${grandTotalRevenue.toLocaleString()} บาท
+                        </div>
+                        <div class="col-md-4">
+                            <strong>ส่วนแบ่งหมอรวม:</strong> ${grandTotalDoctorShare.toLocaleString()} บาท
+                        </div>
+                        <div class="col-md-4">
+                            <strong>ส่วนแบ่งคลินิกรวม:</strong> ${grandTotalClinicShare.toLocaleString()} บาท
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Details by doctor
+            Object.keys(doctorRevenues).sort().forEach(doctorName => {
+                const doctorData = doctorRevenues[doctorName];
+
+                reportHTML += `
+                    <div class="card mb-3 border-primary">
+                        <div class="card-header bg-primary bg-opacity-10">
+                            <h4 class="mb-0 text-primary">
+                                <i class="fas fa-user-md me-2"></i>${doctorName}
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>วันที่</th>
+                                            <th>ลูกค้า</th>
+                                            <th>ประเภทเคส</th>
+                                            <th class="text-end">รายได้</th>
+                                            <th class="text-center">%</th>
+                                            <th class="text-end">ส่วนหมอ</th>
+                                            <th class="text-end">ส่วนคลินิก</th>
+                                            <th class="text-end">โอนหมอ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                `;
+
+                doctorData.revenues.forEach((rev, index) => {
+                    const patient = patients.find(p => p.id === rev.patientId);
+                    const patientName = patient ? `${patient.title_prefix || ''} ${patient.first_name} ${patient.last_name}`.trim() : 'ไม่ระบุ';
+                    const dateFormatted = moment(rev.date).format('DD/MM/YYYY');
+
+                    reportHTML += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${dateFormatted}</td>
+                            <td>${patientName}</td>
+                            <td><span class="badge bg-secondary">${rev.caseType}</span></td>
+                            <td class="text-end">${rev.amount.toLocaleString()}</td>
+                            <td class="text-center">${rev.percent}%</td>
+                            <td class="text-end text-warning">${rev.doctorShare.toLocaleString()}</td>
+                            <td class="text-end text-info">${rev.clinicShare.toLocaleString()}</td>
+                            <td class="text-end">${rev.doctorTransfer.toLocaleString()}</td>
+                        </tr>
+                    `;
+                });
+
+                reportHTML += `
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <th colspan="4" class="text-end">รวม:</th>
+                                            <th class="text-end">${doctorData.totalRevenue.toLocaleString()}</th>
+                                            <th></th>
+                                            <th class="text-end text-warning">${doctorData.totalDoctorShare.toLocaleString()}</th>
+                                            <th class="text-end text-info">${doctorData.totalClinicShare.toLocaleString()}</th>
+                                            <th class="text-end">${doctorData.totalDoctorTransfer.toLocaleString()}</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                `;
+
+                // Calculate difference and add summary text below table
+                const difference = doctorData.totalDoctorTransfer - doctorData.totalDoctorShare;
+                let summaryText = '';
+                let summaryClass = '';
+
+                if (difference > 0) {
+                    summaryText = `หมอโอนให้คลินิก: ${Math.abs(difference).toLocaleString()} บาท`;
+                    summaryClass = 'text-danger';
+                } else if (difference < 0) {
+                    summaryText = `คลินิกโอนให้หมอ: ${Math.abs(difference).toLocaleString()} บาท`;
+                    summaryClass = 'text-success';
+                } else {
+                    summaryText = 'ชำระครบถ้วน';
+                    summaryClass = 'text-muted';
+                }
+
+                reportHTML += `
+                            </div>
+                            <div class="alert alert-light border ${summaryClass} mt-2 mb-0">
+                                <strong>สรุป:</strong> ${summaryText}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+
+
+            // Remove existing modal if any
+            $('#reportPrintArea').empty();
+            // Append new report content
+            $('#reportPrintArea').html(reportHTML);
+            $('#printRevenueReportBtn').off('click').on('click', function () {
+                printRevenueReport();
+            });
+            $('#revenueReportModal').modal('show');
+
+            Toast.fire({
+                icon: 'success',
+                title: 'สร้างรายงานสำเร็จ'
+            });
+        }
+
+        function updateRevenuePaidStatus() {
+            let revenue_data = $(SELECTORS.REVENUE_TABLE).DataTable().rows({ search: 'applied' }).data().toArray();
+            if (revenue_data.length === 0) {
+                Toast.fire({
+                    icon: 'warning',
+                    title: 'กรุณาเลือกข้อมูลรายรับ-รายจ่ายก่อนดำเนินการ'
+                });
+                return;
+            }
+            const revenueIds = revenue_data.map(row => row[0]);
+            
+            // Build summary details
+            let totalAmount = 0;
+            let doctorsList = [];
+            
+            revenue_data.forEach(row => {
+                const revenue_id = row[0];
+                const revenue = revenues.find(r => r.id === revenue_id);
+                if (revenue) {
+                    const amount = calculateRevenueAmount(revenue);
+                    totalAmount += amount;
+                    
+                    const doctorId = row[9];
+                    const doctor = doctors.find(d => d.id === doctorId);
+                    const doctorName = doctor ? `${doctor.first_name} ${doctor.last_name}`.trim() : 'ไม่ระบุ';
+                    
+                    if (!doctorsList.includes(doctorName)) {
+                        doctorsList.push(doctorName);
+                    }
+                }
+            });
+            
+            const detailsHtml = `
+                <div style="text-align: left; margin: 20px 0;">
+                    <strong>จำนวนรายการ:</strong> ${revenueIds.length} รายการ<br>
+                    <strong>ยอดรวมทั้งหมด:</strong> ${totalAmount.toLocaleString()} บาท<br>
+                    <strong>หมอที่เกี่ยวข้อง:</strong>${doctorsList.map(doctor => `- ${doctor}`).join('<br>')}<br>
+                </div>
+                <div style="color: #198754; font-weight: bold; margin-top: 15px;">
+                    ✓ รายการทั้งหมดจะถูกเปลี่ยนสถานะเป็น "จ่ายหมอแล้ว"
+                </div>
+            `;
+
+            Swal.fire({
+                title: 'ยืนยันการอัปเดตสถานะ',
+                html: `ต้องการอัปเดตสถานะรายรับ-รายจ่ายเหล่านี้หรือไม่?${detailsHtml}`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#30308b',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
+                confirmButtonText: 'ยืนยันอัปเดต',
+                cancelButtonText: 'ยกเลิก',
+                customClass: {
+                    popup: 'rounded-4'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    proceedWithStatusUpdate();
+                }
+            });
+            
+            function proceedWithStatusUpdate() {
+                NProgress.start();
+                Swal.fire({
+                    title: 'กำลังอัปเดตสถานะ...',
+                    text: 'กรุณารอสักครู่',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                google.script.run
+                    .withSuccessHandler(function (result) {
+                        if (result.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'สำเร็จ!',
+                                text: result.message,
+                                confirmButtonColor: '#30308b',
+                                customClass: {
+                                    popup: 'rounded-4'
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'เกิดข้อผิดพลาด',
+                                text: result.message,
+                                confirmButtonColor: '#30308b',
+                                customClass: {
+                                    popup: 'rounded-4'
+                                }
+                            });
+                        }
+                        NProgress.done();
+                    })
+                    .withFailureHandler(function (error) {
+                        console.error('Error updating paid status:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: UI_TEXT.MESSAGES.UPDATE_PAID_STATUS_ERROR,
+                            confirmButtonColor: '#30308b',
+                            customClass: {
+                                popup: 'rounded-4'
+                            }
+                        });
+                        NProgress.done();
+                    })
+                [API_METHODS.UPDATE_REVENUE_PAID_STATUS](revenueIds, {
+                    branch: currentUserBranch,
+                    role: currentUserRole
+                });
+            }
+        }
+
+        function printRevenueReport() {
+            const datatable = $(SELECTORS.REVENUE_TABLE).DataTable();
+            const filteredData = datatable.rows({ search: 'applied' }).data().toArray();
+
+            if (filteredData.length === 0) {
+                return;
+            }
+
+            // Get date range from filters
+            const startDate = moment($('#filterStartDate').val()).isValid() ? moment($('#filterStartDate').val()).format('DD/MM/YYYY') : '';
+            const endDate = moment($('#filterEndDate').val()).isValid() ? moment($('#filterEndDate').val()).format('DD/MM/YYYY') : '';
+            let dateRangeText = 'ทั้งหมด';
+
+            if (startDate && endDate) {
+                dateRangeText = `${startDate} ถึง ${endDate}`;
+            } else if (startDate) {
+                dateRangeText = `ตั้งแต่ ${startDate}`;
+            } else if (endDate) {
+                dateRangeText = `ถึง ${endDate}`;
+            }
+
+            // Group revenues by doctor
+            const doctorRevenues = {};
+
+            filteredData.forEach(row => {
+                const doctorId = row[9];
+                const revenue_id = row[0];
+                const revenue = revenues.find(r => r.id === revenue_id);
+                const doctor = doctors.find(d => d.id === doctorId);
+
+                if (revenue && doctor) {
+                    const doctorName = `${doctor.first_name} ${doctor.last_name}`.trim();
+
+                    if (!doctorRevenues[doctorName]) {
+                        doctorRevenues[doctorName] = {
+                            revenues: [],
+                            totalRevenue: 0,
+                            totalDoctorShare: 0,
+                            totalClinicShare: 0,
+                            totalDoctorTransfer: 0,
+                            totalClinicTransfer: 0
+                        };
+                    }
+
+                    const revenue_type = revenue.caseType;
+                    const revenue_amount = calculateRevenueAmount(revenue, true);
+
+                    let doctorSharedPercent = 0;
+                    if (revenue_type) {
+                        const typeLower = revenue_type.toLowerCase();
+                        if (typeLower.includes('จัดฟัน')) {
+                            doctorSharedPercent = doctor['%จัดฟัน'] || 0;
+                        } else if (typeLower.includes('gp1')) {
+                            doctorSharedPercent = doctor['%gp1'] || 0;
+                        } else if (typeLower.includes('gp2')) {
+                            doctorSharedPercent = doctor['%gp2'] || 0;
+                        } else if (typeLower.includes('gp3')) {
+                            doctorSharedPercent = doctor['%gp3'] || 0;
+                        } else if (typeLower.includes('รักษาราก')) {
+                            doctorSharedPercent = doctor['%รักษาราก'] || 0;
+                        } else if (typeLower.includes('ซื้อผลิตภัณฑ์')) {
+                            doctorSharedPercent = doctor['%ซื้อผลิตภัณฑ์'] || 0;
+                        }
+                    }
+
+                    const doctorShared = revenue_amount * (doctorSharedPercent / 100);
+                    const clinicShared = revenue_amount - doctorShared;
+
+                    // Get transfer amounts
+                    const doctorTransfer = revenue.transferDoctorAmount || 0;
+                    const clinicTransfer = revenue.transferClinicAmount || 0;
+
+                    doctorRevenues[doctorName].revenues.push({
+                        date: revenue.date,
+                        patientId: revenue.patientId,
+                        caseType: revenue.caseType,
+                        amount: revenue_amount,
+                        percent: doctorSharedPercent,
+                        doctorShare: doctorShared,
+                        clinicShare: clinicShared,
+                        doctorTransfer: doctorTransfer,
+                        clinicTransfer: clinicTransfer
+                    });
+
+                    doctorRevenues[doctorName].totalRevenue += revenue_amount;
+                    doctorRevenues[doctorName].totalDoctorShare += doctorShared;
+                    doctorRevenues[doctorName].totalClinicShare += clinicShared;
+                    doctorRevenues[doctorName].totalDoctorTransfer += doctorTransfer;
+                    doctorRevenues[doctorName].totalClinicTransfer += clinicTransfer;
+                }
+            });
+
+            // Calculate grand totals
+            const grandTotalRevenue = Object.values(doctorRevenues).reduce((sum, d) => sum + d.totalRevenue, 0);
+            const grandTotalDoctorShare = Object.values(doctorRevenues).reduce((sum, d) => sum + d.totalDoctorShare, 0);
+            const grandTotalClinicShare = Object.values(doctorRevenues).reduce((sum, d) => sum + d.totalClinicShare, 0);
+
+            // Generate clean print HTML
+            let printHTML = `
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>รายงานรายรับ-รายจ่ายหมอ</title>
+                    <style>
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        body { 
+                            font-family: 'Sarabun', 'Arial', sans-serif; 
+                            font-size: 8pt; 
+                            line-height: 1.3;
+                            padding: 15mm;
+                        }
+                        .header { 
+                            text-align: center; 
+                            margin-bottom: 15px; 
+                            padding-bottom: 8px;
+                            border-bottom: 2px solid #333;
+                        }
+                        .header h1 { 
+                            font-size: 16pt; 
+                            font-weight: bold; 
+                            margin-bottom: 4px;
+                        }
+                        .header div {
+                            font-size: 9pt;
+                        }
+                        .summary-box {
+                            background: #f5f5f5;
+                            padding: 10px;
+                            margin-bottom: 15px;
+                            border: 1px solid #ddd;
+                        }
+                        .summary-grid {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr 1fr;
+                            gap: 12px;
+                            text-align: center;
+                        }
+                        .summary-item strong {
+                            display: block;
+                            font-size: 8pt;
+                            color: #666;
+                            margin-bottom: 2px;
+                        }
+                        .summary-item span {
+                            font-size: 10pt;
+                            font-weight: bold;
+                        }
+                        .doctor-section {
+                            margin-bottom: 20px;
+                            page-break-inside: avoid;
+                            page-break-after: always;
+                        }
+                        .doctor-section:last-child {
+                            page-break-after: auto;
+                        }
+                        .doctor-header {
+                            background: #333;
+                            color: white;
+                            padding: 6px 10px;
+                            font-size: 10pt;
+                            font-weight: bold;
+                            margin-bottom: 8px;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 6px;
+                        }
+                        th, td {
+                            padding: 4px 6px;
+                            text-align: left;
+                            border-bottom: 1px solid #ddd;
+                            font-size: 8pt;
+                        }
+                        th {
+                            background: #f0f0f0;
+                            font-weight: bold;
+                        }
+                        .text-end { text-align: right; }
+                        .text-center { text-align: center; }
+                        tfoot td {
+                            font-weight: bold;
+                            background: #f5f5f5;
+                            border-top: 2px solid #333;
+                        }
+                        .case-badge {
+                            display: inline-block;
+                            padding: 1px 4px;
+                            background: #e9ecef;
+                            border-radius: 2px;
+                            font-size: 7pt;
+                        }
+                        .summary-text {
+                            padding: 6px 10px;
+                            margin-top: 6px;
+                            background: #f8f9fa;
+                            border-left: 3px solid #6c757d;
+                            font-size: 9pt;
+                        }
+                        .summary-text.danger {
+                            border-left-color: #dc3545;
+                            color: #dc3545;
+                        }
+                        .summary-text.success {
+                            border-left-color: #198754;
+                            color: #198754;
+                        }
+
+                        @media print {
+                            body { padding: 10mm; }
+                            .doctor-section { page-break-inside: avoid; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>รายงานรายรับ-รายจ่ายหมอ</h1>
+                        <div>ช่วงเวลา: ${dateRangeText}</div>
+                        <div>วันที่พิมพ์: ${moment().format('DD/MM/YYYY HH:mm')}</div>
+                    </div>
+                    
+                    <div class="summary-box">
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <strong>รายได้รวม</strong>
+                                <span>${grandTotalRevenue.toLocaleString()} บาท</span>
+                            </div>
+                            <div class="summary-item">
+                                <strong>ส่วนแบ่งหมอรวม</strong>
+                                <span>${grandTotalDoctorShare.toLocaleString()} บาท</span>
+                            </div>
+                            <div class="summary-item">
+                                <strong>ส่วนแบ่งคลินิกรวม</strong>
+                                <span>${grandTotalClinicShare.toLocaleString()} บาท</span>
+                            </div>
+                        </div>
+                    </div>
+            `;
+
+            // Add each doctor's section
+            Object.keys(doctorRevenues).sort().forEach(doctorName => {
+                const doctorData = doctorRevenues[doctorName];
+
+                printHTML += `
+                    <div class="doctor-section">
+                        <div class="doctor-header">ชื่อหมอ : ${doctorName} | ช่วงเวลา: ${dateRangeText}</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>วันที่</th>
+                                    <th>ลูกค้า</th>
+                                    <th>ประเภทเคส</th>
+                                    <th class="text-end">รายได้</th>
+                                    <th class="text-center">%</th>
+                                    <th class="text-end">ส่วนหมอ</th>
+                                    <th class="text-end">ส่วนคลินิก</th>
+                                    <th class="text-end">โอนหมอ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                doctorData.revenues.forEach((rev, index) => {
+                    const patient = patients.find(p => p.id === rev.patientId);
+                    const patientName = patient ? `${patient.title_prefix || ''} ${patient.first_name} ${patient.last_name}`.trim() : 'ไม่ระบุ';
+                    const dateFormatted = moment(rev.date).format('DD/MM/YYYY');
+
+                    printHTML += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${dateFormatted}</td>
+                            <td>${patientName}</td>
+                            <td><span class="case-badge">${rev.caseType}</span></td>
+                            <td class="text-end">${rev.amount.toLocaleString()}</td>
+                            <td class="text-center">${rev.percent}%</td>
+                            <td class="text-end">${rev.doctorShare.toLocaleString()}</td>
+                            <td class="text-end">${rev.clinicShare.toLocaleString()}</td>
+                            <td class="text-end">${rev.doctorTransfer.toLocaleString()}</td>
+                        </tr>
+                    `;
+                });
+
+                printHTML += `
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-end">รวม:</td>
+                                    <td class="text-end">${doctorData.totalRevenue.toLocaleString()}</td>
+                                    <td></td>
+                                    <td class="text-end">${doctorData.totalDoctorShare.toLocaleString()}</td>
+                                    <td class="text-end">${doctorData.totalClinicShare.toLocaleString()}</td>
+                                    <td class="text-end">${doctorData.totalDoctorTransfer.toLocaleString()}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                `;
+
+                // Calculate difference and add summary text below table
+                const difference = doctorData.totalDoctorTransfer - doctorData.totalDoctorShare;
+                let summaryText = '';
+                let summaryClass = '';
+
+                if (difference > 0) {
+                    summaryText = `หมอโอนให้คลินิก: ${Math.abs(difference).toLocaleString()} บาท`;
+                    summaryClass = 'danger';
+                } else if (difference < 0) {
+                    summaryText = `คลินิกโอนให้หมอ: ${Math.abs(difference).toLocaleString()} บาท`;
+                    summaryClass = 'success';
+                } else {
+                    summaryText = 'ชำระครบถ้วน';
+                    summaryClass = '';
+                }
+
+                printHTML += `
+                        <div class="summary-text ${summaryClass}">
+                            <strong>สรุป:</strong> ${summaryText}
+                        </div>
+                    </div>
+                `;
+            });
+
+            printHTML += `
+                </body>
+                </html>
+            `;
+
+            // Open print window
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printHTML);
+            printWindow.document.close();
+            printWindow.focus();
+
+            // Wait for content to load then print
+            setTimeout(() => {
+                printWindow.print();
+            }, 300);
         }
 
         function updateNotifications() {
@@ -6877,6 +8051,7 @@
         window.deleteRevenue = deleteRevenue;
         window.editUser = editUser;
         window.deleteUser = deleteUser;
+        window.printRevenueReport = printRevenueReport;
 
         // Settings functions
         window.loadSettingsPage = loadSettingsPage;

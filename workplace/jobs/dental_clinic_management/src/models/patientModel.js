@@ -51,12 +51,17 @@ function getAllPatients(currentUser = null) {
  * Add new patient (optimized with role-based access control)
  */
 function addPatient(patientData, currentUser = null) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถเพิ่มข้อมูลคนไข้ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     // Check permissions
     if (
       currentUser &&
       !checkPermission(currentUser.role, "canManagePatients")
     ) {
+      lock.releaseLock();
       return { success: false, message: "คุณไม่มีสิทธิ์จัดการข้อมูลคนไข้" };
     }
 
@@ -120,9 +125,11 @@ function addPatient(patientData, currentUser = null) {
     } catch (notificationError) {
       console.error("Notification error:", notificationError);
     }
+    lock.releaseLock();
 
     return { success: true, message: "เพิ่มคนไข้เรียบร้อย", patientId: newId };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error adding patient:", error);
     return { success: false, message: error.toString() };
   }
@@ -132,12 +139,17 @@ function addPatient(patientData, currentUser = null) {
  * Update patient information (optimized with role-based access control)
  */
 function updatePatient(patientId, patientData, currentUser = null) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถอัปเดตข้อมูลคนไข้ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     // Check permissions
     if (
       currentUser &&
       !checkPermission(currentUser.role, "canManagePatients")
     ) {
+      lock.releaseLock();
       return { success: false, message: "คุณไม่มีสิทธิ์จัดการข้อมูลคนไข้" };
     }
 
@@ -156,6 +168,7 @@ function updatePatient(patientId, patientData, currentUser = null) {
     }
 
     if (rowIndex === -1) {
+      lock.releaseLock();
       return { success: false, message: "ไม่พบข้อมูลคนไข้" };
     }
 
@@ -208,9 +221,10 @@ function updatePatient(patientId, patientData, currentUser = null) {
     } catch (notificationError) {
       console.error("Notification error:", notificationError);
     }
-
+    lock.releaseLock();
     return { success: true, message: "อัปเดตข้อมูลคนไข้เรียบร้อย" };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error updating patient:", error);
     return { success: false, message: error.toString() };
   }
@@ -220,6 +234,10 @@ function updatePatient(patientId, patientData, currentUser = null) {
  * Delete patient (optimized)
  */
 function deletePatient(patientId) {
+  let lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)) {
+    return { success: false, message: "ไม่สามารถลบข้อมูลคนไข้ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+  }
   try {
     const patientsSheet = getSheet(SHEET_NAMES.PATIENTS);
 
@@ -231,6 +249,7 @@ function deletePatient(patientId) {
     const rowIndex = idColumn.findIndex((id) => id === patientId);
 
     if (rowIndex === -1 || rowIndex === 0) {
+      lock.releaseLock();
       return { success: false, message: "ไม่พบข้อมูลคนไข้" };
     }
 
@@ -240,6 +259,7 @@ function deletePatient(patientId) {
       appointmentsResult.success &&
       appointmentsResult.appointments.length > 0
     ) {
+      lock.releaseLock();
       return {
         success: false,
         message: "ไม่สามารถลบคนไข้ที่มีการนัดหมายอยู่ได้",
@@ -250,9 +270,10 @@ function deletePatient(patientId) {
 
     // Invalidate cache since data changed
     invalidateCache("patients");
-
+    lock.releaseLock();
     return { success: true, message: "ลบข้อมูลคนไข้เรียบร้อย" };
   } catch (error) {
+    lock.releaseLock();
     console.error("Error deleting patient:", error);
     return { success: false, message: error.toString() };
   }
