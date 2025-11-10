@@ -177,6 +177,7 @@ function cancelSellData(uuid, canceler) {
         });
     }
     data[9] = "ยกเลิก";
+    data[13] = data[14] = "";
     sheet.getRange(row, 1, 1, data.length).setValues([data]);
     data.splice(9, 1); // Remove the YM column
     eventLog('ยกเลิกข้อมูลการขาย\n' + data.join(', ') + '\nโดย ' + canceler);
