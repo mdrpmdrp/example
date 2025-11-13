@@ -18,6 +18,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt&display=swap" rel="stylesheet">
     <!-- /icon -->
     <link rel="icon" href="https://img2.pic.in.th/pic/1730737040513.png" type="image/x-icon">
+    <link rel="stylesheet"
+        href="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dist/jquery.Thailand.min.css">
     <style>
         * {
             margin: 0;
@@ -232,6 +234,7 @@
             border: 2px solid #ccc;
             cursor: pointer;
             transition: all 0.3s ease;
+            margin-left: 0 !important;
         }
 
         .form-check-input:checked {
@@ -690,12 +693,54 @@
                                 </div>
                             </div>
                             <div class="col-12">
+                                <span class="form-text mt-2" style="color: #ff8f04;">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    กรุณากรอกข้อมูลที่อยู่ตามบัตรประชาชน เพื่อความสะดวกรวดเร็วในวันเข้างานค่ะ
+                                </span>
+                            </div>
+                            <div class="col-12">
+                                <label for="guest-address-1" class="form-label"><i
+                                        class="bi bi-house-fill me-2"></i>บ้านเลขที่ หมู่บ้าน ซอย ถนน</label>
+                                <input type="text" class="form-control" id="guest-address-1" name="guest-address-1"
+                                    placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน" required>
+                                <div class="invalid-feedback">
+                                    กรุณากรอกบ้านเลขที่ หมู่บ้าน ซอย ถนน
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="guest-district" class="form-label"><i
+                                        class="bi bi-geo-alt me-2"></i>ตำบล</label>
+                                <input type="text" class="form-control" id="guest-district" name="guest-district"
+                                    placeholder="ระบุตำบล" required>
+                                <div class="invalid-feedback">
+                                    กรุณากรอกตำบล
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="guest-amphoe" class="form-label"><i
+                                        class="bi bi-geo-alt me-2"></i>อำเภอ</label>
+                                <input type="text" class="form-control" id="guest-amphoe" name="guest-amphoe"
+                                    placeholder="ระบุอำเภอ" required>
+                                <div class="invalid-feedback">
+                                    กรุณากรอกอำเภอ
+                                </div>
+                            </div>
+                            <div class="col-md-6">
                                 <label for="guest-province" class="form-label"><i
                                         class="bi bi-geo-alt-fill me-2"></i>จังหวัด</label>
                                 <input type="text" class="form-control" id="guest-province" name="guest-province"
                                     placeholder="ระบุจังหวัด" required>
                                 <div class="invalid-feedback">
                                     กรุณากรอกจังหวัด
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="guest-zipcode" class="form-label"><i
+                                        class="bi bi-mailbox me-2"></i>รหัสไปรษณีย์</label>
+                                <input type="text" class="form-control" id="guest-zipcode" name="guest-zipcode"
+                                    placeholder="รหัสไปรษณีย์ 5 หลัก" maxlength="5" pattern="\d{5}" required>
+                                <div class="invalid-feedback">
+                                    กรุณากรอกรหัสไปรษณีย์ 5 หลัก
                                 </div>
                             </div>
                             <div class="col-12">
@@ -792,6 +837,7 @@
     <script>
         const scriptUrl = 'https://script.google.com/macros/s/AKfycbxeQVWU7m3laqQowhev9487Ize_SAW8zy7qj-IlneYSz-DHwUBMnpb73CTnVc9ADFg/exec'
         const LIFF_ID = '1656187634-ZVB4KEdw'
+        // const LIFF_ID = '1655873446-3xe866Ql' // for test
         var folder_token_obj, auth_users
         $(document).ready(function () {
             let page = new URLSearchParams(window.location.search).get('p');
@@ -850,6 +896,12 @@
                 debounceTimer = setTimeout(function () {
                     input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
                 }, 100);
+            });
+            $.Thailand({
+                $district: $('#guest-district'), // input ของตำบล
+                $amphoe: $('#guest-amphoe'), // input ของอำเภอ
+                $province: $('#guest-province'), // input ของจังหวัด
+                $zipcode: $('#guest-zipcode'), // input ของรหัสไปรษณีย์
             });
             checkRegist();
         }
@@ -911,6 +963,7 @@
                 $.LoadingOverlay("hide");
                 if (res.status == 'not found') {
                     // ไม่พบข้อมูล ไปหน้าลงทะเบียนลูกค้าใหม่
+                    $('#guest-phone').val(/^\d{9,10}$/.test(searchValue) ? searchValue : '');
                     Swal.fire({
                         icon: 'info',
                         title: 'ไม่พบข้อมูลลูกค้า',
@@ -1029,6 +1082,7 @@
         }
 
         function handleAlreadyRegistered(data) {
+            console.log("🚀 ~ handleAlreadyRegistered ~ data:", data)
             const isGuest = data['member_id'].match(/^[a-zA-Z]{2,3}\d{4,6}$/) ? false : true;
             Swal.fire({
                 icon: 'success',
@@ -1053,7 +1107,21 @@
                 $('#guest-form-title').html('ข้อมูลการลงทะเบียน<br><span style="font-size: 0.9em; color: #666;">(ผู้เข้าร่วมงานทั่วไป)</span>')
                 $('#guest-form input, #guest-form button').prop('disabled', true)
                 $('#guest-form #guest-name').val(data['ชื่อ นามสกุล'] || data.name)
-                $('#guest-form #guest-province').val(data['จังหวัด'] || data.province)
+
+                // แสดงข้อมูลที่อยู่แบบแยกช่อง (ถ้ามีการเก็บข้อมูลแบบเก่า จะแสดงในช่องแรก)
+                let addressData = data['ที่อยู่'] || data.address || '';
+                addressData = addressData.split(',');
+                let address1 = addressData[0] ? addressData[0].trim() : '';
+                let district = addressData.find(addr => addr.includes('ตำบล') || addr.includes('แขวง')) || '';
+                let amphoe = addressData.find(addr => addr.includes('อำเภอ')) || '';
+                let province = addressData.find(addr => addr.includes('จังหวัด')) || '';
+                let zipcode = addressData.find(addr => addr.match(/\d{5}/)) || '';
+                $('#guest-form #guest-address-1').val(address1);
+                $('#guest-form #guest-district').val(district.replace('ตำบล', '').replace('แขวง', '').trim());
+                $('#guest-form #guest-amphoe').val(amphoe.replace('อำเภอ', '').trim())
+                $('#guest-form #guest-province').val(province.replace('จังหวัด', '').trim())
+                $('#guest-form #guest-zipcode').val(zipcode.trim())
+
                 $('#guest-form #guest-phone').val(data['เบอร์โทร'] || data.phone)
                 $('[name="guest-occupation"]').each(function () {
                     if (data['อาชีพ'] && data['อาชีพ'].includes($(this).val())) {
@@ -1190,9 +1258,26 @@
 
         function submitGuestForm() {
             $.LoadingOverlay("show");
+            fullAddress = {
+                address: $('#guest-form #guest-address-1').val().trim(),
+                district: $('#guest-form #guest-district').val().trim(),
+                amphoe: $('#guest-form #guest-amphoe').val().trim(),
+                province: $('#guest-form #guest-province').val().trim(),
+                zipcode: $('#guest-form #guest-zipcode').val().toString().trim()
+            }
+            fullAddressString = ''
+            if (fullAddress.address) fullAddressString += fullAddress.address + ', '
+            if (fullAddress.district) fullAddressString += 'ตำบล' + fullAddress.district + ', '
+            if (fullAddress.amphoe) fullAddressString += 'อำเภอ' + fullAddress.amphoe + ', '
+            if (fullAddress.province) fullAddressString += 'จังหวัด' + fullAddress.province + ', '
+            if (fullAddress.zipcode) fullAddressString += fullAddress.zipcode
+            fullAddressString = fullAddressString.replace(/, $/, '')
+            console.log("🚀 ~ submitGuestForm ~ fullAddressString:", fullAddressString)
+
             let data = {
                 name: $('#guest-form #guest-name').val(),
                 province: $('#guest-form #guest-province').val(),
+                address: fullAddressString,
                 phone: $('#guest-form #guest-phone').val(),
                 occupation: $('#guest-form input[name=guest-occupation]:checked').map(function () {
                     return this.value
@@ -1262,90 +1347,6 @@
         }
 
         function sendMessage(type, data, showAlert = true) {
-            // let flex = {
-            //     "type": "bubble",
-            //     "size": "giga",
-            //     "body": {
-            //         "type": "box",
-            //         "layout": "vertical",
-            //         "contents": [
-            //             {
-            //                 "type": "image",
-            //                 "url": "https://img5.pic.in.th/file/secure-sv1/19ccefa47a4401aaa68370c059a53f20.jpg",
-            //                 "size": "full",
-            //                 "aspectMode": "cover",
-            //                 "aspectRatio": "1:1",
-            //                 "gravity": "top"
-            //             },
-            //             {
-            //                 "type": "box",
-            //                 "layout": "vertical",
-            //                 "contents": [
-            //                     {
-            //                         "type": "text",
-            //                         "text": type === 'member' ? data.member_id || 'None' : data.guest_id || 'None',
-            //                         "color": "#000000",
-            //                         "align": "center",
-            //                         "size": "xxl",
-            //                         "weight": "bold"
-            //                     }
-            //                 ],
-            //                 "position": "absolute",
-            //                 "offsetTop": "184px",
-            //                 "offsetStart": "15px",
-            //                 "height": "40px",
-            //                 "width": "190px",
-            //                 "justifyContent": "center",
-            //                 "alignItems": "center"
-            //             },
-            //             {
-            //                 "type": "box",
-            //                 "layout": "vertical",
-            //                 "contents": [
-            //                     {
-            //                         "type": "text",
-            //                         "text": data.name || 'None',
-            //                         "color": "#FFFFFF",
-            //                         "align": "center",
-            //                         "size": "lg",
-            //                         "weight": "bold",
-            //                         "adjustMode": "shrink-to-fit"
-            //                     }
-            //                 ],
-            //                 "position": "absolute",
-            //                 "offsetTop": "225px",
-            //                 "offsetStart": "15px",
-            //                 "height": "40px",
-            //                 "width": "190px",
-            //                 "justifyContent": "center"
-            //             },
-            //             {
-            //                 "type": "box",
-            //                 "layout": "vertical",
-            //                 "contents": [
-            //                     {
-            //                         "type": "image",
-            //                         "url": "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(type === 'member' ? data.member_id || 'None' : data.guest_id || 'None'),
-            //                         "aspectMode": "cover",
-            //                         "size": "full"
-            //                     }
-            //                 ],
-            //                 "position": "absolute",
-            //                 "offsetTop": "210px",
-            //                 "offsetStart": "230px",
-            //                 "borderColor": "#FFFFFF",
-            //                 "borderWidth": "medium",
-            //                 "width": "130px",
-            //                 "height": "130px",
-            //                 "cornerRadius": "md",
-            //                 "paddingAll": "sm",
-            //                 "backgroundColor": "#FFFFFF"
-            //             }
-            //         ],
-            //         "paddingAll": "0px"
-            //     }
-            // }
-
             let flex = {
                 "type": "bubble",
                 "size": "giga",
@@ -1478,11 +1479,20 @@
                 ]
                 flex.body.contents.splice(3, 0, ...follower_contents);
             }
-            liff.sendMessages([{
-                "type": "flex",
-                "altText": "ลงทะเบียนสำเร็จ",
-                "contents": flex
-            }]).then((e) => {
+            let messages = [
+                {
+                    "type": "flex",
+                    "altText": "ลงทะเบียนสำเร็จ",
+                    "contents": flex
+                }
+            ]
+            if(type === 'guest'){
+                messages.push({
+                    "type": "text",
+                    "text": `รหัสลูกค้า: ${data.guest_id}\nชื่อ: คุณ${data.name}\n\nที่อยู่: ${data.address}\n\nเบอร์โทร: ${data.phone}`
+                })
+            }
+            liff.sendMessages(messages).then((e) => {
                 console.log(e);
                 if (!showAlert) return;
                 Swal.fire({
@@ -1547,7 +1557,16 @@
     <script
         src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
-     <script src="https://market.xenex.io/ppbmarket/liff-sdk.min.js?ver=123456"></script>
+    <script type="text/javascript"
+        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dependencies/JQL.min.js"></script>
+    <script type="text/javascript"
+        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dependencies/typeahead.bundle.js"></script>
+    <script type="text/javascript"
+        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dist/jquery.Thailand.min.js"></script>
+
+
+
+    <!-- <script src="https://market.xenex.io/ppbmarket/liff-sdk.min.js?ver=123456"></script> -->
 </body>
 
 </html>

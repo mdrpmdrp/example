@@ -486,6 +486,7 @@ function guestRegist(e) {
     const checkInIndex = headerIndices['Check-In'];
     const occupationIndex = headerIndices['อาชีพ'];
     const interestIndex = headerIndices['สินค้าที่สนใจ'];
+    const addressIndex = headerIndices['ที่อยู่'];
     const new_row = new Array(header.length).fill('');
     new_row[0] = guest_id;
     new_row[nameIndex] = e.parameter['name'];
@@ -497,8 +498,10 @@ function guestRegist(e) {
     new_row[interestIndex] = e.parameter['interest'];
     new_row[uidIndex] = paramUid;
     new_row[checkInIndex] = `=IF( COUNTIF({'${SHEET_SATURDAY}'!B:B;'${SHEET_SUNDAY}'!B:B},A${row + 1}) > 0,"YES","NO")`;
+    new_row[addressIndex] = e.parameter['address'];
 
-    sh.getRange(row + 1, 1, 1, 10).setValues([new_row]);
+    
+    sh.getRange(row + 1, 1, 1, 11).setValues([new_row]);
     PropertiesService.getScriptProperties().setProperty('lastGuestID', guest_id.replace('#G', ''));
     lock.releaseLock();
     return createJsonResponse({ status: 'success', guest_id });
