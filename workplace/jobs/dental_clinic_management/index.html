@@ -1597,7 +1597,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-12">
+                            <div class="col-12" id="appointmentSelectContainer">
                                 <div class="mb-3">
                                     <label class="form-label">เลือกจากรายการนัดหมาย (ถ้ามี)</label>
                                     <select class="form-select" id="appointmentSelect" name="appointmentId">
@@ -2065,6 +2065,7 @@
             ADD_APPOINTMENT: 'addAppointment',
             UPDATE_APPOINTMENT: 'updateAppointment',
             ADD_REVENUE: 'addRevenue',
+            UPDATE_REVENUE: 'updateRevenue',
             DELETE_REVENUE: 'deleteRevenue',
             ADD_USER: 'addUser',
             UPDATE_USER: 'updateUser',
@@ -2497,7 +2498,9 @@
                     revenueDatePicker.clear();
                     revenueDatePicker.setDate(moment().toDate());
                 }
-                $('#revenueForm').removeClass('was-validated');
+                $('#revenueForm').removeClass('was-validated')[0].reset();
+                $('#appointmentSelect').val(null).trigger('change');
+                $('#appointmentSelectContainer').addClass('d-none');
             });
 
             $('#revenueReportModal').on('hidden.bs.modal', function () {
@@ -6210,7 +6213,10 @@
             } else {
                 e.target.classList.remove('was-validated');
             }
-            const formData = new FormData(e.target);
+            const formData = $(e.target).serializeArray().reduce((obj, item) => {
+                obj[item.name] = item.value;
+                return obj;
+            }, {});
 
             // Get selected case types from hidden inputs
             const caseTypes = [];
@@ -6228,16 +6234,19 @@
             paymentTypeInputs.forEach(input => paymentTypes.push(input.value));
 
             // Get individual payment amounts using standardized field names
-            const cashAmount = parseFloat(formData.get('amountCash')) || 0;
-            const transferClinicAmount = parseFloat(formData.get('amountTransferClinic')) || 0;
-            const transferDoctorAmount = parseFloat(formData.get('amountTransferDoctor')) || 0;
-            const socialSecurityAmount = parseFloat(formData.get('amountSocialSecurity')) || 0;
-            const visaAmount = parseFloat(formData.get('visaAmount')) || 0;
+            const cashAmount = parseFloat(formData['amountCash']) || 0;
+            const transferClinicAmount = parseFloat(formData['amountTransferClinic']) || 0;
+            const transferDoctorAmount = parseFloat(formData['amountTransferDoctor']) || 0;
+            const socialSecurityAmount = parseFloat(formData['amountSocialSecurity']) || 0;
+            const visaAmount = parseFloat(formData['amountVisa']) || 0;
+            // Check if this is an edit operation
+            const isEditMode = e.target.dataset.revenueId ? true : false;
+            const revenueId = e.target.dataset.revenueId;
 
             const revenueData = {
-                date: formData.get('date'),
-                patientId: formData.get('patientId'),
-                doctorId: formData.get('doctorId'),
+                date: formData['date'],
+                patientId: $(SELECTORS.REVENUE_FORM + ' select[name="patientId"]').val(),
+                doctorId: formData['doctorId'],
                 caseType: caseTypes.join(', '),
                 caseDetails: caseDetails.join(', '),
                 paymentType: paymentTypes.join(', '),
@@ -6246,12 +6255,13 @@
                 transferDoctorAmount: transferDoctorAmount,
                 socialSecurityAmount: socialSecurityAmount,
                 visaAmount: visaAmount,
-                xrayFee: parseFloat(formData.get('xrayFee')) || 0,
-                medicineFee: parseFloat(formData.get('medicineFee')) || 0,
-                otherProductFee: parseFloat(formData.get('otherProductFee')) || 0,
-                discount: parseFloat(formData.get('discount')) || 0,
-                notes: formData.get('notes'),
-                branch: currentUserRole === 'super_admin' ? formData.get('branch') : currentUserBranch // Use form branch for super_admin, otherwise use user's branch
+                xrayFee: parseFloat(formData['xrayFee']) || 0,
+                medicineFee: parseFloat(formData['medicineFee']) || 0,
+                otherProductFee: parseFloat(formData['otherProductFee']) || 0,
+                discount: parseFloat(formData['discount']) || 0,
+                labFee: parseFloat(formData['labFee']) || 0,
+                notes: formData['notes'],
+                branch: currentUserRole === 'super_admin' ? formData['branch']   : currentUserBranch // Use form branch for super_admin, otherwise use user's branch
             };
 
             // Get patient and doctor names for display
@@ -6263,7 +6273,7 @@
             // Get payment type display text (now supports multiple types)
             const paymentTypeText = revenueData.paymentType || 'ไม่ระบุ';
 
-            const confirmTitle = 'ยืนยันการเพิ่มข้อมูลรายได้';
+            const confirmTitle = isEditMode ? 'ยืนยันการแก้ไขข้อมูลรายได้' : 'ยืนยันการเพิ่มข้อมูลรายได้';
 
             // Build payment amounts display from individual payment fields
             let paymentAmountsText = '';
@@ -6274,7 +6284,7 @@
             if (revenueData.transferDoctorAmount > 0) paymentAmountItems.push(`เงินโอนหมอ: ${revenueData.transferDoctorAmount.toLocaleString()} บาท`);
             if (revenueData.socialSecurityAmount > 0) paymentAmountItems.push(`ประกันสังคม: ${revenueData.socialSecurityAmount.toLocaleString()} บาท`);
             if (revenueData.visaAmount > 0) paymentAmountItems.push(`Visa: ${revenueData.visaAmount.toLocaleString()} บาท`);
-
+            console.log(revenueData);
             if (paymentAmountItems.length > 0) {
                 paymentAmountsText = paymentAmountItems.join('<br>');
             }
@@ -6298,13 +6308,13 @@
 
             Swal.fire({
                 title: confirmTitle,
-                html: `ต้องการเพิ่มข้อมูลรายได้นี้หรือไม่?${detailsHtml}`,
+                html: isEditMode ? `ต้องการแก้ไขข้อมูลรายได้นี้หรือไม่?${detailsHtml}` : `ต้องการเพิ่มข้อมูลรายได้นี้หรือไม่?${detailsHtml}`,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#30308b',
                 cancelButtonColor: '#6c757d',
                 reverseButtons: true,
-                confirmButtonText: 'ยืนยันเพิ่ม',
+                confirmButtonText: isEditMode ? 'ยืนยันแก้ไข' : 'ยืนยันเพิ่ม',
                 cancelButtonText: 'ยกเลิก',
                 customClass: {
                     popup: 'rounded-4'
@@ -6330,54 +6340,91 @@
                         icon: 'border-0'
                     }
                 });
-                google.script.run
-                    .withSuccessHandler(function (result) {
-                        Swal.close();
-                        if (result.success) {
-                            // Check if there's a linked appointment to update
-                            const linkedAppointmentId = e.target.dataset.linkedAppointmentId;
-
-                            if (linkedAppointmentId) {
-                                // Update appointment status to completed
-                                updateAppointmentStatusToCompleted(linkedAppointmentId, function () {
-                                    loadRevenues(false);
-                                    loadAppointments(false); // Reload appointments to show updated status
-                                    closeRevenueModal(e.target);
-                                    Toast.fire({
-                                        icon: 'success',
-                                        title: result.message + ' (อัพเดทสถานะนัดหมายเป็นเสร็จสิ้นแล้ว)'
-                                    });
-                                });
-                            } else {
+                if (isEditMode) {
+                    // Update existing revenue
+                    google.script.run
+                        .withSuccessHandler(function (result) {
+                            Swal.close();
+                            if (result.success) {
                                 loadRevenues(false);
                                 closeRevenueModal(e.target);
                                 Toast.fire({
                                     icon: 'success',
                                     title: result.message
                                 });
+                            } else {
+                                Toast.fire({
+                                    icon: 'error',
+                                    title: result.message
+                                });
                             }
-                        } else {
+                            NProgress.done();
+                        })
+                        .withFailureHandler(function (error) {
+                            Swal.close();
+                            console.error('Error updating revenue:', error);
                             Toast.fire({
                                 icon: 'error',
-                                title: result.message
+                                title: 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลรายได้'
                             });
-                        }
-                        NProgress.done();
-                    })
-                    .withFailureHandler(function (error) {
-                        Swal.close();
-                        console.error('Error adding revenue:', error);
-                        Toast.fire({
-                            icon: 'error',
-                            title: UI_TEXT.MESSAGES.REVENUE_ADD_ERROR
-                        });
-                        NProgress.done();
-                    })
-                [API_METHODS.ADD_REVENUE](revenueData, {
-                    username: currentUser,
-                    branch: currentUserBranch,
-                    role: currentUserRole
-                });
+                            NProgress.done();
+                        })
+                    [API_METHODS.UPDATE_REVENUE](revenueId, revenueData, {
+                        username: currentUser,
+                        branch: currentUserBranch,
+                        role: currentUserRole
+                    });
+                } else {
+                    // Add new revenue
+                    google.script.run
+                        .withSuccessHandler(function (result) {
+                            Swal.close();
+                            if (result.success) {
+                                // Check if there's a linked appointment to update
+                                const linkedAppointmentId = e.target.dataset.linkedAppointmentId;
+
+                                if (linkedAppointmentId) {
+                                    // Update appointment status to completed
+                                    updateAppointmentStatusToCompleted(linkedAppointmentId, function () {
+                                        loadRevenues(false);
+                                        loadAppointments(false); // Reload appointments to show updated status
+                                        closeRevenueModal(e.target);
+                                        Toast.fire({
+                                            icon: 'success',
+                                            title: result.message + ' (อัพเดทสถานะนัดหมายเป็นเสร็จสิ้นแล้ว)'
+                                        });
+                                    });
+                                } else {
+                                    loadRevenues(false);
+                                    closeRevenueModal(e.target);
+                                    Toast.fire({
+                                        icon: 'success',
+                                        title: result.message
+                                    });
+                                }
+                            } else {    
+                                Toast.fire({
+                                    icon: 'error',
+                                    title: result.message
+                                });
+                            }
+                            NProgress.done();
+                        })
+                        .withFailureHandler(function (error) {
+                            Swal.close();
+                            console.error('Error adding revenue:', error);
+                            Toast.fire({
+                                icon: 'error',
+                                title: UI_TEXT.MESSAGES.REVENUE_ADD_ERROR
+                            });
+                            NProgress.done();
+                        })
+                    [API_METHODS.ADD_REVENUE](revenueData, {
+                        username: currentUser,
+                        branch: currentUserBranch,
+                        role: currentUserRole
+                    });
+                }
             }
         }
 
@@ -6511,6 +6558,9 @@
                             <td>${paymentTypeText}</td>
                             <td class="text-end">${totalAmount.toLocaleString()} บาท</td>
                             <td>
+                                <button class="btn btn-sm btn-outline-primary me-1" onclick="editRevenue('${revenue.id}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
                                 <button class="btn btn-sm btn-outline-danger" onclick="deleteRevenue('${revenue.id}')">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -6539,7 +6589,7 @@
                 console.log('Filtering from', startDate, 'to', endDate);
                 const doctorName = $('#filterDoctor').val().toLowerCase();
                 const datatable = $(SELECTORS.REVENUE_TABLE).DataTable();
-                if(!startDate && !endDate && !doctorName) {
+                if (!startDate && !endDate && !doctorName) {
                     // If no filters are set, clear existing filters
                     $.fn.dataTable.ext.search = [];
                     datatable.draw();
@@ -6754,6 +6804,105 @@
         }
 
 
+
+        function editRevenue(revenueId) {
+            const revenue = revenues.find(r => r.id === revenueId);
+            if (!revenue) return;
+            console.log('Editing revenue:', revenue);
+            // Show modal
+            $(SELECTORS.REVENUE_MODAL).modal('show');
+            setTimeout(() => {
+                const form = $(SELECTORS.REVENUE_FORM);
+                form[0].dataset.revenueId = revenueId;
+
+                // hide appointment select when editing existing revenue
+                $('#appointmentSelectContainer').addClass('d-none');
+
+                // Populate basic fields
+                form.find('[name="date"]')[0]._flatpickr.setDate(revenue.date, true);
+                form.find('[name="patientId"]').val(revenue.patientId || '').trigger('change');
+                form.find('[name="doctorId"]').val(revenue.doctorId || '').trigger('change');
+                form.find('[name="notes"]').val(revenue.notes || '');
+
+
+                // Set branch field for super_admin users
+                if (currentUserRole === 'super_admin' && form.find('[name="branch"]').length) {
+                    form.find('[name="branch"]').val(revenue.branch || '');
+                }
+
+                // Populate case type
+                const caseTypes = revenue.caseType ? revenue.caseType.split(',').map(c => c.trim()) : [];
+                $('#revenueCaseTypeContainer .case-type-pill').removeClass('selected');
+                $('#revenueCaseTypeContainer .case-type-hidden-inputs').empty();
+                caseTypes.forEach(caseType => {
+                    const $pill = $(`#revenueCaseTypeContainer .case-type-pill[data-value="${caseType}"]`);
+                    if ($pill.length) {
+                        $pill.addClass('selected');
+                        $('#revenueCaseTypeContainer .case-type-hidden-inputs').append(
+                            `<input type="hidden" name="caseType" value="${caseType}">`
+                        );
+                    }
+                });
+
+                // Populate case details
+                const caseDetailsArray = revenue.caseDetails ? revenue.caseDetails.split(',').map(c => c.trim()) : [];
+                $('#revenueCaseDetailsContainer .case-details-pill').removeClass('selected');
+                $('#revenueCaseDetailsContainer .case-details-hidden-inputs').empty();
+                caseDetailsArray.forEach(detail => {
+                    const $pill = $(`#revenueCaseDetailsContainer .case-details-pill[data-value="${detail}"]`);
+                    if ($pill.length) {
+                        $pill.addClass('selected');
+                        $('#revenueCaseDetailsContainer .case-details-hidden-inputs').append(
+                            `<input type="hidden" name="caseDetails" value="${detail}">`
+                        );
+                    }
+                });
+
+                // Populate payment type
+                const paymentTypes = revenue.paymentType ? revenue.paymentType.split(',').map(p => p.trim()) : [];
+                $('#revenuePaymentTypeContainer .payment-type-pill').removeClass('selected');
+                $('#revenuePaymentTypeContainer .payment-type-hidden-inputs').empty();
+                paymentTypes.forEach(paymentType => {
+                    const $pill = $(`#revenuePaymentTypeContainer .payment-type-pill[data-value="${paymentType}"]`);
+                    if ($pill.length) {
+                        $pill.addClass('selected');
+                        $('#revenuePaymentTypeContainer .payment-type-hidden-inputs').append(
+                            `<input type="hidden" name="paymentType" value="${paymentType}">`
+                        );
+                    }
+                });
+
+                // Render payment amount fields based on selected payment types
+                renderPaymentAmountFields(paymentTypes);
+
+                // Populate payment amounts after fields are rendered
+                setTimeout(() => {
+                    form.find('[name="amountVisa"]').val(revenue.visaAmount || 0);
+                    form.find('[name="amountCash"]').val(revenue.cashAmount || 0);
+                    form.find('[name="amountTransferClinic"]').val(revenue.transferClinicAmount || 0);
+                    form.find('[name="amountTransferDoctor"]').val(revenue.transferDoctorAmount || 0);
+                    form.find('[name="amountSocialSecurity"]').val(revenue.socialSecurityAmount || 0);
+                }, 100);
+
+                // Populate additional cost fields
+                form.find('[name="xrayFee"]').val(revenue.xrayFee || 0);
+                form.find('[name="medicineFee"]').val(revenue.medicineFee || 0);
+                form.find('[name="otherProductFee"]').val(revenue.otherProductFee || 0);
+                form.find('[name="discount"]').val(revenue.discount || 0);
+                form.find('[name="labFee"]').val(revenue.labFee || 0);
+
+
+
+                // Trigger Select2 refresh
+                form.find('select').trigger('change.select2');
+                // Capture initial form data after modal is shown and form is populated
+                setTimeout(() => {
+                    captureRevenueFormData();
+                }, 200);
+            }, 1000);
+
+
+        }
 
         function deleteRevenue(revenueId) {
             // Find revenue details
@@ -7312,28 +7461,28 @@
                 return;
             }
             const revenueIds = revenue_data.map(row => row[0]);
-            
+
             // Build summary details
             let totalAmount = 0;
             let doctorsList = [];
-            
+
             revenue_data.forEach(row => {
                 const revenue_id = row[0];
                 const revenue = revenues.find(r => r.id === revenue_id);
                 if (revenue) {
                     const amount = calculateRevenueAmount(revenue);
                     totalAmount += amount;
-                    
+
                     const doctorId = row[9];
                     const doctor = doctors.find(d => d.id === doctorId);
                     const doctorName = doctor ? `${doctor.first_name} ${doctor.last_name}`.trim() : 'ไม่ระบุ';
-                    
+
                     if (!doctorsList.includes(doctorName)) {
                         doctorsList.push(doctorName);
                     }
                 }
             });
-            
+
             const detailsHtml = `
                 <div style="text-align: left; margin: 20px 0;">
                     <strong>จำนวนรายการ:</strong> ${revenueIds.length} รายการ<br>
@@ -7363,7 +7512,7 @@
                     proceedWithStatusUpdate();
                 }
             });
-            
+
             function proceedWithStatusUpdate() {
                 NProgress.start();
                 Swal.fire({
@@ -7376,7 +7525,7 @@
                         Swal.showLoading();
                     }
                 });
-                
+
                 google.script.run
                     .withSuccessHandler(function (result) {
                         if (result.success) {
@@ -8048,6 +8197,7 @@
         window.editPatient = editPatient;
         window.deletePatient = deletePatient;
         window.editAppointment = editAppointment;
+        window.editRevenue = editRevenue;
         window.deleteRevenue = deleteRevenue;
         window.editUser = editUser;
         window.deleteUser = deleteUser;

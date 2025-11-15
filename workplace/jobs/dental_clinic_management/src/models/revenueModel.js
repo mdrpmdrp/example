@@ -201,11 +201,11 @@ function updateRevenue(revenueId, revenueData, currentUser = null) {
       revenueData.discount || 0,
       revenueData.labFee || 0,
       revenueData.notes || "",
-      revenueData.branch || existingRevenue[17],
-      revenueData.status || existingRevenue[18],
-      existingRevenue[19], // Keep original created at
+      revenueData.branch || existingRevenue[18],
+      revenueData.status || existingRevenue[19],
+      existingRevenue[20], // Keep original created at
       new Date(), // Update modified at
-      existingRevenue[21] || "UNKNOWN", // Keep original created by
+      existingRevenue[22] || "UNKNOWN", // Keep original created by
       currentUser ? currentUser.username : "UNKNOWN", // Update modified by
     ];
 
