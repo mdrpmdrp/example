@@ -1708,6 +1708,14 @@
                             <label class="form-label">หมายเหตุ</label>
                             <textarea class="form-control" name="notes" rows="2"></textarea>
                         </div>
+
+                        <div class="mb-3 d-none" id="revenueStatusContainer">
+                            <label class="form-label">สถานะ</label>
+                            <select class="form-select" name="status">
+                                <option value="รอจ่ายหมอ">รอจ่ายหมอ</option>
+                                <option value="จ่ายหมอแล้ว">จ่ายหมอแล้ว</option>
+                            </select>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -2500,7 +2508,7 @@
                 }
                 $('#revenueForm').removeClass('was-validated')[0].reset();
                 $('#appointmentSelect').val(null).trigger('change');
-                $('#appointmentSelectContainer').addClass('d-none');
+                $('#appointmentSelectContainer').removeClass('d-none');
             });
 
             $('#revenueReportModal').on('hidden.bs.modal', function () {
@@ -2522,6 +2530,9 @@
 
             // Capture form data when revenue modal is opened
             $('#revenueModal').on('shown.bs.modal', function () {
+                // Hide status container by default (shown only when editing)
+                $('#revenueStatusContainer').addClass('d-none');
+
                 // Render case type and details options for revenue form
                 if (caseTypes.length > 0) {
                     renderRevenueCaseTypeOptions();
@@ -6261,8 +6272,13 @@
                 discount: parseFloat(formData['discount']) || 0,
                 labFee: parseFloat(formData['labFee']) || 0,
                 notes: formData['notes'],
-                branch: currentUserRole === 'super_admin' ? formData['branch']   : currentUserBranch // Use form branch for super_admin, otherwise use user's branch
+                branch: currentUserRole === 'super_admin' ? formData['branch'] : currentUserBranch // Use form branch for super_admin, otherwise use user's branch
             };
+
+            // Include status only when editing
+            if (isEditMode) {
+                revenueData.status = formData['status'] || 'รอจ่ายหมอ';
+            }
 
             // Get patient and doctor names for display
             const selectedPatient = patients.find(p => p.id == revenueData.patientId);
@@ -6303,6 +6319,8 @@
                         <strong>ค่าผลิตภัณฑ์อื่น:</strong> ${revenueData.otherProductFee.toLocaleString()} บาท<br>
                         <strong>ส่วนลด:</strong> ${revenueData.discount.toLocaleString()} บาท<br>
                         ${revenueData.notes ? `<strong>หมายเหตุ:</strong> ${revenueData.notes}<br>` : ''}
+                        ${revenueData.labFee ? `<strong>ค่าห้องปฏิบัติการ:</strong> ${revenueData.labFee.toLocaleString()} บาท<br>` : ''}
+                        ${isEditMode ? `<strong>สถานะ:</strong> ${revenueData.status || '-'}<br>` : ''}
                     </div>
                 `;
 
@@ -6402,7 +6420,7 @@
                                         title: result.message
                                     });
                                 }
-                            } else {    
+                            } else {
                                 Toast.fire({
                                     icon: 'error',
                                     title: result.message
@@ -6859,10 +6877,11 @@
                 });
 
                 // Populate payment type
-                const paymentTypes = revenue.paymentType ? revenue.paymentType.split(',').map(p => p.trim()) : [];
+                let paymentTypes = revenue.paymentType ? revenue.paymentType.split(',').map(p => p.trim()) : [];
                 $('#revenuePaymentTypeContainer .payment-type-pill').removeClass('selected');
                 $('#revenuePaymentTypeContainer .payment-type-hidden-inputs').empty();
-                paymentTypes.forEach(paymentType => {
+                paymentTypes = paymentTypes.map(paymentType => {
+                    if(paymentType === 'เงินโอน') paymentType = 'เงินโอนบัญชีร้าน';
                     const $pill = $(`#revenuePaymentTypeContainer .payment-type-pill[data-value="${paymentType}"]`);
                     if ($pill.length) {
                         $pill.addClass('selected');
@@ -6870,6 +6889,7 @@
                             `<input type="hidden" name="paymentType" value="${paymentType}">`
                         );
                     }
+                    return paymentType;
                 });
 
                 // Render payment amount fields based on selected payment types
@@ -6891,7 +6911,9 @@
                 form.find('[name="discount"]').val(revenue.discount || 0);
                 form.find('[name="labFee"]').val(revenue.labFee || 0);
 
-
+                // Show status container and populate status when editing
+                $('#revenueStatusContainer').removeClass('d-none');
+                form.find('[name="status"]').val(revenue.status || 'รอจ่ายหมอ');
 
                 // Trigger Select2 refresh
                 form.find('select').trigger('change.select2');
