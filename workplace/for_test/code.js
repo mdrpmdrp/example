@@ -186,7 +186,7 @@ function saveAlreadyPaidFileToPaidSheet() {
             // เพิ่มวันที่จ่ายเงินหลัง paidflag
             let paidDate = new Date();
             let fileId = row[COL_FILEID - 1];
-            masterSheet.getRange(i + 1, COL_FILEID).setValue(paidDate);
+            masterSheet.getRange(i + 1, COL_FILEID,1,2).setValues([[paidDate, fileId]]);
             masterSheet.getRange(i + 1, 1, 1, masterData[0].length).copyTo(paidSheet.getRange(paidSheet.getLastRow() + 1, 1));
             masterSheet.deleteRow(i + 1); // +1 เพราะว่า i เริ่มจาก 0 แต่แถวในสเปรดชีตเริ่มจาก 1
             let yearFolder = getFolder(row[COL_YEAR - 1], ALL_FILES_FOLDER);
