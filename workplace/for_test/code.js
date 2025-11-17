@@ -329,7 +329,7 @@ function updateYearSummary() {
         Object.keys(COL_YEAR_MAP).forEach(year => {
             let totalFiles = rows.filter(row => row[COL_YEAR - 1] == year).length;
             let totalPaidFiles = rows.filter(row => row[COL_YEAR - 1] == year && row[COL_PAIDFLAG - 1] !== 'N').length;
-            let totalAmount = rows.filter(row => row[COL_YEAR - 1] == year && row[COL_PAIDFLAG - 1] !== 'N').reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
+            let totalAmount = rows.filter(row => row[COL_YEAR - 1] == year).reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
             let totalPaidAmount = rows.filter(row => row[COL_YEAR - 1] == year && row[COL_PAIDFLAG - 1] !== 'N').reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
             let colIndex = COL_YEAR_MAP[year];
             newRow[colIndex-1] = totalFiles; // ยอดใบส่งของ
