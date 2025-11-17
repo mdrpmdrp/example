@@ -270,9 +270,9 @@ function updateYearSummary() {
             let paidAmount = rows.filter(row => row[COL_PAIDFLAG - 1] === 'Y').reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
             let unpaidFiles = rows.filter(row => row[COL_PAIDFLAG - 1] !== 'Y').length;
             let unpaidAmount = rows.filter(row => row[COL_PAIDFLAG - 1] !== 'Y').reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
-            let discountAmount = discountGroupByYear[year] ? discountGroupByYear[year].reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0) : 0;
+            let discountCount = discountGroupByYear[year]?.length || 0;
             let discountRemaining = discountGroupByYear[year] ? discountGroupByYear[year].filter(row => row[COL_PAIDFLAG - 1] !== 'Y').reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0) : 0;
-            summary.push([code, name, year, totalFiles, totalAmount, paidFiles, paidAmount, discountAmount, discountRemaining, unpaidFiles, unpaidAmount]);
+            summary.push([code, name, year, totalFiles, totalAmount, paidFiles, paidAmount, discountCount, discountRemaining, unpaidFiles, unpaidAmount]);
         }
     }
     let groupByYear = Object.groupBy(data_to_calculate, row => row[COL_YEAR - 1]);
@@ -280,9 +280,11 @@ function updateYearSummary() {
     let COL_YEAR_MAP = {}
     paidSummaryYearlySheet.getDataRange().clearContent();
     Object.keys(groupByYear).sort().forEach((year, i) => {
-        const colIndex = 2 + (i * 2); // B=2, D=4, F=6, H=8, etc.
-        paidSummaryYearlySheet.getRange(1, colIndex, 2, 2).setValues([[year, ""], ["ยอดใบส่งของ", "ยอดจ่ายเงิน"]]).setFontWeight("bold");
-        paidSummaryYearlySheet.getRange(1, colIndex, 1, 2).merge().setHorizontalAlignment("center");
+        const colIndex = 2 + (i * 4); // B=2, F=6, J=10, ...
+        paidSummaryYearlySheet.getRange(1, colIndex, 3, 4).setValues([[year, "", "",""], ["ใบส่งของ", "","ใบจ่ายเงิน",""],["จำนวน", "ยอดเงิน", "จำนวน", "ยอดเงิน"]]).setFontWeight("bold");
+        paidSummaryYearlySheet.getRange(1, colIndex, 1, 4).merge().setHorizontalAlignment("center");
+        paidSummaryYearlySheet.getRange(2, colIndex, 1, 2).merge().setHorizontalAlignment("center");
+        paidSummaryYearlySheet.getRange(2, colIndex + 2, 1, 2).merge().setHorizontalAlignment("center");
         COL_YEAR_MAP[year] = colIndex;
     })
     let monthHeaderMap = {
@@ -316,7 +318,7 @@ function updateYearSummary() {
     //     })
     // }
     Object.keys(monthHeaderMap).forEach((month, index) => {
-        let newRow = new Array(Object.keys(COL_YEAR_MAP).length * 2 + 1).fill('0');
+        let newRow = new Array(Object.keys(COL_YEAR_MAP).length * 4 + 1).fill('0');
         newRow[0] = monthHeaderMap[month];
         if (!groupByMonth[month]) {
             // ถ้าไม่มีข้อมูลเดือนนี้ ให้ข้าม
@@ -326,34 +328,41 @@ function updateYearSummary() {
         let rows = groupByMonth[month];
         Object.keys(COL_YEAR_MAP).forEach(year => {
             let totalFiles = rows.filter(row => row[COL_YEAR - 1] == year).length;
+            let totalPaidFiles = rows.filter(row => row[COL_YEAR - 1] == year && row[COL_PAIDFLAG - 1] !== 'N').length;
             let totalAmount = rows.filter(row => row[COL_YEAR - 1] == year && row[COL_PAIDFLAG - 1] !== 'N').reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
+            let totalPaidAmount = rows.filter(row => row[COL_YEAR - 1] == year && row[COL_PAIDFLAG - 1] !== 'N').reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
             let colIndex = COL_YEAR_MAP[year];
             newRow[colIndex-1] = totalFiles; // ยอดใบส่งของ
             newRow[colIndex] = totalAmount; // ยอดจ่ายเงิน
+            newRow[colIndex+1] = totalPaidFiles; // ยอดใบส่งของที่จ่ายเงินแล้ว
+            newRow[colIndex+2] = totalPaidAmount; // ยอดจ่ายเงินที่จ่ายเงินแล้ว
         })  
         summaryData.push(newRow);
     })
     if (summaryData.length > 0) {
         // add sommary Footer
-        let footerRow = new Array(Object.keys(COL_YEAR_MAP).length * 2 + 1).fill('');
+        let footerRow = new Array(Object.keys(COL_YEAR_MAP).length * 4 + 1).fill('');
         footerRow[0] = 'ยอดรวม';
         Object.keys(COL_YEAR_MAP).forEach(year => {
             let colIndex = COL_YEAR_MAP[year];
             let totalFiles = summaryData.reduce((sum, row) => sum + parseInt(row[colIndex-1]), 0);
+            let totalPaidFiles = summaryData.reduce((sum, row) => sum + parseInt(row[colIndex+1]), 0);
             let totalAmount = summaryData.reduce((sum, row) => sum + parseFloat(row[colIndex]), 0);
+            let totalPaidAmount = summaryData.reduce((sum, row) => sum + parseFloat(row[colIndex+2]), 0);
             footerRow[colIndex-1] = totalFiles;
             footerRow[colIndex] = totalAmount;
+            footerRow[colIndex+1] = totalPaidFiles;
+            footerRow[colIndex+2] = totalPaidAmount;
         })
         summaryData.push(footerRow);
-        paidSummaryYearlySheet.getRange(3, 1, summaryData.length, summaryData[0].length).setValues(summaryData);
+        paidSummaryYearlySheet.getRange(4, 1, summaryData.length, summaryData[0].length).setValues(summaryData);
         // paidSummaryYearlySheet.getRange(3, 2, summaryData.length, summaryData[0].length-1).setNumberFormat('#,##0.00');
         Object.keys(COL_YEAR_MAP).forEach(year => {
             let colIndex = COL_YEAR_MAP[year];
-            paidSummaryYearlySheet.getRange(3, colIndex, summaryData.length, 1).setNumberFormat('#,##0'); // ยอดใบส่งของ
-            paidSummaryYearlySheet.getRange(3, colIndex+1, summaryData.length, 1).setNumberFormat('#,##0.00'); // ยอดจ่ายเงิน
+            paidSummaryYearlySheet.getRange(4, colIndex, summaryData.length, 4).setNumberFormats(new Array(summaryData.length).fill(['#,##0', '#,##0.00', '#,##0', '#,##0.00'])); // ตั้งรูปแบบตัวเลข
         })
         // ตั้งพื้นหลังหัวตาราง และ ตารางสรุป
-        paidSummaryYearlySheet.getRange(1, 1, 2, paidSummaryYearlySheet.getLastColumn()).setBackground('#D9E1F2').setFontWeight('bold');
+        paidSummaryYearlySheet.getRange(1, 1, 3, paidSummaryYearlySheet.getLastColumn()).setBackground('#D9E1F2').setFontWeight('bold');
         paidSummaryYearlySheet.getRange(paidSummaryYearlySheet.getLastRow(), 1, 1, paidSummaryYearlySheet.getLastColumn()).setBackground('#FFC000').setFontWeight('bold');
         // ตั้งเส้นขอบตาราง
         paidSummaryYearlySheet.getRange(1, 1, paidSummaryYearlySheet.getLastRow(), paidSummaryYearlySheet.getLastColumn()).setBorder(true, true, true, true, true, true);
