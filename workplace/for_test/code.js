@@ -1,6 +1,6 @@
 /**
  * Main entry point and menu functions
- * Depends on: constants.js, utils.js, fileOperations.js, sheetOperations.js
+ * Depends on: constants.js, utils.js, fileOperations.js, sheetOperations.js, dailyRecordOperations.js
  */
 
 function onOpen() {
@@ -23,43 +23,43 @@ function moveAlreadyRenamedFiles() {
         let ss = getSpreadsheet();
         let masterSheet = ss.getSheetByName(SHEET_MASTER);
         let move_files = [];
-        
+
         let processFile = (file) => {
             let file_name = file.getName();
             let parsedData = parseFileName(file_name);
-            
+
             if (!parsedData) {
                 Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
                 return null;
             }
-            
+
             let fileId = file.getId();
             let row_data = createRowData(parsedData, fileId);
             masterSheet.appendRow(row_data);
-            
+
             let yearFolder = getFolder(parsedData.year, UPLOAD_FOLDER_ID);
             let monthFolder = getFolder(parsedData.month, yearFolder.getId());
-            
+
             return {
                 id: fileId,
                 parent: ACHIVE_FOLDER_ID,
                 target: monthFolder.getId()
             };
         };
-        
+
         move_files = processFilesFromFolder(ACHIVE_FOLDER_ID, processFile);
-        
+
         if (move_files.length > 0) {
             moveFilesToFolder(move_files);
         }
-        
+
         sortSheet(masterSheet, [
             { column: COL_CODE, ascending: true },
             { column: COL_YEAR, ascending: true },
             { column: COL_MONTH, ascending: true },
             { column: COL_INVOICE, ascending: true }
         ]);
-        
+
         updateYearSummary();
     });
 }
@@ -68,43 +68,43 @@ function moveDiscountBillFiles() {
         let ss = getSpreadsheet();
         let masterSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
         let move_files = [];
-        
+
         let processFile = (file) => {
             let file_name = file.getName();
             let parsedData = parseFileName(file_name);
-            
+
             if (!parsedData) {
                 Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
                 return null;
             }
-            
+
             let fileId = file.getId();
             let row_data = createRowData(parsedData, fileId);
             masterSheet.appendRow(row_data);
-            
+
             let yearFolder = getFolder(parsedData.year, DISCOUNT_BILL_WAITING_PAY_FOLDER_ID);
             let monthFolder = getFolder(parsedData.month, yearFolder.getId());
-            
+
             return {
                 id: fileId,
                 parent: ACHIVE_DISCOUNT_BILL_FOLDER_ID,
                 target: monthFolder.getId()
             };
         };
-        
+
         move_files = processFilesFromFolder(ACHIVE_DISCOUNT_BILL_FOLDER_ID, processFile);
-        
+
         if (move_files.length > 0) {
             moveFilesToFolder(move_files);
         }
-        
+
         sortSheet(masterSheet, [
             { column: COL_CODE, ascending: true },
             { column: COL_YEAR, ascending: true },
             { column: COL_MONTH, ascending: true },
             { column: COL_INVOICE, ascending: true }
         ]);
-        
+
         updateYearSummary();
     });
 }
@@ -114,20 +114,20 @@ function saveAlreadyPaidFileToPaidSheet() {
         let ss = getSpreadsheet();
         let masterSheet = ss.getSheetByName(SHEET_MASTER);
         let paidSheet = ss.getSheetByName(SHEET_PAID);
-        
+
         let move_files = movePaidRecords(masterSheet, paidSheet);
-        
+
         sortSheet(paidSheet, [
             { column: COL_CODE, ascending: true },
             { column: COL_YEAR, ascending: true },
             { column: COL_MONTH, ascending: true },
             { column: COL_INVOICE, ascending: true }
         ]);
-        
+
         if (move_files.length > 0) {
             moveFilesToFolder(move_files);
         }
-        
+
         updateYearSummary();
     });
 }
@@ -138,7 +138,7 @@ function deletePaidDiscountBillFiles() {
         let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
         let discountData = discountBillSheet.getDataRange().getValues();
         let delete_fileIds = [];
-        
+
         for (let i = 1; i < discountData.length; i++) {
             let row = discountData[i];
             if (row[COL_PAIDFLAG - 1] === 'Y') {
@@ -147,7 +147,7 @@ function deletePaidDiscountBillFiles() {
                 discountBillSheet.getRange(i + 1, COL_FILEID).clearContent();
             }
         }
-        
+
         if (delete_fileIds.length > 0) {
             deleteFiles(delete_fileIds);
         }
@@ -161,23 +161,23 @@ function updateYearSummary() {
     let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
     let yearSheet = ss.getSheetByName(SHEET_YEAR);
     let paidSummaryYearlySheet = ss.getSheetByName(SHEET_PAID_SUMMARY_YEARLY);
-    
+
     // Get all data at once
     let masterData = masterSheet.getDataRange().getValues().slice(1);
     let paidData = paidSheet.getDataRange().getValues().slice(1);
     let discountData = discountBillSheet.getDataRange().getValues().slice(1);
-    
+
     // Calculate summary
     let summary = calculateYearSummary(masterData, paidData, discountData);
-    
+
     // Prepare data for paid summary yearly sheet
     let data_to_calculate = masterData.concat(paidData).filter(row => row[COL_YEAR - 1] !== '');
     let groupByYear = groupBy(data_to_calculate, row => row[COL_YEAR - 1]);
-    
+
     // Clear and setup headers
     paidSummaryYearlySheet.getDataRange().clearContent();
     let COL_YEAR_MAP = {};
-    
+
     Object.keys(groupByYear).sort().forEach((year, i) => {
         const colIndex = 2 + (i * 4);
         paidSummaryYearlySheet.getRange(1, colIndex, 3, 4).setValues([
@@ -185,24 +185,24 @@ function updateYearSummary() {
             ["ใบส่งของ", "", "ใบจ่ายเงิน", ""],
             ["จำนวน", "ยอดเงิน", "จำนวน", "ยอดเงิน"]
         ]).setFontWeight("bold");
-        
+
         paidSummaryYearlySheet.getRange(1, colIndex, 1, 4).merge().setHorizontalAlignment("center");
         paidSummaryYearlySheet.getRange(2, colIndex, 1, 2).merge().setHorizontalAlignment("center");
         paidSummaryYearlySheet.getRange(2, colIndex + 2, 1, 2).merge().setHorizontalAlignment("center");
-        
+
         COL_YEAR_MAP[year] = colIndex;
     });
-    
+
     // Generate and format monthly summary
     let summaryData = generateMonthlySummary(data_to_calculate, COL_YEAR_MAP);
     formatPaidSummarySheet(paidSummaryYearlySheet, summaryData, COL_YEAR_MAP);
-    
+
     // Write summary to year sheet
     yearSheet.getRange(2, 1, yearSheet.getLastRow(), yearSheet.getLastColumn()).clearContent();
     if (summary.length > 0) {
         yearSheet.getRange(2, 1, summary.length, summary[0].length).setValues(summary);
     }
-    
+
     sortSheet(yearSheet, [
         { column: 1, ascending: true },
         { column: 3, ascending: true }
@@ -210,115 +210,68 @@ function updateYearSummary() {
 }
 
 function updateDailyRecordSummary() {
-    let listSheet = getSpreadsheet().getSheetByName(SHEET_LISTS);
+    let ss = getSpreadsheet();
+    let listSheet = ss.getSheetByName(SHEET_LISTS);
     let [header, ...data] = listSheet.getDataRange().getValues();
-    let lists = {}
-    header.slice(1,-1).forEach((col, index) => {
-        if(!lists[col]) {
-            lists[col] = new Set();
-        }
-        data.forEach(row => {
-            lists[col].add(row[index+1]);
-        })
-        lists[col] = Array.from(lists[col]).filter(Boolean)
-    })
-    let summary_array = []
-    let dateColumns = generateDateColumns()
-    summary_array.push(['', ...dateColumns])
-    let formatListName = []
-    Object.keys(lists).forEach(listName => {
-        let newRow = new Array(dateColumns.length + 1).fill('');
-        newRow[0] = listName;
-        let items = lists[listName];
-        summary_array.push(newRow);
-        formatListName.push(summary_array.length);
-        items.forEach(item => {
-            let itemRow = new Array(dateColumns.length + 1).fill('');
-            itemRow[0] = item;
-            summary_array.push(itemRow);
-        });
-        summary_array.push(new Array(dateColumns.length + 1).fill(''));
-    });
-    let dailyRecordSheet = getSpreadsheet().getSheetByName(SHEET_DAILY_RECORD);
+    
+    // Build category lists
+    let lists = buildCategoryLists(header, data);
+    
+    // Build column headers
+    let { columnHeaders, columnHeaders2, mergeRanges } = buildColumnHeaders(lists);
+    
+    // Get and transform daily record data
+    let dailyRecordSheet = ss.getSheetByName(SHEET_DAILY_RECORD);
     let dailyRecordData = dailyRecordSheet.getDataRange().getValues().filter(row => row[0]);
-    let dailyHeader = dailyRecordData.shift();
-    let dateIndexMap = {};
-    dateColumns.forEach((dateStr, index) => {
-        dateIndexMap[dateStr] = index + 1; // +1 for offset due to first column being list/item name
+    let transformedData = transformDailyRecordData(dailyRecordData);
+    
+    // Group data by date
+    let dateMap = groupRecordsByDate(transformedData, columnHeaders2, columnHeaders.length);
+    
+    // Sort dates and build summary array
+    let sortedDates = Object.keys(dateMap).sort((a, b) => {
+        return new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-'));
     });
-    dailyRecordData = dailyRecordData.map(row => {
-        let obj = {};
-        dailyHeader.forEach((col, index) => {
-            if(row[index] == "") return
-            obj[col] = row[index];
-        });
-        return obj;
-    })
-    let totalAmount = new Array(dateColumns.length).fill(0);
-    dailyRecordData.forEach(row => {
-        let listName = row['หมวด'];
-        let dateStr = Utilities.formatDate(new Date(row['วันที่']), Session.getScriptTimeZone(), "d/M");
-        let amount = row['รายรับ'] || row['รายจ่าย'] || 0;
-        let targetRowIndex = summary_array.findIndex(r => r[0] === listName);
-        if (targetRowIndex !== -1 && dateIndexMap[dateStr]) {
-            if(summary_array[targetRowIndex][dateIndexMap[dateStr]] == '') {
-                summary_array[targetRowIndex][dateIndexMap[dateStr]] = 0;
-            }
-            summary_array[targetRowIndex][dateIndexMap[dateStr]] += parseFloat(amount);
-            totalAmount[dateIndexMap[dateStr]-1] += parseFloat(amount);
-        }
+    
+    let summary_array = sortedDates.map(dateStr => {
+        let row = dateMap[dateStr];
+        let total = row.slice(1).reduce((sum, val) => sum + val, 0);
+        row[row.length - 1] = total;
+        return row;
     });
-    // Add total row
-    let totalRow = ['รวมทั้งหมด', ...totalAmount];
-    summary_array.push(totalRow);
-    let dailyRecordSummarySheet = getSpreadsheet().getSheetByName(SHEET_DAILY_RECORD_SUMMARY);
-    dailyRecordSummarySheet.getDataRange().clearContent();
-    dailyRecordSummarySheet.getRange(1, 1, summary_array.length, summary_array[0].length).setValues(summary_array);
-
-    //  Format header row
-    dailyRecordSummarySheet.getRange(1, 1, 1, dailyRecordSummarySheet.getLastColumn())
-        .setFontWeight('bold')
-        .setBackground('#1F1F1F')
-        .setFontColor('#FFFFFF');
-
-    // Format total row
-    let totalRowIndex = dailyRecordSummarySheet.getLastRow();
-    dailyRecordSummarySheet.getRange(totalRowIndex, 1, 1, dailyRecordSummarySheet.getLastColumn())
-        .setFontWeight('bold')
-        .setBackground('#00FF00')
-        .setFontColor('#000000');
-
-    // Format list names
-    formatListName.forEach(rowIndex => {
-        dailyRecordSummarySheet.getRange(rowIndex, 1, 1, dailyRecordSummarySheet.getLastColumn())
-            .setFontWeight('bold')
-            .setBackground('#D9E1F2');
-    });
-
-    // set auto column width for first column
-    dailyRecordSummarySheet.autoResizeColumn(1);
-
-    // set number format for date columns
-    dailyRecordSummarySheet.getRange(2, 2, dailyRecordSummarySheet.getLastRow() - 1, dailyRecordSummarySheet.getLastColumn() - 1)
-        .setNumberFormat('#,##0.00');
-
-    // set auto width for date columns
-    dailyRecordSummarySheet.autoResizeColumns(2, dailyRecordSummarySheet.getLastColumn() - 1);
+    
+    // Get year range
+    let { min_year, max_year } = getYearRange(sortedDates);
+    
+    // Build monthly summary with grouping
+    let { result_array, monthTotalRowIndex, groupRows } = buildMonthlySummary(
+        summary_array, 
+        columnHeaders.length, 
+        min_year, 
+        max_year
+    );
+    
+    // Prepend headers
+    result_array = [columnHeaders, columnHeaders2, ...result_array];
+    
+    // Write data to sheet
+    let dailyRecordSummarySheet = ss.getSheetByName(SHEET_DAILY_RECORD_SUMMARY);
+    dailyRecordSummarySheet.getDataRange().clear();
+    dailyRecordSummarySheet.getRange(1, 1, result_array.length, result_array[0].length).setValues(result_array);
+    
+    // Apply all formatting
+    formatDailyRecordHeaders(dailyRecordSummarySheet, mergeRanges);
+    applyRowGrouping(dailyRecordSummarySheet, groupRows);
+    formatTotalsAndAmounts(dailyRecordSummarySheet, monthTotalRowIndex, result_array);
 }
 
-function generateDateColumns() {
-    const year = new Date().getFullYear();
-    const timezone = Session.getScriptTimeZone();
-    const dateColumns = [];
-    const daysInYear = new Date(year, 11, 31).getDate() === 31 ? 
-        (new Date(year, 1, 29).getMonth() === 1 ? 366 : 365) : 365;
-    
-    const startDate = new Date(year, 0, 1);
-    
-    for (let i = 0; i < daysInYear; i++) {
-        const currentDate = new Date(year, 0, 1 + i);
-        dateColumns.push(Utilities.formatDate(currentDate, timezone, "d/M"));
-    }
-    
-    return dateColumns;
+function temp() {
+    let ss = getSpreadsheet();
+    let masterSheet = ss.getSheetByName(SHEET_MASTER);
+    let masterData = masterSheet.getDataRange().getValues().slice(1);
+    masterData.forEach((row, i) => {
+        let code = row[COL_CODE - 1];
+        code = "'" + code.padStart(4, '0');
+        masterSheet.getRange(i + 2, COL_CODE).setValue(code);
+    });
 }
