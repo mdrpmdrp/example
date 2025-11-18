@@ -13,6 +13,7 @@ function onOpen() {
         .addItem('ลบใบค้างส่วนลดที่จ่ายเงินแล้ว', 'deletePaidDiscountBillFiles')
         .addSeparator()
         .addItem('อัปเดต Daily Records', 'updateDailyRecordSummary')
+        .addSeparator()
         .addItem('อัปเดตสรุปรายปี', 'updateYearSummary')
         .addToUi();
 }
@@ -238,15 +239,71 @@ function updateDailyRecordSummary() {
         });
         summary_array.push(new Array(dateColumns.length + 1).fill(''));
     });
-    let dailyRecordSheet = getSpreadsheet().getSheetByName(SHEET_DAILY_RECORD_SUMMARY);
-    dailyRecordSheet.getDataRange().clearContent();
-    dailyRecordSheet.getRange(1, 1, summary_array.length, summary_array[0].length).setValues(summary_array);
+    let dailyRecordSheet = getSpreadsheet().getSheetByName(SHEET_DAILY_RECORD);
+    let dailyRecordData = dailyRecordSheet.getDataRange().getValues().filter(row => row[0]);
+    let dailyHeader = dailyRecordData.shift();
+    let dateIndexMap = {};
+    dateColumns.forEach((dateStr, index) => {
+        dateIndexMap[dateStr] = index + 1; // +1 for offset due to first column being list/item name
+    });
+    dailyRecordData = dailyRecordData.map(row => {
+        let obj = {};
+        dailyHeader.forEach((col, index) => {
+            if(row[index] == "") return
+            obj[col] = row[index];
+        });
+        return obj;
+    })
+    let totalAmount = new Array(dateColumns.length).fill(0);
+    dailyRecordData.forEach(row => {
+        let listName = row['หมวด'];
+        let dateStr = Utilities.formatDate(new Date(row['วันที่']), Session.getScriptTimeZone(), "d/M");
+        let amount = row['รายรับ'] || row['รายจ่าย'] || 0;
+        let targetRowIndex = summary_array.findIndex(r => r[0] === listName);
+        if (targetRowIndex !== -1 && dateIndexMap[dateStr]) {
+            if(summary_array[targetRowIndex][dateIndexMap[dateStr]] == '') {
+                summary_array[targetRowIndex][dateIndexMap[dateStr]] = 0;
+            }
+            summary_array[targetRowIndex][dateIndexMap[dateStr]] += parseFloat(amount);
+            totalAmount[dateIndexMap[dateStr]-1] += parseFloat(amount);
+        }
+    });
+    // Add total row
+    let totalRow = ['รวมทั้งหมด', ...totalAmount];
+    summary_array.push(totalRow);
+    let dailyRecordSummarySheet = getSpreadsheet().getSheetByName(SHEET_DAILY_RECORD_SUMMARY);
+    dailyRecordSummarySheet.getDataRange().clearContent();
+    dailyRecordSummarySheet.getRange(1, 1, summary_array.length, summary_array[0].length).setValues(summary_array);
+
+    //  Format header row
+    dailyRecordSummarySheet.getRange(1, 1, 1, dailyRecordSummarySheet.getLastColumn())
+        .setFontWeight('bold')
+        .setBackground('#1F1F1F')
+        .setFontColor('#FFFFFF');
+
+    // Format total row
+    let totalRowIndex = dailyRecordSummarySheet.getLastRow();
+    dailyRecordSummarySheet.getRange(totalRowIndex, 1, 1, dailyRecordSummarySheet.getLastColumn())
+        .setFontWeight('bold')
+        .setBackground('#00FF00')
+        .setFontColor('#000000');
+
     // Format list names
     formatListName.forEach(rowIndex => {
-        dailyRecordSheet.getRange(rowIndex, 1, 1, dailyRecordSheet.getLastColumn())
+        dailyRecordSummarySheet.getRange(rowIndex, 1, 1, dailyRecordSummarySheet.getLastColumn())
             .setFontWeight('bold')
             .setBackground('#D9E1F2');
     });
+
+    // set auto column width for first column
+    dailyRecordSummarySheet.autoResizeColumn(1);
+
+    // set number format for date columns
+    dailyRecordSummarySheet.getRange(2, 2, dailyRecordSummarySheet.getLastRow() - 1, dailyRecordSummarySheet.getLastColumn() - 1)
+        .setNumberFormat('#,##0.00');
+
+    // set auto width for date columns
+    dailyRecordSummarySheet.autoResizeColumns(2, dailyRecordSummarySheet.getLastColumn() - 1);
 }
 
 function generateDateColumns() {
