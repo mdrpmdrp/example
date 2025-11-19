@@ -13,6 +13,7 @@ const SHEET_DISCOUNT_BILL = 'ใบค้างส่วนลด';
 const SHEET_YEAR = 'ใบส่งของ_รายปี';
 const SHEET_PAID_SUMMARY_YEARLY = 'สรุปใบส่งของ';
 const SHEET_DAILY_RECORD_SUMMARY = 'สรุปยอด';
+const SHEET_BANK_SUMMARY = 'แบงค์';
 const SHEET_YEARLY_SUMMARY = 'สรุปรายปี';
 const SHEET_LISTS = 'List';
 const SHEET_DAILY_RECORD = 'DAILY_RECORD';
@@ -45,22 +46,3 @@ const monthHeaderMap = {
     'พ.ย.': 'พฤศจิกายน',
     'ธ.ค.': 'ธันวาคม'
 };
-
-// Header Colors for Daily Record Summary
-const HEADER_COLORS = [
-    { background: '#CC0000', font: '#FFFFFF' },
-    { background: '#008B8B', font: '#FFFFFF' },
-    { background: '#1E88E5', font: '#FFFFFF' },
-    { background: '#D84315', font: '#FFFFFF' },
-    { background: '#00897B', font: '#FFFFFF' },
-    { background: '#F9A825', font: '#000000' },
-    { background: '#8E24AA', font: '#FFFFFF' },
-    { background: '#1976D2', font: '#FFFFFF' },
-    { background: '#E65100', font: '#FFFFFF' },
-    { background: '#F57C00', font: '#FFFFFF' },
-    { background: '#388E3C', font: '#FFFFFF' },
-    { background: '#C62828', font: '#FFFFFF' },
-    { background: '#7B1FA2', font: '#FFFFFF' },
-    { background: '#2E7D32', font: '#FFFFFF' },
-    { background: '#1565C0', font: '#FFFFFF' }
-];

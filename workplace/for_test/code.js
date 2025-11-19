@@ -1,277 +1,366 @@
-// /**
-//  * Main entry point and menu functions
-//  * Depends on: constants.js, utils.js, fileOperations.js, sheetOperations.js, dailyRecordOperations.js
-//  */
+/**
+ * Main entry point and menu functions
+ * Depends on: constants.js, utils.js, fileOperations.js, sheetOperations.js,
+ *             dailyRecordUtils.js, summaryBuilder.js, sheetFormatter.js
+ */
 
-// function onOpen() {
-//     let ui = SpreadsheetApp.getUi();
-//     ui.createMenu('จัดการใบส่งของ')
-//         .addItem('ย้ายไฟล์ที่เปลี่ยนชื่อแล้ว', 'moveAlreadyRenamedFiles')
-//         .addItem('ย้ายไฟล์ที่จ่ายเงินแล้ว', 'saveAlreadyPaidFileToPaidSheet')
-//         .addSeparator()
-//         .addItem('ย้ายใบค้างส่วนลด', 'moveDiscountBillFiles')
-//         .addItem('ลบใบค้างส่วนลดที่จ่ายเงินแล้ว', 'deletePaidDiscountBillFiles')
-//         .addSeparator()
-//         .addItem('อัปเดต Daily Records', 'updateDailyRecordSummary')
-//         .addSeparator()
-//         .addItem('อัปเดตสรุปรายปี', 'updateYearSummary')
-//         .addToUi();
-// }
+function onOpen() {
+    let ui = SpreadsheetApp.getUi();
+    ui.createMenu('จัดการใบส่งของ')
+        .addItem('ย้ายไฟล์ที่เปลี่ยนชื่อแล้ว', 'moveAlreadyRenamedFiles')
+        .addItem('ย้ายไฟล์ที่จ่ายเงินแล้ว', 'saveAlreadyPaidFileToPaidSheet')
+        .addSeparator()
+        .addItem('ย้ายใบค้างส่วนลด', 'moveDiscountBillFiles')
+        .addItem('ลบใบค้างส่วนลดที่จ่ายเงินแล้ว', 'deletePaidDiscountBillFiles')
+        .addSeparator()
+        .addItem('อัปเดต Daily Records', 'updateDailyRecordSummary')
+        .addSeparator()
+        .addItem('อัปเดตสรุปรายปี', 'updateYearSummary')
+        .addToUi();
+}
 
-// function moveAlreadyRenamedFiles() {
-//     withLock(30000, () => {
-//         let ss = getSpreadsheet();
-//         let masterSheet = ss.getSheetByName(SHEET_MASTER);
-//         let move_files = [];
+function moveAlreadyRenamedFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let masterSheet = ss.getSheetByName(SHEET_MASTER);
+        let move_files = [];
 
-//         let processFile = (file) => {
-//             let file_name = file.getName();
-//             let parsedData = parseFileName(file_name);
+        let processFile = (file) => {
+            let file_name = file.getName();
+            let parsedData = parseFileName(file_name);
 
-//             if (!parsedData) {
-//                 Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
-//                 return null;
-//             }
+            if (!parsedData) {
+                Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
+                return null;
+            }
 
-//             let fileId = file.getId();
-//             let row_data = createRowData(parsedData, fileId);
-//             masterSheet.appendRow(row_data);
+            let fileId = file.getId();
+            let row_data = createRowData(parsedData, fileId);
+            masterSheet.appendRow(row_data);
 
-//             let yearFolder = getFolder(parsedData.year, UPLOAD_FOLDER_ID);
-//             let monthFolder = getFolder(parsedData.month, yearFolder.getId());
+            let yearFolder = getFolder(parsedData.year, UPLOAD_FOLDER_ID);
+            let monthFolder = getFolder(parsedData.month, yearFolder.getId());
 
-//             return {
-//                 id: fileId,
-//                 parent: ACHIVE_FOLDER_ID,
-//                 target: monthFolder.getId()
-//             };
-//         };
+            return {
+                id: fileId,
+                parent: ACHIVE_FOLDER_ID,
+                target: monthFolder.getId()
+            };
+        };
 
-//         move_files = processFilesFromFolder(ACHIVE_FOLDER_ID, processFile);
+        move_files = processFilesFromFolder(ACHIVE_FOLDER_ID, processFile);
 
-//         if (move_files.length > 0) {
-//             moveFilesToFolder(move_files);
-//         }
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
 
-//         sortSheet(masterSheet, [
-//             { column: COL_CODE, ascending: true },
-//             { column: COL_YEAR, ascending: true },
-//             { column: COL_MONTH, ascending: true },
-//             { column: COL_INVOICE, ascending: true }
-//         ]);
+        sortSheet(masterSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
 
-//         updateYearSummary();
-//     });
-// }
-// function moveDiscountBillFiles() {
-//     withLock(30000, () => {
-//         let ss = getSpreadsheet();
-//         let masterSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
-//         let move_files = [];
+        updateYearSummary();
+    });
+}
 
-//         let processFile = (file) => {
-//             let file_name = file.getName();
-//             let parsedData = parseFileName(file_name);
+function moveDiscountBillFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let masterSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
+        let move_files = [];
 
-//             if (!parsedData) {
-//                 Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
-//                 return null;
-//             }
+        let processFile = (file) => {
+            let file_name = file.getName();
+            let parsedData = parseFileName(file_name);
 
-//             let fileId = file.getId();
-//             let row_data = createRowData(parsedData, fileId);
-//             masterSheet.appendRow(row_data);
+            if (!parsedData) {
+                Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
+                return null;
+            }
 
-//             let yearFolder = getFolder(parsedData.year, DISCOUNT_BILL_WAITING_PAY_FOLDER_ID);
-//             let monthFolder = getFolder(parsedData.month, yearFolder.getId());
+            let fileId = file.getId();
+            let row_data = createRowData(parsedData, fileId);
+            masterSheet.appendRow(row_data);
 
-//             return {
-//                 id: fileId,
-//                 parent: ACHIVE_DISCOUNT_BILL_FOLDER_ID,
-//                 target: monthFolder.getId()
-//             };
-//         };
+            let yearFolder = getFolder(parsedData.year, DISCOUNT_BILL_WAITING_PAY_FOLDER_ID);
+            let monthFolder = getFolder(parsedData.month, yearFolder.getId());
 
-//         move_files = processFilesFromFolder(ACHIVE_DISCOUNT_BILL_FOLDER_ID, processFile);
+            return {
+                id: fileId,
+                parent: ACHIVE_DISCOUNT_BILL_FOLDER_ID,
+                target: monthFolder.getId()
+            };
+        };
 
-//         if (move_files.length > 0) {
-//             moveFilesToFolder(move_files);
-//         }
+        move_files = processFilesFromFolder(ACHIVE_DISCOUNT_BILL_FOLDER_ID, processFile);
 
-//         sortSheet(masterSheet, [
-//             { column: COL_CODE, ascending: true },
-//             { column: COL_YEAR, ascending: true },
-//             { column: COL_MONTH, ascending: true },
-//             { column: COL_INVOICE, ascending: true }
-//         ]);
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
 
-//         updateYearSummary();
-//     });
-// }
+        sortSheet(masterSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
 
-// function saveAlreadyPaidFileToPaidSheet() {
-//     withLock(30000, () => {
-//         let ss = getSpreadsheet();
-//         let masterSheet = ss.getSheetByName(SHEET_MASTER);
-//         let paidSheet = ss.getSheetByName(SHEET_PAID);
+        updateYearSummary();
+    });
+}
 
-//         let move_files = movePaidRecords(masterSheet, paidSheet);
+function saveAlreadyPaidFileToPaidSheet() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let masterSheet = ss.getSheetByName(SHEET_MASTER);
+        let paidSheet = ss.getSheetByName(SHEET_PAID);
 
-//         sortSheet(paidSheet, [
-//             { column: COL_CODE, ascending: true },
-//             { column: COL_YEAR, ascending: true },
-//             { column: COL_MONTH, ascending: true },
-//             { column: COL_INVOICE, ascending: true }
-//         ]);
+        let move_files = movePaidRecords(masterSheet, paidSheet);
 
-//         if (move_files.length > 0) {
-//             moveFilesToFolder(move_files);
-//         }
+        sortSheet(paidSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
 
-//         updateYearSummary();
-//     });
-// }
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
 
-// function deletePaidDiscountBillFiles() {
-//     withLock(30000, () => {
-//         let ss = getSpreadsheet();
-//         let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
-//         let discountData = discountBillSheet.getDataRange().getValues();
-//         let delete_fileIds = [];
+        updateYearSummary();
+    });
+}
 
-//         for (let i = 1; i < discountData.length; i++) {
-//             let row = discountData[i];
-//             if (row[COL_PAIDFLAG - 1] === 'Y') {
-//                 let fileId = row[COL_FILEID - 1];
-//                 delete_fileIds.push(fileId);
-//                 discountBillSheet.getRange(i + 1, COL_FILEID).clearContent();
-//             }
-//         }
+function deletePaidDiscountBillFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
+        let discountData = discountBillSheet.getDataRange().getValues();
+        let delete_fileIds = [];
 
-//         if (delete_fileIds.length > 0) {
-//             deleteFiles(delete_fileIds);
-//         }
-//     });
-// }
+        for (let i = 1; i < discountData.length; i++) {
+            let row = discountData[i];
+            if (row[COL_PAIDFLAG - 1] === 'Y') {
+                let fileId = row[COL_FILEID - 1];
+                delete_fileIds.push(fileId);
+                discountBillSheet.getRange(i + 1, COL_FILEID).clearContent();
+            }
+        }
 
-// function updateYearSummary() {
-//     let ss = getSpreadsheet();
-//     let masterSheet = ss.getSheetByName(SHEET_MASTER);
-//     let paidSheet = ss.getSheetByName(SHEET_PAID);
-//     let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
-//     let yearSheet = ss.getSheetByName(SHEET_YEAR);
-//     let paidSummaryYearlySheet = ss.getSheetByName(SHEET_PAID_SUMMARY_YEARLY);
+        if (delete_fileIds.length > 0) {
+            deleteFiles(delete_fileIds);
+        }
+    });
+}
 
-//     // Get all data at once
-//     let masterData = masterSheet.getDataRange().getValues().slice(1);
-//     let paidData = paidSheet.getDataRange().getValues().slice(1);
-//     let discountData = discountBillSheet.getDataRange().getValues().slice(1);
+function updateYearSummary() {
+    let ss = getSpreadsheet();
+    let masterSheet = ss.getSheetByName(SHEET_MASTER);
+    let paidSheet = ss.getSheetByName(SHEET_PAID);
+    let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
+    let yearSheet = ss.getSheetByName(SHEET_YEAR);
+    let paidSummaryYearlySheet = ss.getSheetByName(SHEET_PAID_SUMMARY_YEARLY);
 
-//     // Calculate summary
-//     let summary = calculateYearSummary(masterData, paidData, discountData);
+    // Get all data at once
+    let masterData = masterSheet.getDataRange().getValues().slice(1);
+    let paidData = paidSheet.getDataRange().getValues().slice(1);
+    let discountData = discountBillSheet.getDataRange().getValues().slice(1);
 
-//     // Prepare data for paid summary yearly sheet
-//     let data_to_calculate = masterData.concat(paidData).filter(row => row[COL_YEAR - 1] !== '');
-//     let groupByYear = groupBy(data_to_calculate, row => row[COL_YEAR - 1]);
+    // Calculate summary
+    let summary = calculateYearSummary(masterData, paidData, discountData);
 
-//     // Clear and setup headers
-//     paidSummaryYearlySheet.getDataRange().clearContent();
-//     let COL_YEAR_MAP = {};
+    // Prepare data for paid summary yearly sheet
+    let data_to_calculate = masterData.concat(paidData).filter(row => row[COL_YEAR - 1] !== '');
+    let groupByYear = groupBy(data_to_calculate, row => row[COL_YEAR - 1]);
 
-//     Object.keys(groupByYear).sort().forEach((year, i) => {
-//         const colIndex = 2 + (i * 4);
-//         paidSummaryYearlySheet.getRange(1, colIndex, 3, 4).setValues([
-//             [year, "", "", ""],
-//             ["ใบส่งของ", "", "ใบจ่ายเงิน", ""],
-//             ["จำนวน", "ยอดเงิน", "จำนวน", "ยอดเงิน"]
-//         ]).setFontWeight("bold");
+    // Clear and setup headers
+    paidSummaryYearlySheet.getDataRange().clearContent();
+    let COL_YEAR_MAP = {};
 
-//         paidSummaryYearlySheet.getRange(1, colIndex, 1, 4).merge().setHorizontalAlignment("center");
-//         paidSummaryYearlySheet.getRange(2, colIndex, 1, 2).merge().setHorizontalAlignment("center");
-//         paidSummaryYearlySheet.getRange(2, colIndex + 2, 1, 2).merge().setHorizontalAlignment("center");
+    Object.keys(groupByYear).sort().forEach((year, i) => {
+        const colIndex = 2 + (i * 4);
+        paidSummaryYearlySheet.getRange(1, colIndex, 3, 4).setValues([
+            [year, "", "", ""],
+            ["ใบส่งของ", "", "ใบจ่ายเงิน", ""],
+            ["จำนวน", "ยอดเงิน", "จำนวน", "ยอดเงิน"]
+        ]).setFontWeight("bold");
 
-//         COL_YEAR_MAP[year] = colIndex;
-//     });
+        paidSummaryYearlySheet.getRange(1, colIndex, 1, 4).merge().setHorizontalAlignment("center");
+        paidSummaryYearlySheet.getRange(2, colIndex, 1, 2).merge().setHorizontalAlignment("center");
+        paidSummaryYearlySheet.getRange(2, colIndex + 2, 1, 2).merge().setHorizontalAlignment("center");
 
-//     // Generate and format monthly summary
-//     let summaryData = generateMonthlySummary(data_to_calculate, COL_YEAR_MAP);
-//     formatPaidSummarySheet(paidSummaryYearlySheet, summaryData, COL_YEAR_MAP);
+        COL_YEAR_MAP[year] = colIndex;
+    });
 
-//     // Write summary to year sheet
-//     yearSheet.getRange(2, 1, yearSheet.getLastRow(), yearSheet.getLastColumn()).clearContent();
-//     if (summary.length > 0) {
-//         yearSheet.getRange(2, 1, summary.length, summary[0].length).setValues(summary);
-//     }
+    // Generate and format monthly summary
+    let summaryData = generateMonthlySummary(data_to_calculate, COL_YEAR_MAP);
+    formatPaidSummarySheet(paidSummaryYearlySheet, summaryData, COL_YEAR_MAP);
 
-//     sortSheet(yearSheet, [
-//         { column: 1, ascending: true },
-//         { column: 3, ascending: true }
-//     ]);
-// }
+    // Write summary to year sheet
+    yearSheet.getRange(2, 1, yearSheet.getLastRow(), yearSheet.getLastColumn()).clearContent();
+    if (summary.length > 0) {
+        yearSheet.getRange(2, 1, summary.length, summary[0].length).setValues(summary);
+    }
 
-// function updateDailyRecordSummary() {
-//     let ss = getSpreadsheet();
-//     let listSheet = ss.getSheetByName(SHEET_LISTS);
-//     let [header, ...data] = listSheet.getDataRange().getValues();
+    sortSheet(yearSheet, [
+        { column: 1, ascending: true },
+        { column: 3, ascending: true }
+    ]);
+}
+
+function updateDailyRecordSummary() {
+    const ss = getSpreadsheet();
     
-//     // Build category lists
-//     let lists = buildCategoryLists(header, data);
+    // Load data from sheets
+    const listSheet = ss.getSheetByName(SHEET_LISTS);
+    const [header, ...data] = listSheet.getDataRange().getValues();
+    const lists = buildListsFromSheet(header, data);
     
-//     // Build column headers
-//     let { columnHeaders, columnHeaders2, mergeRanges } = buildColumnHeaders(lists);
+    const dailyRecordSheet = ss.getSheetByName(SHEET_DAILY_RECORD);
+    const dailyRecordData = dailyRecordSheet.getDataRange().getValues().filter(row => row[0]);
+    const dailyHeader = dailyRecordData.shift();
     
-//     // Get and transform daily record data
-//     let dailyRecordSheet = ss.getSheetByName(SHEET_DAILY_RECORD);
-//     let dailyRecordData = dailyRecordSheet.getDataRange().getValues().filter(row => row[0]);
-//     let transformedData = transformDailyRecordData(dailyRecordData);
+    // Generate year and month columns
+    const yearColumns = generateYearColumns(dailyRecordData);
+    const monthColumn = generateMonthColumns();
+    const monthColumnLength = monthColumn.length;
+    const totalCols = yearColumns.length * monthColumnLength;
     
-//     // Group data by date
-//     let dateMap = groupRecordsByDate(transformedData, columnHeaders2, columnHeaders.length);
+    // Build header rows
+    const [yearRow, monthRow] = buildSummaryHeaders(yearColumns, monthColumn);
     
-//     // Sort dates and build summary array
-//     let sortedDates = Object.keys(dateMap).sort((a, b) => {
-//         return new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-'));
-//     });
+    // Initialize summary structure
+    const {
+        summary_array,
+        formatListNameRow,
+        formatSumRow,
+        sumIncomeRowIndex,
+        sumExpenseRowIndex
+    } = initializeSummaryStructure(lists, totalCols);
     
-//     let summary_array = sortedDates.map(dateStr => {
-//         let row = dateMap[dateStr];
-//         let total = row.slice(1).reduce((sum, val) => sum + val, 0);
-//         row[row.length - 1] = total;
-//         return row;
-//     });
+    // Add calculated rows (net income, carried forward, total)
+    const { netAmountRow, carriedForwardRow } = addCalculatedRows(
+        summary_array,
+        sumIncomeRowIndex,
+        sumExpenseRowIndex,
+        totalCols,
+        formatSumRow
+    );
     
-//     // Get year range
-//     let { min_year, max_year } = getYearRange(sortedDates);
+    // Transform and populate data
+    const headerIndexMap = createHeaderIndexMap(dailyHeader);
+    const transformedData = transformDailyRecords(dailyRecordData, headerIndexMap);
+    const monthIndexMap = createMonthIndexMap(yearColumns, monthColumn);
     
-//     // Build monthly summary with grouping
-//     let { result_array, monthTotalRowIndex, groupRows } = buildMonthlySummary(
-//         summary_array, 
-//         columnHeaders.length, 
-//         min_year, 
-//         max_year
-//     );
+    populateSummaryData(
+        summary_array,
+        transformedData,
+        monthIndexMap,
+        monthColumn,
+        summary_array[carriedForwardRow]
+    );
     
-//     // Prepend headers
-//     result_array = [columnHeaders, columnHeaders2, ...result_array];
+    // Prepend header rows
+    summary_array.unshift(yearRow, monthRow);
     
-//     // Write data to sheet
-//     let dailyRecordSummarySheet = ss.getSheetByName(SHEET_DAILY_RECORD_SUMMARY);
-//     dailyRecordSummarySheet.getDataRange().clear();
-//     dailyRecordSummarySheet.getRange(1, 1, result_array.length, result_array[0].length).setValues(result_array);
+    // Build yearly and bank summaries
+    const year_summary_array = buildYearlySummary(summary_array, yearColumns, monthColumnLength);
+    const bank_summary_array = buildBankSummary(yearColumns, lists, dailyRecordData, headerIndexMap);
     
-//     // Apply all formatting
-//     formatDailyRecordHeaders(dailyRecordSummarySheet, mergeRanges);
-//     applyRowGrouping(dailyRecordSummarySheet, groupRows);
-//     formatTotalsAndAmounts(dailyRecordSummarySheet, monthTotalRowIndex, result_array);
-// }
+    // Get sheets
+    const dailyRecordSummarySheet = ss.getSheetByName(SHEET_DAILY_RECORD_SUMMARY);
+    const yearlySummarySheet = ss.getSheetByName(SHEET_YEARLY_SUMMARY);
+    const bankSummarySheet = ss.getSheetByName(SHEET_BANK_SUMMARY);
+    
+    // Clear and write data (batch operations)
+    batchClearAndWrite(
+        dailyRecordSummarySheet,
+        yearlySummarySheet,
+        bankSummarySheet,
+        summary_array,
+        year_summary_array,
+        bank_summary_array
+    );
+    
+    // Apply all formatting
+    formatAllSummarySheets(
+        dailyRecordSummarySheet,
+        yearlySummarySheet,
+        bankSummarySheet,
+        {
+            formatListNameRow,
+            formatSumRow,
+            netAmountRow: netAmountRow ? netAmountRow + 2 : null, // +2 for header rows
+            summary_array_length: summary_array.length,
+            year_summary_array_length: year_summary_array.length
+        },
+        yearColumns
+    );
+}
 
-// function temp() {
-//     let ss = getSpreadsheet();
-//     let masterSheet = ss.getSheetByName(SHEET_MASTER);
-//     let masterData = masterSheet.getDataRange().getValues().slice(1);
-//     masterData.forEach((row, i) => {
-//         let code = row[COL_CODE - 1];
-//         code = "'" + code.padStart(4, '0');
-//         masterSheet.getRange(i + 2, COL_CODE).setValue(code);
-//     });
-// }
+/**
+ * Batch clear and write operations for better performance
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} dailySheet - Daily summary sheet
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} yearlySheet - Yearly summary sheet
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} bankSheet - Bank summary sheet
+ * @param {Array} dailyData - Daily summary data
+ * @param {Array} yearlyData - Yearly summary data
+ * @param {Array} bankData - Bank summary data
+ */
+function batchClearAndWrite(dailySheet, yearlySheet, bankSheet, dailyData, yearlyData, bankData) {
+    // Clear all sheets at once
+    dailySheet.getRange(1, 1, dailySheet.getMaxRows(), dailySheet.getMaxColumns()).clear();
+    yearlySheet.getRange(1, 1, yearlySheet.getMaxRows(), yearlySheet.getMaxColumns()).clear();
+    bankSheet.getRange(1, 1, bankSheet.getMaxRows(), bankSheet.getMaxColumns()).clear();
+    
+    // Write all data at once
+    if (dailyData.length > 0 && dailyData[0].length > 0) {
+        dailySheet.getRange(1, 1, dailyData.length, dailyData[0].length).setValues(dailyData);
+    }
+    
+    if (yearlyData.length > 0 && yearlyData[0].length > 0) {
+        yearlySheet.getRange(1, 1, yearlyData.length, yearlyData[0].length).setValues(yearlyData);
+    }
+    
+    if (bankData.length > 0 && bankData[0].length > 0) {
+        bankSheet.getRange(1, 1, bankData.length, bankData[0].length).setValues(bankData);
+    }
+}
+
+function generateYearColumns(dailyRecordData) {
+    let years = new Set();
+    dailyRecordData.forEach(row => {
+        let year = new Date(row[0]).getFullYear();
+        years.add(year);
+    });
+    return Array.from(years).sort();
+}
+
+function generateMonthColumns() {
+    return [
+        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+    ]
+}
+
+function createSummaryFormula(startRow, endRow, colIndex) {
+    return `=SUM(${getColumnLetter(colIndex)}${startRow}:${getColumnLetter(colIndex)}${endRow})`;
+}
+
+function getColumnLetter(colIndex) {
+    // Cache common column letters for performance
+    if (colIndex <= 26) {
+        return String.fromCharCode(64 + colIndex);
+    }
+    
+    let letter = '';
+    while (colIndex > 0) {
+        const mod = (colIndex - 1) % 26;
+        letter = String.fromCharCode(65 + mod) + letter;
+        colIndex = Math.floor((colIndex - mod) / 26);
+    }
+    return letter;
+}
