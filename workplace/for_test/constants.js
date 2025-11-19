@@ -13,6 +13,7 @@ const SHEET_DISCOUNT_BILL = 'ใบค้างส่วนลด';
 const SHEET_YEAR = 'ใบส่งของ_รายปี';
 const SHEET_PAID_SUMMARY_YEARLY = 'สรุปใบส่งของ';
 const SHEET_DAILY_RECORD_SUMMARY = 'สรุปยอด';
+const SHEET_YEARLY_SUMMARY = 'สรุปรายปี';
 const SHEET_LISTS = 'List';
 const SHEET_DAILY_RECORD = 'DAILY_RECORD';
 
