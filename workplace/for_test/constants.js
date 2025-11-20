@@ -10,6 +10,7 @@ const DISCOUNT_BILL_WAITING_PAY_FOLDER_ID = '1A4LPApesK5kYjDWpPIsl8Rs3Fu5Tkj8t';
 const SHEET_MASTER = 'ใบส่งของ_สรุปลูกค้า';
 const SHEET_PAID = 'ลูกค้าจ่ายเงิน';
 const SHEET_DISCOUNT_BILL = 'ใบค้างส่วนลด';
+const SHEET_DISCOUNT_BILL_ALREADY_PAID = 'ใบค้างลดจ่ายแล้ว';
 const SHEET_YEAR = 'ใบส่งของ_รายปี';
 const SHEET_PAID_SUMMARY_YEARLY = 'สรุปใบส่งของ';
 const SHEET_DAILY_RECORD_SUMMARY = 'สรุปยอด';

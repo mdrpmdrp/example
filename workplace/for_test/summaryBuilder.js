@@ -44,7 +44,7 @@ function initializeSummaryStructure(lists, totalCols) {
         listNameRow[0] = listName;
         summary_array.push(listNameRow);
         formatListNameRow.push({
-            index: summary_array.length,
+            index: summary_array.length + (listName === 'ค่าใช้จ่ายส่วนตัว'? 3 : 2), // +2 due to header offset
             backgroundColor: '#4285f4',
             fontColor: '#FFFFFF'
         });
@@ -65,21 +65,21 @@ function initializeSummaryStructure(lists, totalCols) {
         const summaryRow = [summaryLabel];
         
         for (let colIndex = 0; colIndex < totalCols; colIndex++) {
-            summaryRow.push(createSummaryFormula(startRowIndex, endRowIndex, colIndex + 2));
+            summaryRow.push(createSummaryFormula(startRowIndex, endRowIndex+2, colIndex + 2));
         }
         summary_array.push(summaryRow);
         
         formatSumRow.push({
-            index: summary_array.length,
+            index: summary_array.length + (listName === 'ค่าใช้จ่ายส่วนตัว'? 3 : 2), // +2 due to header offset
             backgroundColor: '#FBBC04',
             fontColor: '#000000'
         });
         
         // Track income and expense rows
         if (listName === 'รายได้') {
-            sumIncomeRowIndex = summary_array.length;
+            sumIncomeRowIndex = summary_array.length + 2;
         } else if (listName === 'รายจ่าย') {
-            sumExpenseRowIndex = summary_array.length;
+            sumExpenseRowIndex = summary_array.length + 2;
         }
         
         // Add empty row
@@ -106,42 +106,49 @@ function initializeSummaryStructure(lists, totalCols) {
  */
 function addCalculatedRows(summary_array, sumIncomeRowIndex, sumExpenseRowIndex, totalCols, formatSumRow) {
     let netAmountRow = null;
-    let carriedForwardRow = null;
+    let grandNetRow = null;
     
     if (sumIncomeRowIndex && sumExpenseRowIndex) {
         // Net income row
         const netIncomeRow = ['รายได้จากการดำเนินงานสุทธิ'];
         for (let colIndex = 0; colIndex < totalCols; colIndex++) {
             const colLetter = getColumnLetter(colIndex + 2);
-            netIncomeRow.push(`=${colLetter}${sumIncomeRowIndex} - ${colLetter}${sumExpenseRowIndex}`);
+            netIncomeRow.push(`=${colLetter}${sumIncomeRowIndex} + ${colLetter}${sumExpenseRowIndex}`);
         }
-        summary_array.splice(summary_array.length - 1, 0, netIncomeRow);
-        netAmountRow = summary_array.length - 1;
+        // summary_array.splice(summary_array.length - 1, 0, netIncomeRow);
+        // netAmountRow = summary_array.length;
+        let insert_index = summary_array.findIndex(row => row[0] === 'ค่าใช้จ่ายรวม') + 1;
+        summary_array.splice(insert_index, 0, netIncomeRow);
+        netAmountRow = insert_index + 1; // +2 due to header offset
         
         // Carried forward row
-        const carriedRow = new Array(totalCols + 1).fill('');
-        carriedRow[0] = 'ยอดยกไป';
-        summary_array.splice(summary_array.length - 1, 0, carriedRow);
-        carriedForwardRow = summary_array.length - 1;
-        
-        // Total row
-        const totalRowData = ['สุทธิ'];
+        const grandNet = new Array(totalCols + 1).fill('');
+        grandNet[0] = 'รายได้จากการดำเนินงานสุทธิทั้งหมด';
         for (let colIndex = 0; colIndex < totalCols; colIndex++) {
-            if (colIndex === 0) {
-                totalRowData.push('');
-            } else {
-                const offsetIndex = colIndex + 2;
-                const colLetter = getColumnLetter(offsetIndex);
-                const prevColLetter = getColumnLetter(offsetIndex - 1);
-                totalRowData.push(
-                    `=${prevColLetter}${carriedForwardRow} - ${colLetter}${carriedForwardRow} + ${colLetter}${netAmountRow} - ${colLetter}${formatSumRow[0].index}`
-                );
-            }
+            const colLetter = getColumnLetter(colIndex + 2);
+            grandNet[colIndex + 1] = `=${colLetter}${netAmountRow+2} + ${colLetter}${summary_array.length+1}`;
         }
-        summary_array.push(totalRowData);
+        summary_array.splice(summary_array.length - 1, 0, grandNet);
+        grandNetRow = summary_array.length;
+        
+        // // Total row
+        // const totalRowData = ['สุทธิ'];
+        // for (let colIndex = 0; colIndex < totalCols; colIndex++) {
+        //     if (colIndex === 0) {
+        //         totalRowData.push('');
+        //     } else {
+        //         const offsetIndex = colIndex + 2;
+        //         const colLetter = getColumnLetter(offsetIndex);
+        //         const prevColLetter = getColumnLetter(offsetIndex - 1);
+        //         totalRowData.push(
+        //             `=${prevColLetter}${carriedForwardRow+1} - ${colLetter}${carriedForwardRow+1} + ${colLetter}${netAmountRow+1} + ${colLetter}${formatSumRow[0].index}`
+        //         );
+        //     }
+        // }
+        // summary_array.push(totalRowData);
     }
     
-    return { netAmountRow, carriedForwardRow };
+    return { netAmountRow, grandNetRow};
 }
 
 /**
@@ -150,9 +157,9 @@ function addCalculatedRows(summary_array, sumIncomeRowIndex, sumExpenseRowIndex,
  * @param {Array} transformedData - Transformed daily records
  * @param {Object} monthIndexMap - Month index map
  * @param {Array} monthColumn - Array of month names
- * @param {Array} carriedForwardRow - Carried forward row reference
+ * @param {Array} granNetRow - Carried forward row reference
  */
-function populateSummaryData(summary_array, transformedData, monthIndexMap, monthColumn, carriedForwardRow) {
+function populateSummaryData(summary_array, transformedData, monthIndexMap, monthColumn, granNetRow,lists) {
     // Create a map for faster row lookup
     const rowMap = {};
     for (let i = 0; i < summary_array.length; i++) {
@@ -168,7 +175,10 @@ function populateSummaryData(summary_array, transformedData, monthIndexMap, mont
         const date = new Date(record['วันที่']);
         const yearStr = date.getFullYear();
         const monthStr = monthColumn[date.getMonth()];
-        const amount = parseFloat(record['รายรับ'] || record['รายจ่าย'] || 0);
+        // const amount = parseFloat(record['รายรับ'] || 0) - parseFloat(record['รายจ่าย'] || 0);
+        const amount = lists['ธนาคาร'].includes(listName) ?
+            parseFloat(record['รายจ่าย'] || 0) - parseFloat(record['รายรับ'] || 0) :
+            parseFloat(record['รายรับ'] || 0) - parseFloat(record['รายจ่าย'] || 0);
         const carriedAmount = parseFloat(record['ยอดยกไป'] || 0);
         
         const targetRowIndex = rowMap[listName];
@@ -178,8 +188,8 @@ function populateSummaryData(summary_array, transformedData, monthIndexMap, mont
             const currentVal = summary_array[targetRowIndex][colIndex];
             summary_array[targetRowIndex][colIndex] = (currentVal === '' ? 0 : currentVal) + amount;
             
-            if (carriedForwardRow) {
-                carriedForwardRow[colIndex] = carriedAmount;
+            if (granNetRow && !isNaN(carriedAmount) && carriedAmount !== 0) {
+                granNetRow[colIndex] = carriedAmount;
             }
         }
     }
@@ -211,14 +221,21 @@ function buildYearlySummary(summary_array, yearColumns, monthColumnLength) {
                 
                 if (cellValue !== '' && !isNaN(cellValue)) {
                     yearTotal += cellValue;
-                } else if (typeof cellValue === 'string' && cellValue.startsWith('=') && monthColIndex === 0 && !formulaFound) {
+                } else if (typeof cellValue === 'string' && cellValue.startsWith('=')) {
                     const newColumn = getColumnLetter(colIndex + 2);
                     const matches = cellValue.match(/\d+/g);
-                    if (matches) {
+                    const netFormula_matches = /^=.*[+\-].*[+\-]/.test(cellValue) ? cellValue.match(/[A-Z]+\d+/g) : null;
+                    if (netFormula_matches) {
+                        let [r1, r2, r3, r4] = cellValue.match(/\d+/g);
+                        let beforeColumn = colIndex === 0 ? null : getColumnLetter(colIndex + 1);
+                        yearTotal = `=${beforeColumn ? beforeColumn + r1 + ' - ' : ''}${newColumn}${r2} + ${newColumn}${r3} + ${newColumn}${r4}`;
+
+                    }
+                    else if (matches) {
                         const [startRow, endRow] = matches;
                         yearTotal = cellValue.includes('SUM') ?
                             `=SUM(${newColumn}${startRow}:${newColumn}${endRow})` :
-                            cellValue.replace(/[A-Z]+/, newColumn);
+                            cellValue.replace(/[A-Z]+/g, newColumn);
                         formulaFound = true;
                     }
                 }
@@ -264,18 +281,17 @@ function buildBankSummary(yearColumns, lists, dailyRecordData, headerIndexMap) {
                 if (record[headerIndexMap['หมวด']] === bankName) {
                     const date = new Date(record[headerIndexMap['วันที่']]);
                     const yearStr = date.getFullYear();
-                    const amountDeposit = parseFloat(record[headerIndexMap['รายรับ']] || 0);
-                    const amountWithdraw = parseFloat(record[headerIndexMap['รายจ่าย']] || 0);
+                    const amountDeposit = parseFloat(record[headerIndexMap['รายจ่าย']] || 0);
+                    const amountWithdraw = parseFloat(record[headerIndexMap['รายรับ']] || 0);
                     currentBalance += amountDeposit - amountWithdraw;
                     
                     if (bankYearIndexMap[yearStr]) {
                         bankRow[bankYearIndexMap[yearStr] - 1] += amountDeposit;
                         bankRow[bankYearIndexMap[yearStr]] += amountWithdraw;
-                        bankRow[bankYearIndexMap[yearStr] + 1] = parseFloat(record[headerIndexMap['ยอดยกไป']] || 0);
+                        bankRow[bankYearIndexMap[yearStr] + 1] = `=${getColumnLetter(bankYearIndexMap[yearStr] -1)}${bank_summary_array.length + 1} + ${getColumnLetter(bankYearIndexMap[yearStr])}${bank_summary_array.length + 1} - ${getColumnLetter(bankYearIndexMap[yearStr] + 1)}${bank_summary_array.length + 1}`;
                     }
                 }
             }
-            bankRow[1] = currentBalance;
             bank_summary_array.push(bankRow);
         }
     }

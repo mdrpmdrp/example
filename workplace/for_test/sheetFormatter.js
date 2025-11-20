@@ -147,9 +147,8 @@ function formatNetAmountRows(dailySheet, yearlySheet, netAmountRow, dailyLastRow
     
     // Daily sheet net amount rows
     const dailyNetRange1 = dailySheet.getRange(netAmountRow, 1, 1, dailySheet.getLastColumn());
-    const dailyNetRange2 = dailySheet.getRange(dailyLastRow, 1, 1, dailySheet.getLastColumn());
+    const dailyNetRange2 = dailySheet.getRange(dailyLastRow-1, 1, 1, dailySheet.getLastColumn());
     applyFormatting(dailyNetRange1, netFormat);
-    applyFormatting(dailyNetRange2, netFormat);
     
     // Yearly sheet net amount rows
     const yearlyNetRange1 = yearlySheet.getRange(netAmountRow, 1, 1, yearlySheet.getLastColumn());

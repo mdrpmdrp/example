@@ -138,21 +138,24 @@ function deletePaidDiscountBillFiles() {
     withLock(30000, () => {
         let ss = getSpreadsheet();
         let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
+        let discountAlreadyPaidSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL_ALREADY_PAID);
         let discountData = discountBillSheet.getDataRange().getValues();
         let delete_fileIds = [];
 
-        for (let i = 1; i < discountData.length; i++) {
+        for (let i = discountData.length - 1; i >= 1; i--) {
             let row = discountData[i];
             if (row[COL_PAIDFLAG - 1] === 'Y') {
                 let fileId = row[COL_FILEID - 1];
                 delete_fileIds.push(fileId);
-                discountBillSheet.getRange(i + 1, COL_FILEID).clearContent();
+                discountBillSheet.getRange(i + 1, 1, 1, discountData[0].length -1).copyTo(discountAlreadyPaidSheet.getRange(discountAlreadyPaidSheet.getLastRow() + 1, 1));
+                discountBillSheet.deleteRow(i + 1);
             }
         }
 
         if (delete_fileIds.length > 0) {
             deleteFiles(delete_fileIds);
         }
+        updateYearSummary();
     });
 }
 
@@ -161,13 +164,14 @@ function updateYearSummary() {
     let masterSheet = ss.getSheetByName(SHEET_MASTER);
     let paidSheet = ss.getSheetByName(SHEET_PAID);
     let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
+    let discountAlreadyPaidSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL_ALREADY_PAID);
     let yearSheet = ss.getSheetByName(SHEET_YEAR);
     let paidSummaryYearlySheet = ss.getSheetByName(SHEET_PAID_SUMMARY_YEARLY);
 
     // Get all data at once
     let masterData = masterSheet.getDataRange().getValues().slice(1);
     let paidData = paidSheet.getDataRange().getValues().slice(1);
-    let discountData = discountBillSheet.getDataRange().getValues().slice(1);
+    let discountData = [...discountBillSheet.getDataRange().getValues().slice(1), ...discountAlreadyPaidSheet.getDataRange().getValues().slice(1)];
 
     // Calculate summary
     let summary = calculateYearSummary(masterData, paidData, discountData);
@@ -242,7 +246,7 @@ function updateDailyRecordSummary() {
     } = initializeSummaryStructure(lists, totalCols);
     
     // Add calculated rows (net income, carried forward, total)
-    const { netAmountRow, carriedForwardRow } = addCalculatedRows(
+    const { netAmountRow, grandNetRow } = addCalculatedRows(
         summary_array,
         sumIncomeRowIndex,
         sumExpenseRowIndex,
@@ -260,7 +264,8 @@ function updateDailyRecordSummary() {
         transformedData,
         monthIndexMap,
         monthColumn,
-        summary_array[carriedForwardRow]
+        summary_array[grandNetRow-2],
+        lists
     );
     
     // Prepend header rows
@@ -311,6 +316,9 @@ function updateDailyRecordSummary() {
  * @param {Array} bankData - Bank summary data
  */
 function batchClearAndWrite(dailySheet, yearlySheet, bankSheet, dailyData, yearlyData, bankData) {
+    // keep existing Data
+    const bankExistingData = bankSheet.getDataRange().getValues();
+    
     // Clear all sheets at once
     dailySheet.getRange(1, 1, dailySheet.getMaxRows(), dailySheet.getMaxColumns()).clear();
     yearlySheet.getRange(1, 1, yearlySheet.getMaxRows(), yearlySheet.getMaxColumns()).clear();
@@ -326,7 +334,18 @@ function batchClearAndWrite(dailySheet, yearlySheet, bankSheet, dailyData, yearl
     }
     
     if (bankData.length > 0 && bankData[0].length > 0) {
+        bankData = bankData.map((row, rowIndex) => {
+            if(rowIndex < 2) return row; // Keep header rows
+            let findIndex = bankExistingData.findIndex(existingRow => existingRow[0] === row[0]);
+            if(findIndex === -1) return row; // New bank, keep as is
+            // Existing bank, keep current balance
+            let existingBalance = bankExistingData[findIndex][1];
+            let newRow = [...row];
+            newRow[1] = existingBalance;
+            return newRow;
+        })
         bankSheet.getRange(1, 1, bankData.length, bankData[0].length).setValues(bankData);
+
     }
 }
 
