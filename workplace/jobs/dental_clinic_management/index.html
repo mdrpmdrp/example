@@ -2266,6 +2266,7 @@
 
             if (isSharedCal) {
                 total -= toNumber(revenue.labFee);
+                total -= ((revenue.visaAmount || 0) * 0.03); // Subtract 3% visa fee
             }
 
             if (total === 0) {
@@ -3472,6 +3473,7 @@
             // Hardcoded payment types - no longer reading from sheet
             const hardcodedPaymentTypes = [
                 { value: 'เงินสด' },
+                { value: 'Visa' },
                 { value: 'เงินโอนบัญชีร้าน' },
                 { value: 'เงินโอนบัญชีหมอ' },
                 { value: 'ประกันสังคม' },
@@ -3544,6 +3546,7 @@
             // Define payment type mappings to match backend column names
             const paymentTypeFields = {
                 'เงินสด': { label: 'จำนวนเงินสด', name: 'amountCash' },
+                'Visa': { label: 'จำนวนเงิน Visa', name: 'amountVisa' },
                 'เงินโอนบัญชีร้าน': { label: 'จำนวนเงินโอนบัญชีร้าน', name: 'amountTransferClinic' },
                 'เงินโอนบัญชีหมอ': { label: 'จำนวนเงินโอนบัญชีหมอ', name: 'amountTransferDoctor' },
                 'ประกันสังคม': { label: 'จำนวนเงินประกันสังคม', name: 'amountSocialSecurity', default: 900 },
@@ -6670,7 +6673,7 @@
                     url: CONFIG.DATATABLES_LANG_URL
                 },
                 // responsive: true,
-                order: [[1, 'desc']], // Sort by date descending
+                order: [[0, 'desc']], // Sort by date descending
                 pageLength: 25, // Show 25 entries per page
                 scrollX: true,
                 dom: "<'row justify-content-between'<'col-md-auto buttons-revenue'><'col-md-auto filter-revenue'>>" +
