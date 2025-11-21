@@ -389,7 +389,7 @@
                                 <li>
                                     <button class="dropdown-item nav-link px-3 fw-semibold text-secondary simple-popout"
                                         id="createSummaryMeltBtn">
-                                        <i class="bi bi-fire me-2"></i>สรุปจำนวนบิลหลอม
+                                        <i class="bi bi-fire me-2"></i>สรุปสต็อกในร้าน
                                     </button>
                                 </li>
                             </ul>
@@ -1073,7 +1073,7 @@
             <div class="modal-content gold-form-card">
                 <div class="modal-header border-0 bg-light">
                     <h3 class="modal-title gold-title w-100 text-center" id="meltSummaryModalLabel">
-                        รายงานสรุปการหลอม</h3>
+                        รายงานสรุปสต็อกในร้าน</h3>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
                 </div>
                 <div class="modal-body" style="background: #fff; color: #232526;">
@@ -1292,11 +1292,12 @@
         function generateMeltSummaryReport(result, options) {
             const data = result.data;
             const rawData = result.rawData || data; // Use rawData for table display
+            const summarizedBuyData = result.summarizedBuyData || [];
             const summary = result.summary;
 
             let reportHtml = `
                 <div class="text-start">
-                    <h5 class="text-center mb-3 text-dark">รายงานสรุปการหลอม</h5>
+                    <h5 class="text-center mb-3 text-dark">รายงานสรุปสต็อคในร้าน</h5>
                     <p class="mb-2"><strong>ช่วงวันที่:</strong> ${moment(options.startDate, 'YYYY-MM-DD').format('DD/MM/YYYY')} - ${moment(options.endDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}</p>
                     <p class="mb-2"><strong>สาขา:</strong> ${options.branch === 'all' ? 'ทุกสาขา' : options.branch}</p>
                     <hr class="my-3">
@@ -1321,6 +1322,11 @@
                             </div>
                             <div class="col-6 ${window.user.role === 'admin' ? '' : 'd-none'}">
                                 <strong>ยอดขายรวม:</strong> ${(summary.totalSellPrice || 0).toLocaleString('th-TH')} บาท
+                            </div>
+                        </div>
+                        <div class="row g-2 mt-1">
+                            <div class="col-6">
+                                <strong>รายการยังไม่หลอม:</strong> ${summarizedBuyData.length} รายการ (${(summary.totalUnmeltedWeight || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} กรัม)
                             </div>
                         </div>
                     </div>
@@ -1359,12 +1365,54 @@
                             </tbody>
                         </table>
                     </div>
-                    ` : ''}
+                    ` : `
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        ไม่มีข้อมูลบิลหลอมในช่วงเวลานี้
+                    </div>
+                    `}
+                    ${summarizedBuyData.length > 0 ? `
+                    <hr class="mt-5 my-3">
+                    <h6 class="text-center mb-3 text-dark">รายการยังไม่หลอม</h6>
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 120px;">#</th>
+                                    <th class="text-center">วันที่</th>
+                                    <th class="text-center">หมวดหมู่</th>
+                                    <th class="text-center">จำนวน (รายการ)</th>
+                                    <th class="text-center">น้ำหนักรวม (กรัม)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${summarizedBuyData.map((item, index) => `
+                                    <tr>
+                                        <td class="text-center">${index + 1}</td>
+                                        <td class="text-center">${moment(item.date).format('DD/MM/YY')}</td>
+                                        <td class="text-center">${item.category || '-'}</td>
+                                        <td class="text-end">${item.count || 0}</td>
+                                        <td class="text-end">${(item.totalWeight || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="table-light fw-bold">
+                                    <td colspan="3" class="text-end">รวมทั้งหมด</td>
+                                    <td class="text-end">${summarizedBuyData.reduce((sum, item) => sum + (item.count || 0), 0)}</td>
+                                    <td class="text-end">${summarizedBuyData.reduce((sum, item) => sum + (item.totalWeight || 0), 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    ` : `
+                        <div class="alert alert-info mt-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            ไม่มีรายการซื้อที่ยังไม่หลอมในช่วงเวลานี้
+                        </div>
+                    `}
                 </div>
             `;
 
             goldSwal({
-                title: 'รายงานสรุปการหลอม',
+                title: 'รายงานสรุปสต็อคในร้าน',
                 html: reportHtml,
                 width: '800px',
                 showCancelButton: true,
@@ -1373,17 +1421,17 @@
                 confirmButtonColor: '#d4af37',
             }).then((result) => {
                 if (result.isConfirmed) {
-                    printMeltSummaryReport(rawData, options, summary);
+                    printMeltSummaryReport(rawData, options, summary, summarizedBuyData);
                 }
             });
         }
 
         // Function to print melt summary report
-        function printMeltSummaryReport(data, options, summary) {
+        function printMeltSummaryReport(data, options, summary, summarizedBuyData) {
             const printContent = `
                 <div class="container-fluid">
                     <div class="text-center mb-4">
-                        <h4 class="fw-bold">รายงานสรุปการหลอม</h4x>
+                        <h4 class="fw-bold">รายงานสรุปสต็อคในร้าน</h4>
                         <p class="mb-0">สาขา: ${options.branch === 'all' ? 'ทุกสาขา' : options.branch}</p>
                     </div>
                     
@@ -1406,16 +1454,10 @@
                                         <td class="text-end">${(summary.totalAfterWeight || 0).toFixed(2)}</td>
                                         <td class="text-center">กรัม</td>
                                     </tr>
-                                    <tr>
-                                        <td>ยอดซื้อรวม</td>
-                                        <td class="text-end">${(summary.totalBuyPrice || 0).toLocaleString('th-TH')}</td>
-                                        <td class="text-center">บาท</td>
-                                    </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-
                     ${data.length > 0 ? `
                     <div class="row mb-4">
                         <div class="col-12">
@@ -1446,6 +1488,35 @@
                                             <td class="text-end">${(item.percentCalc || 0).toFixed(2)}</td>
                                             <td class="text-end">${(item.buyPrice || 0).toLocaleString('th-TH')}</td>
                                             <td class="text-center">${item.recorder || '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${summarizedBuyData.length > 0 ? `
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="mb-3">รายการยังไม่หลอม</h5>
+                            <table class="table table-bordered table-sm">
+                                <thead class="table-info">
+                                    <tr>
+                                        <th class="text-center text-wrap">#</th>
+                                        <th class="text-center text-wrap">วันที่</th>
+                                        <th class="text-center text-wrap">หมวดหมู่</th>
+                                        <th class="text-center text-wrap">จำนวน (รายการ)</th>
+                                        <th class="text-center text-wrap">นน.รวม (กรัม)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${summarizedBuyData.map((item, index) => `
+                                        <tr>
+                                            <td class="text-center">${index + 1}</td>
+                                            <td class="text-center">${moment(item.date).format('DD/MM/YYYY')}</td>
+                                            <td class="text-center">${item.category || '-'}</td>
+                                            <td class="text-end">${item.count || 0}</td>
+                                            <td class="text-end">${(item.totalWeight || 0).toFixed(2)}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -3319,8 +3390,6 @@
                 $('#selectedRowsTable tbody').empty();
                 $('#summaryWeight').text('0.00');
                 $('#summaryPrice').text('0');
-                $('#meltWeight').val('');
-                $('#meltPercentAfterMelt').val('');
             });
 
         $('#sellBillModal').on('shown.bs.modal', function () {

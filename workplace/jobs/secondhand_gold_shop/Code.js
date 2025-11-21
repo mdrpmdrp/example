@@ -751,7 +751,7 @@ function updateSellBill(sellBillNo, updateData, updater) {
 
         // Update fields based on the saveSellBill structure
         // Column structure: [date, sellBillNo, summaryWeightBefore, summaryWeightAfter, percentCalc, summaryPrice, sellBillStatus, sellPercentAfterMelt, sellPrice, sellBillBank, sellBillNote, recorder]
-        
+
         if (updateData.sellBillDate !== undefined && updateData.sellBillDate !== null && updateData.sellBillDate !== '') {
             row[0] = new Date(updateData.sellBillDate);
         }
@@ -951,6 +951,7 @@ function getMeltSummaryReport(options) {
     try {
         let ss = SpreadsheetApp.getActiveSpreadsheet();
         let meltSheet = ss.getSheetByName(SHEET_NAME.MELT);
+        let buySheet = ss.getSheetByName(SHEET_NAME.BUY);
 
         if (!meltSheet) {
             return JSON.stringify({ success: false, message: 'ไม่พบแผ่นงานบันทึกหลอม' });
@@ -967,12 +968,13 @@ function getMeltSummaryReport(options) {
             return JSON.stringify({ success: true, data: [] });
         }
 
-        // Get all melt data
-        let allData = meltSheet.getDataRange().getValues().slice(1);
+        // Get all data
+        let allMeltData = meltSheet.getDataRange().getValues().slice(1);
+        let allBuyData = buySheet.getDataRange().getValues().slice(1);
         let timezone = Session.getScriptTimeZone();
 
         // Filter data based on options
-        let filteredData = allData.filter(row => {
+        let filteredMeltData = allMeltData.filter(row => {
             if (!row[0] || !(row[0] instanceof Date)) return false;
             if (row[10] !== 'รอส่ง') return false; // Only include 'รอส่ง' status   
 
@@ -984,8 +986,29 @@ function getMeltSummaryReport(options) {
             if (branch !== 'all' && row[10] !== branch) return false;
             return true;
         });
+
+        // filter buy data to only row that has no melt bill no
+        let filteredBuyData = allBuyData.filter(buyRow => {
+            // check status
+            if (buyRow[9] === 'ยกเลิก') return false;
+
+            // check category not include 'ค่าบริการ'
+            if(buyRow[2] === 'ค่าบริการ') return false;
+
+            // check date 
+            let buyDate = buyRow[0];
+            if (!buyDate || !(buyDate instanceof Date)) return false;
+
+            // Check date range
+            if( buyDate < startDate || buyDate > endDate) return false;
+
+            // Check branch
+            if (branch !== 'all' && buyRow[6] !== branch) return false;
+            return buyRow[10] === '' || buyRow[10].match(/\D/); // Only include rows with no melt bill no or melt bill no is numeric only
+
+        });
         // Transform data to expected format xxxxxx
-        let transformedData = filteredData.map(row => {
+        let transformedMeltData = filteredMeltData.map(row => {
             return {
                 date: row[0],
                 billNo: row[1] || '',
@@ -1002,17 +1025,66 @@ function getMeltSummaryReport(options) {
                 percentCalc: parseFloat(row[12]) || 0,
             };
         });
+        let transformedBuyData = filteredBuyData.map(row => {
+            return {
+                date: row[0],
+                category: row[1],
+                product: row[2],
+                weight: row[3],
+                price: row[4],
+                seller: row[5],
+                branch: row[6],
+                bank: row[7] || 'ไม่ระบุ',
+                monthYear: row[8],
+                status: row[9],
+                billNo: row[10],
+                uuid: row[11],
+            }
+        });
+
+        // Group and summarize filteredBuyData by date and category
+        let buyDataGrouped = {};
+        filteredBuyData.forEach(row => {
+            let dateKey = Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd');
+            let category = row[1];
+            let key = dateKey + '|' + category;
+            
+            if (!buyDataGrouped[key]) {
+                buyDataGrouped[key] = {
+                    date: dateKey,
+                    category: category,
+                    count: 0,
+                    totalWeight: 0
+                };
+            }
+            
+            buyDataGrouped[key].count++;
+            buyDataGrouped[key].totalWeight += parseFloat(row[3]) || 0;
+        });
+
+        // Convert to array format
+        let summarizedBuyData = Object.values(buyDataGrouped).map(item => {
+            return {
+                date: item.date,
+                category: item.category,
+                count: item.count,
+                totalWeight: item.totalWeight
+            };
+        });
+
+        let transformedData = transformedMeltData.concat(transformedBuyData);
         return JSON.stringify({
             success: true,
-            data: transformedData,
-            rawData: transformedData,
+            data: transformedMeltData,
+            rawData: transformedMeltData,
             summary: {
-                totalBills: filteredData.length,
-                totalBeforeWeight: transformedData.reduce((sum, item) => sum + (item.totalBeforeWeight || item.beforeWeight), 0),
-                totalAfterWeight: transformedData.reduce((sum, item) => sum + (item.totalAfterWeight || item.afterWeight), 0),
-                totalBuyPrice: transformedData.reduce((sum, item) => sum + (item.totalBuyPrice || item.buyPrice), 0),
-                totalSellPrice: transformedData.reduce((sum, item) => sum + (item.totalSellPrice || item.sellPrice), 0)
-            }
+                totalBills: filteredMeltData.length,
+                totalBeforeWeight: transformedMeltData.reduce((sum, item) => sum + (item.totalBeforeWeight || item.beforeWeight), 0),
+                totalAfterWeight: transformedMeltData.reduce((sum, item) => sum + (item.totalAfterWeight || item.afterWeight), 0),
+                totalBuyPrice: transformedMeltData.reduce((sum, item) => sum + (item.totalBuyPrice || item.buyPrice), 0),
+                totalSellPrice: transformedMeltData.reduce((sum, item) => sum + (item.totalSellPrice || item.sellPrice), 0)
+            },
+            summarizedBuyData: summarizedBuyData
         });
 
     } catch (error) {
