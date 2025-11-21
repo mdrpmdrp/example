@@ -121,7 +121,7 @@ function addCalculatedRows(summary_array, sumIncomeRowIndex, sumExpenseRowIndex,
         summary_array.splice(insert_index, 0, netIncomeRow);
         netAmountRow = insert_index + 1; // +2 due to header offset
         
-        // Carried forward row
+        // Grand net row
         const grandNet = new Array(totalCols + 1).fill('');
         grandNet[0] = 'รายได้จากการดำเนินงานสุทธิทั้งหมด';
         for (let colIndex = 0; colIndex < totalCols; colIndex++) {
@@ -179,7 +179,6 @@ function populateSummaryData(summary_array, transformedData, monthIndexMap, mont
         const amount = lists['ธนาคาร'].includes(listName) ?
             parseFloat(record['รายจ่าย'] || 0) - parseFloat(record['รายรับ'] || 0) :
             parseFloat(record['รายรับ'] || 0) - parseFloat(record['รายจ่าย'] || 0);
-        const carriedAmount = parseFloat(record['ยอดยกไป'] || 0);
         
         const targetRowIndex = rowMap[listName];
         
@@ -187,10 +186,6 @@ function populateSummaryData(summary_array, transformedData, monthIndexMap, mont
             const colIndex = monthIndexMap[yearStr][monthStr];
             const currentVal = summary_array[targetRowIndex][colIndex];
             summary_array[targetRowIndex][colIndex] = (currentVal === '' ? 0 : currentVal) + amount;
-            
-            if (granNetRow && !isNaN(carriedAmount) && carriedAmount !== 0) {
-                granNetRow[colIndex] = carriedAmount;
-            }
         }
     }
 }
