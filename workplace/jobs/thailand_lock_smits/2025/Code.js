@@ -619,7 +619,7 @@ function sendMessage(type, data) {
                   "contents": [
                     {
                       "type": "image",
-                      "url": "https://img2.pic.in.th/pic/1730737040513.png",
+                      "url": "https://img2.pic.in.th/pic/1763797945554.png",
                       "aspectMode": "fit",
                       "position": "relative",
                       "size": "xs",
@@ -878,7 +878,7 @@ function sendWelcomeMessage(e) {
               "contents": [
                 {
                   "type": "image",
-                  "url": "https://img2.pic.in.th/pic/1730737040513.png",
+                  "url": "https://img2.pic.in.th/pic/1763797945554.png",
                   "size": "md",
                   "aspectMode": "fit",
                   "margin": "none"
