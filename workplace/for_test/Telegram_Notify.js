@@ -71,6 +71,7 @@ function checkForRoomAvailableDateAlerts() {
             rentalPrice: row[8],
             sellPrice: row[9],
             phone: row[14],
+            remarks: row[17],
         }
     }
 
@@ -82,6 +83,7 @@ function checkForRoomAvailableDateAlerts() {
             text += `<b>ห้อง : </b> ${row.roomNumber} (${row.size})\n`;
             text += `<b>ราคาเช่า : </b> ${row.rentalPrice}\n`;
             text += `<b>เบอร์เจ้าของ : </b> ${row.phone}\n`
+            text += `<b>หมายเหตุ : </b> ${row.remarks}\n`
             text += `</blockquote>\n`;
         });
         return text;
@@ -185,4 +187,9 @@ function sendTelegramMessage(message) {
               Utilities.sleep(100);
          }
     });
+}
+
+function testSendTelegramMessage() {
+    let longMessage = 'This is a test message. '; // Create a long message
+    sendTelegramMessage(longMessage);
 }
