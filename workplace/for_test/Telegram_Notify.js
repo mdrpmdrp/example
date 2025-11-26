@@ -8,10 +8,15 @@ function checkForContractDueAlerts() {
     const formatDuedateAlertRow = (row) => {
         return {
             contractEndDate: Utilities.formatDate(row[34], timezone, 'dd/MM/yyyy'),
-            project: row[6],
-            roomNumber: row[9],
-            customerName: row[21],
-            customerPhone: row[24],
+            contractId: row[3], // column D
+            projectName: row[5], // column F
+            roomNumber: row[9], // column J
+            floor: row[10], // column K
+            building: row[11], // column L
+            ownerName: row[16], // column Q
+            customerName: row[21], // column V
+            rentalPrice: row[29], // column AD
+
         }
     }
 
@@ -19,10 +24,14 @@ function checkForContractDueAlerts() {
         let text = `<b>📅 แจ้งเตือนสัญญาจะหมดอายุในอีก ${days} วัน</b>\nวันที่หมดสัญญา: ${rows[0].contractEndDate}\n\n`;
         rows.forEach(row => {
             text += `<blockquote>`;
-            text += `<b>โครงการ : </b> ${row.project}\n`;
+            text += `<b>รหัสสัญญา : </b> ${row.contractId}\n`;
+            text += `<b>โครงการ : </b> ${row.projectName}\n`;
             text += `<b>ห้อง : </b> ${row.roomNumber}\n`;
-            text += `<b>ชื่อผู้เช่า : </b> ${row.customerName}\n`;
-            text += `<b>เบอร์โทรศัพท์ : </b> ${row.customerPhone}\n`
+            text += `<b>ชั้น : </b> ${row.floor}\n`;
+            text += `<b>อาคาร : </b> ${row.building}\n`;
+            text += `<b>ชื่อเจ้าของห้อง : </b> ${row.ownerName}\n`;
+            text += `<b>ชื่อลูกค้า : </b> ${row.customerName}\n`;
+            text += `<b>ราคาค่าเช่า : </b> ${row.rentalPrice.toLocaleString()} บาท\n`;
             text += `</blockquote>\n`;
         });
         return text;
@@ -57,21 +66,26 @@ function checkForContractDueAlerts() {
     for (let days in dataForContractDueAlerts) {
         let rows = dataForContractDueAlerts[days];
         let message = createTextForDuedateAlert(days, rows);
-        sendTelegramMessage(message);
+        sendTelegramMessage(message, '-1003386059762');
     }
 }
 
 function checkForRoomAvailableDateAlerts() {
     const formatDuedateAlertRow = (row) => {
         return {
-            date: Utilities.formatDate(row[12], Session.getScriptTimeZone(), 'dd/MM/yyyy'),
+            date: Utilities.formatDate(row[11], Session.getScriptTimeZone(), 'dd/MM/yyyy'),
             project: row[2],
-            roomNumber: row[3],
-            size: row[6],
-            rentalPrice: row[8],
-            sellPrice: row[9],
-            phone: row[14],
-            remarks: row[17],
+            roomNumber: row[3], // column D
+            floor: row[4], // column E
+            building: row[5], // column F
+            size: row[6], // column G
+            rentalPrice: row[8], // column I
+            sellPrice: row[9], // column J
+            availableDate: row[11], // column L
+            ownerName: row[13], // column N
+            phone: row[14], // column O
+            line: row[15], // column P
+            remarks: row[17], // column R
         }
     }
 
@@ -80,10 +94,17 @@ function checkForRoomAvailableDateAlerts() {
         rows.forEach(row => {
             text += `<blockquote>`;
             text += `<b>โครงการ : </b> ${row.project}\n`;
-            text += `<b>ห้อง : </b> ${row.roomNumber} (${row.size})\n`;
-            text += `<b>ราคาเช่า : </b> ${row.rentalPrice}\n`;
-            text += `<b>เบอร์เจ้าของ : </b> ${row.phone}\n`
-            text += `<b>หมายเหตุ : </b> ${row.remarks}\n`
+            text += `<b>ห้อง : </b> ${row.roomNumber}\n`;
+            text += `<b>ชั้น : </b> ${row.floor}\n`;
+            text += `<b>อาคาร : </b> ${row.building}\n`;
+            text += `<b>ขนาด : </b> ${row.size} ตร.ม.\n`;
+            text += `<b>ราคาค่าเช่า : </b> ${row.rentalPrice.toLocaleString()} บาท\n`;
+            text += `<b>ราคาขาย : </b> ${row.sellPrice.toLocaleString()} บาท\n`;
+            text += `<b>วันที่ห้องว่าง : </b> ${row.date}\n`;
+            text += `<b>ชื่อเจ้าของห้อง : </b> ${row.ownerName}\n`;
+            text += `<b>เบอร์โทรศัพท์ : </b> ${row.phone}\n`;
+            text += `<b>ไลน์ : </b> ${row.line}\n`;
+            text += `<b>หมายเหตุ : </b> ${row.remarks}\n`;
             text += `</blockquote>\n`;
         });
         return text;
@@ -116,13 +137,15 @@ function checkForRoomAvailableDateAlerts() {
     for (let days in dataForRoomAvailableDateAlerts) {
         let rows = dataForRoomAvailableDateAlerts[days];
         let message = createTextForDuedateAlert(days, rows);
-        sendTelegramMessage(message);
+        sendTelegramMessage(message, '-1003296382272');
     }
 }
 
-function sendTelegramMessage(message) {
-    const telegramToken = '7372234796:AAHP2Wxs3jAZggbEG4K7glvFBhojDq-MSck';
-    const chatId = '-1002528463574';    
+function sendTelegramMessage(message, chatId) {
+    if (!chatId) {
+        return;
+    }
+    const telegramToken = '8397732570:AAFlphP0FLsz8zFDP4z80FaAkYEnZMAtszM'; // bot token ของลูกค้าใช้จริง
     const MAX_MESSAGE_LENGTH = 4096;
     
     // Function to split message into chunks
