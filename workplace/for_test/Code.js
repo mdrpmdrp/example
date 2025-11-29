@@ -1,182 +1,342 @@
-function onFormSubmit(e) {
-    Logger = BetterLog.useSpreadsheet();
-    let formData = cleanTextData(e.namedValues);
-    switch(formData['หมวดที่ต้องการรายงาน'][0]){
-        case "Clinical Chemistry":
-            createMessageClinicalChemistry(formData);
-            break;
-        case "Hematology":
-            createMessageHematology(formData);
-            break;
-        case "Microbiology":
-            createMessageMicrobiology(formData);
-            break;
-    }
+const LINE_CHANNEL_ACCESS_TOKEN = 'qFhbzR3rb6gXUDBPmXHIxmvJ8uWWh/5uxYEPSRZkV5tL7so5u8DcYguDjCAlwVt+QSXDLue3PO13a2Meb4Fo9Gi7SwXROqIAMecmb7m2eQS0aJMqan7jveODmbVDPNvbCr0t6sUZvIk+HIYcR1v+XwdB04t89/1O/w1cDnyilFU='
+function doPost(e) {
+  Logger = BetterLog.useSpreadsheet()
+  try {
+    LineBotWebhook.init(e, LINE_CHANNEL_ACCESS_TOKEN, true).forEach(event => {
+      event.showLoading();
+      if (event.eventType === 'message' && event.messageType === 'text') {
+        return handleTextMessage(event);
+      }
+      return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+    });
+    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+  } catch (e) {
+    e = (typeof e === 'string') ? new Error(e) : e;
+    Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s"', e.name || '',
+      e.message || '', e.lineNumber || '', e.fileName || '', e.stack || '');
+    return ContentService.createTextOutput("Error: " + e.message);
+  }
 }
 
-function cleanTextData(data) {
-    for (let key in data) {
-        data[key] = data[key].map(item => {
-            item = item.replace(/\</g, "&lt;").replace(/\>/g, "&gt;").trim();
-            return item.trim();
-        });
-    }
-    return data;
+function isFromRegisteredGroup(event) {
+  if (!event.groupId) {
+    return false;
+  }
+  let prop = PropertiesService.getScriptProperties();
+  let groups = prop.getProperty('registeredGroups');
+  let groupList = groups ? JSON.parse(groups) : [];
+  return groupList.find(g => g.groupId === event.groupId);
 }
 
-function sendTelegram(message) {
-    Logger.log(message)
-    let chatId = '-5070163537'; // chat ID ของลูกค้าใช้จริง
-    if (!chatId) {
-        return;
+function handleTextMessage(event) {
+  const ok = () => ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+  const reply = (messages, notify = false) => {
+    event.replyToline(Array.isArray(messages) ? messages : [messages], notify);
+    return ok();
+  };
+
+  const { message, groupId } = event;
+  const prop = PropertiesService.getScriptProperties();
+  let groupList = JSON.parse(prop.getProperty('registeredGroups') || '[]');
+
+  if (message === '#getGroupID') {
+    return reply(`Group ID: ${groupId}`);
+  }
+
+  if (message.startsWith('#registerGroup')) {
+    if (!groupId) {
+      return reply('คำสั่งนี้ใช้ได้เฉพาะในกลุ่มเท่านั้น');
     }
-    const telegramToken = '8292193034:AAGmqqVKfbg4KBw4JrcKbQCtn9NFpyNxcCU'; // bot token ของลูกค้าใช้จริง
-    const MAX_MESSAGE_LENGTH = 4096;
-    
-    // Function to split message into chunks
-    const chunkMessage = (text, maxLength) => {
-         const chunks = [];
-         let currentChunk = '';
-         const lines = text.split('\n');
-         
-         for (let line of lines) {
-              // If single line exceeds max length, force split it
-              if (line.length > maxLength) {
-                    if (currentChunk) {
-                         chunks.push(currentChunk);
-                         currentChunk = '';
-                    }
-                    // Split long line into smaller parts
-                    for (let i = 0; i < line.length; i += maxLength) {
-                         chunks.push(line.substring(i, i + maxLength));
-                    }
-              } else if ((currentChunk + '\n' + line).length > maxLength) {
-                    // Current chunk would exceed limit, save it and start new chunk
-                    chunks.push(currentChunk);
-                    currentChunk = line;
-              } else {
-                    // Add line to current chunk
-                    currentChunk += (currentChunk ? '\n' : '') + line;
-              }
-         }
-         
-         if (currentChunk) {
-              chunks.push(currentChunk);
-         }
-         
-         return chunks;
-    };
-    
-    const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
-    
-    // Split message if it exceeds the limit
-    const messageChunks = message.length > MAX_MESSAGE_LENGTH 
-         ? chunkMessage(message, MAX_MESSAGE_LENGTH)
-         : [message];
-    
-    // Send each chunk sequentially
-    for (let chunk of messageChunks) {
-        const payload = {
-            method: 'post',
-            contentType: 'application/json',
-            payload: JSON.stringify({
-                chat_id: chatId,
-                text: chunk,
-                parse_mode: 'HTML'
-            })
-        };
-        
-        try {
-            UrlFetchApp.fetch(url, payload);
-        } catch (error) {
-            Logger.log("Error sending Telegram message: " + error.message);
+    const [, rawBranch = ''] = message.split('=');
+    const branch = rawBranch.trim();
+    if (!branch) {
+      return reply('กรุณาระบุสาขาหลังเครื่องหมาย =');
+    }
+    if (groupList.some(g => g.groupId === groupId)) {
+      return reply('กลุ่มนี้ได้ลงทะเบียนไว้แล้ว');
+    }
+    groupList.push({ groupId, branch });
+    prop.setProperty('registeredGroups', JSON.stringify(groupList));
+    return reply('ลงทะเบียนกลุ่มเรียบร้อยแล้ว');
+  }
+
+  if (message === '#unregisterGroup') {
+    if (!groupId) {
+      return reply('คำสั่งนี้ใช้ได้เฉพาะในกลุ่มเท่านั้น');
+    }
+    if (!groupList.some(g => g.groupId === groupId)) {
+      return reply('กลุ่มนี้ยังไม่ได้ลงทะเบียน');
+    }
+    groupList = groupList.filter(g => g.groupId !== groupId);
+    prop.setProperty('registeredGroups', JSON.stringify(groupList));
+    return reply('ยกเลิกการลงทะเบียนกลุ่มเรียบร้อยแล้ว');
+  }
+
+  if (!isFromRegisteredGroup(event)) {
+    return ok();
+  }
+
+  if (message === '##') {
+    return getSummaryAssetInBranch(event);
+  }
+
+  if (message === '**') {
+    return getSummaryAssetInAllBranches(event);
+  }
+
+  const userGroup = groupList.find(g => g.groupId === groupId);
+  if (!userGroup) {
+    return ok();
+  }
+
+  const pattern = /(เงิน|ทอง|แพลตตินัม|รูปพรรณ)\s*\d{1,3}\.?\d{0,2}%\s*@\s*\d{1,3}\.?\d{0,2}/;
+  const matchedText = (message.match(pattern) || [])[0];
+  if (!matchedText) {
+    return ok();
+  }
+
+  const type = (matchedText.match(/(เงิน|ทอง|แพลตตินัม|รูปพรรณ)/) || [])[0];
+  const percentText = (matchedText.match(/\d{1,3}\.?\d{0,2}%/) || [])[0];
+  const weightText = (matchedText.match(/@\s*\d{1,3}\.?\d{0,2}/) || [])[0];
+  if (!type || !percentText || !weightText) {
+    return ok();
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sheet1');
+  const criteria = getCriteria(type, percentText);
+  if (!criteria) {
+    return ok();
+  }
+
+  const branch = userGroup.branch;
+  const percent = Number(percentText.replace('%', ''));
+  const weight = Number(weightText.replace('@', '').trim());
+  const [silverPrice = 0, platinumPrice = 0, percentOfOrnament = 0] = sheet.getRange('H1:H3').getValues().flat().map(Number);
+
+  let price = 0;
+  let goldPrice = 0;
+
+  if (type === 'ทอง' || type === 'รูปพรรณ') {
+    goldPrice = getGoldPrice(type);
+    price = type === 'รูปพรรณ'
+      ? goldPrice - (goldPrice * (Math.abs(percentOfOrnament) / 100))
+      : goldPrice;
+  } else if (type === 'เงิน') {
+    price = silverPrice;
+  } else if (type === 'แพลตตินัม') {
+    price = platinumPrice;
+  }
+
+  let estimatedPrice = (price - (branch === 'ร้อยเอ็ด' ? 0 : criteria.meltPrice)) * 0.0656 * (percent / 100) * weight;
+  estimatedPrice -= estimatedPrice * ((branch === 'ร้อยเอ็ด' ? 7 : criteria.percent) / 100);
+
+  if (type === 'ทอง') {
+    const range = branch === 'ร้อยเอ็ด' ? 'J14:K17' : 'J2:K6';
+    const commissions = sheet.getRange(range).getDisplayValues()
+      .filter(([rangeText]) => rangeText)
+      .map(([rangeText, commission]) => {
+        const numbers = rangeText.match(/\d+(?:\.\d+)?/g) || [0];
+        const min = Number(numbers[0] || 0);
+        const max = /ขึ้นไป/.test(rangeText) ? Number.MAX_SAFE_INTEGER : Number(numbers[1] || numbers[0]);
+        return { min, max, commission };
+      });
+
+    for (const { min, max, commission } of commissions) {
+      if (estimatedPrice >= min && estimatedPrice <= max) {
+        if (commission.includes('%')) {
+          estimatedPrice -= estimatedPrice * (Number(commission.replace('%', '')) / 100);
+        } else {
+          estimatedPrice -= Number(commission);
         }
+        break;
+      }
     }
+  }
+
+  estimatedPrice = Math.floor(estimatedPrice);
+
+  return reply(`ประเภท: ${type} (${percent}%)
+น้ำหนัก: ${weight} กรัม${type === 'ทอง' ? `\n\nราคาทอง: ${goldPrice.toLocaleString()} บาท` : ''}${type === 'รูปพรรณ' ? `\n\nราคารูปพรรณ: ${price.toLocaleString()} บาท` : ''}
+
+👉 ราคาประเมิน: 
+${estimatedPrice.toLocaleString()} บาท`, true);
 }
 
-function createMessageClinicalChemistry(formData) {
-    let message = "<b>แจ้งเตือนค่าวิกฤต - Clinical Chemistry</b>\n\n";
-    message += "รายงานไปยัง : <b>" + formData['รายงานไปยัง'][0] + "</b>\n\n";
-    message += "ชื่อผู้ป่วย : <b>" + formData['ชื่อ-สกุล คนไข้'][0] + "</b>\n\n";
-    message += "HN : <b>" + formData['HN'][0] + "</b>\n\n";
-    message += "<blockquote>";
-    message += "<b>รายการที่แจ้ง:</b>\n";
-    formData["รายการ Clinical chemistry ที่ต้องการรายงาน"][0].split(",").forEach(item => {
-        message += "- " + item + "\n";
-    });
-    message += "\n";
-    message += "ค่าที่แจ้ง : <b>" + formData["ค่า Clinical chemistry ที่รายงาน"][0] + "</b>\n";
-    message += "</blockquote>\n\n";
-    message += "<b>ผู้รับรายงานผล:</b>\n";
-    formData["ผู้รับรายงานผล"][0].split(",").forEach(item => {
-        message += "- " + item + "\n";
-    });
-    message += "\n";
-    message += "ผู้รายงานผล: <b>" + formData['ผู้รายงานผล'][0] + "</b>\n";
-    sendTelegram(message);
+function getGoldPrice() {
+  let endPoint = 'https://api.chnwt.dev/thai-gold-api/latest';
+  let response = UrlFetchApp.fetch(endPoint);
+  let data = JSON.parse(response.getContentText());
+  return Number(data.response.price.gold_bar.sell.replace(/,/g, ''));
 }
 
-function createMessageHematology(formData) {
-    let message = "<b>แจ้งเตือนค่าวิกฤต - Hematology</b>\n\n";
-    message += "รายงานไปยัง : <b>" + formData['รายงานไปยัง'][0] + "</b>\n\n";
-    message += "ชื่อผู้ป่วย : <b>" + formData['ชื่อ-สกุล คนไข้'][0] + "</b>\n\n";
-    message += "HN : <b>" + formData['HN'][0] + "</b>\n\n";
-    message += "<blockquote>";
-    message += "<b>รายการที่แจ้ง:</b>\n";
-    formData["รายการ Hematology ที่ต้องการรายงาน"][0].split(",").forEach(item => {
-        message += "- " + item + "\n";
-    });
-    message += "\n";
-    message += "ค่าที่แจ้ง : <b>" + formData["ค่า Hematology ที่รายงาน"][0] + "</b>\n";
-    message += "</blockquote>\n\n";
-    message += "<b>ผู้รับรายงานผล:</b>\n";
-    formData["ผู้รับรายงานผล"][0].split(",").forEach(item => {
-        message += "- " + item + "\n";
-    });
-    message += "\n";
-    message += "ผู้รายงานผล: <b>" + formData['ผู้รายงานผล'][0] + "</b>\n";
-    sendTelegram(message);
-}
-
-function createMessageMicrobiology(formData) {
-    let message = "<b>แจ้งเตือนค่าวิกฤต - Microbiology</b>\n\n";
-    message += "รายงานไปยัง : <b>" + formData['รายงานไปยัง'][0] + "</b>\n\n";
-    message += "ชื่อผู้ป่วย : <b>" + formData['ชื่อ-สกุล คนไข้'][0] + "</b>\n\n";
-    message += "HN : <b>" + formData['HN'][0] + "</b>\n\n";
-    message += "<blockquote>";
-    message += formData["รายการ Microbiology ที่ต้องการรายงาน"][0]
-    switch(formData["รายการ Microbiology ที่ต้องการรายงาน"][0]) {
-        case "Hemoculture":
-            message += "\n<b>ค่าที่แจ้ง:</b>\n";
-            formData["ค่าที่รายงาน Hemoculture / CSF culture"][0].split(",").forEach(item => {
-                message += "- " + item + "\n";
-            });
-            break;
-        case "เชื้อดื้อยา":
-            message += "\n<b>ค่าที่แจ้ง:</b>\n";
-            formData["ค่าที่รายงาน เชื้อดื้อยา"][0].split(",").forEach(item => {
-                message += "- " + item + "\n";
-            });
-            break;
-        case "AFB":
-            message += "\n<b>ค่าที่แจ้ง:</b>\n";
-            message += formData["ค่า AFB ที่รายงาน"][0] + "\n";
-            break;
-        case "CSF culture/sen":
-            message += "\n<b>ค่าที่แจ้ง:</b>\n";
-            formData["ค่าที่รายงาน Hemoculture / CSF culture"][0].split(",").forEach(item => {
-                message += "- " + item + "\n";
-            });
-            break;
-        default:
-            break;
-
+function getCriteria(type, percent) {
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('Sheet1');
+  let data = sheet.getRange('A2:D').getValues();
+  for (let i = 0; i < data.length; i++) {
+    if (data[i][0] === "ปกติ" && data[i][1] === type) {
+      return {
+        meltPrice: Number(data[i][2]),
+        percent: Math.abs(Number(data[i][3])),
+      };
     }
-    message += "</blockquote>\n\n";
-    message += "<b>ผู้รับรายงานผล:</b>\n";
-    formData["ผู้รับรายงานผล"][0].split(",").forEach(item => {
-        message += "- " + item + "\n";
-    });
-    message += "ผู้รายงานผล: <b>" + formData['ผู้รายงานผล'][0] + "</b>\n";
-    sendTelegram(message);
+  }
+  return null;
+}
+
+function getSummaryAssetInBranch(event) {
+  let prop = PropertiesService.getScriptProperties();
+  let groups = prop.getProperty('registeredGroups');
+  let groupList = groups ? JSON.parse(groups) : [];
+  let group = groupList.find(g => g.groupId === event.groupId);
+  if (!group) {
+    event.replyToline(["กลุ่มนี้ยังไม่ได้ลงทะเบียน"]);
+    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+  }
+  let branch = group.branch;
+  // let branch = "สาขา 1"
+  // Fetch summary asset from external API or database based on branch
+  // This is a placeholder response
+
+  let ss = SpreadsheetApp.openById('1Z1mHUQMc4N_bLOtXPBraOC3YJRWOcgFoDJgmLb_PafA');
+  let buySheet = ss.getSheetByName('บันทึกซื้อ');
+  let meltSheet = ss.getSheetByName('บันทึกหลอม');
+  let buyData = buySheet.getRange('A2:K').getDisplayValues().filter(r => r[0] != '' && r[6] === branch && r[9] !== 'ยกเลิก' && !r[10].match(/^\d{7,}$/)).map(r => percentExtract(r, 2));
+  let meltData = meltSheet.getRange('A2:L').getDisplayValues().filter(r => r[0] != '' && r[9] === branch && r[10] === 'รอส่ง')
+  let gold_equalOrMoreThan99 = [], gold_lessThan99 = [];
+  let silver_equalOrMoreThan90 = [], silver_lessThan90 = [];
+  let otherAssets = {}
+  buyData.forEach(row => {
+    let type = row[1];
+    let percent = row[2];
+    let weight = Number(row[3]);
+    if (type.indexOf('ทอง') !== -1) {
+      if (percent >= 99) {
+        gold_equalOrMoreThan99.push(weight);
+      }
+      else gold_lessThan99.push(weight);
+    } else if (type.indexOf('เงิน') !== -1) {
+      if (percent >= 90) silver_equalOrMoreThan90.push(weight);
+      else silver_lessThan90.push(weight);
+    } else {
+      if (!otherAssets[type]) {
+        otherAssets[type] = []
+      }
+      otherAssets[type].push(weight);
+    }
+  });
+  meltData.forEach(row => {
+    let type = row[2];
+    let percent = Number(row[11] || 0);
+    let weight = Number(row[3] || 0);
+    if (type.indexOf('ทอง') !== -1) {
+      if (percent >= 99) {
+        gold_equalOrMoreThan99.push(weight);
+      }
+      else gold_lessThan99.push(weight);
+    } else if (type.indexOf('เงิน') !== -1) {
+      if (percent >= 90) silver_equalOrMoreThan90.push(weight);
+      else silver_lessThan90.push(weight);
+    } else {
+      if (type === 'ค่าบริการ') return; // ข้ามค่าบริการ
+      if (!otherAssets[type]) {
+        otherAssets[type] = []
+      }
+      otherAssets[type].push(weight);
+    }
+  });
+  let replyMessages = [`สาขา: ${branch}\nสรุปสินทรัพย์:`];
+  replyMessages.push(`ทอง >=99%:\nจำนวน ${gold_equalOrMoreThan99.length} รายการ\nน้ำหนักรวม ${gold_equalOrMoreThan99.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`ทอง <99%:\nจำนวน ${gold_lessThan99.length} รายการ\nน้ำหนักรวม ${gold_lessThan99.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`เงิน >=90%:\nจำนวน ${silver_equalOrMoreThan90.length} รายการ\nน้ำหนักรวม ${silver_equalOrMoreThan90.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`เงิน <90%:\nจำนวน ${silver_lessThan90.length} รายการ\nน้ำหนักรวม ${silver_lessThan90.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  for (let [type, weights] of Object.entries(otherAssets)) {
+    if (type === 'ค่าบริการ') continue; // ข้ามค่าบริการ
+    replyMessages.push(`${type}:\nจำนวน ${weights.length} รายการ\nน้ำหนักรวม ${weights.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  }
+  event.replyToline([replyMessages.join('\n\n')], true);
+  return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+}
+
+function getSummaryAssetInAllBranches(event) {
+  let prop = PropertiesService.getScriptProperties();
+  let groups = prop.getProperty('registeredGroups');
+  let groupList = groups ? JSON.parse(groups) : [];
+  let group = groupList.find(g => g.groupId === event.groupId);
+  if (!group) {
+    event.replyToline(["กลุ่มนี้ยังไม่ได้ลงทะเบียน"]);
+    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+  }
+  let branch = group.branch;
+
+  if (branch !== 'All') {
+    event.replyToline(["คำสั่งนี้ใช้ได้เฉพาะกลุ่มที่ลงทะเบียนสาขาเป็น All เท่านั้น"]);
+    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+  }
+
+  let ss = SpreadsheetApp.openById('1Z1mHUQMc4N_bLOtXPBraOC3YJRWOcgFoDJgmLb_PafA');
+  let buySheet = ss.getSheetByName('บันทึกซื้อ');
+  let meltSheet = ss.getSheetByName('บันทึกหลอม');
+  let buyData = buySheet.getRange('A2:K').getDisplayValues().filter(r => r[0] != '' && r[9] !== 'ยกเลิก' && !r[10].match(/^\d{7,}$/)).map(r => percentExtract(r, 2));
+  let meltData = meltSheet.getRange('A2:L').getDisplayValues().filter(r => r[0] != '' && r[10] === 'รอส่ง')
+  let gold_equalOrMoreThan99 = [], gold_lessThan99 = [];
+  let silver_equalOrMoreThan90 = [], silver_lessThan90 = [];
+  let otherAssets = {}
+  buyData.forEach(row => {
+    let type = row[1];
+    let percent = row[2];
+    let weight = Number(row[3]);
+    if (type.indexOf('ทอง') !== -1) {
+      if (percent >= 99) {
+        gold_equalOrMoreThan99.push(weight);
+      }
+      else gold_lessThan99.push(weight);
+    } else if (type.indexOf('เงิน') !== -1) {
+      if (percent >= 90) silver_equalOrMoreThan90.push(weight);
+      else silver_lessThan90.push(weight);
+    } else {
+      if (!otherAssets[type]) {
+        otherAssets[type] = []
+      }
+      otherAssets[type].push(weight);
+    }
+  });
+  meltData.forEach(row => {
+    let type = row[2];
+    let percent = Number(row[11] || 0);
+    let weight = Number(row[3] || 0);
+    if (type.indexOf('ทอง') !== -1) {
+      if (percent >= 99) {
+        gold_equalOrMoreThan99.push(weight);
+      }
+      else gold_lessThan99.push(weight);
+    } else if (type.indexOf('เงิน') !== -1) {
+      if (percent >= 90) silver_equalOrMoreThan90.push(weight);
+      else silver_lessThan90.push(weight);
+    } else {
+      if (type === 'ค่าบริการ') return; // ข้ามค่าบริการ
+      if (!otherAssets[type]) {
+        otherAssets[type] = []
+      }
+      otherAssets[type].push(weight);
+    }
+  });
+  let replyMessages = [`สรุปสินทรัพย์รวมทุกสาขา:`];
+  replyMessages.push(`ทอง >=99%:\nจำนวน ${gold_equalOrMoreThan99.length} รายการ\nน้ำหนักรวม ${gold_equalOrMoreThan99.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`ทอง <99%:\nจำนวน ${gold_lessThan99.length} รายการ\nน้ำหนักรวม ${gold_lessThan99.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`เงิน >=90%:\nจำนวน ${silver_equalOrMoreThan90.length} รายการ\nน้ำหนักรวม ${silver_equalOrMoreThan90.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`เงิน <90%:\nจำนวน ${silver_lessThan90.length} รายการ\nน้ำหนักรวม ${silver_lessThan90.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  for (let [type, weights] of Object.entries(otherAssets)) {
+    if (type === 'ค่าบริการ') continue; // ข้ามค่าบริการ
+    replyMessages.push(`${type}:\nจำนวน ${weights.length} รายการ\nน้ำหนักรวม ${weights.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  }
+  event.replyToline([replyMessages.join('\n\n')], true);
+  return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+}
+
+function percentExtract(row, colIndex = 2) {
+  let col = row[colIndex]
+  let percent = col.split(' ')[1]
+  row[colIndex] = percent ? Number(percent.replace('%', '')) : 0
+  return row
 }
