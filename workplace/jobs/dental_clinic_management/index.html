@@ -1713,6 +1713,16 @@
                                         id="discount">
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">ประเภทส่วนลด</label>
+                                    <select class="form-select" name="discountType" id="discountType">
+                                        <option value="" selected disabled>เลือกประเภทส่วนลด</option>
+                                        <option value="ร่วมกับหมอ">ร่วมกับหมอ</option>
+                                        <option value="ไม่ร่วมกับหมอ">ไม่ร่วมกับหมอ</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -6242,6 +6252,13 @@
                 obj[item.name] = item.value;
                 return obj;
             }, {});
+            if(formData['discount'] && !formData['discountType']) {
+                Toast.fire({
+                    icon: 'error',
+                    title: 'กรุณาเลือกประเภทส่วนลด'
+                });
+                return;
+            }
 
             // Get selected case types from hidden inputs
             const caseTypes = [];
@@ -6284,6 +6301,7 @@
                 medicineFee: parseFloat(formData['medicineFee']) || 0,
                 otherProductFee: parseFloat(formData['otherProductFee']) || 0,
                 discount: parseFloat(formData['discount']) || 0,
+                discountType: formData['discountType'] || '',
                 labFee: parseFloat(formData['labFee']) || 0,
                 notes: formData['notes'],
                 branch: currentUserRole === 'super_admin' ? formData['branch'] : currentUserBranch // Use form branch for super_admin, otherwise use user's branch
@@ -6332,6 +6350,7 @@
                         <strong>ค่ายา:</strong> ${revenueData.medicineFee.toLocaleString()} บาท<br>
                         <strong>ค่าผลิตภัณฑ์อื่น:</strong> ${revenueData.otherProductFee.toLocaleString()} บาท<br>
                         <strong>ส่วนลด:</strong> ${revenueData.discount.toLocaleString()} บาท<br>
+                        <strong>ประเภทส่วนลด:</strong> ${revenueData.discountType || '-'}<br>
                         ${revenueData.notes ? `<strong>หมายเหตุ:</strong> ${revenueData.notes}<br>` : ''}
                         ${revenueData.labFee ? `<strong>ค่าห้องปฏิบัติการ:</strong> ${revenueData.labFee.toLocaleString()} บาท<br>` : ''}
                         ${isEditMode ? `<strong>สถานะ:</strong> ${revenueData.status || '-'}<br>` : ''}
@@ -6521,6 +6540,8 @@
             form.querySelectorAll('select').forEach(select => {
                 if ($(select).hasClass('select2-hidden-accessible')) {
                     $(select).val('').trigger('change');
+                }else{
+                    select.value = '';
                 }
             });
 
@@ -6630,7 +6651,6 @@
 
                 $.fn.dataTable.ext.search = [];
                 $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
-                    console.log('Filtering row data:', data);
                     let date = convertDate(data[1]); // Date column
                     const doctor = data[4].toLowerCase(); // Doctor column
                     const status = data[10]; // Status column
@@ -6641,7 +6661,6 @@
                     if (startDate) {
                         const start = moment(startDate, 'YYYY-MM-DD');
                         const rowDate = moment(date, 'YYYY-MM-DD');
-                        console.log(rowDate.isBefore(start, 'day'));
                         if (rowDate.isBefore(start, 'day')) {
                             return false;
                         }
@@ -7183,7 +7202,13 @@
                         let revenue_type = revenue.caseType;
                         let revenue_amount = calculateRevenueAmount(revenue);
                         let amount_for_calculation = calculateRevenueAmount(revenue, true);
-                        console.log('Calculating shares for revenue:', revenue_id, 'Amount for calculation:', amount_for_calculation, 'Revenue amount:', revenue_amount);
+                        if(revenue.discountType === 'ไม่ร่วมกับหมอ'){
+                            console.log(doctorId, doctors)
+                            console.log('Amount for calculation before adding discount:', amount_for_calculation);
+                            console.log('Adding discount back for calculation:', revenue.discount);
+                            amount_for_calculation += revenue.discount || 0;
+                            console.log('Amount for calculation after adding discount:', amount_for_calculation);
+                        }
 
                         // Determine doctor share percentage based on case type
                         let doctorSharedPercent = 0;
@@ -7206,6 +7231,11 @@
 
                         let doctorShared = amount_for_calculation * (doctorSharedPercent / 100);
                         let clinicShared = amount_for_calculation - doctorShared;
+                        if(revenue.discountType === 'ไม่ร่วมกับหมอ'){
+                            console.log('Subtracting discount from clinic share:', revenue.discount);
+                            console.log('doctor details:', doctorDetails);
+                            clinicShared -= revenue.discount || 0;
+                        }
                         let clinicTransfer = revenue.transferClinicAmount || 0;
                         let doctorTransfer = revenue.transferDoctorAmount || 0;
 
@@ -7217,7 +7247,10 @@
                             doctorTransfer: doctorTransfer,
                             clinicTransfer: amount_for_calculation - doctorTransfer
                         };
+                        if(revenue.discountType === 'ไม่ร่วมกับหมอ'){
+                            console.log('debug revenueSharedData:', revenue_id, revenueSharedData[revenue_id]);
 
+                        }
                         totalRevenueAmount += revenue_amount;
                         totalRevenuesForCalculation += amount_for_calculation;
                         totalDoctorShared += doctorShared;
@@ -7337,7 +7370,10 @@
                     }
 
                     const revenue_type = revenue.caseType;
-                    const revenue_amount = calculateRevenueAmount(revenue, true);
+                    let revenue_amount = calculateRevenueAmount(revenue, true);
+                    if(revenue.discountType === 'ไม่ร่วมกับหมอ'){
+                        revenue_amount += revenue.discount || 0;
+                    }
 
                     // Determine doctor share percentage
                     let doctorSharedPercent = 0;
@@ -7359,7 +7395,10 @@
                     }
 
                     const doctorShared = revenue_amount * (doctorSharedPercent / 100);
-                    const clinicShared = revenue_amount - doctorShared;
+                    let clinicShared = revenue_amount - doctorShared;
+                    if(revenue.discountType === 'ไม่ร่วมกับหมอ'){
+                        clinicShared -= revenue.discount || 0;
+                    }
 
                     doctorRevenues[doctorName].revenues.push({
                         id: revenue.id,

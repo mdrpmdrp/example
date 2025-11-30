@@ -37,27 +37,15 @@ function getAllRevenues() {
         medicineFee: row[13] || 0,
         otherProductFee: row[14] || 0,
         discount: row[15] || 0,
-        labFee: row[16] || 0,
-        notes: row[17] || "",
-        branch: row[18] || "",
-        status: row[19] || "",
-        createdAt: row[20],
-        updatedAt: row[21],
-        createdByUser: row[22] || "",
-        updatedByUser: row[23] || "",
-        // totalAmount: function() {
-        //   return (
-        //     (this.cashAmount || 0) +
-        //     (this.transferAmount || 0) +
-        //     (this.socialSecurityAmount || 0) +
-        //     (this.visaAmount || 0) +
-        //     (this.xrayFee || 0) +
-        //     (this.medicineFee || 0) +
-        //     (this.otherProductFee || 0) -
-        //     (this.discount || 0) -
-        //     (this.labFee || 0)
-        //   );
-        // }
+        discountType: row[16] || "",
+        labFee: row[17] || 0,
+        notes: row[18] || "",
+        branch: row[19] || "",
+        status: row[20] || "",
+        createdAt: row[21],
+        updatedAt: row[22],
+        createdByUser: row[23] || "",
+        updatedByUser: row[24] || "",
       };
       revenues.push(revenue);
     }
@@ -127,6 +115,7 @@ function addRevenue(revenueData, currentUser = null) {
       revenueData.medicineFee || 0,
       revenueData.otherProductFee || 0,
       revenueData.discount || 0,
+      revenueData.discountType || "",
       revenueData.labFee || 0,
       revenueData.notes || "",
       revenueData.branch || (currentUser ? currentUser.branch : "BRANCH_01"),
@@ -199,6 +188,7 @@ function updateRevenue(revenueId, revenueData, currentUser = null) {
       revenueData.medicineFee || 0,
       revenueData.otherProductFee || 0,
       revenueData.discount || 0,
+      revenueData.discountType || "",
       revenueData.labFee || 0,
       revenueData.notes || "",
       revenueData.branch || existingRevenue[18],
@@ -297,9 +287,9 @@ function updateRevenuePaidStatus(revenueIds, currentUser = null) {
     // Find revenue rows
     for (let i = 1; i < data.length; i++) {
       if (revenueIds.includes(data[i][0])) {
-        data[i][19] = "จ่ายหมอแล้ว"; // Update status to "จ่ายหมอแล้ว"
-        data[i][21] = new Date(); // Update modified at
-        data[i][23] = currentUser ? currentUser.username : "UNKNOWN"; // Update modified by
+        data[i][20] = "จ่ายหมอแล้ว"; // Update status to "จ่ายหมอแล้ว"
+        data[i][22] = new Date(); // Update modified at
+        data[i][24] = currentUser ? currentUser.username : "UNKNOWN"; // Update modified by
       }
     }
     // Write back updated data
