@@ -41,7 +41,7 @@ function getBuyData(isAll = false, reports = false, branch = '') {
     })
 
     data = data.filter(row => {
-        return (row[10] === "" || row[10] === 'รอหลอม') && (branch === 'all' || row[6] === branch)
+        return (branch === 'all' || row[6] === branch)
     })
 
     let last32Days = new Date();
@@ -78,7 +78,7 @@ function getBuyData(isAll = false, reports = false, branch = '') {
             status: row[9],
             billNo: row[10],
             uuid: row[11],
-            enableEdit: Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today,
+            enableEdit: Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today && row[10] == ''
         }
     }));
 }
@@ -604,7 +604,7 @@ function getMeltData(branch = 'สาขา 2') {
 
     // Filter by branch
     data = data.filter(row => {
-        return branch === 'all' || row[8] === branch; // Column I (index 8) is branch
+        return branch === 'all' || row[9] === branch; // Column I (index 8) is branch
     });
 
     // Sort by date descending
