@@ -329,6 +329,12 @@
                 print-color-adjust: exact;
             }
         }
+
+        /* Hide checkbox when icon is present */
+        td.select-checkbox:has(.bi-ban-fill)::before,
+        td.select-checkbox:has(.bi-ban-fill)::after {
+            display: none !important;
+        }
     </style>
 
 </head>
@@ -1909,6 +1915,11 @@
                         searchable: false,
                         className: 'text-center text-nowrap select-checkbox all',
                         render: function (data, type, row) {
+                            // If billNo exists (already melted), show disabled icon instead of checkbox
+                            if (row.billNo && row.billNo.trim() !== '') {
+                                return '<i class="bi bi-ban-fill text-danger" title="รายการนี้ถูกหลอมแล้ว"></i>';
+                            }
+                            // Return empty string to let DataTables render checkbox
                             return '';
                         }
                     },
@@ -1982,8 +1993,8 @@
                         render: function (data, type, row) {
                             if (data === 'ยกเลิก') {
                                 return `<button type="button" class="w-100 btn btn-sm text-black-50 text-nowrap" style="pointer-events: none;">
-                                            <i class="bi bi-x-circle-fill"></i> ยกเลิก
-                                        </button>`;
+                            <i class="bi bi-x-circle-fill"></i> ยกเลิก
+                        </button>`;
                             }
                             else if (data === 'เสร็จสิ้น') {
                                 if (row.enableEdit) return '<button type="button" class="w-100 btn btn-sm btn-success text-nowrap" onclick="cancelRow(this);"><i class="bi bi-check-circle-fill"></i> สำเร็จ</button>';
@@ -2028,38 +2039,42 @@
                     if (data.status === 'ยกเลิก') {
                         $(row).find('td').css('font-weight', 300).css('color', '#ff0000');
                     }
+                    // Disable selection for rows with billNo
+                    if (data.billNo && data.billNo.trim() !== '') {
+                        $(row).addClass('not-selectable');
+                    }
                 },
                 initComplete: function (settings, json) {
                     NProgress.done();
                     $('.buttons-sec1').html(`
-                        <div class="d-flex flex-wrap gap-2 w-100 mb-2 align-items-center" id="addSellDataActions" role="group">
-                            <button class="btn btn-warning flex-fill text-nowrap d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#addSellDataModal" id="addSellDataBtn">
-                                <i class="bi bi-plus-circle-fill me-2"></i> เพิ่มข้อมูลการซื้อ
-                            </button>
-                            <button class="btn btn-warning flex-fill text-nowrap d-flex align-items-center justify-content-center" id="createMeltBillBtn">
-                                <i class="bi bi-file-earmark-plus-fill me-2"></i> บันทึกบิลหลอม
-                            </button>
-                        </div>
-                        <div class="d-none flex-wrap gap-2 w-100 mb-2 align-items-center" id="meltBillActions" role="group">
-                            <button class="btn btn-primary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="createMeltBillBtn" data-bs-toggle="modal" data-bs-target="#meltBillModal">
-                                <i class="bi bi-file-earmark-plus-fill me-2"></i> สร้างบิลหลอม
-                            </button>
-                            <button class="btn btn-outline-secondary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="cancelMeltBillSelectionBtn" onclick="datatable.rows({ selected: true }).deselect(); showTableButtons('add');datatable.column(1).visible(false);reloadTable('#goldTable');">
-                                <i class="bi bi-x-circle me-2"></i> ยกเลิกการเลือก
-                            </button>
-                        </div>
-                    `);
+                <div class="d-flex flex-wrap gap-2 w-100 mb-2 align-items-center" id="addSellDataActions" role="group">
+                    <button class="btn btn-warning flex-fill text-nowrap d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#addSellDataModal" id="addSellDataBtn">
+                    <i class="bi bi-plus-circle-fill me-2"></i> เพิ่มข้อมูลการซื้อ
+                    </button>
+                    <button class="btn btn-warning flex-fill text-nowrap d-flex align-items-center justify-content-center" id="createMeltBillBtn">
+                    <i class="bi bi-file-earmark-plus-fill me-2"></i> บันทึกบิลหลอม
+                    </button>
+                </div>
+                <div class="d-none flex-wrap gap-2 w-100 mb-2 align-items-center" id="meltBillActions" role="group">
+                    <button class="btn btn-primary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="createMeltBillBtn" data-bs-toggle="modal" data-bs-target="#meltBillModal">
+                    <i class="bi bi-file-earmark-plus-fill me-2"></i> สร้างบิลหลอม
+                    </button>
+                    <button class="btn btn-outline-secondary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="cancelMeltBillSelectionBtn" onclick="datatable.rows({ selected: true }).deselect(); showTableButtons('add');datatable.column(1).visible(false);reloadTable('#goldTable');">
+                    <i class="bi bi-x-circle me-2"></i> ยกเลิกการเลือก
+                    </button>
+                </div>
+                `);
                     $('.filter-sec1').html(`
-                        <div class="d-flex flex-wrap gap-2 w-100 mb-2 align-items-center justify-content-center" id="filterActions" role="group">
-                            <div class="input-group">
-                                <select class="form-select rounded-3" id="filterCategory">
-                                    <option value="" selected>หมวดหมู่ทั้งหมด</option>
-                                    ${[...new Set(json.data.map(item => item.category).filter(cat => cat && cat.trim() !== ''))].map(cat => `<option value="${cat}">${cat}</option>`).join('')}
-                                </select>
-                                <input type="search" class="form-control rounded-3 ms-2" id="searchText" placeholder="ค้นหาข้อมูล...">
-                            </div>
-                        </div>
-                    `);
+                <div class="d-flex flex-wrap gap-2 w-100 mb-2 align-items-center justify-content-center" id="filterActions" role="group">
+                    <div class="input-group">
+                    <select class="form-select rounded-3" id="filterCategory">
+                        <option value="" selected>หมวดหมู่ทั้งหมด</option>
+                        ${[...new Set(json.data.map(item => item.category).filter(cat => cat && cat.trim() !== ''))].map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                    </select>
+                    <input type="search" class="form-control rounded-3 ms-2" id="searchText" placeholder="ค้นหาข้อมูล...">
+                    </div>
+                </div>
+                `);
                     $('#createMeltBillBtn').on('click', function () {
                         createMeltBillBtn();
                     });
@@ -2090,7 +2105,8 @@
                 if (type === 'row') {
                     indexes.forEach(function (idx) {
                         const rowData = datatable.row(idx).data();
-                        if (rowData && rowData.status === 'ยกเลิก') {
+                        // Prevent selection if cancelled or already melted
+                        if (rowData && (rowData.status === 'ยกเลิก' || (rowData.billNo && rowData.billNo.trim() !== ''))) {
                             datatable.row(idx).deselect();
                         }
                     });
@@ -2100,10 +2116,14 @@
             $(document).on('change', '#selectAllRows', function () {
                 console.log('Select All Rows checkbox changed:', this.checked);
                 if (this.checked) {
-                    // Select all visible/filtered rows that are not cancelled
-                    datatable.column(11).search('^(?!ยกเลิก$).*$', true, false); // Exclude 'ยกเลิก' rows
-                    datatable.rows({ search: 'applied' }).select();
-                    datatable.column(11).search(''); // Clear search
+                    // Select all visible/filtered rows that are not cancelled and not melted
+                    datatable.rows({ search: 'applied' }).every(function () {
+                        const rowData = this.data();
+                        // Only select if not cancelled and no billNo (not melted)
+                        if (rowData.status !== 'ยกเลิก' && (!rowData.billNo || rowData.billNo.trim() === '')) {
+                            this.select();
+                        }
+                    });
                 } else {
                     datatable.rows().deselect();
                 }
