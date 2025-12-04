@@ -710,14 +710,21 @@
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <div class="border rounded p-2 mb-2 bg-light text-center">
+                                    <span class="fw-semibold text-dark">% คำนวณ:</span>
+                                    <span id="meltPercentCalc" class="fw-bold text-secondary">0.00</span> <span
+                                        class="text-secondary">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
                                 <div class="border rounded p-2 mb-2 bg-light text-center">
                                     <span class="fw-semibold text-dark">น้ำหนักก่อนหลอม:</span>
                                     <span id="summaryWeight" class="fw-bold text-primary">0.00</span> <span
                                         class="text-secondary">กรัม</span>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="border rounded p-2 mb-2 bg-light text-center">
                                     <span class="fw-semibold text-dark">ยอดซื้อ:</span>
                                     <span id="summaryPrice" class="fw-bold text-success">0</span> <span
@@ -3398,16 +3405,20 @@
             });
             $tbody.html(tbodyHtml);
             // Update summary
-            let totalWeight = 0, totalPrice = 0;
+            let totalWeight = 0, totalPrice = 0, sumPercentWeight = 0;
             selectedRows.forEach(row => {
+                console.log('Calculating row', row);
                 totalWeight += parseFloat(row.weight) || 0;
                 totalPrice += parseFloat(row.price) || 0;
+                sumPercentWeight += parseFloat(row.percentWeight) || 0;
             });
+            let percentCalc = (sumPercentWeight/totalWeight) || '-';
             $('#summaryWeight').text(totalWeight.toFixed(2));
             $('#summaryPrice').text(totalPrice.toLocaleString('th-TH', { maximumFractionDigits: 2 }));
             $('#meltSellPrice').parent().css('display', window.user.role === 'admin' ? 'block' : 'none');
             $('#summaryCount').text(selectedRows.length);
             $('#meltType').text(selectedRows[0].category || 'ไม่ระบุ');
+            $('#meltPercentCalc').text(percentCalc.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         })
             .on('hidden.bs.modal', function () {
                 $('#selectedRowsTable tbody').empty();

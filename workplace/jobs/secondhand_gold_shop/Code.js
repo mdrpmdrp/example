@@ -78,6 +78,7 @@ function getBuyData(isAll = false, reports = false, branch = '') {
             status: row[9],
             billNo: row[10],
             uuid: row[11],
+            percentWeight: row[14],
             enableEdit: Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today && row[10] == ''
         }
     }));
