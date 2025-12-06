@@ -710,14 +710,21 @@
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <div class="border rounded p-2 mb-2 bg-light text-center">
+                                    <span class="fw-semibold text-dark">% คำนวณ:</span>
+                                    <span id="meltPercentCalc" class="fw-bold text-secondary">0.00</span> <span
+                                        class="text-secondary">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
                                 <div class="border rounded p-2 mb-2 bg-light text-center">
                                     <span class="fw-semibold text-dark">น้ำหนักก่อนหลอม:</span>
                                     <span id="summaryWeight" class="fw-bold text-primary">0.00</span> <span
                                         class="text-secondary">กรัม</span>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="border rounded p-2 mb-2 bg-light text-center">
                                     <span class="fw-semibold text-dark">ยอดซื้อ:</span>
                                     <span id="summaryPrice" class="fw-bold text-success">0</span> <span
@@ -1108,6 +1115,37 @@
         </div>
     </div>
 
+    <!-- items list for melt bills -->
+     <div class="modal fade" id="meltBillItemsModal" tabindex="-1" aria-labelledby="meltBillItemsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content gold-form-card">
+                <div class="modal-header border-0 bg-light">
+                    <h3 class="modal-title gold-title w-100 text-center" id="meltBillItemsModalLabel">รายการในบิลหลอม</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                </div>
+                <div class="modal-body" style="background: #fff; color: #232526;">
+                    <div class="mb-4">
+                        <!-- Table for melt bill items -->
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm table-light" id="meltBillItemsTable">
+                                <thead>
+                                    <tr>
+                                        <th>สินค้า (คีย์%)</th>
+                                        <th>น้ำหนัก (กรัม)</th>
+                                        <th>ยอดซื้อ (บาท)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Filled by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- template for reports -->
     <template id="goldTableReport_template">
         <div class="gold-table-report">
@@ -1297,6 +1335,7 @@
         // Function to generate and display melt summary report
         function generateMeltSummaryReport(result, options) {
             const data = result.data;
+            console.log('Generating melt summary report with data:', data);
             const rawData = result.rawData || data; // Use rawData for table display
             const summarizedBuyData = result.summarizedBuyData || [];
             const summary = result.summary;
@@ -1332,7 +1371,7 @@
                         </div>
                         <div class="row g-2 mt-1">
                             <div class="col-6">
-                                <strong>รายการยังไม่หลอม:</strong> ${summarizedBuyData.length} รายการ (${(summary.totalUnmeltedWeight || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} กรัม)
+                                <strong>รายการยังไม่หลอม:</strong> ${summarizedBuyData.length} รายการ (${(summarizedBuyData.reduce((sum, item) => sum + (item.totalWeight || 0), 0)).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} กรัม)
                             </div>
                         </div>
                     </div>
@@ -1346,6 +1385,7 @@
                                     <th class="text-center" style="width: 40px;">#</th>
                                     <th class="text-center" style="width: 100px;">วันที่</th>
                                     <th class="text-center" style="width: 120px;">เลขบิล</th>
+                                    <th class="text-center" style="width: 80px;">หมวดหมู่</th>
                                     <th class="text-center" style="width: 80px;">น้ำหนักก่อน</th>
                                     <th class="text-center" style="width: 80px;">น้ำหนักหลัง</th>
                                     <th class="text-center" style="width: 100px;">% หลังหลอม</th>
@@ -1360,6 +1400,7 @@
                                         <td class="text-center">${index + 1}</td>
                                         <td class="text-center">${moment(item.date).format('DD/MM/YY')}</td>
                                         <td class="text-center">${item.billNo}</td>
+                                        <td class="text-center">${item.meltType || '-'}</td>
                                         <td class="text-end">${(item.beforeWeight || 0).toFixed(2)}</td>
                                         <td class="text-end">${(item.afterWeight || 0).toFixed(2)}</td>
                                         <td class="text-end">${(item.percentAfterMelt || 0).toFixed(2)}</td>
@@ -1369,6 +1410,16 @@
                                     </tr>
                                 `).join('')}
                             </tbody>
+                            <tfooter>
+                                <tr class="table-light fw-bold">
+                                    <td colspan="3" class="text-end">รวมทั้งหมด</td>
+                                    <td class="text-end">${(summary.totalBeforeWeight || 0).toFixed(2)}</td>
+                                    <td class="text-end">${(summary.totalAfterWeight || 0).toFixed(2)}</td>
+                                    <td class="text-end">-</td>
+                                    <td class="text-end">-</td>
+                                    <td class="text-end">${(summary.totalBuyPrice || 0).toLocaleString('th-TH')}</td>
+                                    <td class="text-end">-</td>
+                                </tr>
                         </table>
                     </div>
                     ` : `
@@ -1474,6 +1525,7 @@
                                         <th class="text-center text-wrap">#</th>
                                         <th class="text-center text-wrap">วันที่</th>
                                         <th class="text-center text-wrap">เลขบิล</th>
+                                        <th class="text-center text-wrap">หมวดหมู่</th>
                                         <th class="text-center text-wrap">นน.ก่อน (ก.)</th>
                                         <th class="text-center text-wrap">นน.หลัง (ก.)</th>
                                         <th class="text-center text-wrap">% หลังหลอม</th>
@@ -1488,6 +1540,7 @@
                                             <td class="text-center">${index + 1}</td>
                                             <td class="text-center">${moment(item.date).format('DD/MM/YYYY')}</td>
                                             <td class="text-center">${item.billNo}</td>
+                                            <td class="text-center">${item.meltType || '-'}</td>
                                             <td class="text-end">${(item.beforeWeight || 0).toFixed(2)}</td>
                                             <td class="text-end">${(item.afterWeight || 0).toFixed(2)}</td>
                                             <td class="text-end">${(item.meltPercentAfterMelt || 0).toFixed(2)}</td>
@@ -2062,6 +2115,12 @@
                     <button class="btn btn-outline-secondary flex-fill text-nowrap d-flex align-items-center justify-content-center" id="cancelMeltBillSelectionBtn" onclick="datatable.rows({ selected: true }).deselect(); showTableButtons('add');datatable.column(1).visible(false);reloadTable('#goldTable');">
                     <i class="bi bi-x-circle me-2"></i> ยกเลิกการเลือก
                     </button>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="filterNotMeltedCheckbox" onchange="filterNotMelted(this.checked)">
+                        <label class="form-check-label" for="filterNotMeltedCheckbox">
+                            แสดงเฉพาะรายการที่ยังไม่หลอม
+                        </label>
+                    </div>
                 </div>
                 `);
                     $('.filter-sec1').html(`
@@ -2381,7 +2440,7 @@
                                 title: 'เกิดข้อผิดพลาด',
                                 text: error.message || error,
                             });
-                        }).getMeltData(window.user.branch);
+                        }).getMeltData(window.user.branch, window.user.role);
                     } catch {
                         NProgress.done();
                         callback({
@@ -2431,7 +2490,7 @@
                         data: 'billNo',
                         title: 'หมายเลขบิล',
                         render: function (data) {
-                            return data || 'ไม่ระบุ';
+                            return data ? `<button type="button" class="btn btn-link p-0" onclick="showItemsListInMeltBill('${data}')"><i class="bi bi-list-task me-2"></i>${data}</button>` : 'ไม่ระบุ';
                         }
                     },
                     {
@@ -2503,6 +2562,45 @@
                         title: 'บิลขายที่สร้าง',
                         visible: false,
                     },
+                    {
+                        data: 'status',
+                        title: 'สถานะ',
+                        render: function (data, type, row) {
+                            switch (data) {
+                                case 'ยกเลิก':
+                                    return `<span class="badge bg-secondary text-nowrap">
+                                        <i class="bi bi-x-circle-fill"></i> ยกเลิก
+                                    </span>`;
+                                case 'เสร็จสิ้น':
+                                    return `<span class="badge bg-success text-nowrap">
+                                        <i class="bi bi-check-circle-fill"></i> เสร็จสิ้น
+                                    </span>`;
+                                case 'รอส่ง':
+                                    return `<span class="badge bg-warning text-dark text-nowrap">
+                                        <i class="bi bi-clock-fill"></i> รอส่ง
+                                    </span>`;
+                                case 'ส่งขายอยู่':
+                                    return `<span class="badge bg-info text-dark text-nowrap">
+                                        <i class="bi bi-truck"></i> ส่งขายอยู่
+                                    </span>`;
+                                case 'หลอมแล้ว':
+                                    return `<span class="badge bg-primary text-nowrap">
+                                        <i class="bi bi-fire"></i> หลอมแล้ว
+                                    </span>`;
+                                case 'รับแล้ว':
+                                    return `<span class="badge bg-dark text-nowrap">
+                                        <i class="bi bi-check2-all"></i> รับแล้ว
+                                    </span>`;
+                                case 'สินค้าโชว์':
+                                    return `<span class="badge bg-success text-nowrap">
+                                        <i class="bi bi-shop-window"></i> สินค้าโชว์
+                                    </span>`;
+                                default:
+                                    return `<span class="badge bg-light text-dark">${data}</span>`;
+                            }
+                        }
+                    },
+
                     {
                         data: null,
                         title: 'การดำเนินการ',
@@ -2804,6 +2902,14 @@
 
 
 
+        function filterNotMelted(isChecked) {
+            if (isChecked) {
+                datatable.column(12).search('^$', true, false).draw();
+            } else {
+                datatable.column(12).search('').draw();
+            }
+        }
+
         function createSellBillBtn() {
             meltTable.column(14).search('^$', true, false).draw();
             meltTable.column(1).visible(true);
@@ -3025,6 +3131,64 @@
             }
         }
 
+        // Show Items List in Melt Bill
+        function showItemsListInMeltBill(billNo) {
+            NProgress.start();
+            goldSwal({
+                title: 'กำลังโหลดข้อมูล...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            google.script.run.withSuccessHandler(function (response) {
+                NProgress.done();
+                const data = JSON.parse(response);
+                let itemsHtml = `
+                    <table class="table table-bordered table-sm table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="text-center" style="width:50px;">#</th>
+                                <th class="text-center">วันที่</th>
+                                <th class="text-center">สินค้า</th>
+                                <th class="text-center">น้ำหนัก (กรัม)</th>
+                                <th class="text-center">ยอดซื้อ (บาท)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                data.forEach((item, index) => {
+                    itemsHtml += `
+                        <tr>
+                            <td class="text-center">${index + 1}</td>
+                            <td class="text-center">${moment(item.date).format('DD/MM/YYYY')}</td>
+                            <td>${item.product}</td>
+                            <td class="text-end">${parseFloat(item.weight || 0).toFixed(2)}</td>
+                            <td class="text-end">${parseInt(item.price || 0).toLocaleString('th-TH')}</td>
+                        </tr>
+                    `;
+                });
+                itemsHtml += `
+                        </tbody>
+                    </table>
+                `;
+                goldSwal({
+                    title: `รายการในบิลหลอม: ${billNo}`,
+                    html: itemsHtml,
+                    width: '800px',
+                    confirmButtonText: 'ปิด'
+                });
+            }).withFailureHandler(function (error) {
+                NProgress.done();
+                goldSwal({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: error.message || error,
+                });
+            }).getItemsListInMeltBill(billNo);
+        }
+        
         // Functions for Melt Bill Management
         function editMeltBill(button) {
             const row = $(button).closest('tr');
@@ -3398,16 +3562,20 @@
             });
             $tbody.html(tbodyHtml);
             // Update summary
-            let totalWeight = 0, totalPrice = 0;
+            let totalWeight = 0, totalPrice = 0, sumPercentWeight = 0;
             selectedRows.forEach(row => {
+                console.log('Calculating row', row);
                 totalWeight += parseFloat(row.weight) || 0;
                 totalPrice += parseFloat(row.price) || 0;
+                sumPercentWeight += parseFloat(row.percentWeight) || 0;
             });
+            let percentCalc = (sumPercentWeight/totalWeight) || '-';
             $('#summaryWeight').text(totalWeight.toFixed(2));
             $('#summaryPrice').text(totalPrice.toLocaleString('th-TH', { maximumFractionDigits: 2 }));
             $('#meltSellPrice').parent().css('display', window.user.role === 'admin' ? 'block' : 'none');
             $('#summaryCount').text(selectedRows.length);
             $('#meltType').text(selectedRows[0].category || 'ไม่ระบุ');
+            $('#meltPercentCalc').text(percentCalc.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         })
             .on('hidden.bs.modal', function () {
                 $('#selectedRowsTable tbody').empty();

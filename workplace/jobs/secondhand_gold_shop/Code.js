@@ -78,6 +78,7 @@ function getBuyData(isAll = false, reports = false, branch = '') {
             status: row[9],
             billNo: row[10],
             uuid: row[11],
+            percentWeight: row[14],
             enableEdit: Utilities.formatDate(row[0], timezone, 'yyyy-MM-dd') === today && row[10] == ''
         }
     }));
@@ -570,7 +571,7 @@ function getBranch() {
     return branch;
 }
 
-function getMeltData(branch = 'สาขา 2') {
+function getMeltData(branch = 'สาขา 2', role) {
     if (!branch || branch === '') {
         return JSON.stringify([]);
     }
@@ -607,6 +608,15 @@ function getMeltData(branch = 'สาขา 2') {
         return branch === 'all' || row[9] === branch; // Column I (index 8) is branch
     });
 
+    // filter by role
+    if (role === 'staff') {
+        // show only this status
+        data = data.filter(row => {
+            return ['รอส่ง', 'รับแล้ว', 'สินค้าโชว์'].includes(row[10]); // Column K (index 10) is status
+        });
+    }
+    
+
     // Sort by date descending
     data = data.sort((a, b) => {
         return b[0] - a[0];
@@ -626,7 +636,7 @@ function getMeltData(branch = 'สาขา 2') {
             status: row[10],
             percentAfterMelt: row[11],
             percentCalc: row[12],
-            enableEdit: row[10] !== 'ยกเลิก' && (row[0] >= startOfWeek && row[0] <= endOfWeek),
+            enableEdit: row[10] !== 'ยกเลิก' && (row[0] >= startOfWeek && row[0] <= endOfWeek) && (role !== 'staff' || row[10] === 'รอส่ง'),
         }
     }));
 }
@@ -983,7 +993,7 @@ function getMeltSummaryReport(options) {
             if (rowDate < startDate || rowDate > endDate) return false;
 
             // Check branch
-            if (branch !== 'all' && row[10] !== branch) return false;
+            if (branch !== 'all' && row[9] !== branch) return false;
             return true;
         });
 
@@ -991,6 +1001,7 @@ function getMeltSummaryReport(options) {
         let filteredBuyData = allBuyData.filter(buyRow => {
             // check status
             if (buyRow[9] === 'ยกเลิก') return false;
+            if (buyRow[9] !== 'รอส่ง') return false;
 
             // check category not include 'ค่าบริการ'
             if(buyRow[2] === 'ค่าบริการ') return false;
@@ -1072,7 +1083,6 @@ function getMeltSummaryReport(options) {
             };
         });
 
-        let transformedData = transformedMeltData.concat(transformedBuyData);
         return JSON.stringify({
             success: true,
             data: transformedMeltData,
@@ -1093,4 +1103,27 @@ function getMeltSummaryReport(options) {
             message: 'เกิดข้อผิดพลาดในการดึงรายงาน: ' + error.message
         });
     }
+}
+
+function getItemsListInMeltBill(billNo) {
+    let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let buySheet = ss.getSheetByName(SHEET_NAME.BUY);
+    let lastRow = SuperScript.getRealLastRow('A', buySheet);
+    let dataRange = buySheet.getRange(2, 1, lastRow - 1, buySheet.getLastColumn()).getValues();
+    let items = dataRange.filter(row => row[10] === billNo).map(row => {
+        return {
+            category: row[1],
+            product: row[2],
+            weight: row[3],
+            price: row[4],
+            seller: row[5],
+            branch: row[6],
+            bank: row[7] || 'ไม่ระบุ',
+            monthYear: row[8],
+            status: row[9],
+            billNo: row[10],
+            uuid: row[11],
+        }
+    });
+    return JSON.stringify(items);
 }
