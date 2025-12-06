@@ -801,9 +801,11 @@ function checkin(e) {
       sh = getSheetWithCache(SHEET_SATURDAY);
     } else if (year === 2025 && month === 11 && day === 14) {
       sh = getSheetWithCache(SHEET_SUNDAY);
-    } else if (FOR_TEST) {
-      sh = getSheetWithCache(SHEET_SATURDAY);
-    } else {
+    } 
+    // else if (FOR_TEST) {
+    //   sh = getSheetWithCache(SHEET_SATURDAY);
+    // } 
+    else {
       return createJsonResponse({
         status: 'not allowed',
         message: 'กรุณาเช็คอินใน' + SHEET_SATURDAY + ' หรือ ' + SHEET_SUNDAY + ' เท่านั้น'
