@@ -6252,7 +6252,7 @@
                 obj[item.name] = item.value;
                 return obj;
             }, {});
-            if(formData['discount'] && !formData['discountType']) {
+            if (formData['discount'] && !formData['discountType']) {
                 Toast.fire({
                     icon: 'error',
                     title: 'กรุณาเลือกประเภทส่วนลด'
@@ -6540,7 +6540,7 @@
             form.querySelectorAll('select').forEach(select => {
                 if ($(select).hasClass('select2-hidden-accessible')) {
                     $(select).val('').trigger('change');
-                }else{
+                } else {
                     select.value = '';
                 }
             });
@@ -6914,7 +6914,7 @@
                 $('#revenuePaymentTypeContainer .payment-type-pill').removeClass('selected');
                 $('#revenuePaymentTypeContainer .payment-type-hidden-inputs').empty();
                 paymentTypes = paymentTypes.map(paymentType => {
-                    if(paymentType === 'เงินโอน') paymentType = 'เงินโอนบัญชีร้าน';
+                    if (paymentType === 'เงินโอน') paymentType = 'เงินโอนบัญชีร้าน';
                     const $pill = $(`#revenuePaymentTypeContainer .payment-type-pill[data-value="${paymentType}"]`);
                     if ($pill.length) {
                         $pill.addClass('selected');
@@ -7202,7 +7202,7 @@
                         let revenue_type = revenue.caseType;
                         let revenue_amount = calculateRevenueAmount(revenue);
                         let amount_for_calculation = calculateRevenueAmount(revenue, true);
-                        if(revenue.discountType === 'ไม่ร่วมกับหมอ'){
+                        if (revenue.discountType === 'ไม่ร่วมกับหมอ') {
                             console.log(doctorId, doctors)
                             console.log('Amount for calculation before adding discount:', amount_for_calculation);
                             console.log('Adding discount back for calculation:', revenue.discount);
@@ -7231,7 +7231,7 @@
 
                         let doctorShared = amount_for_calculation * (doctorSharedPercent / 100);
                         let clinicShared = amount_for_calculation - doctorShared;
-                        if(revenue.discountType === 'ไม่ร่วมกับหมอ'){
+                        if (revenue.discountType === 'ไม่ร่วมกับหมอ') {
                             console.log('Subtracting discount from clinic share:', revenue.discount);
                             console.log('doctor details:', doctorDetails);
                             clinicShared -= revenue.discount || 0;
@@ -7247,7 +7247,7 @@
                             doctorTransfer: doctorTransfer,
                             clinicTransfer: amount_for_calculation - doctorTransfer
                         };
-                        if(revenue.discountType === 'ไม่ร่วมกับหมอ'){
+                        if (revenue.discountType === 'ไม่ร่วมกับหมอ') {
                             console.log('debug revenueSharedData:', revenue_id, revenueSharedData[revenue_id]);
 
                         }
@@ -7347,7 +7347,6 @@
 
             // Group revenues by doctor
             const doctorRevenues = {};
-
             filteredData.forEach(row => {
                 const doctorId = row[9];
                 const revenue_id = row[0];
@@ -7371,7 +7370,7 @@
 
                     const revenue_type = revenue.caseType;
                     let revenue_amount = calculateRevenueAmount(revenue, true);
-                    if(revenue.discountType === 'ไม่ร่วมกับหมอ'){
+                    if (revenue.discountType === 'ไม่ร่วมกับหมอ') {
                         revenue_amount += revenue.discount || 0;
                     }
 
@@ -7396,7 +7395,7 @@
 
                     const doctorShared = revenue_amount * (doctorSharedPercent / 100);
                     let clinicShared = revenue_amount - doctorShared;
-                    if(revenue.discountType === 'ไม่ร่วมกับหมอ'){
+                    if (revenue.discountType === 'ไม่ร่วมกับหมอ') {
                         clinicShared -= revenue.discount || 0;
                     }
 
@@ -7717,7 +7716,10 @@
                     }
 
                     const revenue_type = revenue.caseType;
-                    const revenue_amount = calculateRevenueAmount(revenue, true);
+                    let revenue_amount = calculateRevenueAmount(revenue, true);
+                    if (revenue.discountType === 'ไม่ร่วมกับหมอ') {
+                        revenue_amount += revenue.discount || 0;
+                    }
 
                     let doctorSharedPercent = 0;
                     if (revenue_type) {
@@ -7737,9 +7739,13 @@
                         }
                     }
 
-                    const doctorShared = revenue_amount * (doctorSharedPercent / 100);
-                    const clinicShared = revenue_amount - doctorShared;
 
+                    let doctorShared = revenue_amount * (doctorSharedPercent / 100);
+                    let clinicShared = revenue_amount - doctorShared;
+
+                    if (revenue.discountType === 'ไม่ร่วมกับหมอ') {
+                        clinicShared -= revenue.discount || 0;
+                    }
                     // Get transfer amounts
                     const doctorTransfer = revenue.transferDoctorAmount || 0;
                     const clinicTransfer = revenue.transferClinicAmount || 0;
@@ -7768,6 +7774,10 @@
             const grandTotalRevenue = Object.values(doctorRevenues).reduce((sum, d) => sum + d.totalRevenue, 0);
             const grandTotalDoctorShare = Object.values(doctorRevenues).reduce((sum, d) => sum + d.totalDoctorShare, 0);
             const grandTotalClinicShare = Object.values(doctorRevenues).reduce((sum, d) => sum + d.totalClinicShare, 0);
+
+            // Generate report HTML
+            let reportHTML = '';
+
 
             // Generate clean print HTML
             let printHTML = `
