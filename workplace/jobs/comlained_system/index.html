@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการข้อมูล Complain</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- โหลด Tom Select (CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+
+    <style>
+        * {
+            font-family: 'Kanit', sans-serif;
+        }
+
+        /* SweetAlert2 Custom Styles - More Rounded */
+        .swal2-popup {
+            border-radius: 2rem !important;
+            padding: 2rem !important;
+        }
+
+        .swal2-title {
+            font-family: 'Kanit', sans-serif !important;
+            border-radius: 1.5rem !important;
+        }
+
+        .swal2-html-container {
+            font-family: 'Kanit', sans-serif !important;
+        }
+
+        .swal2-confirm,
+        .swal2-cancel,
+        .swal2-deny {
+            border-radius: 1.5rem !important;
+            padding: 0.75rem 2rem !important;
+            font-family: 'Kanit', sans-serif !important;
+            font-weight: 500 !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .swal2-confirm:hover,
+        .swal2-cancel:hover,
+        .swal2-deny:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .swal2-icon {
+            border-radius: 50% !important;
+        }
+
+        .swal2-input,
+        .swal2-textarea {
+            border-radius: 1rem !important;
+            border: 1px solid rgba(209, 213, 219, 0.5) !important;
+            font-family: 'Kanit', sans-serif !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .swal2-input:focus,
+        .swal2-textarea:focus {
+            border-color: #374151 !important;
+            box-shadow: 0 0 0 4px rgba(55, 65, 81, 0.1) !important;
+        }
+
+        .swal2-validation-message {
+            border-radius: 1rem !important;
+            font-family: 'Kanit', sans-serif !important;
+        }
+
+        .swal2-progress-steps .swal2-progress-step {
+            border-radius: 50% !important;
+        }
+
+        .swal2-progress-steps .swal2-progress-step-line {
+            border-radius: 1rem !important;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .gradient-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .card-minimal {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(209, 213, 219, 0.3);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card-minimal:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border-color: rgba(55, 65, 81, 0.2);
+        }
+
+        .severity-green {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+        }
+
+        .severity-yellow {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.3);
+        }
+
+        .severity-red {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            position: relative;
+            overflow: hidden;
+            font-weight: 600;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #374151;
+            border: 2px solid rgba(209, 213, 219, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            font-weight: 500;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(249, 250, 251, 1);
+            color: #1f2937;
+            border-color: #374151;
+            border-width: 2px;
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -1px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn-secondary:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+            font-weight: 600;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 12px 20px -3px rgba(16, 185, 129, 0.5);
+        }
+
+        .btn-success:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 2px 4px -1px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.3);
+            font-weight: 600;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 20px -3px rgba(245, 158, 11, 0.5);
+        }
+
+        .btn-warning:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 2px 4px -1px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3);
+            font-weight: 600;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 20px -3px rgba(239, 68, 68, 0.5);
+        }
+
+        .btn-danger:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 2px 4px -1px rgba(239, 68, 68, 0.3);
+        }
+
+        .input-minimal {
+            border: 1px solid rgba(209, 213, 219, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .input-minimal:focus {
+            border-color: #374151;
+            box-shadow: 0 0 0 4px rgba(55, 65, 81, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            outline: none;
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-1px);
+        }
+
+        .input-minimal:hover {
+            border-color: rgba(156, 163, 175, 0.8);
+        }
+
+        /* Select dropdown arrow spacing */
+        select.input-minimal {
+            padding-right: 2.5rem !important;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.75rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+        }
+
+        .slide-in {
+            animation: slideIn 0.4s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .table-row-hover {
+            transition: all 0.2s ease;
+        }
+
+        .table-row-hover:hover {
+            background: #f9fafb;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(229, 231, 235, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .gray-accent {
+            color: #374151;
+        }
+
+        .gray-bg {
+            background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .gray-light-bg {
+            background: linear-gradient(to bottom, #f9fafb 0%, #f3f4f6 100%);
+        }
+
+        .pulse-animation {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.7;
+                transform: scale(0.98);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-4px) scale(1.01);
+        }
+
+        /* Editing mode styles */
+        #formSection.editing {
+            border: 2px solid #f59e0b !important;
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, rgba(255, 251, 235, 0.95) 0%, rgba(254, 243, 199, 0.95) 100%);
+        }
+
+        #formSection.editing::before {
+            content: '✏️ โหมดแก้ไข';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 0.375rem 1.25rem;
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.3);
+            z-index: 10;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        #formSection.editing .icon-container-mobile {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        #formSection.editing h2 {
+            color: #d97706 !important;
+        }
+
+        /* Pipeline Stepper Styles */
+        .pipeline-stepper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            padding: 1rem 0;
+        }
+
+        .pipeline-stepper::before {
+            content: '';
+            position: absolute;
+            top: 45%;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(to right, #e5e7eb 0%, #d1d5db 100%);
+            transform: translateY(-50%);
+            z-index: 0;
+        }
+
+        .pipeline-step {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .pipeline-step:hover .step-circle {
+            transform: scale(1.15);
+        }
+
+        .step-circle {
+            width: 5rem;
+            height: 5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border: 3px solid #e5e7eb;
+            font-size: 1.25rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 0.5rem;
+        }
+
+        .step-circle:hover {
+            /* make circle bigger on hover */
+            transform: scale(1.15);
+        }
+
+        .step-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #6b7280;
+            text-align: center;
+            max-width: 100px;
+            transition: all 0.3s ease;
+        }
+
+        /* Reported Step (Blue) */
+        .pipeline-step.reported .step-circle {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border-color: #2563eb;
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .pipeline-step.reported .step-label {
+            color: #2563eb;
+            font-weight: 600;
+        }
+
+        /* In Progress Step (Orange) */
+        .pipeline-step.in_progress .step-circle {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border-color: #f59e0b;
+            color: white;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
+
+        .pipeline-step.in_progress .step-label {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+
+        /* Pending Close Step (Orange) */
+        .pipeline-step.pending_close .step-circle {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            border-color: #fbbf24;
+            color: white;
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+        }
+
+        .pipeline-step.pending_close .step-label {
+            color: #fbbf24;
+            font-weight: 600;
+        }
+
+        /* Closed Step (Green) */
+        .pipeline-step.closed .step-circle {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-color: #10b981;
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .pipeline-step.closed .step-label {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+
+        /* Hover effects for inactive steps */
+        .pipeline-step:not(.reported):not(.in_progress):not(.pending_close):not(.closed):hover .step-circle {
+            border-color: #9ca3af;
+            background: #f9fafb;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .pipeline-step:not(.reported):not(.in_progress):not(.pending_close):not(.closed):hover .step-label {
+            color: #374151;
+        }
+
+        /* Hidden input for form submission */
+        #pipelineValue {
+            display: none;
+        }
+
+        /* Custom scrollbar styles */
+        .scrollbar-thin {
+            scrollbar-width: thin;
+        }
+
+        .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+            border-radius: 6px;
+        }
+
+        .scrollbar-track-gray-100::-webkit-scrollbar-track {
+            background-color: #f3f4f6;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+
+        /* Mobile responsive improvements */
+        @media (max-width: 768px) {
+            .gradient-bg {
+                padding: 0 !important;
+            }
+
+            .container {
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+            }
+
+            .card-minimal {
+                border-radius: 1.5rem !important;
+                padding: 1.5rem !important;
+                margin-bottom: 1.5rem !important;
+            }
+
+            h1 {
+                font-size: 1.75rem !important;
+                line-height: 2rem !important;
+            }
+
+            h2 {
+                font-size: 1.5rem !important;
+                line-height: 1.75rem !important;
+            }
+
+            .btn-primary,
+            .btn-secondary,
+            .btn-success,
+            .btn-warning,
+            .btn-danger {
+                padding: 0.75rem 1.25rem !important;
+                font-size: 0.875rem !important;
+                min-height: 44px;
+            }
+
+            .input-minimal {
+                padding: 0.875rem 1rem !important;
+                font-size: 1rem !important;
+                min-height: 44px;
+            }
+
+            /* Stack navigation tabs vertically on mobile */
+            .nav-tabs-mobile {
+                flex-direction: column !important;
+                gap: 0.5rem !important;
+            }
+
+            .nav-tabs-mobile button {
+                width: 100% !important;
+                justify-content: center !important;
+            }
+
+            /* Form grid to single column */
+            .form-grid-mobile {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Search and action buttons stack */
+            .action-buttons-mobile {
+                flex-direction: column !important;
+                width: 100% !important;
+            }
+
+            .action-buttons-mobile>* {
+                width: 100% !important;
+            }
+
+            .action-buttons-mobile input {
+                width: 100% !important;
+            }
+
+            /* Icon containers smaller on mobile */
+            .icon-container-mobile {
+                width: 3rem !important;
+                height: 3rem !important;
+            }
+
+            .icon-container-mobile i {
+                font-size: 1rem !important;
+            }
+
+            /* Table improvements */
+            .table-container {
+                font-size: 0.75rem !important;
+            }
+
+            .table-container th,
+            .table-container td {
+                padding: 0.5rem !important;
+                white-space: nowrap;
+            }
+
+            .mobile-table-hint {
+                background: linear-gradient(90deg, transparent, #f3f4f6 50%, transparent);
+                animation: shimmer 2s infinite;
+            }
+
+            /* Report grid to single column */
+            .report-grid-mobile {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Pipeline stepper mobile - improved layout */
+            .pipeline-stepper {
+                flex-direction: column;
+                gap: 0.75rem;
+                padding: 0.5rem 0;
+                position: relative;
+                width: 100%;
+            }
+
+            .pipeline-stepper::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 37px;
+                width: 3px;
+                height: 100%;
+                background: linear-gradient(to bottom, #e5e7eb 0%, #d1d5db 100%);
+                transform: translateX(-50%);
+                z-index: 0;
+
+            }
+
+            .pipeline-step {
+                flex-direction: row;
+                justify-content: flex-start;
+                align-items: center;
+                padding: 0.75rem;
+                background: rgba(255, 255, 255, 0.0);
+                border-radius: 0.75rem;
+                border: 2px solid transparent;
+                margin-bottom: 0;
+                transition: all 0.3s ease;
+                width: 100%;
+                position: relative;
+                z-index: 1;
+            }
+
+            .pipeline-step:active {
+                transform: scale(0.98);
+            }
+
+            .step-circle {
+                width: 3rem;
+                height: 3rem;
+                font-size: 1.25rem;
+                margin-bottom: 0;
+                margin-right: 0.75rem;
+                flex-shrink: 0;
+            }
+
+            .step-label {
+                font-size: 0.875rem;
+                text-align: left;
+                max-width: none;
+                flex: 1;
+                font-weight: 500;
+            }
+
+            /* Active state backgrounds for mobile */
+            .pipeline-step.reported {
+                background: rgba(59, 130, 246, 0.1);
+                border-color: rgba(59, 130, 246, 0.3);
+            }
+
+            .pipeline-step.in_progress {
+                background: rgba(245, 158, 11, 0.1);
+                border-color: rgba(245, 158, 11, 0.3);
+            }
+
+            .pipeline-step.pending_close {
+                background: rgba(251, 191, 36, 0.1);
+                border-color: rgba(251, 191, 36, 0.3);
+            }
+
+            .pipeline-step.closed {
+                background: rgba(16, 185, 129, 0.1);
+                border-color: rgba(16, 185, 129, 0.3);
+            }
+
+            /* Reduce spacing */
+            .mb-10 {
+                margin-bottom: 1.5rem !important;
+            }
+
+            .p-10 {
+                padding: 1.5rem !important;
+            }
+
+            /* Header icon */
+            .header-icon-mobile {
+                width: 3.5rem !important;
+                height: 3.5rem !important;
+            }
+
+            .header-icon-mobile i {
+                font-size: 1.25rem !important;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200px 0;
+            }
+
+            100% {
+                background-position: 200px 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="gradient-bg min-h-screen">
+    <!-- Modern Background Pattern -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-20 right-20 w-96 h-96 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-full blur-3xl animate-pulse"
+            style="animation-duration: 4s;"></div>
+        <div class="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-full blur-3xl animate-pulse"
+            style="animation-duration: 6s; animation-delay: 1s;"></div>
+        <div
+            class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-br from-gray-500/5 to-slate-500/5 rounded-full blur-2xl">
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8 relative z-10">
+        <!-- Header -->
+        <div class="card-minimal rounded-3xl shadow-2xl p-10 mb-8 slide-in border-2 border-gray-100/50">
+            <div class="text-center">
+                <div
+                    class="inline-flex items-center justify-center w-20 h-20 header-icon-mobile gray-bg rounded-3xl mb-6 transform hover:scale-110 transition-transform duration-300">
+                    <i class="fas fa-exclamation-triangle text-white text-2xl"></i>
+                </div>
+                <h1 class="text-4xl md:text-4xl font-bold text-gray-900 mb-3 tracking-tight">
+                    ระบบจัดการข้อมูล Complain
+                </h1>
+                <p class="text-gray-600 text-base md:text-lg font-light">จัดการและติดตามข้อร้องเรียนอย่างมีประสิทธิภาพ
+                </p>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="flex flex-col md:flex-row justify-center gap-3 mt-10 nav-tabs-mobile">
+                <button onclick="showTab('form'); resetForm();" id="formTab"
+                    class="px-8 py-4 btn-primary rounded-2xl font-medium text-base flex items-center gap-3 transition-all duration-300 w-full md:w-auto">
+                    <i class="fas fa-plus text-lg"></i>
+                    <span>เพิ่มข้อมูล</span>
+                </button>
+                <button onclick="showTab('list')" id="listTab"
+                    class="px-8 py-4 btn-secondary rounded-2xl font-medium text-base flex items-center gap-3 transition-all duration-300 w-full md:w-auto hidden">
+                    <i class="fas fa-list text-lg"></i>
+                    <span>รายการข้อมูล</span>
+                </button>
+                <button onclick="showTab('report')" id="reportTab"
+                    class="px-8 py-4 btn-secondary rounded-2xl font-medium text-base flex items-center gap-3 transition-all duration-300 w-full md:w-auto hidden">
+                    <i class="fas fa-chart-bar text-lg"></i>
+                    <span>รายงาน</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Form Tab -->
+        <div id="formSection"
+            class="card-minimal rounded-3xl shadow-2xl p-10 mb-8 slide-in border-2 border-gray-100/50">
+            <div class="flex items-center mb-10">
+                <div
+                    class="w-14 h-14 icon-container-mobile gray-bg rounded-2xl flex items-center justify-center mr-3 md:mr-5 transform hover:scale-110 transition-transform duration-300">
+                    <i class="fas fa-edit text-white text-xl"></i>
+                </div>
+                <h2 class="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+                    <span id="formTitle">เพิ่มข้อมูล Complain ใหม่</span>
+                </h2>
+            </div>
+
+            <form id="complainForm" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 form-grid-mobile">
+                <input type="hidden" id="editId" value="">
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-calendar-alt mr-2 gray-accent"></i>วันที่
+                    </label>
+                    <input type="date" id="date" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                </div>
+
+                <!-- <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-box mr-2 gray-accent"></i>สินค้า
+                    </label> -->
+                <!-- <input type="text" id="product" class="w-full px-4 py-3 input-minimal rounded-lg font-medium" required> -->
+                <!-- <select id="product" class="w-full px-4 py-3 input-minimal rounded-lg font-medium" required>
+                      <option value="">— เลือกสินค้า —</option>
+                    </select>
+                    
+                </div> -->
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-box mr-2 gray-accent"></i>สินค้า
+                    </label>
+
+                    <select id="product" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                        <option value="">— เลือกสินค้า —</option>
+                    </select>
+                </div>
+
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-sort-numeric-up mr-2 gray-accent"></i>จำนวน
+                    </label>
+                    <input type="number" id="quantity" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                </div>
+
+                <!-- <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-store mr-2 gray-accent"></i>ร้านค้า
+                    </label>
+                    <input type="text" id="store" class="w-full px-4 py-3 input-minimal rounded-lg font-medium" required>
+                </div> -->
+
+                <!-- 🔸 ร้านค้า -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-store mr-2 gray-accent"></i>ร้านค้า
+                    </label>
+                    <select id="store" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                        <option value="">— เลือกร้านค้า —</option>
+                    </select>
+                </div>
+
+
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-box mr-2 gray-accent"></i>หน่วยสินค้า
+                    </label>
+                    <input type="text" id="unit" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-tags mr-2 gray-accent"></i>ประเภท
+                    </label>
+                    <select id="type" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                        <option value="">เลือกประเภท</option>
+                        <option value="A">A. Order ผิด</option>
+                        <option value="B">B. ส่งสินค้าไม่ครบ / ส่งผิด</option>
+                        <option value="C">C. ส่งสินค้าไม่ได้คุณภาพ</option>
+                        <option value="D">D. ส่งไม่ถูกต้องเช่น label</option>
+                        <option value="E">E. ส่งเอกสารผิด</option>
+                        <option value="F">F. ตกเครื่อง</option>
+                    </select>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-exclamation-circle mr-2 gray-accent"></i>ความรุนแรง
+                    </label>
+
+                    <select id="severity"
+                        class="w-full px-4 py-3 input-minimal rounded-lg font-medium transition-colors duration-300"
+                        required>
+                        <option value="">เลือกความรุนแรง</option>
+                        <option value="1">🟢 1. ต่ำ</option>
+                        <option value="2">🟡 2. ปานกลาง</option>
+                        <option value="3">🔴 3. สูง</option>
+                    </select>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-dollar-sign mr-2 gray-accent"></i>มูลค่าเคลม (บาท)
+                    </label>
+                    <input type="number" id="claimValue" step="0.01"
+                        class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                </div>
+
+                <!-- <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-users mr-2 gray-accent"></i>ทีมรับผิดชอบ
+                    </label>
+                    <input type="text" id="responsibleTeam" class="w-full px-4 py-3 input-minimal rounded-lg font-medium" required>
+                </div> -->
+
+                <!-- 🔹 ทีมรับผิดชอบ -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-users mr-2 gray-accent"></i>ทีมรับผิดชอบ
+                    </label>
+                    <select id="responsibleTeam" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                        <option value="">— เลือกทีมรับผิดชอบ —</option>
+                    </select>
+                </div>
+
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-user mr-2 gray-accent"></i>ชื่อตัวแทนทีม
+                    </label>
+                    <input type="text" id="teamRepresentative"
+                        class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                </div>
+
+
+                <!-- Pipeline -->
+                <div class="space-y-2 md:col-span-2 d-none">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-route mr-2 gray-accent"></i>Pipeline การดำเนินงาน
+                    </label>
+
+                    <input type="hidden" id="pipelineValue" name="pipeline" value="reported">
+
+                    <div class="pipeline-stepper">
+                        <div class="pipeline-step reported" data-value="reported" onclick="selectPipelineStep(this)">
+                            <div class="step-circle">
+                                <i class="fas fa-flag fa-beat" style="animation-play-state: paused;"></i>
+                            </div>
+                            <div class="step-label">แจ้งเรื่อง</div>
+                        </div>
+
+                        <div class="pipeline-step" data-value="in_progress" onclick="selectPipelineStep(this)">
+                            <div class="step-circle">
+                                <i class="fas fa-cog fa-spin" style="animation-play-state: paused;"></i>
+                            </div>
+                            <div class="step-label">กำลังแก้ไข</div>
+                        </div>
+
+                        <div class="pipeline-step" data-value="pending_close" onclick="selectPipelineStep(this)">
+                            <div class="step-circle">
+                                <i class="fas fa-check-circle fa-beat" style="animation-play-state: paused;"></i>
+                            </div>
+                            <div class="step-label">รอปิดเคส</div>
+                        </div>
+
+                        <div class="pipeline-step" data-value="closed" onclick="selectPipelineStep(this)">
+                            <div class="step-circle">
+                                <i class="fas fa-check-double fa-beat" style="animation-play-state: paused;"></i>
+                            </div>
+                            <div class="step-label">ปิดเคสแล้ว</div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="space-y-2 md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-exclamation-triangle mr-2 gray-accent"></i>ปัญหา
+                    </label>
+                    <textarea id="problem" class="w-full px-4 py-3 input-minimal rounded-lg font-medium"
+                        rows="3"></textarea>
+                </div>
+<!-- 
+                <div class="space-y-2 md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lightbulb mr-2 gray-accent"></i>แนวทางแก้ไข 1
+                    </label>
+                    <textarea id="solution1" class="w-full px-4 py-3 input-minimal rounded-lg font-medium"
+                        rows="3"></textarea>
+                </div>
+
+                <div class="space-y-2 md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lightbulb mr-2 gray-accent"></i>แนวทางแก้ไข 2 (ถ้ามี)
+                    </label>
+                    <textarea id="solution2" class="w-full px-4 py-3 input-minimal rounded-lg font-medium"
+                        rows="3"></textarea>
+                </div> -->
+
+
+                <div class="md:col-span-2 flex space-x-4 pt-4">
+                    <button type="submit" class="px-6 py-3 btn-primary rounded-xl font-medium">
+                        <i class="fas fa-save mr-2"></i>บันทึกข้อมูล
+                    </button>
+                    <button type="button" onclick="resetForm()" class="px-6 py-3 btn-secondary rounded-xl font-medium">
+                        <i class="fas fa-times mr-2"></i>ยกเลิก
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- List Tab -->
+        <div id="listSection"
+            class="card-minimal rounded-3xl shadow-2xl p-10 mb-8 hidden slide-in border-2 border-gray-100/50">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+                <div class="flex items-center">
+                    <div
+                        class="w-14 h-14 icon-container-mobile gray-bg rounded-2xl flex items-center justify-center mr-3 md:mr-5 transform hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-list text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">รายการข้อมูล Complain</h2>
+                </div>
+                <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto action-buttons-mobile">
+                    <div class="relative group w-full md:w-auto">
+                        <input type="text" id="searchInput" placeholder="ค้นหาข้อมูล..."
+                            class="pl-12 pr-4 py-3.5 input-minimal rounded-xl font-medium w-full md:w-64 md:focus:w-72 transition-all duration-300">
+                        <i
+                            class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 gray-accent group-focus-within:text-gray-700 transition-colors"></i>
+                    </div>
+                    <button onclick="searchData()"
+                        class="px-6 py-3.5 btn-primary rounded-xl font-medium flex items-center justify-center gap-2 w-full md:w-auto">
+                        <i class="fas fa-search"></i>
+                        <span>ค้นหา</span>
+                    </button>
+                    <button onclick="loadDataFromSheets()"
+                        class="px-6 py-3.5 btn-success rounded-xl font-medium flex items-center justify-center gap-2 w-full md:w-auto">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>รีเฟรช</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div
+                    class="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 table-container">
+                    <table class="min-w-full table-auto">
+                        <thead class="gray-light-bg">
+                            <tr>
+                                <th
+                                    class="px-3 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-gray-700 whitespace-nowrap">
+                                    วันที่</th>
+                                <th
+                                    class="px-3 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-gray-700 min-w-[120px]">
+                                    สินค้า</th>
+                                <th
+                                    class="px-3 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-gray-700 min-w-[100px]">
+                                    ร้านค้า</th>
+                                <th
+                                    class="px-3 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-gray-700 min-w-[120px]">
+                                    ประเภท</th>
+                                <th
+                                    class="px-3 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-gray-700 whitespace-nowrap">
+                                    ความรุนแรง</th>
+                                <th
+                                    class="px-3 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-gray-700 whitespace-nowrap">
+                                    สถานะ</th>
+                                <th
+                                    class="px-3 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-gray-700 whitespace-nowrap">
+                                    มูลค่า</th>
+                                <th
+                                    class="px-3 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-gray-700 whitespace-nowrap">
+                                    จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody">
+                            <!-- Data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Mobile scroll hint -->
+                <div class="md:hidden text-center py-2 text-xs text-gray-500 border-t border-gray-100">
+                    <i class="fas fa-arrows-alt-h mr-1"></i>เลื่อนซ้าย-ขวาเพื่อดูข้อมูลเพิ่มเติม
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Tab -->
+        <div id="reportSection"
+            class="card-minimal rounded-3xl shadow-2xl p-10 hidden slide-in border-2 border-gray-100/50">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+                <div class="flex items-center">
+                    <div
+                        class="w-14 h-14 icon-container-mobile gray-bg rounded-2xl flex items-center justify-center mr-3 md:mr-5 transform hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-chart-bar text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">รายงานสรุป</h2>
+                </div>
+                <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto action-buttons-mobile">
+                    <div class="relative w-full md:w-auto">
+                        <input type="date" id="reportDate"
+                            class="pl-12 pr-4 py-3.5 input-minimal rounded-xl font-medium w-full md:w-auto">
+                        <i class="fas fa-calendar-alt absolute left-4 top-1/2 transform -translate-y-1/2 gray-accent"></i>
+                    </div>
+                    <!-- <button onclick="sendEmailReport()" class="px-6 py-3 btn-primary rounded-xl font-medium">
+                        <i class="fas fa-envelope mr-2"></i>ส่งอีเมล
+                    </button> -->
+                </div>
+            </div>
+
+            <div id="reportContent" class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 report-grid-mobile">
+                <!-- Report content will be populated here -->
+            </div>
+        </div>
+    </div>
+
+
+
+    <script>
+        // Initialize
+        let dateInput, reportDateInput;
+        $(document).ready(function () {
+            NProgress.configure({
+                showSpinner: false,
+                trickleSpeed: 200,
+                minimum: 0.08,
+                easing: 'ease',
+                speed: 500,
+                parent: 'body',
+                template: '<div class="bar" role="bar" style="background: linear-gradient(135deg, #374151 0%, #1f2937 100%); height: 4px;"><div class="peg"></div></div><div class="spinner" role="spinner"><div class="spinner-icon"></div></div>'
+            });
+
+            dateInput = flatpickr('#date', {
+                locale: "th",
+                dateFormat: "Y-m-d",
+                defaultDate: new Date()
+            });
+
+            reportDateInput = flatpickr('#reportDate', {
+                locale: "th",
+                dateFormat: "Y-m-d",
+                defaultDate: new Date(),
+                onChange: function(selectedDates, dateStr, instance) {
+                    generateReport(dateStr);
+                }
+            });
+            dateInput._input.setAttribute('disabled', 'disabled');
+            showTab('form');
+
+            // load dropdown data
+            callScript({
+                func: 'getDropdownList',
+                onSuccess: function (list) {
+                    populateDropdowns(list);
+                },
+                onFailure: function (error) {
+                    console.error('Error loading dropdown data:', error);
+                },
+            });
+
+            // Load data from Google Sheets on startup
+            loadDataFromSheets();
+        });
+
+        // Pipeline Stepper Function
+        function selectPipelineStep(element) {
+            const value = $(element).data('value');
+
+            // Remove active states from all steps
+            $('.pipeline-step').each(function() {
+                $(this).removeClass('reported in_progress pending_close closed');
+                const cogIcon = $(this).find('.fas');
+                if (cogIcon.length) cogIcon.css('animation-play-state', 'paused');
+            });
+
+            // Activate selected step
+            $(element).addClass(value);
+
+            // Animate cog for in_progress state
+            const cogIcon = $(element).find('.fas');
+            if (cogIcon.length) cogIcon.css('animation-play-state', 'running');
+
+            // Update hidden input
+            $('#pipelineValue').val(value);
+
+            // Visual feedback animation
+            $(element).css('transform', 'scale(1.05)');
+            setTimeout(() => $(element).css('transform', ''), 200);
+        }
+
+        const processCounter = {
+            increment() {
+                const count = (parseInt(localStorage.getItem('processCount') || '0') + 1);
+                localStorage.setItem('processCount', count.toString());
+                if (count === 1) NProgress.start();
+            },
+            decrement() {
+                const count = Math.max(0, (parseInt(localStorage.getItem('processCount') || '0') - 1));
+                count > 0 ? localStorage.setItem('processCount', count.toString()) : localStorage.removeItem('processCount');
+                if (count === 0) NProgress.done();
+            }
+        };
+
+        function callScript({ func, params, onSuccess, onFailure }) {
+            processCounter.increment();
+
+            const handleSuccess = (result) => {
+                processCounter.decrement();
+                onSuccess?.(result);
+            };
+
+            const handleFailure = (error) => {
+                processCounter.decrement();
+                onFailure?.(error);
+            };
+
+            const runner = google.script.run
+                .withSuccessHandler(handleSuccess)
+                .withFailureHandler(handleFailure);
+
+            params !== undefined ? runner[func](params) : runner[func]();
+        }
+
+        function populateDropdowns(list) {
+            const dropdowns = [
+                { id: 'product', data: list['สินค้า'] },
+                { id: 'store', data: list['ร้านค้า'] },
+                { id: 'responsibleTeam', data: list['ทีมรับผิดชอบ'] }
+            ];
+
+            dropdowns.forEach(({ id, data }) => {
+                const selectEl = document.getElementById(id);
+                data.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item;
+                    opt.textContent = item;
+                    selectEl.appendChild(opt);
+                });
+            });
+        }
+    </script>
+
+    <script>
+        // Data storage
+        let complainData = [];
+        let nextId = 1;
+        let currentEditId = null;
+        let isLoading = false;
+
+        // Google Apps Script Integration Functions using google.script.run
+        function loadDataFromSheets() {
+            if (isLoading) {
+                return; // Prevent multiple simultaneous loads
+            }
+
+            isLoading = true;
+            showLoadingMessage('กำลังโหลดข้อมูลจาก Google Sheets...');
+            callScript({
+                func: 'getData',
+                params: undefined,
+                onSuccess: function (data) {
+                    if (data.success) {
+                        complainData = data.data || [];
+                        // Calculate next ID
+                        nextId = complainData.length > 0 ? Math.max(...complainData.map(item => item.id)) + 1 : 1;
+                        updateDataTable();
+                        hideLoadingMessage();
+                        $('#listTab, #reportTab').removeClass('hidden');
+                        $('#formSection').removeClass('editing');
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'โหลดข้อมูลสำเร็จ! 📊',
+                            text: `โหลดข้อมูล ${complainData.length} รายการ`,
+                            timer: 2000,
+                            showConfirmButton: false,
+                            background: '#ffffff',
+                            color: '#1f2937',
+                            iconColor: '#10b981',
+                            customClass: {
+                                popup: 'rounded-3xl shadow-2xl',
+                                title: 'text-gray-900 font-bold',
+                                htmlContainer: 'text-gray-600'
+                            }
+                        });
+                    } else {
+                        throw new Error(data.error || 'ไม่สามารถโหลดข้อมูลได้');
+                    }
+                    isLoading = false;
+                },
+                onFailure: function (error) {
+                    console.error('Error loading data:', error);
+                    hideLoadingMessage();
+                    NProgress.done();
+                    isLoading = false;
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด! ❌',
+                        text: 'ไม่สามารถโหลดข้อมูลจาก Google Sheets ได้: ' + error.message,
+                        background: '#ffffff',
+                        color: '#1f2937',
+                        iconColor: '#ef4444',
+                        confirmButtonColor: '#374151',
+                        confirmButtonText: 'ตรวจสอบอีกครั้ง',
+                        customClass: {
+                            popup: 'rounded-3xl shadow-2xl',
+                            title: 'text-gray-900 font-bold',
+                            htmlContainer: 'text-gray-600',
+                            confirmButton: 'rounded-xl px-6 py-3'
+                        }
+                    });
+                },
+            })
+        }
+
+        function saveDataToSheets(formData, isEdit = false) {
+            return new Promise((resolve, reject) => {
+                if (isEdit) {
+                    callScript({
+                        func: 'updateData',
+                        params: formData,
+                        onSuccess: function (data) {
+                            if (data.success) {
+                                resolve(data);
+                            } else {
+                                reject(new Error(data.error || 'ไม่สามารถแก้ไขข้อมูลได้'));
+                            }
+                        },
+                        onFailure: function (error) {
+                            console.error('Error updating data:', error);
+                            reject(error);
+                        },
+                    });
+                } else {
+                    callScript({
+                        func: 'addData',
+                        params: formData,
+                        onSuccess: function (data) {
+                            if (data.success) {
+                                resolve(data);
+                            } else {
+                                reject(new Error(data.error || 'ไม่สามารถบันทึกข้อมูลได้'));
+                            }
+                        },
+                        onFailure: function (error) {
+                            console.error('Error saving data:', error);
+                            reject(error);
+                        },
+                    });
+                }
+            });
+        }
+
+        function deleteDataFromSheets(id) {
+            return new Promise((resolve, reject) => {
+                callScript({
+                    func: 'deleteData',
+                    params: id,
+                    onSuccess: function (data) {
+                        if (data.success) {
+                            resolve(data);
+                        } else {
+                            reject(new Error(data.error || 'ไม่สามารถลบข้อมูลได้'));
+                        }
+                    },
+                    onFailure: function (error) {
+                        console.error('Error deleting data:', error);
+                        reject(error);
+                    },
+                });
+            });
+        }
+
+        function showLoadingMessage(message) {
+            $('body').append(`
+                <div id="loadingMessage" class="fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center">
+                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-3"></div>
+                    <span>${message}</span>
+                </div>
+            `);
+        }
+
+        function hideLoadingMessage() {
+            $('#loadingMessage').remove();
+        }
+
+
+        // Tab management
+        function showTab(tabName, isEdit = false) {
+            // Hide all sections
+            $('#formSection, #listSection, #reportSection').addClass('hidden');
+
+            // Reset tab buttons
+            $('#formTab, #listTab, #reportTab').removeClass('btn-primary').addClass('btn-secondary');
+
+            // Show selected section and highlight tab
+            const tabs = {
+                'form': { section: '#formSection', tab: '#formTab', callback: null },
+                'list': { section: '#listSection', tab: '#listTab', callback: updateDataTable },
+                'report': { section: '#reportSection', tab: '#reportTab', callback: generateReport }
+            };
+
+            const selected = tabs[tabName];
+            if (selected) {
+                $(selected.section).removeClass('hidden');
+                if (tabName === 'form' && isEdit) {
+                    $('#formSection').addClass('editing');
+                    $('#formTitle').text('แก้ไขข้อมูล Complain');
+                    $('#pipelineValue').parent().removeClass('d-none');
+                } else {
+                    $('#formSection').removeClass('editing');
+                    $('#formTitle').text('เพิ่มข้อมูล Complain');
+                    $('#pipelineValue').parent().addClass('d-none');
+                }
+                $(selected.tab).removeClass('btn-secondary').addClass('btn-primary');
+                if (selected.callback) selected.callback();
+            }
+        }
+
+        // Form submission
+        $('#complainForm').on('submit', function (e) {
+            e.preventDefault();
+
+            Swal.fire({
+                title: 'กำลังบันทึกข้อมูล...',
+                html: '<div class="pulse-animation">กรุณารอสักครู่</div>',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                background: '#ffffff',
+                color: '#1f2937',
+                customClass: {
+                    popup: 'rounded-3xl shadow-2xl',
+                    title: 'text-gray-900 font-bold',
+                    htmlContainer: 'text-gray-600'
+                },
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const formData = {
+                date: $('#date').val(),
+                product: $('#product').val(),
+                quantity: parseInt($('#quantity').val()),
+                problem: $('#problem').val(),
+                store: $('#store').val(),
+                unit: $('#unit').val(),
+                pipeline: $('#pipelineValue').val(),
+                type: $('#type').val(),
+                severity: $('#severity').val(),
+                claimValue: parseFloat($('#claimValue').val()),
+                responsibleTeam: $('#responsibleTeam').val(),
+                teamRepresentative: $('#teamRepresentative').val(),
+            };
+
+            const editId = $('#editId').val();
+            const isEdit = !!editId;
+
+            if (isEdit) {
+                formData.id = parseInt(editId);
+            } else {
+                formData.id = nextId++;
+            }
+
+            // Save to Google Sheets
+            saveDataToSheets(formData, isEdit)
+                .then(response => {
+                    if (isEdit) {
+                        // Update local data
+                        const index = complainData.findIndex(item => item.id == editId);
+                        if (index !== -1) {
+                            complainData[index] = formData;
+                        }
+                        showTab('list', false);
+                    } else {
+                        // Add to local data
+                        complainData.push(formData);
+                    }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกข้อมูลสำเร็จ! 🎉',
+                        text: isEdit ? 'แก้ไขข้อมูลเรียบร้อยแล้ว' : 'เพิ่มข้อมูลใหม่เรียบร้อยแล้ว',
+                        timer: 2500,
+                        showConfirmButton: false,
+                        background: '#ffffff',
+                        color: '#1f2937',
+                        iconColor: '#10b981',
+                        customClass: {
+                            popup: 'rounded-3xl shadow-2xl',
+                            title: 'text-gray-900 font-bold',
+                            htmlContainer: 'text-gray-600'
+                        }
+                    });
+
+                    resetForm();
+                    updateDataTable();
+                })
+                .catch(error => {
+                    console.error('Error saving data:', error);
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด! ❌',
+                        text: 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
+                        background: '#ffffff',
+                        color: '#1f2937',
+                        iconColor: '#ef4444',
+                        confirmButtonColor: '#374151',
+                        confirmButtonText: 'ลองอีกครั้ง',
+                        customClass: {
+                            popup: 'rounded-3xl shadow-2xl',
+                            title: 'text-gray-900 font-bold',
+                            htmlContainer: 'text-gray-600',
+                            confirmButton: 'rounded-xl px-6 py-3'
+                        }
+                    });
+                });
+        });
+
+        // Reset form
+        function resetForm() {
+            $('#complainForm')[0].reset();
+            $('#editId').val('');
+            $('#date').val(new Date().toISOString().split('T')[0]);
+            currentEditId = null;
+
+            // Reset TomSelect dropdowns
+            ['#product', '#store', '#responsibleTeam'].forEach(selector => {
+                const ts = $(selector)[0].tomselect;
+                if (ts) ts.clear();
+            });
+
+            // Reset pipeline stepper to default (reported)
+            document.querySelectorAll('.pipeline-step').forEach(step => {
+                step.classList.remove('reported', 'in_progress', 'pending_close', 'closed');
+                const icon = step.querySelector('.fas');
+                if (icon) icon.style.animationPlayState = 'paused';
+            });
+            const defaultStep = document.querySelector('.pipeline-step[data-value="reported"]');
+            if (defaultStep) {
+                defaultStep.classList.add('reported');
+                document.getElementById('pipelineValue').value = 'reported';
+                const icon = defaultStep.querySelector('.fas');
+                if (icon) icon.style.animationPlayState = 'running';
+            }
+
+            $('#pipelineValue').val('reported').parent().addClass('d-none');
+
+        }
+
+        // Update data table
+        function updateDataTable() {
+            const tbody = $('#dataTableBody');
+            tbody.empty();
+
+            if (complainData.length === 0) {
+                tbody.html(`
+                    <tr>
+                        <td colspan="8" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center justify-center">
+                                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                    <i class="fas fa-inbox text-3xl text-gray-400"></i>
+                                </div>
+                                <h3 class="text-lg font-semibold text-gray-600 mb-2">ไม่มีข้อมูล</h3>
+                                <p class="text-gray-500 text-sm">ยังไม่มีข้อร้องเรียนในระบบ</p>
+                            </div>
+                        </td>
+                    </tr>
+                `);
+                return;
+            }
+
+            $.each(complainData, function (index, item) {
+                let severityText, severityClass;
+                if (item.severity == '1') {
+                    severityText = 'ต่ำ';
+                    severityClass = 'severity-green';
+                } else if (item.severity == '2') {
+                    severityText = 'ปานกลาง';
+                    severityClass = 'severity-yellow';
+                } else {
+                    severityText = 'สูง';
+                    severityClass = 'severity-red';
+                }
+
+                const typeText = {
+                    'A': 'Order ผิด',
+                    'B': 'ส่งสินค้าไม่ครบ/ผิด',
+                    'C': 'สินค้าไม่ได้คุณภาพ',
+                    'D': 'ส่งไม่ถูกต้อง',
+                    'E': 'เอกสารผิด',
+                    'F': 'ตกเครื่อง'
+                }[item.type] || item.type;
+
+                // Pipeline status mapping
+                const pipelineStatus = {
+                    'reported': { text: 'แจ้งเรื่อง', class: 'bg-blue-100 text-blue-800', icon: 'fa-flag' },
+                    'in_progress': { text: 'กำลังแก้ไข', class: 'bg-orange-100 text-orange-800', icon: 'fa-cog' },
+                    'pending_close': { text: 'รอปิดเคส', class: 'bg-yellow-100 text-yellow-800', icon: 'fa-check-circle' },
+                    'closed': { text: 'ปิดเคสแล้ว', class: 'bg-green-100 text-green-800', icon: 'fa-check-double' }
+                };
+                const status = pipelineStatus[item.pipeline] || pipelineStatus['reported'];
+
+                const row = $('<tr>', {
+                    class: 'table-row-hover border-b border-gray-100',
+                    css: { 'animation-delay': `${index * 0.1}s` }
+                }).html(`
+                    <td class="px-3 md:px-6 py-3 md:py-4 font-medium text-gray-800 text-xs md:text-sm whitespace-nowrap">${item.date}</td>
+                    <td class="px-3 md:px-6 py-3 md:py-4 font-medium text-gray-800 text-xs md:text-sm">
+                        <div class="max-w-[120px] truncate" title="${item.product}">${item.product}</div>
+                    </td>
+                    <td class="px-3 md:px-6 py-3 md:py-4 font-medium text-gray-800 text-xs md:text-sm">
+                        <div class="max-w-[100px] truncate" title="${item.store}">${item.store}</div>
+                    </td>
+                    <td class="px-3 md:px-6 py-3 md:py-4">
+                        ${typeText && type !== ""? ` <span class="px-2 md:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold whitespace-nowrap">
+                            ${typeText}
+                        </span>` : ""}
+                       
+                    </td>
+                    <td class="px-3 md:px-6 py-3 md:py-4">
+                        ${severityText && severityText !== "" ? `<span class="px-2 md:px-3 py-1 rounded-full text-white text-xs font-semibold ${severityClass} whitespace-nowrap">
+                            ${severityText}
+                        </span>` : ""}
+                    </td>
+                    <td class="px-3 md:px-6 py-3 md:py-4">
+                        ${status ? `<span class="px-2 md:px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${status.class} inline-flex items-center gap-1">
+                            <i class="fas ${status.icon} text-xs"></i>
+                            ${status.text}
+                        </span>` : ""}
+                    </td>
+                    <td class="px-3 md:px-6 py-3 md:py-4 font-bold text-green-600 text-xs md:text-sm whitespace-nowrap">${item.claimValue.toLocaleString()} ฿</td>
+                    <td class="px-3 md:px-6 py-3 md:py-4">
+                        <div class="flex space-x-1 md:space-x-2">
+                            <button onclick="editData(${item.id})" class="px-2 md:px-3 py-1 md:py-2 btn-warning text-white rounded-lg text-xs md:text-sm font-semibold">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteData(${item.id})" class="px-2 md:px-3 py-1 md:py-2 btn-danger text-white rounded-lg text-xs md:text-sm font-semibold">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `);
+
+                tbody.append(row);
+            });
+        }
+
+        function editData(id) {
+            const item = complainData.find(data => data.id === id);
+            if (!item) return;
+
+            // กรอกค่าปกติในฟอร์ม
+            $('#editId').val(item.id);
+            $('#date').val(item.date);
+            $('#quantity').val(item.quantity);
+            $('#problem').val(item.problem);
+            $('#unit').val(item.unit);
+            $('#type').val(item.type);
+            $('#severity').val(item.severity);
+            $('#claimValue').val(item.claimValue);
+            $('#teamRepresentative').val(item.teamRepresentative);
+            $('#product').val(item.product);
+            $('#store').val(item.store);
+            $('#responsibleTeam').val(item.responsibleTeam);
+
+            // Set pipeline stepper
+            $('.pipeline-step').each(function() {
+                $(this).removeClass('reported in_progress pending_close closed');
+                const icon = $(this).find('.fas');
+                if (icon.length) icon.css('animation-play-state', 'paused');
+            });
+
+            const pipelineValue = item.pipeline || 'reported';
+            const activeStep = $(`.pipeline-step[data-value="${pipelineValue}"]`);
+            if (activeStep.length) {
+                activeStep.addClass(pipelineValue);
+                if (pipelineValue === 'in_progress') {
+                    const icon = activeStep.find('.fas');
+                    if (icon.length) icon.css('animation-play-state', 'running');
+                }
+            }
+            $('#pipelineValue').val(pipelineValue);
+
+            console.log("pipeline =", item);
+
+            // ----------------------------------------------------
+            $('#formTitle').text('แก้ไขข้อมูล Complain');
+            showTab('form', true);
+        }
+
+
+
+        // Delete data
+        function deleteData(id) {
+            Swal.fire({
+                title: 'ยืนยันการลบ? 🗑️',
+                text: 'คุณต้องการลบข้อมูลนี้หรือไม่?',
+                icon: 'warning',
+                showCancelButton: true,
+                background: '#ffffff',
+                color: '#1f2937',
+                iconColor: '#f59e0b',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#9ca3af',
+                confirmButtonText: 'ลบเลย',
+                cancelButtonText: 'ยกเลิก',
+                customClass: {
+                    popup: 'rounded-3xl shadow-2xl',
+                    title: 'text-gray-900 font-bold',
+                    htmlContainer: 'text-gray-600',
+                    confirmButton: 'rounded-xl px-6 py-3',
+                    cancelButton: 'rounded-xl px-6 py-3'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Show loading
+                    Swal.fire({
+                        title: 'กำลังลบข้อมูล...',
+                        html: '<div class="pulse-animation">กรุณารอสักครู่</div>',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        background: '#ffffff',
+                        color: '#1f2937',
+                        customClass: {
+                            popup: 'rounded-3xl shadow-2xl',
+                            title: 'text-gray-900 font-bold',
+                            htmlContainer: 'text-gray-600'
+                        },
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    // Delete from Google Sheets
+                    deleteDataFromSheets(id)
+                        .then(response => {
+                            // Remove from local data
+                            complainData = complainData.filter(item => item.id !== id);
+                            updateDataTable();
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'ลบข้อมูลสำเร็จ! ✅',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                background: '#ffffff',
+                                color: '#1f2937',
+                                iconColor: '#10b981',
+                                customClass: {
+                                    popup: 'rounded-3xl shadow-2xl',
+                                    title: 'text-gray-900 font-bold'
+                                }
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Error deleting data:', error);
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'เกิดข้อผิดพลาด! ❌',
+                                text: 'ไม่สามารถลบข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
+                                background: '#ffffff',
+                                color: '#1f2937',
+                                iconColor: '#ef4444',
+                                confirmButtonColor: '#374151',
+                                confirmButtonText: 'ลองอีกครั้ง',
+                                customClass: {
+                                    popup: 'rounded-3xl shadow-2xl',
+                                    title: 'text-gray-900 font-bold',
+                                    htmlContainer: 'text-gray-600',
+                                    confirmButton: 'rounded-xl px-6 py-3'
+                                }
+                            });
+                        });
+                }
+            });
+        }
+
+        // Search data
+        function searchData() {
+            const searchTerm = $('#searchInput').val().toLowerCase();
+            $('#dataTableBody tr').each(function () {
+                const text = $(this).text().toLowerCase();
+                $(this).toggle(text.includes(searchTerm)).addClass('slide-in');
+            });
+        }
+
+        // Generate report
+        function generateReport() {
+            const reportDate = $('#reportDate').val();
+            const filteredData = complainData.filter(item => item.date === reportDate);
+
+            // Get today's data
+            const today = new Date().toISOString().split('T')[0];
+            const todayData = complainData.filter(item => item.date === today);
+
+            const $reportContent = $('#reportContent');
+
+            // Calculate statistics
+            const totalCases = filteredData.length;
+            const totalValue = filteredData.reduce((sum, item) => sum + item.claimValue, 0);
+
+            const severityCount = {
+                '1': filteredData.filter(item => item.severity === '1').length,
+                '2': filteredData.filter(item => item.severity === '2').length,
+                '3': filteredData.filter(item => item.severity === '3').length
+            };
+
+            const typeCount = {};
+            $.each(filteredData, function (index, item) {
+                typeCount[item.type] = (typeCount[item.type] || 0) + 1;
+            });
+
+            const createTableRows = (data) => {
+                return data.map(item => {
+                    let severityText, severityClass;
+                    if (item.severity == '1') {
+                        severityText = 'ต่ำ';
+                        severityClass = 'severity-green';
+                    } else if (item.severity == '2') {
+                        severityText = 'ปานกลาง';
+                        severityClass = 'severity-yellow';
+                    } else {
+                        severityText = 'สูง';
+                        severityClass = 'severity-red';
+                    }
+                    const typeText = {
+                        'A': 'Order ผิด',
+                        'B': 'ส่งสินค้าไม่ครบ/ผิด',
+                        'C': 'สินค้าไม่ได้คุณภาพ',
+                        'D': 'ส่งไม่ถูกต้อง',
+                        'E': 'เอกสารผิด',
+                        'F': 'ตกเครื่อง'
+                    }[item.type] || item.type;
+
+                    return `
+                        <tr class="border-b border-gray-100">
+                            <td class="px-4 py-3 text-sm font-medium text-gray-800">${item.product}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">${item.store}</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
+                                    ${typeText}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 rounded text-white text-xs font-semibold ${severityClass}">
+                                    ${severityText}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-sm font-bold text-green-600">${item.claimValue.toLocaleString()} ฿</td>
+                        </tr>
+                    `;
+                }).join('');
+            };
+
+            const dataTable = filteredData.length > 0 ? `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="gray-light-bg">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700">สินค้า</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700">ร้านค้า</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700">ประเภท</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700">ความรุนแรง</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700">มูลค่า</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${createTableRows(filteredData)}
+                        </tbody>
+                    </table>
+                </div>
+            ` : `
+                <div class="text-center py-8">
+                    <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-info-circle text-lg text-gray-400"></i>
+                    </div>
+                    <p class="text-gray-500 text-sm">ไม่มีข้อมูลในวันที่เลือก</p>
+                </div>
+            `;
+
+            if (totalCases === 0) {
+                $reportContent.html(`
+                    <div class="col-span-3 stat-card rounded-xl shadow-lg p-8 text-center">
+                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-info-circle text-2xl text-gray-400"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-600 mb-2">ไม่พบข้อมูล</h3>
+                        <p class="text-gray-500 text-sm">ไม่พบข้อมูลในวันที่เลือก</p>
+                    </div>
+                    
+                    <div class="col-span-3 stat-card rounded-xl shadow-lg p-6 card-hover mt-6">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-calendar-day text-white text-sm"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800">ข้อมูลในวันที่เลือก (${reportDate})</h3>
+                            <span class="ml-auto px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">${filteredData.length} เคส</span>
+                        </div>
+                        ${dataTable}
+                    </div>
+                `);
+            } else {
+                $reportContent.html(`
+                    <div class="stat-card rounded-xl shadow-lg p-6 card-hover">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-10 h-10 gray-bg rounded-lg flex items-center justify-center">
+                                <i class="fas fa-clipboard-list text-white text-sm"></i>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-3xl font-bold gray-accent">${totalCases}</p>
+                                <p class="text-gray-600 font-medium">เคส</p>
+                            </div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-1">สรุปรวม</h3>
+                        <p class="text-gray-500 text-sm">วันที่ ${reportDate}</p>
+                    </div>
+                    
+                    <div class="stat-card rounded-xl shadow-lg p-6 card-hover">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-money-bill-wave text-white text-sm"></i>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-bold text-green-600">${totalValue.toLocaleString()}</p>
+                                <p class="text-gray-600 font-medium">บาท</p>
+                            </div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-1">มูลค่ารวม</h3>
+                        <p class="text-gray-500 text-sm">ค่าเสียหายทั้งหมด</p>
+                    </div>
+                    
+                    <div class="stat-card rounded-xl shadow-lg p-6 card-hover">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-exclamation-triangle text-white text-sm"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800">ความรุนแรง</h3>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                                    <span class="text-gray-700 font-medium">Green</span>
+                                </div>
+                                <span class="font-semibold text-green-600">${severityCount['1']} เคส</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                                    <span class="text-gray-700 font-medium">Yellow</span>
+                                </div>
+                                <span class="font-semibold text-yellow-600">${severityCount['2']} เคส</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                                    <span class="text-gray-700 font-medium">Red</span>
+                                </div>
+                                <span class="font-semibold text-red-600">${severityCount['3']} เคส</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-span-3 stat-card rounded-xl shadow-lg p-6 card-hover">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-calendar-day text-white text-sm"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800">ข้อมูลในวันที่เลือก (${reportDate})</h3>
+                            <span class="ml-auto px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">${filteredData.length} เคส</span>
+                        </div>
+                        ${dataTable}
+                    </div>
+                `);
+            }
+        }
+
+        // Send email report
+        // function sendEmailReport() {
+        //     Swal.fire({
+        //         title: '📧 ส่งรายงานทางอีเมล',
+        //         input: 'email',
+        //         inputLabel: 'อีเมลผู้รับ',
+        //         inputPlaceholder: 'example@company.com',
+        //         showCancelButton: true,
+        //         confirmButtonText: 'ส่งเลย',
+        //         cancelButtonText: 'ยกเลิก',
+        //         background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+        //         color: '#1f2937',
+        //         confirmButtonColor: '#374151',
+        //         cancelButtonColor: '#9ca3af',
+        //         inputValidator: (value) => {
+        //             if (!value) {
+        //                 return 'กรุณากรอกอีเมล'
+        //             }
+        //             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        //                 return 'รูปแบบอีเมลไม่ถูกต้อง'
+        //             }
+        //         }
+        //     }).then((result) => {
+        //         if (result.isConfirmed) {
+        //             Swal.fire({
+        //                 title: 'กำลังส่งอีเมล... 📤',
+        //                 html: '<div class="pulse-animation">กรุณารอสักครู่</div>',
+        //                 allowOutsideClick: false,
+        //                 showConfirmButton: false,
+        //                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        //                 color: 'white',
+        //                 didOpen: () => {
+        //                     Swal.showLoading();
+        //                 }
+        //             });
+
+        //             setTimeout(() => {
+        //                 Swal.fire({
+        //                     icon: 'success',
+        //                     title: 'ส่งรายงานสำเร็จ! ✅',
+        //                     text: `ส่งรายงานไปยัง ${result.value} เรียบร้อยแล้ว`,
+        //                     timer: 3000,
+        //                     showConfirmButton: false,
+        //                     background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+        //                     color: 'white'
+        //                 });
+        //             }, 2000);
+        //         }
+        //     });
+        // }
+
+        // Search input event listener
+        $('#searchInput').on('keyup', function (e) {
+            if (e.key === 'Enter') {
+                searchData();
+            }
+        });
+
+        // Add some interactive effects
+        $(document).ready(function () {
+            // Add hover effects to buttons
+            $('button').hover(
+                function () {
+                    $(this).css('transform', 'translateY(-2px)');
+                },
+                function () {
+                    $(this).css('transform', 'translateY(0)');
+                }
+            );
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/plugins/rangePlugin.js"></script>
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+</body>
+
+</html>
