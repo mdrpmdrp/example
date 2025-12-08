@@ -36,7 +36,7 @@ function getOrCreateSheet(sheetName = 'ComplainData') {
       const headers = [
         'ID', 'วันที่', 'สินค้า', 'จำนวน', 'หน่วย', 'ปัญหา', 'ร้านค้า',
         'ประเภท', 'ความรุนแรง', 'มูลค่าเคลม', 'ทีมรับผิดชอบ',
-        'ชื่อตัวแทนทีม', 'แนวทางแก้ไข 1', 'แนวทางแก้ไข 2', 'วันที่สร้าง'
+        'ชื่อตัวแทนทีม', 'Pipeline', 'แนวทางแก้ไข (JSON)', 'วันที่สร้าง'
       ];
 
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -58,11 +58,11 @@ function getOrCreateSheet(sheetName = 'ComplainData') {
       sheet.setColumnWidth(7, 120);  // ร้านค้า
       sheet.setColumnWidth(8, 100);  // ประเภท
       sheet.setColumnWidth(9, 100);  // ความรุนแรง
-      sheet.setColumnWidth(10, 120);  // มูลค่าเคลม
+      sheet.setColumnWidth(10, 120); // มูลค่าเคลม
       sheet.setColumnWidth(11, 150); // ทีมรับผิดชอบ
       sheet.setColumnWidth(12, 150); // ชื่อตัวแทนทีม
-      sheet.setColumnWidth(13, 200); // แนวทางแก้ไข 1
-      sheet.setColumnWidth(14, 200); // แนวทางแก้ไข 2
+      sheet.setColumnWidth(13, 100); // Pipeline
+      sheet.setColumnWidth(14, 300); // แนวทางแก้ไข (JSON)
       sheet.setColumnWidth(15, 120); // วันที่สร้าง
 
       // Freeze header row
@@ -80,6 +80,21 @@ function getOrCreateSheet(sheetName = 'ComplainData') {
   return sheet;
 }
 
+function getComplainId() {
+  const prefix = 'C';
+  const sheet = getOrCreateSheet('ComplainData');
+  const lastId = sheet.getRange(2,1,sheet.getLastRow(),1).getValues().flat().filter(id => id !== "").pop();
+  const nextIdNum = lastId ? parseInt(lastId.slice(1)) + 1 : 1;
+  return prefix + String(nextIdNum).padStart(5, '0');
+}
+
+function getFollowUpId() {
+  const sheet = getOrCreateSheet('FollowUpData');
+  const lastId = sheet.getRange(2,1,sheet.getLastRow(),1).getValues().flat().filter(id => id !== "").pop();
+  const nextIdNum = lastId ? parseInt(lastId) + 1 : 1;
+  return String(nextIdNum).padStart(6, '0');
+}
+
 // Get all data from sheet - Called by google.script.run.getData()
 function getData() {
   try {
@@ -90,8 +105,8 @@ function getData() {
       return { success: true, data: [] };
     }
 
-    // Read only 15 columns (exclude timestamp column 16)
-    const range = sheet.getRange(2, 1, lastRow - 1, 15);
+    // Read columns including solutions (exclude timestamp)
+    const range = sheet.getRange(2, 1, lastRow - 1, 14);
     const values = range.getValues();
 
     // Pre-allocate array for better performance
@@ -100,6 +115,17 @@ function getData() {
     // Use for loop instead of map for better performance with large datasets
     for (let i = 0; i < values.length; i++) {
       const row = values[i];
+      
+      // Parse solutions JSON
+      let solutions = [];
+      try {
+        if (row[12] && typeof row[12] === 'string') {
+          solutions = JSON.parse(row[12]);
+        }
+      } catch (e) {
+        console.warn('Failed to parse solutions for row', i, e);
+      }
+      
       data[i] = {
         id: row[0],
         date: formatDateFast(row[1]),
@@ -113,9 +139,8 @@ function getData() {
         claimValue: row[9],
         responsibleTeam: row[10],
         teamRepresentative: row[11],
-        solution1: row[12],
-        solution2: row[13],
-        pipeline: row[14]
+        solutions: solutions,
+        pipeline: row[13]
       };
     }
 
@@ -130,18 +155,14 @@ function getData() {
 // Add new data to sheet - Called by google.script.run.addData(formData)
 function addData(formData) {
   try {
-    const sheet = getOrCreateSheet();
+    const sheet = getOrCreateSheet('ComplainData');
     const timestamp = new Date();
 
-    // Get next ID
-    const lastRow = sheet.getLastRow();
-    let nextId = 1;
-
-    if (lastRow > 1) {
-      const lastId = sheet.getRange(lastRow, 1).getValue();
-      nextId = lastId + 1;
-    }
-
+    const nextId = getComplainId();
+    
+    // Convert solutions array to JSON string
+    const solutionsJson = formData.solutions ? JSON.stringify(formData.solutions) : '';
+    
     const rowData = [
       nextId,
       formData.date,
@@ -151,12 +172,11 @@ function addData(formData) {
       formData.problem,
       formData.store,
       formData.type,
-      String(formData.severity), // 👈 แปลงเป็น string ตรงนี้
+      String(formData.severity),
       formData.claimValue,
       formData.responsibleTeam,
       formData.teamRepresentative,
-      formData.solution1,
-      formData.solution2,
+      solutionsJson,
       formData.pipeline,
       timestamp
     ];
@@ -170,7 +190,7 @@ function addData(formData) {
 
     // Alternate row colors
     if (newRowNum % 2 === 0) {
-      const newRowRange = sheet.getRange(newRowNum, 1, 1, 16);
+      const newRowRange = sheet.getRange(newRowNum, 1, 1, 15);
       newRowRange.setBackground('#f9fafb');
     }
 
@@ -219,6 +239,9 @@ function updateData(formData) {
     const actualRow = rowIndex + 2; // +2 because array is 0-indexed and we start from row 2
     const timestamp = new Date();
 
+    // Convert solutions array to JSON string
+    const solutionsJson = formData.solutions ? JSON.stringify(formData.solutions) : '';
+
     const rowData = [
       formData.id,
       formData.date,
@@ -228,17 +251,16 @@ function updateData(formData) {
       formData.problem,
       formData.store,
       formData.type,
-      String(formData.severity), // 👈 แปลงเป็น string ตรงนี้
+      String(formData.severity),
       formData.claimValue,
       formData.responsibleTeam,
       formData.teamRepresentative,
-      formData.solution1,
-      formData.solution2,
+      solutionsJson,
       formData.pipeline,
       timestamp
     ];
 
-    sheet.getRange(actualRow, 1, 1, 16).setValues([rowData]);
+    sheet.getRange(actualRow, 1, 1, 15).setValues([rowData]);
 
     // // Send notification asynchronously (non-blocking)
     // try {
@@ -373,4 +395,41 @@ function testSetup() {
     console.error('Setup error:', error);
     return 'Setup failed: ' + error.toString();
   }
+}
+
+function migrateAddSolutionsColumn() {
+  const sheet = getOrCreateSheet('ComplainData');
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow <= 1) {
+    console.log('No data to migrate.');
+    return;
+  }
+
+  // Insert new column for solutions at column 14
+  sheet.insertColumnAfter(12);
+  sheet.getRange(1, 13).setValue('แนวทางแก้ไข');
+
+  // Migrate existing solution columns into JSON array
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, 17); // Including old solution columns
+  const data = dataRange.getValues();
+  let idPrefix = 'F'
+  for (let i = 0; i < data.length-1; i++) {
+    const row = data[i];
+    const solutions = [];
+
+    // Assuming old solution columns are at index 13 and 14
+    if (row[13]) solutions.push({id: idPrefix + String(i + 1).padStart(5, '0'), text: row[13], createAt: row[16]});
+    if (row[14]) solutions.push({id: idPrefix + String(i + 1).padStart(5, '0'), text: row[14], createAt: row[16]});
+
+    // Set JSON string in new solutions column
+    row[12] = JSON.stringify(solutions);
+    // Clear old solution columns
+    // row[14] = '';
+  }
+
+  // Write back migrated data
+  sheet.getRange(2, 1, lastRow - 1, 17).setValues(data);
+
+  console.log('Migration completed successfully.');
 }
