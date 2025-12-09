@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
+    
+    body {
+      font-family: 'Sarabun', sans-serif;
+      font-size: 11pt;
+      color: #333;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 20mm;
+      margin: 10mm auto;
+      border: 1px #D3D3D3 solid;
+      background: white;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+      box-sizing: border-box;
+    }
+
+    .header, .project-details, .signatures, .footer {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #333;
+      padding-bottom: 15px;
+    }
+    
+    .header .logo-address {
+      font-size: 10pt;
+      line-height: 1.5;
+    }
+
+    .header .doc-title {
+      text-align: center;
+      flex-grow: 1;
+      padding: 0 20px;
+    }
+
+    .header .doc-title h2 {
+      margin: 0;
+      font-size: 18pt;
+      font-weight: 700;
+    }
+
+    .header .doc-info {
+      border: 1px solid #333;
+      padding: 10px;
+      min-width: 180px;
+      font-size: 10pt;
+    }
+
+    .project-details {
+      margin-top: 25px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .project-details h3 {
+      margin: 0 0 5px 0;
+      font-size: 12pt;
+    }
+    
+    h3 {
+        font-size: 12pt;
+        margin-top: 25px;
+        margin-bottom: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 10pt;
+    }
+
+    th, td {
+      border: 1px solid #333;
+      padding: 8px;
+      text-align: left;
+    }
+    
+    th {
+      background-color: #f2f2f2;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .summary-section {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    
+    .summary-table {
+      width: 50%;
+      border-collapse: collapse;
+    }
+    
+    .summary-table td {
+      border: 1px solid #333;
+      padding: 8px;
+    }
+    
+    .summary-table .label {
+      text-align: right;
+      font-weight: 700;
+    }
+    .summary-table .value {
+      text-align: right;
+    }
+
+    .signatures {
+      margin-top: 80px;
+      display: flex;
+      justify-content: space-around;
+      padding-top: 20px;
+    }
+    
+    .signature-box {
+      text-align: center;
+      width: 250px;
+      font-size: 11pt;
+    }
+    
+    .signature-box .line {
+      border-bottom: 1px dotted #333;
+      margin-top: 60px;
+      margin-bottom: 5px;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 9pt;
+      color: #777;
+      text-align: left;
+    }
+
+    @media print {
+      body {
+        background-color: white;
+      }
+      .page {
+        margin: 0;
+        border: none;
+        width: auto;
+        min-height: initial;
+        box-shadow: none;
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="logo-address">
+        <!-- LOGO PLACEHOLDER: Replace the src below with your factory's logo URL -->
+        <img src="[[LOGO_IMAGE]]" alt="Company Logo" style="width: 150px; height: auto; margin-bottom: 10px;">
+        <strong>ห้างหุ้นส่วนจำกัด ที.ที.เอ็น.สเตนเลส</strong><br>
+        22/6 หมู่ 7 ตำบลคลองมะเดื่อ, อำเภอกระทุ่มแบน<br>
+        จังหวัดสมุทรสาคร 74110<br>
+        โทร. 0-3487-7524 แฟ็กซ์ 0-3487-7560
+      </div>
+      <div class="doc-title">
+        <h2>รายงานสรุปค่าใช้จ่าย</h2>
+      </div>
+      <div class="doc-info">
+        <strong>เลขที่:</strong> ............................<br>
+        <strong>วันที่:</strong> <?= new Date().toLocaleDateString('th-TH') ?><br>
+        <strong>กำหนดส่ง:</strong> ............................<br>
+      </div>
+    </div>
+
+    <div class="project-details">
+      <h3><strong>โปรเจกต์:</strong> <?= project.projectName ?> (<?= project.projectCode ?>)</h3>
+      <p><strong>สถานะ:</strong> <?= project.status ?></p>
+    </div>
+
+    <h3>รายการเบิกจ่ายวัสดุ</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 15%;">วันที่</th>
+          <th>รายการ (ชื่อวัสดุ)</th>
+          <th style="width: 10%; text-align: right;">จำนวน</th>
+          <th style="width: 20%; text-align: right;">ราคา/หน่วย (บาท)</th>
+          <th style="width: 20%; text-align: right;">ราคารวม (บาท)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <? if (transactions.length > 0) { ?>
+          <? for (var i = 0; i < transactions.length; i++) { ?>
+            <tr>
+              <td><?= transactions[i].date ?></td>
+              <td><?= transactions[i].productName ?></td>
+              <td style="text-align: right;"><?= transactions[i].quantity ?></td>
+              <td style="text-align: right;"><?= transactions[i].pricePerUnit ?></td>
+              <td style="text-align: right;"><?= transactions[i].totalPrice ?></td>
+            </tr>
+          <? } ?>
+        <? } else { ?>
+            <tr><td colspan="5" style="text-align:center;">- ไม่มีรายการเบิกจ่าย -</td></tr>
+        <? } ?>
+      </tbody>
+    </table>
+
+    <div class="summary-section">
+      <table class="summary-table">
+        <tr>
+          <td class="label">รวมเป็นเงิน</td>
+          <td class="value"><?= totalCost ?></td>
+        </tr>
+        <tr>
+          <td class="label">ภาษีมูลค่าเพิ่ม 7%</td>
+          <td class="value"><?= vat ?></td>
+        </tr>
+        <tr>
+          <td class="label">ยอดเงินสุทธิ</td>
+          <td class="value"><?= grandTotal ?></td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="clear: both;"></div>
+
+    <div class="signatures">
+      <div class="signature-box">
+        <div class="line"></div>
+        (...........................................)<br>ผู้ขอซื้อ
+      </div>
+      <div class="signature-box">
+        <div class="line"></div>
+        (...........................................)<br>ผู้อนุมัติ
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>รายงาน ณ วันที่: <?= generatedDate ?></p>
+    </div>
+  </div>
+</body>
+</html>
+

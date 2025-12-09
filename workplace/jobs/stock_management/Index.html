@@ -1,0 +1,2361 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการคลังสินค้า</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    
+    <style>
+    /* =================================================================
+        --- FONTS & BASE STYLES ---
+        ================================================================= */
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+
+    body {
+        font-family: 'Sarabun', sans-serif;
+    }
+
+    /* Custom scrollbar for a better look */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    /* =================================================================
+        --- LAYOUT & THEME ---
+        ================================================================= */
+    .business-gradient { background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+
+    .sidebar-item {
+        display: flex; align-items: center; width: 100%;
+        padding: 0.75rem 1rem; border-radius: 0.5rem;
+        transition: all 0.2s ease-in-out; color: #d1d5db; cursor: pointer;
+    }
+    .sidebar-item:hover { background-color: rgba(255, 255, 255, 0.1); color: white; }
+    .sidebar-item.active {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        color: white; font-weight: 600;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    }
+    .sidebar-item i { font-size: 1.25rem; margin-right: 0.75rem; }
+
+    .metric-card { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+    .metric-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
+
+    /* =================================================================
+        --- FORMS & MODALS ---
+        ================================================================= */
+    .form-label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
+    .form-input, .form-textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.5rem 0.75rem; transition: all 0.2s; }
+    .form-input:focus, .form-textarea:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
+    .form-input-invalid, .form-textarea-invalid { border-color: #ef4444; }
+    .form-input-valid, .form-textarea-valid { border-color: #22c55e; }
+
+    /* --- Transaction Type Buttons --- */
+    .transaction-type-btn { display: flex; align-items: center; justify-content: center; padding: 0.75rem; border-radius: 0.5rem; border: 2px solid transparent; font-weight: 600; cursor: pointer; transition: all 0.2s ease-in-out; }
+    .transaction-type-btn.in { background-color: #f0fdf4; color: #166534; }
+    .transaction-type-btn.in.active { background-color: #22c55e; color: white; border-color: #16a34a; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .transaction-type-btn.out { background-color: #fef2f2; color: #991b1b; }
+    .transaction-type-btn.out.active { background-color: #ef4444; color: white; border-color: #dc2626; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    
+    /* =================================================================
+        --- SELECT2 LIBRARY STYLING ---
+        ================================================================= */
+    .select2-container--default .select2-selection--single { border: 1px solid #d1d5db; border-radius: 0.5rem; height: 42px; }
+    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 40px; padding-left: 0.75rem; color: #374151; }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 40px; }
+    .select2-container--default.select2-container--open .select2-selection--single { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
+    .select2-dropdown { border: 1px solid #d1d5db; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+    /* =================================================================
+        --- DASHBOARD & EDITOR STYLES ---
+        ================================================================= */
+    .chart-period-btn.active { background-color: white; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    
+    .drag-handle { cursor: grab; }
+    .sortable-ghost { opacity: 0.4; background: #c7d2fe; }
+
+    .toggle-switch { position: relative; display: inline-block; width: 40px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+    .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .toggle-slider { background-color: #4f46e5; }
+    input:checked + .toggle-slider:before { transform: translateX(16px); }
+
+    .row-highlight {
+        animation: highlight-fade 5s ease-in-out;
+    }
+    @keyframes highlight-fade {
+        0%, 100% { background-color: transparent; }
+        10%, 80% { background-color: #fefcbf; } /* light yellow */
+    }
+
+    .data-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .data-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 7px 10px -3px rgba(0,0,0,0.07), 0 4px 6px -2px rgba(0,0,0,0.05);
+    }
+
+    .form-error-text {
+        display: flex;
+        align-items: center;
+        font-size: 0.75rem;
+        color: #ef4444; /* red-500 */
+        margin-top: 0.25rem;
+        height: 1.25rem; /* Reserve space */
+    }
+    .form-error-text i {
+        margin-right: 0.25rem;
+    }
+
+    .empty-state-container {
+        text-align: center;
+        padding: 4rem 1rem;
+        background-color: #f9fafb; /* gray-50 */
+        border-radius: 0.75rem;
+        border: 2px dashed #e5e7eb; /* gray-200 */
+        color: #6b7280; /* gray-500 */
+    }
+    .empty-state-container i {
+        font-size: 4rem;
+        color: #d1d5db; /* gray-300 */
+    }
+
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+
+    <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] hidden">
+        <i class='bx bx-loader-alt bx-spin text-white text-6xl'></i>
+    </div>
+
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden xl:hidden"></div>
+
+    <div class="relative min-h-screen xl:flex">
+        <!-- Sidebar - Removed h-screen -->
+        <aside id="sidebar" class="w-72 bg-gray-800 text-gray-200 fixed inset-y-0 left-0 transform -translate-x-full xl:relative xl:translate-x-0 transition-transform duration-300 ease-in-out z-50 flex flex-col shadow-lg">
+            <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="business-gradient p-2 rounded-lg"><i class='bx bxs-store-alt text-2xl'></i></div>
+                    <h1 class="text-xl font-bold">คลังสินค้า</h1>
+                </div>
+                <button onclick="toggleSidebar()" class="xl:hidden text-gray-400 hover:text-white">
+                    <i class='bx bx-x text-2xl'></i>
+                </button>
+            </div>
+            
+            <nav class="flex-grow p-4 space-y-2">
+                <p class="px-3 text-xs font-semibold text-gray-400 uppercase">เมนูหลัก</p>
+                <button onclick="showSection('dashboard')" class="sidebar-item active"><i class='bx bxs-dashboard'></i><span>แดชบอร์ด</span></button>
+                <button onclick="showSection('products')" class="sidebar-item"><i class='bx bxs-package'></i><span>จัดการสินค้า</span></button>
+                <button onclick="showSection('transactions')" class="sidebar-item"><i class='bx bx-transfer'></i><span>บันทึกการเคลื่อนไหว</span></button>
+                <button onclick="showSection('projects')" class="sidebar-item"><i class='bx bxs-briefcase-alt-2'></i><span>จัดการโปรเจกต์</span></button>
+                <button onclick="showSection('reports')" class="sidebar-item"><i class='bx bxs-report'></i><span>รายงาน</span></button>
+
+                <p class="px-3 pt-4 text-xs font-semibold text-gray-400 uppercase">ตั้งค่าระบบ</p>
+                <button onclick="showSection('suppliers')" class="admin-only sidebar-item" style="display: none;"><i class='bx bxs-truck'></i><span>จัดการซัพพลายเออร์</span></button>
+                <button onclick="showSection('users')" class="admin-only sidebar-item" style="display: none;"><i class='bx bxs-user-account'></i><span>จัดการผู้ใช้</span></button>
+                <button onclick="showSection('auditlog')" class="admin-only sidebar-item" style="display: none;"><i class='bx bx-history'></i><span>ประวัติการใช้งาน</span></button>
+            </nav>
+
+            <div class="p-4 border-t border-gray-700">
+                <button class="sidebar-item"><i class='bx bx-help-circle'></i><span>ศูนย์ช่วยเหลือ</span></button>
+            </div>
+        </aside>
+
+        <div class="flex-1 flex flex-col">
+            <header class="bg-white shadow-md p-4 sticky top-0 z-30 flex justify-between xl:justify-end items-center space-x-4">
+                <button onclick="toggleSidebar()" class="xl:hidden text-gray-600">
+                    <i class='bx bx-menu text-2xl'></i>
+                </button>
+
+                <div class="flex items-center space-x-4">
+                    <div id="notification-container" class="relative">
+                        <button onclick="toggleNotificationDropdown()" class="text-gray-500 hover:text-gray-700">
+                            <i class='bx bxs-bell text-2xl'></i>
+                            <span id="notification-badge" class="absolute top-0 right-0 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
+                        </button>
+                        <div id="notification-dropdown" class="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl overflow-hidden z-50" style="display: none;">
+                            <div class="p-3 font-semibold text-sm border-b">การแจ้งเตือน</div>
+                            <div id="notification-list" class="max-h-80 overflow-y-auto"></div>
+                        </div>
+                    </div>
+
+                    <button onclick="syncAndReload()" class="text-gray-500 hover:text-gray-700" title="ซิงค์ข้อมูลล่าสุด"><i class='bx bx-sync text-2xl'></i></button>
+
+                    <div class="flex items-center space-x-2">
+                        <div id="user-avatar" class="w-8 h-8 business-gradient rounded-full flex items-center justify-center text-white font-bold text-sm"></div>
+                        <span id="userEmailDisplay" class="text-sm text-gray-600">...</span>
+                    </div>
+                    
+                    <button onclick="handleLogout()" class="text-gray-500 hover:text-gray-700" title="ออกจากระบบ"><i class='bx bx-log-out text-2xl'></i></button>
+                </div>
+            </header>
+
+            <main id="page-content" class="flex-1 p-4 xl:p-8 overflow-y-auto"></main>
+        </div>
+    </div>
+
+    <!-- HTML TEMPLATES -->
+    <template id="product-row-template">
+        <tr class="table-row">
+            <td class="p-4"><div class="font-bold product-name"></div><div class="text-xs text-gray-500 product-code"></div></td>
+            <td class="p-4 product-category"></td>
+            <td class="p-4 text-right product-stock"></td>
+            <td class="p-4 text-right product-price"></td>
+            <td class="p-4 text-center product-status"></td>
+            <td class="p-4 text-center">
+                <button class="admin-only text-blue-500 hover:text-blue-700 p-1 edit-btn" title="แก้ไข"><i class='bx bxs-edit'></i></button>
+                <button class="admin-only text-red-500 hover:text-red-700 p-1 delete-btn" title="ลบ"><i class='bx bxs-trash'></i></button>
+            </td>
+        </tr>
+    </template>
+    
+    <template id="product-card-template">
+        <div class="table-row bg-white rounded-lg shadow-md p-4 space-y-2 data-card">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="font-bold product-name"></p>
+                    <p class="text-xs text-gray-500 product-code"></p>
+                </div>
+                <div class="product-status"></div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-sm border-t pt-2">
+                <div>
+                    <p class="text-xs text-gray-500">ประเภท</p>
+                    <p class="font-medium product-category"></p>
+                </div>
+                <div class="text-center">
+                    <p class="text-xs text-gray-500">คงเหลือ</p>
+                    <p class="font-medium product-stock"></p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-gray-500">ราคา</p>
+                    <p class="font-medium product-price"></p>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 border-t pt-2 admin-only" style="display: none;">
+                <button class="text-blue-500 hover:text-blue-700 p-1 edit-btn flex items-center text-sm"><i class='bx bxs-edit mr-1'></i> แก้ไข</button>
+                <button class="text-red-500 hover:text-red-700 p-1 delete-btn flex items-center text-sm"><i class='bx bxs-trash mr-1'></i> ลบ</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="transaction-row-template">
+        <tr class="table-row">
+            <td class="p-4 text-sm transaction-date"></td>
+            <td class="p-4 text-sm font-bold transaction-type"></td>
+            <td class="p-4 text-sm product-name"></td>
+            <td class="p-4 text-sm text-right font-semibold transaction-quantity"></td>
+            <td class="p-4 text-sm project-note"></td>
+            <td class="p-4 text-xs text-gray-500 transaction-user"></td>
+            <td class="p-4 text-xs text-gray-500 transaction-timestamp"></td>
+        </tr>
+    </template>
+    
+    <template id="transaction-card-template">
+        <div class="table-row bg-white rounded-lg shadow-md p-4 space-y-2 data-card">
+             <div class="flex justify-between items-center">
+                <div class="transaction-type font-bold"></div>
+                <div class="text-xs text-gray-500 transaction-date"></div>
+            </div>
+            <div>
+                <p class="font-semibold product-name"></p>
+                <p class="text-sm">จำนวน: <span class="font-medium transaction-quantity"></span></p>
+            </div>
+            <div class="text-xs text-gray-600 border-t pt-2">
+                <p>โปรเจกต์/หมายเหตุ: <span class="project-note"></span></p>
+                <p>ผู้บันทึก: <span class="transaction-user"></span></p>
+                <p>เวลาบันทึก: <span class="transaction-timestamp"></span></p>
+            </div>
+        </div>
+    </template>
+
+    <template id="project-row-template">
+        <tr class="table-row hover:bg-gray-50 cursor-pointer">
+            <td class="p-4 project-code"></td>
+            <td class="p-4 font-bold project-name"></td>
+            <td class="p-4 font-semibold project-status"></td>
+            <td class="p-4 project-customer"></td> <!-- Added Customer -->
+            <td class="p-4 text-right text-red-600 font-semibold project-cost"></td>
+            <td class="p-4 text-center">
+                <button class="admin-only text-blue-500 hover:text-blue-700 p-1 edit-btn" title="แก้ไข"><i class='bx bxs-edit'></i></button>
+                <button class="admin-only text-red-500 hover:text-red-700 p-1 delete-btn" title="ลบ"><i class='bx bxs-trash'></i></button>
+            </td>
+        </tr>
+    </template>
+    
+    <template id="project-card-template">
+        <div class="table-row bg-white rounded-lg shadow-md p-4 space-y-2 cursor-pointer data-card">
+             <div class="flex justify-between items-start">
+                <div>
+                    <p class="font-bold project-name"></p>
+                    <p class="text-xs text-gray-500 project-code"></p>
+                </div>
+                <div class="font-semibold project-status"></div>
+            </div>
+             <div class="text-sm text-gray-600 border-t pt-2">
+                 <p>ลูกค้า: <span class="project-customer font-medium"></span></p> <!-- Added Customer -->
+             </div>
+            <div class="border-t pt-2">
+                <p class="text-sm text-gray-500">ค่าใช้จ่ายรวม</p>
+                <p class="text-red-600 font-semibold project-cost"></p>
+            </div>
+            <div class="flex justify-end space-x-2 border-t pt-2 admin-only" style="display: none;">
+                <button class="text-blue-500 hover:text-blue-700 p-1 edit-btn flex items-center text-sm"><i class='bx bxs-edit mr-1'></i> แก้ไข</button>
+                <button class="text-red-500 hover:text-red-700 p-1 delete-btn flex items-center text-sm"><i class='bx bxs-trash mr-1'></i> ลบ</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="supplier-row-template">
+        <tr class="table-row">
+            <td class="p-4 font-bold supplier-name"></td>
+            <td class="p-4 text-gray-600 supplier-contact"></td>
+            <td class="p-4 text-gray-600 supplier-phone"></td>
+            <td class="p-4 text-center">
+                <button class="admin-only text-blue-500 hover:text-blue-700 p-1 edit-btn" title="แก้ไข"><i class='bx bxs-edit'></i></button>
+                <button class="admin-only text-red-500 hover:text-red-700 p-1 delete-btn" title="ลบ"><i class='bx bxs-trash'></i></button>
+            </td>
+        </tr>
+    </template>
+    
+    <template id="supplier-card-template">
+        <div class="table-row bg-white rounded-lg shadow-md p-4 space-y-2 data-card">
+            <p class="font-bold supplier-name"></p>
+            <div class="text-sm text-gray-600 border-t pt-2">
+                <p>ผู้ติดต่อ: <span class="supplier-contact font-medium"></span></p>
+                <p>เบอร์โทร: <span class="supplier-phone font-medium"></span></p>
+            </div>
+            <div class="flex justify-end space-x-2 border-t pt-2 admin-only" style="display: none;">
+                <button class="text-blue-500 hover:text-blue-700 p-1 edit-btn flex items-center text-sm"><i class='bx bxs-edit mr-1'></i> แก้ไข</button>
+                <button class="text-red-500 hover:text-red-700 p-1 delete-btn flex items-center text-sm"><i class='bx bxs-trash mr-1'></i> ลบ</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="user-row-template">
+        <tr class="table-row">
+            <td class="p-4 font-bold user-name"></td>
+            <td class="p-4 text-gray-600 user-email"></td>
+            <td class="p-4 user-role"></td>
+            <td class="p-4 text-center user-status"></td>
+            <td class="p-4 text-sm text-gray-500 user-last-login"></td>
+            <td class="p-4 text-center">
+                <button class="admin-only text-blue-500 hover:text-blue-700 p-1 edit-btn" title="แก้ไข"><i class='bx bxs-edit'></i></button>
+                <button class="admin-only text-red-500 hover:text-red-700 p-1 delete-btn" title="ลบ"><i class='bx bxs-trash'></i></button>
+            </td>
+        </tr>
+    </template>
+    
+    <template id="user-card-template">
+        <div class="table-row bg-white rounded-lg shadow-md p-4 space-y-2 data-card">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="font-bold user-name"></p>
+                    <p class="text-xs text-gray-500 user-email"></p>
+                </div>
+                <div class="user-status"></div>
+            </div>
+            <div class="text-sm text-gray-600 border-t pt-2">
+                <p>สิทธิ์: <span class="user-role font-medium"></span></p>
+                <p class="text-xs">เข้าใช้ล่าสุด: <span class="user-last-login"></span></p>
+            </div>
+            <div class="flex justify-end space-x-2 border-t pt-2 admin-only" style="display: none;">
+                <button class="text-blue-500 hover:text-blue-700 p-1 edit-btn flex items-center text-sm"><i class='bx bxs-edit mr-1'></i> แก้ไข</button>
+                <button class="text-red-500 hover:text-red-700 p-1 delete-btn flex items-center text-sm"><i class='bx bxs-trash mr-1'></i> ลบ</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="audit-log-row-template">
+        <tr class="table-row">
+            <td class="p-4 text-sm text-gray-500 whitespace-nowrap log-timestamp"></td>
+            <td class="p-4 text-sm text-gray-700 log-user"></td>
+            <td class="p-4 text-sm font-semibold text-gray-800 log-action"></td>
+            <td class="p-4 text-sm text-gray-600 log-details"></td>
+        </tr>
+    </template>
+    
+    <template id="audit-log-card-template">
+        <div class="table-row bg-white rounded-lg shadow-md p-4 space-y-2 data-card">
+            <div class="flex justify-between items-start text-xs text-gray-500">
+                <p class="log-user"></p>
+                <p class="log-timestamp"></p>
+            </div>
+            <div class="border-t pt-2">
+                <p class="font-semibold text-gray-800 log-action"></p>
+                <p class="text-sm text-gray-600 log-details"></p>
+            </div>
+        </div>
+    </template>
+
+    <!-- Dashboard Templates -->
+    <template id="dashboard-list-item-template">
+        <div class="flex justify-between items-center text-sm">
+            <span class="text-gray-600 truncate item-name"></span>
+            <span class="font-bold item-value"></span>
+        </div>
+    </template>
+
+    <template id="reorder-row-template">
+        <tr class="table-row border-b hover:bg-gray-50 cursor-pointer">
+            <td class="p-2 item-name"></td>
+            <td class="p-2 text-right font-bold text-red-600 item-stock"></td>
+            <td class="p-2 text-right item-min-stock"></td>
+        </tr>
+    </template>
+
+    <template id="recent-tx-row-template">
+        <tr class="table-row border-b">
+            <td class="p-2 font-medium item-type"></td>
+            <td class="p-2 item-name"></td>
+            <td class="p-2 text-right font-bold item-quantity"></td>
+        </tr>
+    </template>
+    
+    <script>
+    // =================================================================
+    // --- GLOBAL STATE & CONFIGURATION ---
+    // =================================================================
+    const STATE = { allProducts: [], allTransactions: [], allProjects: [], allSuppliers: [], allUsers: [], productCategories: [], currentUser: {}, charts: {}, dashboardStats: {}, pagination: { currentPage: 1, itemsPerPage: 10, totalPages: 1, currentSearch: '', currentCategory: '', currentStockStatus: '' } };
+    let filterTimeout;
+
+
+    // =================================================================
+    // --- CORE APP INITIALIZATION ---
+    // =================================================================
+    window.onload = () => {
+        showLoader();
+        google.script.run.withSuccessHandler(user => {
+            if (!user) { handleError({message: "ไม่สามารถยืนยันตัวตนผู้ใช้ได้ กรุณาลองเข้าสู่ระบบใหม่"}); return; }
+            STATE.currentUser = user;
+            document.getElementById('userEmailDisplay').textContent = user.email;
+            if(document.getElementById('user-avatar') && user.email) { document.getElementById('user-avatar').textContent = user.email.charAt(0).toUpperCase(); }
+            loadInitialData();
+        }).withFailureHandler(handleError).getUserInfo();
+    };
+
+    function loadInitialData() {
+        google.script.run.withSuccessHandler(jsonString => {
+            const data = JSON.parse(jsonString || "{}");
+            if (!data || Object.keys(data).length === 0) { handleError({message: "ไม่ได้รับข้อมูลเริ่มต้นจากเซิร์ฟเวอร์"}); return; }
+            STATE.allProducts = data.allProducts || []; STATE.allTransactions = data.allTransactions || []; STATE.allProjects = data.allProjects || []; STATE.allSuppliers = data.allSuppliers || []; STATE.productCategories = data.categories || []; STATE.dashboardStats = data.dashboardStats || {};
+            updateNotifications(); showSection('dashboard'); hideLoader();
+        }).withFailureHandler(handleError).getDashboardData();
+    }
+
+    function refreshAllData(callback) {
+        showLoader();
+        google.script.run.withSuccessHandler(jsonString => {
+            const data = JSON.parse(jsonString || "{}");
+            if (!data) { handleError({message: "ไม่ได้รับข้อมูลรีเฟรชจากเซิร์ฟเวอร์"}); return; }
+            STATE.allProducts = data.allProducts || []; STATE.allTransactions = data.allTransactions || []; STATE.allProjects = data.allProjects || []; STATE.allSuppliers = data.allSuppliers || []; STATE.productCategories = data.categories || []; STATE.dashboardStats = data.dashboardStats || {};
+            updateNotifications(); if (callback) callback(); hideLoader();
+        }).withFailureHandler(handleError).getDashboardData();
+    }
+
+    function syncAndReload() {
+        showLoader();
+        google.script.run.withSuccessHandler(jsonString => {
+            const data = JSON.parse(jsonString || "{}");
+            if (!data) { handleError({message: "ไม่ได้รับข้อมูลซิงค์จากเซิร์ฟเวอร์"}); return; }
+            STATE.allProducts = data.allProducts || []; STATE.allTransactions = data.allTransactions || []; STATE.allProjects = data.allProjects || []; STATE.allSuppliers = data.allSuppliers || []; STATE.productCategories = data.categories || []; STATE.dashboardStats = data.dashboardStats || {};
+            updateNotifications(); showSection('dashboard'); hideLoader();
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'ซิงค์ข้อมูลล่าสุดสำเร็จ', showConfirmButton: false, timer: 2000 });
+        }).withFailureHandler(handleError).forceRefreshData();
+    }
+
+
+    // =================================================================
+    // --- UI & NAVIGATION ---
+    // =================================================================
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+    }
+
+    function showSection(sectionName) {
+        if (window.innerWidth < 1280) { // xl breakpoint
+            const sidebar = document.getElementById('sidebar');
+            if(!sidebar.classList.contains('-translate-x-full')) {
+               toggleSidebar();
+            }
+        }
+
+        document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
+        const button = document.querySelector(`button[onclick="showSection('${sectionName}')"]`);
+        if (button) button.classList.add('active');
+        const contentArea = document.getElementById('page-content');
+        contentArea.innerHTML = '';
+        switch (sectionName) {
+            case 'dashboard': renderDashboard(); break;
+            case 'products': renderProductsPage(); break;
+            case 'transactions': renderTransactionsPage(); break;
+            case 'projects': renderProjectsPage(); break;
+            case 'suppliers': renderSuppliersPage(); break;
+            case 'reports': renderReportsPage(); break;
+            case 'users': renderUsersPage(); break;
+            case 'auditlog': renderAuditLogPage(); break;
+        }
+        updateAdminUI();
+    }
+
+    function updateAdminUI() {
+        const isAdmin = STATE.currentUser.role === 'admin';
+        document.querySelectorAll('.admin-only').forEach(el => {
+            const isButton = el.tagName === 'BUTTON' || el.classList.contains('edit-btn') || el.classList.contains('delete-btn');
+            el.style.display = isAdmin ? (isButton ? 'inline-flex' : 'block') : 'none';
+        });
+    }
+
+    function toggleNotificationDropdown() {
+        const dropdown = document.getElementById('notification-dropdown');
+        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+
+    window.addEventListener('click', function(e) {
+        if (document.getElementById('notification-container') && !document.getElementById('notification-container').contains(e.target)) {
+            document.getElementById('notification-dropdown').style.display = 'none';
+        }
+    });
+    
+    function handleLogout() {
+        showConfirmModal('คุณต้องการออกจากระบบใช่หรือไม่?', () => {
+             // Redirect to the main script URL without parameters
+             window.top.location.href = "<?= ScriptApp.getService().getUrl() ?>";
+        }, { confirmButtonText: 'ใช่, ออกจากระบบ', icon: 'question' });
+    }
+
+    // =================================================================
+    // --- NOTIFICATION SYSTEM ---
+    // =================================================================
+    function updateNotifications() {
+        const lowStockProducts = STATE.allProducts.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.minStock || 0));
+        const badge = document.getElementById('notification-badge');
+        const list = document.getElementById('notification-list');
+        list.innerHTML = ''; 
+        if (lowStockProducts.length > 0) {
+            badge.textContent = lowStockProducts.length; badge.classList.remove('hidden');
+            lowStockProducts.forEach(p => {
+                const item = document.createElement('a');
+                item.href = '#'; item.className = 'block p-3 border-b text-sm hover:bg-gray-100';
+                item.innerHTML = `<strong class="font-semibold">${p.name}</strong><br><span class="text-xs text-red-600">สต็อกเหลือ ${p.stock} ชิ้น (ต่ำกว่าจุดสั่งซื้อ)</span>`;
+                item.onclick = (e) => { e.preventDefault(); goToProductFilter(p.name, 'low'); };
+                list.appendChild(item);
+            });
+        } else {
+            badge.classList.add('hidden');
+            list.innerHTML = '<p class="p-4 text-center text-gray-500 text-sm">ไม่มีการแจ้งเตือน</p>';
+        }
+    }
+
+    function goToProductFilter(searchTerm, stockStatus) {
+        STATE.pagination.currentSearch = searchTerm; STATE.pagination.currentStockStatus = stockStatus; showSection('products');
+    }
+
+    // =================================================================
+    // --- DASHBOARD PAGE LOGIC ---
+    // =================================================================
+    const DASHBOARD_COMPONENTS = {
+        metrics: { title: 'ภาพรวม', html: () => `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="metric-card bg-blue-600 p-6 rounded-xl shadow-lg text-white"><p class="text-blue-100 text-sm mb-1">SKU ทั้งหมด</p><p class="text-3xl font-bold mb-2" id="totalSKU">0</p></div>
+                    <div class="metric-card bg-green-600 p-6 rounded-xl shadow-lg text-white"><p class="text-green-100 text-sm mb-1">สต็อกคงเหลือ</p><p class="text-3xl font-bold mb-2" id="totalQuantity">0</p></div>
+                    <div class="metric-card bg-yellow-500 p-6 rounded-xl shadow-lg text-white"><p class="text-yellow-100 text-sm mb-1">มูลค่าคงคลัง</p><p class="text-3xl font-bold mb-2" id="inventoryValue">฿0</p></div>
+                    <div class="metric-card bg-red-600 p-6 rounded-xl shadow-lg text-white"><p class="text-red-100 text-sm mb-1">ต่ำกว่าจุดสั่งซื้อ</p><p class="text-3xl font-bold mb-2" id="reorderAlerts">0</p></div>
+                </div>` },
+        stockTrend: { title: 'แนวโน้มสต็อก', html: () => `<div class="bg-white rounded-xl shadow-lg p-6 flex flex-col">
+                            <div class="flex justify-between items-start mb-4 flex-wrap">
+                                <h3 class="text-lg font-semibold text-gray-800 mb-2"><i class='bx bxs-bar-chart-alt-2 text-indigo-500 mr-2'></i>แนวโน้มสต็อกเข้า-ออก</h3>
+                                <div class="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+                                    <button id="chart-btn-week" onclick="updateChartPeriod('week')" class="chart-period-btn px-3 py-1 text-xs rounded-md">สัปดาห์</button>
+                                    <button id="chart-btn-month" onclick="updateChartPeriod('month')" class="chart-period-btn px-3 py-1 text-xs rounded-md">เดือน</button>
+                                    <button id="chart-btn-year" onclick="updateChartPeriod('year')" class="chart-period-btn px-3 py-1 text-xs rounded-md">ปี</button>
+                                </div>
+                            </div>
+                            <div class="relative flex-grow h-80"><canvas id="stockTrendChart"></canvas></div>
+                        </div>` },
+        topLists: { title: 'Top 5', html: () => `<div class="space-y-6">
+                            <div class="bg-white rounded-xl shadow-lg p-6"><h3 class="text-lg font-semibold mb-4 text-gray-800"><i class='bx bxs-package text-red-500 mr-2'></i>Top 5 สินค้าเบิกออก</h3><div id="topUsedProducts" class="space-y-2"></div></div>
+                            <div class="bg-white rounded-xl shadow-lg p-6"><h3 class="text-lg font-semibold mb-4 text-gray-800"><i class='bx bxs-archive-in text-blue-500 mr-2'></i>Top 5 สินค้าคงเหลือ</h3><div id="topStockProducts" class="space-y-2"></div></div>
+                        </div>` },
+        lowStock: { title: 'สินค้าใกล้หมด', html: () => `<div class="bg-white rounded-xl shadow-lg p-6"><h3 class="text-lg font-semibold mb-4 text-gray-800"><i class='bx bxs-error-circle text-red-500 mr-2'></i>สินค้าใกล้หมด</h3><div class="overflow-y-auto max-h-64"><table class="w-full text-sm"><thead class="bg-gray-50 sticky top-0"><tr><th class="p-2 text-left font-medium">สินค้า</th><th class="p-2 text-right font-medium">คงเหลือ</th><th class="p-2 text-right font-medium">จุดสั่งซื้อ</th></tr></thead><tbody id="reorderTableBody"></tbody></table></div></div>` },
+        recentTx: { title: 'ธุรกรรมล่าสุด', html: () => `<div class="bg-white rounded-xl shadow-lg p-6"><h3 class="text-lg font-semibold mb-4 text-gray-800"><i class='bx bx-history text-blue-500 mr-2'></i>ธุรกรรมล่าสุด</h3><div class="overflow-y-auto max-h-64"><table class="w-full text-sm"><thead class="bg-gray-50 sticky top-0"><tr><th class="p-2 text-left font-medium">ประเภท</th><th class="p-2 text-left font-medium">สินค้า</th><th class="p-2 text-right font-medium">จำนวน</th></tr></thead><tbody id="recentTransactionsBody"></tbody></table></div></div>` },
+        projectCosts: { title: 'ต้นทุนโปรเจกต์', html: () => `<div class="bg-white rounded-xl shadow-lg p-6"><h3 class="text-lg font-semibold mb-4 text-gray-800"><i class='bx bxs-dollar-circle text-green-500 mr-2'></i>ต้นทุนโปรเจกต์ล่าสุด</h3><div id="latestProjectCosts" class="space-y-2"></div></div>` }
+    };
+
+    function renderDashboard() {
+        const contentArea = document.getElementById('page-content');
+        const settings = STATE.currentUser.dashboardSettings || {
+            order: Object.keys(DASHBOARD_COMPONENTS),
+            visible: Object.keys(DASHBOARD_COMPONENTS).reduce((acc, key) => ({...acc, [key]: true}), {})
+        };
+        
+        let html = `<div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                        <h1 class="text-3xl font-bold text-gray-800">แดชบอร์ด</h1>
+                        <button onclick="showDashboardEditor()" class="admin-only bg-white text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 shadow-md hover:shadow-lg border">
+                            <i class='bx bx-edit'></i><span>แก้ไข Layout</span>
+                        </button>
+                    </div>`;
+
+        let visibleComponents = settings.order.filter(id => settings.visible[id]);
+        
+        const groupedHtml = `
+            <div class="grid grid-cols-1 gap-6">
+                ${visibleComponents.includes('metrics') ? DASHBOARD_COMPONENTS['metrics'].html() : ''}
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    ${visibleComponents.includes('stockTrend') ? `<div class="lg:col-span-2">${DASHBOARD_COMPONENTS['stockTrend'].html()}</div>` : ''}
+                    ${visibleComponents.includes('topLists') ? DASHBOARD_COMPONENTS['topLists'].html() : ''}
+                </div>
+                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    ${visibleComponents.includes('lowStock') ? DASHBOARD_COMPONENTS['lowStock'].html() : ''}
+                    ${visibleComponents.includes('recentTx') ? DASHBOARD_COMPONENTS['recentTx'].html() : ''}
+                    ${visibleComponents.includes('projectCosts') ? DASHBOARD_COMPONENTS['projectCosts'].html() : ''}
+                </div>
+            </div>
+        `;
+        
+        contentArea.innerHTML = html + groupedHtml;
+
+        if (visibleComponents.length > 0) updateDashboardMetrics();
+        if (settings.visible.stockTrend) updateChartPeriod('week');
+        updateAdminUI();
+    }
+    
+    function showDashboardEditor() {
+        const currentSettings = STATE.currentUser.dashboardSettings || {
+            order: Object.keys(DASHBOARD_COMPONENTS),
+            visible: Object.keys(DASHBOARD_COMPONENTS).reduce((acc, key) => ({...acc, [key]: true}), {})
+        };
+
+        const listItems = currentSettings.order.map(key => {
+            const component = DASHBOARD_COMPONENTS[key];
+            const isVisible = currentSettings.visible[key];
+            return `<li data-id="${key}" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border mb-2">
+                        <div class="flex items-center">
+                            <i class="bx bx-grid-vertical text-gray-400 text-xl mr-3 drag-handle"></i>
+                            <span class="font-medium">${component.title}</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" class="visibility-toggle" ${isVisible ? 'checked' : ''}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </li>`;
+        }).join('');
+
+        Swal.fire({
+            title: 'แก้ไข Layout แดชบอร์ด',
+            html: `<p class="text-sm text-gray-500 mb-4">ลากเพื่อจัดลำดับ และ เปิด/ปิด เพื่อเลือกการแสดงผล</p>
+                   <ul id="dashboard-editor-list" class="text-left">${listItems}</ul>`,
+            confirmButtonText: 'บันทึก',
+            showCancelButton: true,
+            cancelButtonText: 'ยกเลิก',
+            width: '500px',
+            didOpen: () => {
+                const list = document.getElementById('dashboard-editor-list');
+                Sortable.create(list, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    handle: '.drag-handle'
+                });
+            },
+            preConfirm: () => {
+                const list = document.getElementById('dashboard-editor-list');
+                const newOrder = [...list.children].map(item => item.dataset.id);
+                const newVisible = {};
+                newOrder.forEach(id => {
+                    const item = list.querySelector(`li[data-id="${id}"]`);
+                    const checkbox = item.querySelector('.visibility-toggle');
+                    newVisible[id] = checkbox.checked;
+                });
+                
+                const newSettings = { order: newOrder, visible: newVisible };
+                
+                showLoader();
+                google.script.run
+                    .withSuccessHandler(response => {
+                        hideLoader();
+                        if (response.success) {
+                            STATE.currentUser.dashboardSettings = newSettings;
+                            renderDashboard();
+                            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: response.message, showConfirmButton: false, timer: 2000 });
+                        } else {
+                            handleError(response);
+                        }
+                    })
+                    .withFailureHandler(handleError)
+                    .saveUserDashboardSettings(newSettings);
+                
+                return false; 
+            }
+        });
+    }
+
+    function updateDashboardMetrics() {
+        const stats = STATE.dashboardStats;
+        if(document.getElementById('totalSKU')) document.getElementById('totalSKU').textContent = (stats.totalSKU || 0).toLocaleString();
+        if(document.getElementById('totalQuantity')) document.getElementById('totalQuantity').textContent = (stats.totalQuantity || 0).toLocaleString();
+        if(document.getElementById('inventoryValue')) document.getElementById('inventoryValue').textContent = `฿${(stats.inventoryValue || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        if(document.getElementById('reorderAlerts')) document.getElementById('reorderAlerts').textContent = (stats.reorderAlerts || 0).toLocaleString();
+        
+        const topUsedContainer = document.getElementById('topUsedProducts');
+        if (topUsedContainer) {
+            topUsedContainer.innerHTML = ''; // Clear
+            const template = document.getElementById('dashboard-list-item-template');
+            if ((stats.topUsedProducts || []).length === 0) {
+                topUsedContainer.innerHTML = '<p class="text-center text-gray-500 text-sm">ไม่มีข้อมูล</p>';
+            } else {
+                stats.topUsedProducts.forEach(p => {
+                    const clone = template.content.cloneNode(true);
+                    clone.querySelector('.item-name').textContent = p.name || 'N/A';
+                    clone.querySelector('.item-value').textContent = (p.totalQuantity || 0).toLocaleString();
+                    clone.querySelector('.item-value').className += ' text-red-500';
+                    topUsedContainer.appendChild(clone);
+                });
+            }
+        }
+        
+        const topStockContainer = document.getElementById('topStockProducts');
+         if (topStockContainer) {
+            topStockContainer.innerHTML = ''; // Clear
+            const template = document.getElementById('dashboard-list-item-template');
+            if ((stats.topStockProducts || []).length === 0) {
+                topStockContainer.innerHTML = '<p class="text-center text-gray-500 text-sm">ไม่มีข้อมูล</p>';
+            } else {
+                stats.topStockProducts.forEach(p => {
+                    const clone = template.content.cloneNode(true);
+                    clone.querySelector('.item-name').textContent = p.name;
+                    clone.querySelector('.item-value').textContent = (p.stock || 0).toLocaleString();
+                    clone.querySelector('.item-value').className += ' text-blue-500';
+                    topStockContainer.appendChild(clone);
+                });
+            }
+        }
+
+        const reorderTableBody = document.getElementById('reorderTableBody');
+        if (reorderTableBody) {
+            reorderTableBody.innerHTML = ''; // Clear
+            const template = document.getElementById('reorder-row-template');
+             if ((stats.lowStockProducts || []).length === 0) {
+                reorderTableBody.innerHTML = `<tr><td colspan="3" class="p-2 text-center text-gray-500">ไม่มีสินค้าใกล้หมด</td></tr>`;
+            } else {
+                stats.lowStockProducts.forEach(p => {
+                    const clone = template.content.cloneNode(true);
+                    clone.querySelector('tr').onclick = () => goToProductFilter(p.name, 'low');
+                    clone.querySelector('.item-name').textContent = p.name;
+                    clone.querySelector('.item-stock').textContent = (p.stock || 0).toLocaleString();
+                    clone.querySelector('.item-min-stock').textContent = (p.minStock || 0).toLocaleString();
+                    reorderTableBody.appendChild(clone);
+                });
+            }
+        }
+        
+        const recentTransactionsBody = document.getElementById('recentTransactionsBody');
+        if(recentTransactionsBody) {
+            recentTransactionsBody.innerHTML = ''; // Clear
+            const template = document.getElementById('recent-tx-row-template');
+            if ((stats.recentTransactions || []).length === 0) {
+                recentTransactionsBody.innerHTML = `<tr><td colspan="3" class="p-2 text-center text-gray-500">ไม่มีธุรกรรมล่าสุด</td></tr>`;
+            } else {
+                stats.recentTransactions.forEach(t => {
+                    const clone = template.content.cloneNode(true);
+                    const typeEl = clone.querySelector('.item-type');
+                    typeEl.textContent = t.type === 'in' ? 'รับเข้า' : 'เบิกออก';
+                    typeEl.classList.add(t.type === 'in' ? 'text-green-600' : 'text-red-600');
+                    clone.querySelector('.item-name').textContent = t.productName || 'N/A';
+                    clone.querySelector('.item-quantity').textContent = (t.quantity || 0).toLocaleString();
+                    recentTransactionsBody.appendChild(clone);
+                });
+            }
+        }
+        
+        const projectCostsContainer = document.getElementById('latestProjectCosts');
+        if(projectCostsContainer) {
+            projectCostsContainer.innerHTML = ''; // Clear
+            const template = document.getElementById('dashboard-list-item-template');
+            if ((stats.latestProjectCosts || []).length === 0) {
+                projectCostsContainer.innerHTML = '<p class="text-center text-gray-500 text-sm">ไม่มีข้อมูลโปรเจกต์</p>';
+            } else {
+                stats.latestProjectCosts.forEach(p => {
+                    const clone = template.content.cloneNode(true);
+                    clone.querySelector('.item-name').textContent = p.projectName;
+                    clone.querySelector('.item-value').textContent = `฿${(p.totalCost || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                    clone.querySelector('.item-value').className += ' text-green-500';
+                    projectCostsContainer.appendChild(clone);
+                });
+            }
+        }
+    }
+
+    function updateChartPeriod(period) {
+        if(!document.getElementById('stockTrendChart')) return;
+        document.querySelectorAll('.chart-period-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById(`chart-btn-${period}`);
+        if (activeBtn) activeBtn.classList.add('active');
+        const transactions = STATE.allTransactions; let labels = []; let stockInData = []; let stockOutData = []; const today = new Date(); today.setHours(0, 0, 0, 0);
+        if (period === 'week') { for (let i = 6; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })); const dateStr = d.toISOString().split('T')[0]; stockInData.push(transactions.filter(t => t.type === 'in' && t.transactionDate && t.transactionDate.startsWith(dateStr)).reduce((sum, t) => sum + t.quantity, 0)); stockOutData.push(transactions.filter(t => t.type === 'out' && t.transactionDate && t.transactionDate.startsWith(dateStr)).reduce((sum, t) => sum + t.quantity, 0)); }
+        } else if (period === 'month') { for (let i = 3; i >= 0; i--) { const weekEndDate = new Date(today); weekEndDate.setDate(weekEndDate.getDate() - (i * 7)); const weekStartDate = new Date(weekEndDate); weekStartDate.setDate(weekStartDate.getDate() - 6); labels.push(`สัปดาห์ที่ ${4-i}`); stockInData.push(transactions.filter(t => t.type === 'in' && new Date(t.transactionDate) >= weekStartDate && new Date(t.transactionDate) <= weekEndDate).reduce((sum, t) => sum + t.quantity, 0)); stockOutData.push(transactions.filter(t => t.type === 'out' && new Date(t.transactionDate) >= weekStartDate && new Date(t.transactionDate) <= weekEndDate).reduce((sum, t) => sum + t.quantity, 0)); }
+        } else if (period === 'year') { for (let i = 11; i >= 0; i--) { const d = new Date(today.getFullYear(), today.getMonth() - i, 1); labels.push(d.toLocaleDateString('th-TH', { month: 'short', year: '2-digit' })); const month = d.getMonth(); const year = d.getFullYear(); stockInData.push(transactions.filter(t => t.type === 'in' && new Date(t.transactionDate).getMonth() === month && new Date(t.transactionDate).getFullYear() === year).reduce((sum, t) => sum + t.quantity, 0)); stockOutData.push(transactions.filter(t => t.type === 'out' && new Date(t.transactionDate).getMonth() === month && new Date(t.transactionDate).getFullYear() === year).reduce((sum, t) => sum + t.quantity, 0)); } }
+        renderChart(labels, stockInData, stockOutData);
+    }
+
+    function renderChart(labels, stockInData, stockOutData) {
+        const ctx = document.getElementById('stockTrendChart')?.getContext('2d');
+        if (!ctx) return;
+        if (STATE.charts.stockTrend) { STATE.charts.stockTrend.destroy(); }
+        STATE.charts.stockTrend = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [ { label: 'รับเข้า', data: stockInData, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.4 }, { label: 'เบิกออก', data: stockOutData, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.4 } ] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } });
+    }
+
+    // =================================================================
+    // --- RENDER FUNCTIONS FOR ALL PAGES ---
+    // =================================================================
+    function renderProductsPage() {
+        const contentArea = document.getElementById('page-content');
+        contentArea.innerHTML = `
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h2 class="text-2xl font-bold text-gray-800">จัดการสินค้า</h2>
+                <button onclick="showProductModal()" class="admin-only business-gradient text-white px-4 py-2 rounded-lg items-center space-x-2 shadow-md hover:shadow-lg transition-shadow duration-300" style="display: none;">
+                    <i class='bx bx-plus'></i><span>เพิ่มสินค้าใหม่</span>
+                </button>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-lg mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                    <input type="text" id="productSearch" onkeyup="handleFilterChange()" placeholder="ค้นหาสินค้า..." class="w-full border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
+                    <select id="productCategoryFilter" onchange="handleFilterChange()" class="w-full border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"></select>
+                    <select id="productStockStatusFilter" onchange="handleFilterChange()" class="w-full border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">ทุกสถานะสต็อก</option><option value="ok">สต็อกปกติ</option><option value="low">ใกล้หมด</option><option value="out">หมดสต็อก</option>
+                    </select>
+                    <button onclick="clearProductFilters()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-sm hover:bg-gray-300">
+                        <i class='bx bx-x'></i><span>ล้างการค้นหา</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Desktop Table View -->
+            <div class="hidden xl:block bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full"><thead class="bg-gray-50"><tr>
+                        <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">ชื่อสินค้า</th><th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">ประเภท</th>
+                        <th class="p-4 text-right text-xs font-bold text-gray-600 uppercase">คงเหลือ</th><th class="p-4 text-right text-xs font-bold text-gray-600 uppercase">ราคา</th>
+                        <th class="p-4 text-center text-xs font-bold text-gray-600 uppercase">สถานะ</th><th class="p-4 text-center text-xs font-bold text-gray-600 uppercase">จัดการ</th>
+                    </tr></thead><tbody id="productsTableBody" class="divide-y divide-gray-200"></tbody></table>
+                </div>
+            </div>
+
+            <!-- Mobile/Tablet Card View -->
+            <div id="productsCardContainer" class="xl:hidden grid grid-cols-1 gap-4"></div>
+
+            <!-- Pagination (common for both) -->
+            <div class="bg-white rounded-xl shadow-lg px-4 py-3 flex items-center justify-between border-t border-gray-200 mt-4">
+               <div><p id="paginationInfo" class="text-sm text-gray-700"></p></div>
+                <div>
+                    <button id="prevPageBtn" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"><i class='bx bx-chevron-left'></i></button>
+                    <button id="nextPageBtn" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
+                </div>
+            </div>
+        `;
+        populateCategoryFilter();
+        document.getElementById('productSearch').value = STATE.pagination.currentSearch || '';
+        document.getElementById('productCategoryFilter').value = STATE.pagination.currentCategory || '';
+        document.getElementById('productStockStatusFilter').value = STATE.pagination.currentStockStatus || '';
+        
+        fetchProducts(1);
+    }
+
+    function fetchProducts(page = 1) {
+        showLoader();
+        STATE.pagination.currentPage = page;
+        google.script.run
+            .withSuccessHandler(jsonString => {
+                const response = JSON.parse(jsonString || "{}");
+                renderProductsTable(response.products);
+                updatePaginationUI(response.pagination);
+                hideLoader();
+            })
+            .withFailureHandler(handleError)
+            .getProducts(STATE.pagination);
+    }
+
+    function handleFilterChange() {
+        clearTimeout(filterTimeout);
+        filterTimeout = setTimeout(() => {
+            STATE.pagination.currentSearch = document.getElementById('productSearch').value;
+            STATE.pagination.currentCategory = document.getElementById('productCategoryFilter').value;
+            STATE.pagination.currentStockStatus = document.getElementById('productStockStatusFilter').value;
+            fetchProducts(1);
+        }, 300);
+    }
+
+    function populateCategoryFilter() {
+        const select = document.getElementById('productCategoryFilter');
+        select.innerHTML = '<option value="">ทุกหมวดหมู่</option>';
+        STATE.productCategories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            select.appendChild(option);
+        });
+    }
+
+    function renderProductsTable(products) {
+        const tableBody = document.getElementById('productsTableBody');
+        const cardContainer = document.getElementById('productsCardContainer');
+        const tableTemplate = document.getElementById('product-row-template');
+        const cardTemplate = document.getElementById('product-card-template');
+
+        if (tableBody) tableBody.innerHTML = '';
+        if (cardContainer) cardContainer.innerHTML = '';
+
+        if (!products || products.length === 0) {
+            if (tableBody) {
+                tableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state-container"><i class='bx bx-package'></i><p class="mt-4 font-medium">ไม่พบข้อมูลสินค้า</p></div></td></tr>`;
+            }
+            if (cardContainer) {
+                 renderEmptyState(cardContainer, 'ไม่พบข้อมูลสินค้า', 'bx-package');
+            }
+            return;
+        }
+
+        products.forEach(p => {
+            const stock = p.stock || 0;
+            const minStock = p.minStock || 0;
+            let statusBadge;
+            if (stock <= 0) {
+                statusBadge = `<span class="bg-gray-200 text-gray-700 px-2 py-1 text-xs rounded-full">หมดสต็อก</span>`;
+            } else if (stock <= minStock) {
+                statusBadge = `<span class="bg-red-100 text-red-700 px-2 py-1 text-xs rounded-full">ใกล้หมด</span>`;
+            } else {
+                statusBadge = `<span class="bg-green-100 text-green-700 px-2 py-1 text-xs rounded-full">ปกติ</span>`;
+            }
+
+            // Populate Desktop Table
+            if (tableBody && tableTemplate) {
+                const tableClone = tableTemplate.content.cloneNode(true);
+                const row = tableClone.querySelector('.table-row');
+                row.id = `product-row-${p.id}`;
+
+                tableClone.querySelector('.product-name').textContent = p.name;
+                tableClone.querySelector('.product-code').textContent = p.code;
+                tableClone.querySelector('.product-category').textContent = p.category;
+                tableClone.querySelector('.product-stock').textContent = `${stock.toLocaleString()} ${p.unit}`;
+                tableClone.querySelector('.product-price').textContent = `฿${Number(p.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+                tableClone.querySelector('.product-status').innerHTML = statusBadge;
+                tableClone.querySelector('.edit-btn').onclick = () => showProductModal(p);
+                tableClone.querySelector('.delete-btn').onclick = () => handleDeleteProduct(p.id);
+                tableBody.appendChild(tableClone);
+            }
+
+            // Populate Mobile Cards
+            if (cardContainer && cardTemplate) {
+                const cardClone = cardTemplate.content.cloneNode(true);
+                const card = cardClone.querySelector('.table-row');
+                card.id = `product-card-${p.id}`;
+
+                cardClone.querySelector('.product-name').textContent = p.name;
+                cardClone.querySelector('.product-code').textContent = p.code;
+                cardClone.querySelector('.product-status').innerHTML = statusBadge;
+                cardClone.querySelector('.product-category').textContent = p.category;
+                cardClone.querySelector('.product-stock').textContent = `${stock.toLocaleString()} ${p.unit}`;
+                cardClone.querySelector('.product-price').textContent = `฿${Number(p.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+                cardClone.querySelector('.edit-btn').onclick = () => showProductModal(p);
+                cardClone.querySelector('.delete-btn').onclick = () => handleDeleteProduct(p.id);
+                cardContainer.appendChild(cardClone);
+            }
+        });
+        updateAdminUI();
+    }
+
+    function updatePaginationUI(pagination) {
+        if(!pagination) return;
+        const { page, totalItems, totalPages, limit } = pagination;
+        const info = document.getElementById('paginationInfo');
+        info.textContent = totalItems > 0 ? `แสดง ${((page - 1) * limit) + 1} - ${Math.min(page * limit, totalItems)} จาก ${totalItems} รายการ` : 'ไม่พบข้อมูล';
+        const prevBtn = document.getElementById('prevPageBtn');
+        const nextBtn = document.getElementById('nextPageBtn');
+        prevBtn.disabled = page <= 1;
+        nextBtn.disabled = page >= totalPages;
+        prevBtn.onclick = () => fetchProducts(page - 1);
+        nextBtn.onclick = () => fetchProducts(page + 1);
+    }
+
+    function renderTransactionsPage() {
+        const contentArea = document.getElementById('page-content');
+        contentArea.innerHTML = `
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h2 class="text-2xl font-bold text-gray-800">ประวัติการเคลื่อนไหว</h2>
+                <button onclick="showTransactionModal()" class="business-gradient text-white px-4 py-2 rounded-lg flex items-center space-x-2 shadow-md hover:shadow-lg">
+                    <i class='bx bx-plus'></i><span>บันทึกธุรกรรม</span>
+                </button>
+            </div>
+             <!-- Desktop Table View -->
+            <div class="hidden xl:block bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">วันที่ทำรายการ</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">ประเภท</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">สินค้า</th>
+                                <th class="p-4 text-right text-xs font-bold text-gray-600 uppercase">จำนวน</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">โปรเจกต์/หมายเหตุ</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">ผู้บันทึก</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">วันที่บันทึก</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTableBody" class="divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+             <!-- Mobile/Tablet Card View -->
+            <div id="transactionsCardContainer" class="xl:hidden grid grid-cols-1 gap-4"></div>
+        `;
+        renderTransactionsTable(STATE.allTransactions);
+    }
+
+    function renderTransactionsTable(transactions) {
+        const tableBody = document.getElementById('transactionsTableBody');
+        const cardContainer = document.getElementById('transactionsCardContainer');
+        const tableTemplate = document.getElementById('transaction-row-template');
+        const cardTemplate = document.getElementById('transaction-card-template');
+
+        if(tableBody) tableBody.innerHTML = '';
+        if(cardContainer) cardContainer.innerHTML = '';
+        
+        const productMap = new Map(STATE.allProducts.map(p => [p.id, p.name]));
+        const projectMap = new Map(STATE.allProjects.map(p => [p.id, p.projectName]));
+
+        if (!transactions || transactions.length === 0) {
+            if(tableBody) tableBody.innerHTML = `<tr><td colspan="7"><div class="empty-state-container"><i class='bx bx-transfer'></i><p class="mt-4 font-medium">ไม่พบข้อมูลธุรกรรม</p></div></td></tr>`;
+            if(cardContainer) renderEmptyState(cardContainer, 'ไม่พบข้อมูลธุรกรรม', 'bx-transfer');
+            return;
+        }
+
+        [...transactions]
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .forEach(t => {
+                const productName = productMap.get(t.productId) || 'N/A';
+                const projectName = projectMap.get(t.projectId);
+                const typeText = t.type === 'in' ? 'รับเข้า' : 'เบิกออก';
+                const typeClass = t.type === 'in' ? 'text-green-600' : 'text-red-600';
+                
+                // Populate Desktop Table
+                if(tableBody && tableTemplate){
+                    const clone = tableTemplate.content.cloneNode(true);
+                    const typeEl = clone.querySelector('.transaction-type');
+                    typeEl.textContent = typeText;
+                    typeEl.classList.add(typeClass);
+
+                    clone.querySelector('.transaction-date').textContent = t.transactionDate ? new Date(t.transactionDate).toLocaleString('th-TH') : 'N/A';
+                    clone.querySelector('.product-name').textContent = productName;
+                    clone.querySelector('.transaction-quantity').textContent = (t.quantity || 0).toLocaleString();
+                    clone.querySelector('.project-note').textContent = projectName || (t.note || '-');
+                    clone.querySelector('.transaction-user').textContent = t.user;
+                    clone.querySelector('.transaction-timestamp').textContent = t.timestamp ? new Date(t.timestamp).toLocaleString('th-TH') : 'N/A';
+                    tableBody.appendChild(clone);
+                }
+
+                // Populate Mobile Cards
+                if(cardContainer && cardTemplate){
+                    const clone = cardTemplate.content.cloneNode(true);
+                    const typeEl = clone.querySelector('.transaction-type');
+                    typeEl.textContent = typeText;
+                    typeEl.classList.add(typeClass);
+
+                    clone.querySelector('.transaction-date').textContent = t.transactionDate ? new Date(t.transactionDate).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short'}) : 'N/A';
+                    clone.querySelector('.product-name').textContent = productName;
+                    clone.querySelector('.transaction-quantity').textContent = (t.quantity || 0).toLocaleString();
+                    clone.querySelector('.project-note').textContent = projectName || (t.note || '-');
+                    clone.querySelector('.transaction-user').textContent = t.user;
+                    clone.querySelector('.transaction-timestamp').textContent = t.timestamp ? new Date(t.timestamp).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short'}) : 'N/A';
+                    cardContainer.appendChild(clone);
+                }
+            });
+    }
+
+    function renderProjectsPage() {
+        const contentArea = document.getElementById('page-content');
+        contentArea.innerHTML = `
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h2 class="text-2xl font-bold text-gray-800">จัดการโปรเจกต์</h2>
+                <button onclick="showProjectModal()" class="admin-only business-gradient text-white px-4 py-2 rounded-lg items-center space-x-2 shadow-md hover:shadow-lg" style="display: none;">
+                    <i class='bx bx-plus'></i><span>เพิ่มโปรเจกต์ใหม่</span>
+                </button>
+            </div>
+            
+            <div class="bg-white p-4 rounded-xl shadow-lg mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="projectSearch" onkeyup="filterProjects()" placeholder="ค้นหาด้วยชื่อหรือรหัสโปรเจกต์..." class="form-input">
+                    <select id="projectStatusFilter" onchange="filterProjects()" class="form-input">
+                        <option value="">ทุกสถานะ</option>
+                        <option value="In Progress">กำลังดำเนินการ (In Progress)</option>
+                        <option value="Completed">เสร็จสิ้น (Completed)</option>
+                        <option value="On Hold">พักไว้ชั่วคราว (On Hold)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Desktop Table View -->
+            <div class="hidden xl:block bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">รหัสโปรเจกต์</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">ชื่อโปรเจกต์</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">สถานะ</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">ลูกค้า</th> <!-- Added Customer Header -->
+                                <th class="p-4 text-right text-xs font-bold text-gray-600 uppercase">ค่าใช้จ่ายรวม</th>
+                                <th class="p-4 text-center text-xs font-bold text-gray-600 uppercase">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectsTableBody" class="divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+             <!-- Mobile/Tablet Card View -->
+            <div id="projectsCardContainer" class="xl:hidden grid grid-cols-1 gap-4"></div>
+        `;
+        renderProjectsTable(STATE.allProjects);
+    }
+
+    function renderProjectsTable(projectsToRender) {
+        const tableBody = document.getElementById('projectsTableBody');
+        const cardContainer = document.getElementById('projectsCardContainer');
+        const tableTemplate = document.getElementById('project-row-template');
+        const cardTemplate = document.getElementById('project-card-template');
+
+        if (tableBody) tableBody.innerHTML = '';
+        if (cardContainer) cardContainer.innerHTML = '';
+        
+        if (!projectsToRender || projectsToRender.length === 0) {
+            if(tableBody) tableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state-container"><i class='bx bx-briefcase-alt-2'></i><p class="mt-4 font-medium">ไม่พบข้อมูลโปรเจกต์</p></div></td></tr>`; // Updated colspan to 6
+            if(cardContainer) renderEmptyState(cardContainer, 'ไม่พบข้อมูลโปรเจกต์', 'bx-briefcase-alt-2');
+            return;
+        }
+
+        const productPriceMap = new Map(STATE.allProducts.map(p => [p.id, p.price || 0]));
+
+        projectsToRender.forEach(p => {
+            const cost = STATE.allTransactions
+                .filter(t => t.projectId == p.id && t.type === 'out')
+                .reduce((sum, t) => {
+                    const price = productPriceMap.get(t.productId) || 0;
+                    return sum + (price * t.quantity);
+                }, 0);
+            
+            const statusClass = p.status === 'Completed' ? 'text-green-600' : p.status === 'On Hold' ? 'text-yellow-600' : '';
+
+            // Populate Desktop Table
+            if(tableBody && tableTemplate){
+                 const clone = tableTemplate.content.cloneNode(true);
+                 const row = clone.querySelector('.table-row');
+                 row.id = `project-row-${p.id}`;
+                 row.onclick = () => showProjectDetails(p.id);
+
+                 const statusEl = clone.querySelector('.project-status');
+                 statusEl.textContent = p.status;
+                 if(statusClass) statusEl.classList.add(statusClass);
+
+                 clone.querySelector('.project-code').textContent = p.projectCode;
+                 clone.querySelector('.project-name').textContent = p.projectName;
+                 clone.querySelector('.project-customer').textContent = p.customer || '-'; // Display Customer
+                 clone.querySelector('.project-cost').textContent = `฿${cost.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                 clone.querySelector('.edit-btn').onclick = (e) => { e.stopPropagation(); showProjectModal(p); };
+                 clone.querySelector('.delete-btn').onclick = (e) => { e.stopPropagation(); handleDeleteProject(p.id); };
+                 tableBody.appendChild(clone);
+            }
+
+            // Populate Mobile Cards
+             if(cardContainer && cardTemplate){
+                 const clone = cardTemplate.content.cloneNode(true);
+                 const card = clone.querySelector('.table-row');
+                 card.id = `project-card-${p.id}`;
+                 card.onclick = () => showProjectDetails(p.id);
+
+                 const statusEl = clone.querySelector('.project-status');
+                 statusEl.textContent = p.status;
+                 if(statusClass) statusEl.classList.add(statusClass);
+
+                 clone.querySelector('.project-code').textContent = p.projectCode;
+                 clone.querySelector('.project-name').textContent = p.projectName;
+                 clone.querySelector('.project-customer').textContent = p.customer || '-'; // Display Customer
+                 clone.querySelector('.project-cost').textContent = `฿${cost.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                 clone.querySelector('.edit-btn').onclick = (e) => { e.stopPropagation(); showProjectModal(p); };
+                 clone.querySelector('.delete-btn').onclick = (e) => { e.stopPropagation(); handleDeleteProject(p.id); };
+                 cardContainer.appendChild(clone);
+            }
+        });
+                 
+        updateAdminUI();
+    }
+
+    function filterProjects() {
+        const searchTerm = document.getElementById('projectSearch').value.toLowerCase();
+        const statusFilter = document.getElementById('projectStatusFilter').value;
+
+        let filteredProjects = STATE.allProjects;
+
+        if (statusFilter) {
+            filteredProjects = filteredProjects.filter(p => p.status === statusFilter);
+        }
+
+        if (searchTerm) {
+            filteredProjects = filteredProjects.filter(p => 
+                (p.projectName || '').toLowerCase().includes(searchTerm) ||
+                (p.projectCode || '').toLowerCase().includes(searchTerm)
+            );
+        }
+
+        renderProjectsTable(filteredProjects);
+    }
+
+    function showProjectDetails(projectId) {
+        showLoader();
+        google.script.run
+            .withSuccessHandler(jsonString => {
+                const details = JSON.parse(jsonString || "{}");
+                hideLoader();
+                if (details.success) {
+                    renderProjectDetailsPage(details);
+                } else {
+                    handleError({ message: details.message });
+                }
+            })
+            .withFailureHandler(handleError)
+            .getProjectDetails(projectId);
+    }
+
+    function renderProjectDetailsPage(details) {
+        const contentArea = document.getElementById('page-content');
+        
+        const transactionRows = details.transactions.map(t => {
+            const typeText = t.type === 'in' ? 'รับเข้า' : 'เบิกออก';
+            const typeClass = t.type === 'in' ? 'text-green-600' : 'text-red-600';
+            return `
+                <tr class="border-b">
+                    <td class="p-2">${new Date(t.transactionDate).toLocaleString('th-TH')}</td>
+                    <td class="p-2 font-medium ${typeClass}">${typeText}</td>
+                    <td class="p-2">${t.productName}</td>
+                    <td class="p-2 text-right">${t.quantity.toLocaleString()}</td>
+                </tr>
+            `;
+        }).join('') || `<tr><td colspan="4" class="p-4 text-center text-gray-500">ยังไม่มีการเคลื่อนไหว</td></tr>`;
+
+        contentArea.innerHTML = `
+            <div class="flex justify-between items-start mb-6 flex-wrap gap-4">
+                <div>
+                    <button onclick="showSection('projects')" class="text-blue-600 hover:underline flex items-center mb-2"><i class='bx bx-arrow-back mr-2'></i>กลับไปหน้ารายการโปรเจกต์</button>
+                    <h2 class="text-3xl font-bold text-gray-800 mt-2">${details.project.projectName}</h2>
+                    <p class="text-gray-500">${details.project.projectCode} | สถานะ: ${details.project.status}</p>
+                    <p class="text-gray-600 mt-1">ลูกค้า: ${details.project.customer || '-'}</p>
+                    <p class="text-gray-600 mt-1">วันที่: ${details.project.startDate ? new Date(details.project.startDate).toLocaleDateString('th-TH') : '?'} - ${details.project.endDate ? new Date(details.project.endDate).toLocaleDateString('th-TH') : '?'}</p>
+                    <div class="mt-2 text-gray-700 text-sm">รายละเอียด: ${details.project.description || '-'}</div>
+                    <div class="mt-1 text-gray-700 text-sm">หมายเหตุ: ${details.project.notes || '-'}</div>
+                </div>
+                <div>
+                    <button onclick="printProjectDetails(${details.project.id})" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:bg-gray-300">
+                        <i class='bx bxs-printer'></i><span>สำหรับพิมพ์</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg"><p class="text-gray-500 text-sm mb-1">ค่าใช้จ่ายทั้งหมด</p><p class="text-3xl font-bold text-red-600">฿${details.totalCost.toLocaleString('en-US', {minimumFractionDigits: 2})}</p></div>
+                <div class="bg-white p-6 rounded-xl shadow-lg"><p class="text-gray-500 text-sm mb-1">จำนวนธุรกรรม</p><p class="text-3xl font-bold">${details.transactions.length.toLocaleString()}</p></div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">ประวัติการเคลื่อนไหวของโปรเจกต์นี้</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="p-2 text-left font-medium">วันที่</th>
+                                <th class="p-2 text-left font-medium">ประเภท</th>
+                                <th class="p-2 text-left font-medium">สินค้า</th>
+                                <th class="p-2 text-right font-medium">จำนวน</th>
+                            </tr>
+                        </thead>
+                        <tbody>${transactionRows}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    function printProjectDetails(projectId) {
+        showLoader();
+        google.script.run
+            .withSuccessHandler(response => {
+                hideLoader();
+                if (response.success) {
+                    const printWindow = window.open('', '_blank');
+                    printWindow.document.write(response.htmlContent);
+                    printWindow.document.close();
+                    printWindow.print();
+                } else {
+                    handleError({ message: response.message });
+                }
+            })
+            .withFailureHandler(handleError)
+            .generateProjectReportPrint(projectId);
+    }
+    
+    function renderSuppliersPage() {
+        const contentArea = document.getElementById('page-content');
+        contentArea.innerHTML = `
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h2 class="text-2xl font-bold text-gray-800">จัดการซัพพลายเออร์</h2>
+                <button onclick="showSupplierModal()" class="admin-only business-gradient text-white px-4 py-2 rounded-lg items-center space-x-2 shadow-md hover:shadow-lg" style="display: none;">
+                    <i class='bx bx-plus'></i><span>เพิ่มซัพพลายเออร์</span>
+                </button>
+            </div>
+            <!-- Desktop Table View -->
+            <div class="hidden xl:block bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">ชื่อซัพพลายเออร์</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">ผู้ติดต่อ</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">เบอร์โทร</th>
+                                <th class="p-4 text-center text-xs font-bold text-gray-600 uppercase">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suppliersTableBody" class="divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+             <!-- Mobile/Tablet Card View -->
+            <div id="suppliersCardContainer" class="xl:hidden grid grid-cols-1 gap-4"></div>
+        `;
+        renderSuppliersTable(STATE.allSuppliers);
+    }
+
+    function renderSuppliersTable(suppliers) {
+        const tableBody = document.getElementById('suppliersTableBody');
+        const cardContainer = document.getElementById('suppliersCardContainer');
+        const tableTemplate = document.getElementById('supplier-row-template');
+        const cardTemplate = document.getElementById('supplier-card-template');
+
+        if (tableBody) tableBody.innerHTML = '';
+        if (cardContainer) cardContainer.innerHTML = '';
+        
+        if (!suppliers || suppliers.length === 0) {
+            if (tableBody) tableBody.innerHTML = `<tr><td colspan="4"><div class="empty-state-container"><i class='bx bx-truck'></i><p class="mt-4 font-medium">ไม่พบข้อมูลซัพพลายเออร์</p></div></td></tr>`;
+            if (cardContainer) renderEmptyState(cardContainer, 'ไม่พบข้อมูลซัพพลายเออร์', 'bx-truck');
+            return;
+        }
+
+        suppliers.forEach(s => {
+            // Populate Desktop Table
+            if(tableBody && tableTemplate){
+                const clone = tableTemplate.content.cloneNode(true);
+                const row = clone.querySelector('.table-row');
+                row.id = `supplier-row-${s.id}`;
+
+                clone.querySelector('.supplier-name').textContent = s.name;
+                clone.querySelector('.supplier-contact').textContent = s.contact || '-';
+                clone.querySelector('.supplier-phone').textContent = s.phone || '-';
+                clone.querySelector('.edit-btn').onclick = () => showSupplierModal(s);
+                clone.querySelector('.delete-btn').onclick = () => handleDeleteSupplier(s.id);
+                tableBody.appendChild(clone);
+            }
+
+            // Populate Mobile Cards
+            if(cardContainer && cardTemplate){
+                 const clone = cardTemplate.content.cloneNode(true);
+                 const card = clone.querySelector('.table-row');
+                 card.id = `supplier-card-${s.id}`;
+
+                 clone.querySelector('.supplier-name').textContent = s.name;
+                 clone.querySelector('.supplier-contact').textContent = s.contact || '-';
+                 clone.querySelector('.supplier-phone').textContent = s.phone || '-';
+                 clone.querySelector('.edit-btn').onclick = () => showSupplierModal(s);
+                 clone.querySelector('.delete-btn').onclick = () => handleDeleteSupplier(s.id);
+                 cardContainer.appendChild(clone);
+            }
+        });
+        updateAdminUI();
+    }
+
+    function renderReportsPage() {
+        const contentArea = document.getElementById('page-content');
+        contentArea.innerHTML = `
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h2 class="text-2xl font-bold text-gray-800">รายงาน</h2>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class='bx bxs-package mr-2'></i>รายงานสต็อกสินค้าคงคลัง</h3>
+                <p class="text-gray-600 mb-6">สร้างเอกสารสรุปรายการสินค้าทั้งหมด, จำนวนคงเหลือ, และมูลค่าคงคลัง ณ ปัจจุบัน</p>
+                <button onclick="generateReport('inventory_pdf')" class="business-gradient text-white px-6 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:shadow-lg">
+                    <i class='bx bxs-file-pdf'></i><span>สร้างรายงาน (PDF)</span>
+                </button>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class='bx bx-line-chart mr-2'></i>รายงานสรุปการเบิกจ่าย</h3>
+                <p class="text-gray-600 mb-6">เลือกช่วงวันที่เพื่อสร้างรายงานสรุปรายการเบิกจ่ายทั้งหมดในช่วงเวลานั้นๆ</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="form-label">วันที่เริ่มต้น</label>
+                        <input type="date" id="withdrawalStartDate" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">วันที่สิ้นสุด</label>
+                        <input type="date" id="withdrawalEndDate" class="form-input">
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-4">
+                    <button onclick="generateReport('withdrawal_pdf')" class="business-gradient text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:shadow-lg">
+                        <i class='bx bxs-file-pdf'></i><span>สร้าง PDF</span>
+                    </button>
+                    <button onclick="generateReport('withdrawal_print')" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:bg-gray-300">
+                        <i class='bx bxs-printer'></i><span>สำหรับพิมพ์</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class='bx bx-export mr-2'></i>ส่งออกข้อมูลธุรกรรม (Export)</h3>
+                <p class="text-gray-600 mb-6">เลือกช่วงวันที่เพื่อส่งออกข้อมูลธุรกรรมทั้งหมด (ทั้งรับเข้าและเบิกออก)</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="form-label">วันที่เริ่มต้น</label>
+                        <input type="date" id="exportStartDate" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">วันที่สิ้นสุด</label>
+                        <input type="date" id="exportEndDate" class="form-input">
+                    </div>
+                </div>
+                 <div class="flex flex-wrap gap-4">
+                    <button onclick="generateReport('transactions_sheet')" class="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:bg-green-700">
+                        <i class='bx bxs-file-spreadsheet'></i><span>ส่งออกเป็น Google Sheet</span>
+                    </button>
+                    <button onclick="generateReport('transactions_csv')" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:bg-blue-700">
+                        <i class='bx bxs-file-doc'></i><span>ดาวน์โหลดเป็น CSV (สำหรับ Excel)</span>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        const firstDayStr = firstDay.toISOString().split('T')[0];
+        const lastDayStr = lastDay.toISOString().split('T')[0];
+        
+        document.getElementById('withdrawalStartDate').value = firstDayStr;
+        document.getElementById('withdrawalEndDate').value = lastDayStr;
+        document.getElementById('exportStartDate').value = firstDayStr;
+        document.getElementById('exportEndDate').value = lastDayStr;
+    }
+
+    function generateReport(reportType) {
+        showLoader();
+        let reportData = {};
+
+        if (reportType.startsWith('withdrawal')) {
+            reportData.startDate = document.getElementById('withdrawalStartDate').value;
+            reportData.endDate = document.getElementById('withdrawalEndDate').value;
+        } else if (reportType.startsWith('transactions')) {
+            reportData.startDate = document.getElementById('exportStartDate').value;
+            reportData.endDate = document.getElementById('exportEndDate').value;
+        }
+
+        if ((reportType.startsWith('withdrawal') || reportType.startsWith('transactions')) && (!reportData.startDate || !reportData.endDate)) {
+            handleError({ message: 'กรุณาเลือกช่วงวันที่ให้ครบถ้วน' });
+            return;
+        }
+
+        let functionToCall = '';
+        if (reportType === 'inventory_pdf') functionToCall = 'generateInventoryReportPDF';
+        if (reportType === 'withdrawal_pdf') functionToCall = 'generateWithdrawalReportPDF';
+        if (reportType === 'withdrawal_print') functionToCall = 'generateWithdrawalReportPrint';
+        if (reportType === 'transactions_sheet') functionToCall = 'exportTransactionsToSheet';
+        if (reportType === 'transactions_csv') functionToCall = 'exportTransactionsToCSV';
+        
+        google.script.run
+            .withSuccessHandler(response => {
+                hideLoader();
+                if (response.success) {
+                    if(response.url) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'สร้างไฟล์สำเร็จ!',
+                            html: `คลิก <a href="${response.url}" target="_blank" class="text-blue-600 underline">ที่นี่</a> เพื่อเปิดไฟล์`,
+                        });
+                    } else if (response.htmlContent) {
+                        const printWindow = window.open('', '_blank');
+                        printWindow.document.write(response.htmlContent);
+                        printWindow.document.close();
+                        printWindow.print();
+                    } else if (response.csvContent) {
+                        const encodedUri = encodeURI("data:text/csv;charset=utf-8," + response.csvContent);
+                        const link = document.createElement("a");
+                        link.setAttribute("href", encodedUri);
+                        link.setAttribute("download", `export_${new Date().getTime()}.csv`);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }
+                } else {
+                    handleError({ message: response.message });
+                }
+            })
+            .withFailureHandler(handleError)
+            [functionToCall](reportData);
+    }
+
+    function renderUsersPage() {
+        const contentArea = document.getElementById('page-content');
+        contentArea.innerHTML = `
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h2 class="text-2xl font-bold text-gray-800">จัดการผู้ใช้</h2>
+                <button onclick="showUserModal()" class="admin-only business-gradient text-white px-4 py-2 rounded-lg items-center space-x-2 shadow-md hover:shadow-lg" style="display: none;">
+                    <i class='bx bx-user-plus'></i><span>เพิ่มผู้ใช้ใหม่</span>
+                </button>
+            </div>
+            <!-- Desktop Table View -->
+            <div class="hidden xl:block bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">ชื่อ-นามสกุล</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">อีเมล</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">สิทธิ์</th>
+                                <th class="p-4 text-center text-xs font-bold text-gray-600 uppercase">สถานะ</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">เข้าสู่ระบบล่าสุด</th>
+                                <th class="p-4 text-center text-xs font-bold text-gray-600 uppercase">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody" class="divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+             <!-- Mobile/Tablet Card View -->
+            <div id="usersCardContainer" class="xl:hidden grid grid-cols-1 gap-4"></div>
+        `;
+        renderUsersTable();
+    }
+
+    function renderUsersTable() {
+        const tableBody = document.getElementById('usersTableBody');
+        const cardContainer = document.getElementById('usersCardContainer');
+        const tableTemplate = document.getElementById('user-row-template');
+        const cardTemplate = document.getElementById('user-card-template');
+
+        if(tableBody) tableBody.innerHTML = '';
+        if(cardContainer) cardContainer.innerHTML = '';
+        showLoader();
+
+        google.script.run
+            .withSuccessHandler(jsonString => {
+                const users = JSON.parse(jsonString || "[]"); 
+                STATE.allUsers = users;
+
+                if (!users || users.length === 0) {
+                     if(tableBody) tableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state-container"><i class='bx bx-user-x'></i><p class="mt-4 font-medium">ไม่พบข้อมูลผู้ใช้</p></div></td></tr>`;
+                     if(cardContainer) renderEmptyState(cardContainer, 'ไม่พบข้อมูลผู้ใช้', 'bx-user-x');
+                } else {
+                    users.forEach(u => {
+                        const statusBadge = u.status === 'Active'
+                            ? `<span class="bg-green-100 text-green-700 px-2 py-1 text-xs rounded-full">เปิดใช้งาน</span>`
+                            : `<span class="bg-gray-200 text-gray-700 px-2 py-1 text-xs rounded-full">ปิดใช้งาน</span>`;
+                        const lastLoginDate = u.lastLogin ? new Date(u.lastLogin).toLocaleString('th-TH') : 'ยังไม่เคยเข้าสู่ระบบ';
+
+                        // Populate Desktop Table
+                        if(tableBody && tableTemplate){
+                            const clone = tableTemplate.content.cloneNode(true);
+                            const row = clone.querySelector('.table-row');
+                            row.id = `user-row-${u.email.replace(/[@.]/g, '-')}`;
+
+                            clone.querySelector('.user-name').textContent = u.name || '-';
+                            clone.querySelector('.user-email').textContent = u.email;
+                            clone.querySelector('.user-role').textContent = u.role;
+                            clone.querySelector('.user-status').innerHTML = statusBadge;
+                            clone.querySelector('.user-last-login').textContent = lastLoginDate;
+                            clone.querySelector('.edit-btn').onclick = () => showUserModal(u);
+                            clone.querySelector('.delete-btn').onclick = () => handleDeleteUser(u.email);
+                            tableBody.appendChild(clone);
+                        }
+                        
+                        // Populate Mobile Cards
+                        if(cardContainer && cardTemplate){
+                            const clone = cardTemplate.content.cloneNode(true);
+                            const card = clone.querySelector('.table-row');
+                            card.id = `user-card-${u.email.replace(/[@.]/g, '-')}`;
+                            
+                            clone.querySelector('.user-name').textContent = u.name || '-';
+                            clone.querySelector('.user-email').textContent = u.email;
+                            clone.querySelector('.user-status').innerHTML = statusBadge;
+                            clone.querySelector('.user-role').textContent = u.role;
+                            clone.querySelector('.user-last-login').textContent = lastLoginDate;
+                            clone.querySelector('.edit-btn').onclick = () => showUserModal(u);
+                            clone.querySelector('.delete-btn').onclick = () => handleDeleteUser(u.email);
+                            cardContainer.appendChild(clone);
+                        }
+                    });
+                }
+                hideLoader();
+                updateAdminUI();
+            })
+            .withFailureHandler(handleError)
+            .getUsers();
+    }
+    
+    function renderAuditLogPage() {
+        const contentArea = document.getElementById('page-content');
+        contentArea.innerHTML = `
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h2 class="text-2xl font-bold text-gray-800">ประวัติการใช้งานระบบ (Audit Log)</h2>
+            </div>
+             <!-- Desktop Table View -->
+            <div class="hidden xl:block bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">เวลา</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">ผู้ใช้งาน</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">การกระทำ</th>
+                                <th class="p-4 text-left text-xs font-bold text-gray-600 uppercase">รายละเอียด</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditLogTableBody" class="divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+             <!-- Mobile/Tablet Card View -->
+            <div id="auditLogCardContainer" class="xl:hidden grid grid-cols-1 gap-4"></div>
+        `;
+        renderAuditLogTable();
+    }
+    
+    function renderAuditLogTable() {
+        const tableBody = document.getElementById('auditLogTableBody');
+        const cardContainer = document.getElementById('auditLogCardContainer');
+        const tableTemplate = document.getElementById('audit-log-row-template');
+        const cardTemplate = document.getElementById('audit-log-card-template');
+
+        if(tableBody) tableBody.innerHTML = '';
+        if(cardContainer) cardContainer.innerHTML = '';
+        showLoader();
+
+        google.script.run
+            .withSuccessHandler(jsonString => {
+                const logs = JSON.parse(jsonString || "[]"); 
+                if (!logs || logs.length === 0) {
+                     if(tableBody) tableBody.innerHTML = `<tr><td colspan="4"><div class="empty-state-container"><i class='bx bx-history'></i><p class="mt-4 font-medium">ไม่พบข้อมูลประวัติการใช้งาน</p></div></td></tr>`;
+                     if(cardContainer) renderEmptyState(cardContainer, 'ไม่พบข้อมูลประวัติการใช้งาน', 'bx-history');
+                } else {
+                    logs.forEach(log => {
+                        // Populate Desktop Table
+                        if(tableBody && tableTemplate){
+                            const clone = tableTemplate.content.cloneNode(true);
+                            clone.querySelector('.log-timestamp').textContent = log.timestamp ? new Date(log.timestamp).toLocaleString('th-TH') : 'N/A';
+                            clone.querySelector('.log-user').textContent = log.user;
+                            clone.querySelector('.log-action').textContent = log.action;
+                            clone.querySelector('.log-details').textContent = log.details;
+                            tableBody.appendChild(clone);
+                        }
+
+                        // Populate Mobile Cards
+                        if(cardContainer && cardTemplate){
+                            const clone = cardTemplate.content.cloneNode(true);
+                             clone.querySelector('.log-timestamp').textContent = log.timestamp ? new Date(log.timestamp).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short'}) : 'N/A';
+                            clone.querySelector('.log-user').textContent = log.user;
+                            clone.querySelector('.log-action').textContent = log.action;
+                            clone.querySelector('.log-details').textContent = log.details;
+                            cardContainer.appendChild(clone);
+                        }
+                    });
+                }
+                hideLoader();
+            })
+            .withFailureHandler(handleError)
+            .getAuditLogs();
+    }
+
+
+    // =================================================================
+    // --- MODAL & FORM HANDLING ---
+    // =================================================================
+    function createModal(id, title, formContent, formId, submitHandler) {
+        if(document.getElementById(id)) document.getElementById(id).remove();
+        const modalHTML = `
+            <div id="${id}" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] p-4 transition-opacity duration-300 opacity-0">
+                <div class="bg-white rounded-xl p-6 w-full max-w-lg mx-auto shadow-2xl max-h-[90vh] flex flex-col transform transition-all duration-300 scale-95">
+                    <div class="flex justify-between items-center mb-4 border-b pb-3 flex-shrink-0">
+                        <h3 class="text-lg font-semibold text-gray-800">${title}</h3>
+                        <button onclick="closeModal('${id}')" class="text-gray-400 hover:text-gray-700 transition-colors text-2xl"><i class='bx bx-x'></i></button>
+                    </div>
+                    <form id="${formId}" class="space-y-4 overflow-y-auto px-1" novalidate>
+                        ${formContent}
+                        <div class="flex space-x-4 pt-4 border-t mt-6 flex-shrink-0">
+                            <button type="button" onclick="closeModal('${id}')" class="w-full bg-gray-200 py-2.5 rounded-lg hover:bg-gray-300 text-gray-800 font-semibold transition-colors">ยกเลิก</button>
+                            <button type="submit" class="w-full business-gradient text-white py-2.5 rounded-lg hover:opacity-90 font-semibold transition-opacity shadow-lg">บันทึก</button>
+                        </div>
+                    </form>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        document.getElementById(formId).addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (validateForm(formId)) {
+                submitHandler(e);
+            }
+        });
+    }
+
+    function openModal(id) {
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.querySelector('div > div').classList.remove('scale-95');
+        }, 10);
+    }
+
+    function closeModal(id) {
+        const modal = document.getElementById(id);
+        if(modal) {
+            $(modal).find('.searchable-select').each(function() {
+                if ($(this).data('select2')) {
+                    $(this).select2('destroy');
+                }
+            });
+            modal.classList.add('opacity-0');
+            modal.querySelector('div > div').classList.add('scale-95');
+            setTimeout(() => {
+                modal.remove();
+            }, 300);
+        }
+    }
+
+    function showProductModal(product = null) {
+        const isEditing = product !== null;
+        const title = isEditing ? 'แก้ไขข้อมูลสินค้า' : 'เพิ่มสินค้าใหม่';
+        
+        let initialStockDateValue = '';
+        if (isEditing && product.initialStockDate) {
+            const d = new Date(product.initialStockDate);
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            initialStockDateValue = d.toISOString().slice(0,16);
+        }
+
+        const formContent = `
+            <input type="hidden" name="id" value="${isEditing ? product.id : ''}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="form-label">รหัสสินค้า</label><input type="text" name="code" required class="form-input bg-gray-100" value="${isEditing ? product.code : 'กำลังสร้างรหัส...'}" readonly><div class="form-error-text"></div></div>
+                <div><label class="form-label">ชื่อสินค้า</label><input type="text" name="name" required class="form-input" value="${isEditing ? product.name : ''}"><div class="form-error-text"></div></div>
+                <div><label class="form-label">ประเภท</label><input type="text" name="category" required class="form-input" value="${isEditing ? product.category : ''}"><div class="form-error-text"></div></div>
+                <div><label class="form-label">หน่วยนับ</label><input type="text" name="unit" required class="form-input" value="${isEditing ? product.unit : ''}"><div class="form-error-text"></div></div>
+                <div><label class="form-label">ราคา/หน่วย</label><input type="number" name="price" step="0.01" required class="form-input" value="${isEditing ? product.price : ''}"><div class="form-error-text"></div></div>
+                <div><label class="form-label">จุดสั่งซื้อ (ROP)</label><input type="number" name="minStock" required class="form-input" value="${isEditing ? product.minStock : ''}"><div class="form-error-text"></div></div>
+                <div class="md:col-span-2"><label class="form-label">ตำแหน่งเก็บ</label><input type="text" name="location" class="form-input" value="${isEditing ? (product.location || '') : ''}"><div class="form-error-text"></div></div>
+            </div>
+            <div class="border-t pt-4 mt-4">
+                <p class="font-semibold text-gray-700 mb-2">ข้อมูลยอดยกมา</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="form-label">ยอดยกมา</label><input type="number" name="initialStock" value="${isEditing ? (product.initialStock || '0') : '0'}" required class="form-input"><div class="form-error-text"></div></div>
+                    <div><label class="form-label">ณ วันที่และเวลา</label><input type="datetime-local" name="initialStockDate" value="${initialStockDateValue}" class="form-input"><div class="form-error-text"></div></div>
+                </div>
+            </div>
+            `;
+        createModal('productModal', title, formContent, 'productForm', isEditing ? handleUpdateProduct : handleAddProduct);
+
+        if (!isEditing) {
+            const codeInput = document.querySelector('#productForm [name="code"]');
+            google.script.run
+                .withSuccessHandler(response => {
+                    if (response.success && codeInput) {
+                        codeInput.value = response.code;
+                    } else {
+                        handleError({ message: response.message || "ไม่สามารถสร้างรหัสสินค้าอัตโนมัติได้" });
+                        codeInput.value = "ERROR";
+                    }
+                })
+                .withFailureHandler(handleError)
+                .getNextProductCode();
+        }
+        
+        openModal('productModal');
+    }
+
+    function handleAddProduct(event) {
+        showLoader();
+        const form = event.target;
+        const productData = Object.fromEntries(new FormData(form));
+        google.script.run.withSuccessHandler(response => handleFormSuccess('productModal', 'products', 'add', response)).withFailureHandler(handleError).addProduct(productData);
+    }
+
+    function handleUpdateProduct(event) {
+        showLoader();
+        const form = event.target;
+        const productData = Object.fromEntries(new FormData(form));
+        google.script.run.withSuccessHandler(response => handleFormSuccess('productModal', 'products', 'update', response, productData.id)).withFailureHandler(handleError).updateProduct(productData);
+    }
+
+    function handleDeleteProduct(id) {
+        showConfirmModal('คุณแน่ใจหรือไม่ว่าต้องการลบสินค้านี้? การกระทำนี้ไม่สามารถย้อนกลับได้', () => {
+            showLoader();
+            google.script.run.withSuccessHandler(response => handleFormSuccess(null, 'products', 'delete', response)).withFailureHandler(handleError).deleteProduct(id);
+        });
+    }
+
+    function showTransactionModal() {
+        let productOptions = STATE.allProducts.map(p => `<option value="${p.id}">${p.name} (${p.code})</option>`).join('');
+        let projectOptions = STATE.allProjects.map(p => `<option value="${p.id}">${p.projectName}</option>`).join('');
+        let supplierOptions = STATE.allSuppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        const nowValue = d.toISOString().slice(0,16);
+
+        const formContent = `
+            <input type="hidden" name="type" id="transactionTypeInput" value="in" required>
+            
+            <div class="mb-4">
+                <label class="form-label">ประเภทธุรกรรม</label>
+                <div class="grid grid-cols-2 gap-4 mt-2">
+                    <button type="button" id="type-btn-in" class="transaction-type-btn in active" data-type="in">
+                        <i class='bx bx-log-in-circle mr-2'></i> รับเข้า
+                    </button>
+                    <button type="button" id="type-btn-out" class="transaction-type-btn out" data-type="out">
+                        <i class='bx bx-log-out-circle mr-2'></i> เบิกออก
+                    </button>
+                </div>
+            </div>
+            
+            <div class="border-t pt-4">
+                <label class="form-label">วันที่ทำรายการ</label>
+                <input type="datetime-local" name="transactionDate" value="${nowValue}" class="form-input">
+                <div class="form-error-text"></div>
+            </div>
+
+            <div class="border-t pt-4 space-y-4 mt-4">
+                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+                    <label class="sm:col-span-1 form-label m-0 pt-2">สินค้า</label>
+                    <div class="sm:col-span-2">
+                        <select name="productId" id="transactionProductSelect" required class="form-input searchable-select" style="width: 100%;">
+                            <option></option>
+                            ${productOptions}
+                        </select>
+                        <div class="form-error-text"></div>
+                    </div>
+                 </div>
+                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+                    <label class="sm:col-span-1 form-label m-0 pt-2">จำนวน</label>
+                    <div class="sm:col-span-2 relative">
+                        <input type="number" name="quantity" required min="1" class="form-input" placeholder="ใส่จำนวน">
+                        <span id="current-stock-display" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded hidden"></span>
+                        <div class="form-error-text"></div>
+                    </div>
+                </div>
+
+            <div id="supplier-section" class="border-t pt-4 mt-4">
+                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+                    <label class="sm:col-span-1 form-label m-0 pt-2">ซัพพลายเออร์</label>
+                    <div class="sm:col-span-2 flex items-center space-x-2">
+                        <div class="flex-grow">
+                            <select name="supplierId" id="transactionSupplierSelect" class="form-input searchable-select" style="width: 100%;">
+                                <option></option>
+                                ${supplierOptions}
+                            </select>
+                        </div>
+                        <button type="button" onclick="openNestedSupplierModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg p-2 h-10 w-10 flex-shrink-0 flex items-center justify-center" title="เพิ่มซัพพลายเออร์ใหม่"><i class='bx bx-plus'></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t pt-4 space-y-4 mt-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+                     <label class="sm:col-span-1 form-label m-0 pt-2">โปรเจกต์</label>
+                     <div class="sm:col-span-2 flex items-center space-x-2">
+                         <div class="flex-grow">
+                             <select name="projectId" id="transactionProjectSelect" class="form-input searchable-select" style="width: 100%;">
+                                <option></option>
+                                ${projectOptions}
+                             </select>
+                         </div>
+                         <button type="button" onclick="openNestedProjectModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg p-2 h-10 w-10 flex-shrink-0 flex items-center justify-center" title="เพิ่มโปรเจกต์ใหม่"><i class='bx bx-plus'></i></button>
+                     </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+                     <label class="sm:col-span-1 form-label m-0 pt-2">หมายเหตุ</label>
+                     <div class="sm:col-span-2">
+                      <input type="text" name="note" class="form-input" placeholder="หมายเหตุ (ถ้ามี)">
+                     </div>
+                </div>
+            </div>
+        `;
+
+        createModal('transactionModal', 'บันทึกธุรกรรม', formContent, 'transactionForm', handleAddTransaction);
+        
+        $('#transactionProductSelect').select2({ placeholder: "เลือกหรือค้นหาสินค้า...", dropdownParent: $('#transactionModal .bg-white') });
+        $('#transactionProjectSelect').select2({ placeholder: "เลือกหรือค้นหาโปรเจกต์...", allowClear: true, dropdownParent: $('#transactionModal .bg-white') });
+        $('#transactionSupplierSelect').select2({ placeholder: "เลือกซัพพลายเออร์...", allowClear: true, dropdownParent: $('#transactionModal .bg-white') });
+
+        document.getElementById('type-btn-in').addEventListener('click', () => selectTransactionType('in'));
+        document.getElementById('type-btn-out').addEventListener('click', () => selectTransactionType('out'));
+
+        $('#transactionProductSelect').on('select2:select', function (e) {
+            const productId = e.params.data.id;
+            const product = STATE.allProducts.find(p => p.id == productId);
+            const stockDisplay = document.getElementById('current-stock-display');
+            const quantityInput = document.querySelector('#transactionForm [name="quantity"]');
+
+            if (product && stockDisplay) {
+                stockDisplay.textContent = `คงเหลือ: ${product.stock}`;
+                stockDisplay.classList.remove('hidden');
+                if (quantityInput && document.getElementById('transactionTypeInput').value === 'out') {
+                    quantityInput.max = product.stock;
+                }
+            }
+        });
+         $('#transactionProductSelect').on('select2:unselect', function (e) {
+            const stockDisplay = document.getElementById('current-stock-display');
+            stockDisplay.classList.add('hidden');
+           });
+
+        openModal('transactionModal');
+    }
+
+    function selectTransactionType(type) {
+        document.getElementById('transactionTypeInput').value = type;
+        const inBtn = document.getElementById('type-btn-in');
+        const outBtn = document.getElementById('type-btn-out');
+        const quantityInput = document.querySelector('#transactionForm [name="quantity"]');
+        const supplierSection = document.getElementById('supplier-section');
+        
+        inBtn.classList.toggle('active', type === 'in');
+        outBtn.classList.toggle('active', type === 'out');
+        supplierSection.style.display = type === 'in' ? 'block' : 'none';
+
+        if (type === 'out') {
+            const productId = $('#transactionProductSelect').val();
+            if (productId) {
+                const product = STATE.allProducts.find(p => p.id == productId);
+                if (product && quantityInput) {
+                    quantityInput.max = product.stock;
+                }
+            }
+        } else {
+            if (quantityInput) {
+                quantityInput.removeAttribute('max');
+            }
+        }
+    }
+
+    function handleAddTransaction(event) {
+        const form = event.target;
+        const productId = $('#transactionProductSelect').val();
+        const product = STATE.allProducts.find(p => p.id == productId);
+        const quantity = parseInt(form.quantity.value);
+
+        if (form.type.value === 'out' && product && quantity > product.stock) {
+            handleError({ message: `จำนวนเบิกจ่าย (${quantity}) มากกว่าจำนวนคงเหลือ (${product.stock})` });
+            return; 
+        }
+
+        showLoader();
+        const tData = {
+            type: form.type.value,
+            productId: productId,
+            quantity: quantity,
+            projectId: $('#transactionProjectSelect').val(),
+            supplierId: form.type.value === 'in' ? $('#transactionSupplierSelect').val() : '',
+            note: form.note.value,
+            transactionDate: form.transactionDate.value
+        };
+        google.script.run.withSuccessHandler(response => handleFormSuccess('transactionModal', 'transactions', 'add', response)).withFailureHandler(handleError).addTransaction(tData);
+    }
+
+    // Updated showProjectModal to include new fields
+    function showProjectModal(project = null, callback = null) {
+        const isEditing = project !== null;
+        const title = isEditing ? 'แก้ไขโปรเจกต์' : 'เพิ่มโปรเจกต์ใหม่';
+        const formContent = `
+            <input type="hidden" name="id" value="${isEditing ? project.id : ''}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="form-label">รหัสโปรเจกต์</label><input type="text" name="projectCode" required class="form-input bg-gray-100" value="${isEditing ? project.projectCode : 'กำลังสร้างรหัส...'}" readonly><div class="form-error-text"></div></div>
+                <div><label class="form-label">ชื่อโปรเจกต์</label><input type="text" name="projectName" required class="form-input" value="${isEditing ? project.projectName : ''}"><div class="form-error-text"></div></div>
+            </div>
+            <div><label class="form-label">ลูกค้า / ผู้ว่าจ้าง</label><input type="text" name="customer" class="form-input" value="${isEditing ? project.customer || '' : ''}"><div class="form-error-text"></div></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="form-label">วันที่เริ่มต้น</label><input type="date" name="startDate" class="form-input" value="${isEditing ? project.startDate || '' : ''}"><div class="form-error-text"></div></div>
+                <div><label class="form-label">วันที่สิ้นสุด</label><input type="date" name="endDate" class="form-input" value="${isEditing ? project.endDate || '' : ''}"><div class="form-error-text"></div></div>
+            </div>
+            <div><label class="form-label">รายละเอียดโปรเจกต์</label><textarea name="description" rows="3" class="form-textarea">${isEditing ? project.description || '' : ''}</textarea><div class="form-error-text"></div></div>
+            <div><label class="form-label">หมายเหตุเพิ่มเติม</label><textarea name="notes" rows="2" class="form-textarea">${isEditing ? project.notes || '' : ''}</textarea><div class="form-error-text"></div></div>
+            <div><label class="form-label">สถานะ</label><select name="status" required class="form-input">
+                <option value="In Progress" ${isEditing && project.status === 'In Progress' ? 'selected' : ''}>กำลังดำเนินการ (In Progress)</option>
+                <option value="Completed" ${isEditing && project.status === 'Completed' ? 'selected' : ''}>เสร็จสิ้น (Completed)</option>
+                <option value="On Hold" ${isEditing && project.status === 'On Hold' ? 'selected' : ''}>พักไว้ชั่วคราว (On Hold)</option>
+            </select><div class="form-error-text"></div></div>`;
+        createModal('projectModal', title, formContent, 'projectForm', isEditing ? handleUpdateProject : handleAddProject);
+        
+        if (callback) {
+            $('#projectForm').data('callback', callback);
+        }
+
+        if (!isEditing) {
+            const codeInput = document.querySelector('#projectForm [name="projectCode"]');
+            google.script.run
+                .withSuccessHandler(response => {
+                    if (response.success && codeInput) {
+                        codeInput.value = response.code;
+                    } else {
+                        handleError({ message: response.message || "ไม่สามารถสร้างรหัสโปรเจกต์ได้" });
+                        codeInput.value = "ERROR";
+                    }
+                })
+                .withFailureHandler(handleError)
+                .getNextProjectCode();
+        }
+        
+        openModal('projectModal');
+    }
+
+
+    function handleAddProject(event) {
+        showLoader();
+        const projectData = Object.fromEntries(new FormData(event.target));
+        google.script.run.withSuccessHandler(response => handleFormSuccess('projectModal', 'projects', 'add', response)).withFailureHandler(handleError).addProject(projectData);
+    }
+
+    function handleUpdateProject(event) {
+        showLoader();
+        const projectData = Object.fromEntries(new FormData(event.target));
+        google.script.run.withSuccessHandler(response => handleFormSuccess('projectModal', 'projects', 'update', response, projectData.id)).withFailureHandler(handleError).updateProject(projectData);
+    }
+
+    function handleDeleteProject(id) {
+        showConfirmModal('คุณแน่ใจหรือไม่ว่าต้องการลบโปรเจกต์นี้?', () => {
+            showLoader();
+            google.script.run.withSuccessHandler(response => handleFormSuccess(null, 'projects', 'delete', response)).withFailureHandler(handleError).deleteProject(id);
+        });
+    }
+
+    // NEW: Added optional callback parameter for nested modals
+    function showSupplierModal(supplier = null, callback = null) {
+        const isEditing = supplier !== null;
+        const title = isEditing ? 'แก้ไขข้อมูลซัพพลายเออร์' : 'เพิ่มซัพพลายเออร์ใหม่';
+        const formContent = `
+            <input type="hidden" name="id" value="${isEditing ? supplier.id : ''}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2"><label class="form-label">ชื่อซัพพลายเออร์/บริษัท</label><input type="text" name="name" required class="form-input" value="${isEditing ? supplier.name : ''}"><div class="form-error-text"></div></div>
+                <div><label class="form-label">ชื่อผู้ติดต่อ</label><input type="text" name="contact" class="form-input" value="${isEditing ? supplier.contact || '' : ''}"><div class="form-error-text"></div></div>
+                <div><label class="form-label">เบอร์โทรศัพท์</label><input type="tel" name="phone" class="form-input" value="${isEditing ? supplier.phone || '' : ''}"><div class="form-error-text"></div></div>
+                <div class="md:col-span-2"><label class="form-label">อีเมล</label><input type="email" name="email" class="form-input" value="${isEditing ? supplier.email || '' : ''}"><div class="form-error-text"></div></div>
+                <div class="md:col-span-2"><label class="form-label">ที่อยู่</label><textarea name="address" rows="2" class="form-textarea">${isEditing ? supplier.address || '' : ''}</textarea><div class="form-error-text"></div></div>
+                <div class="md:col-span-2"><label class="form-label">หมายเหตุ</label><textarea name="notes" rows="2" class="form-textarea">${isEditing ? supplier.notes || '' : ''}</textarea><div class="form-error-text"></div></div>
+            </div>`;
+        createModal('supplierModal', title, formContent, 'supplierForm', handleSaveSupplier);
+
+        if (callback) {
+            $('#supplierForm').data('callback', callback);
+        }
+
+        openModal('supplierModal');
+    }
+
+    function handleSaveSupplier(event) {
+        showLoader();
+        const supplierData = Object.fromEntries(new FormData(event.target));
+        google.script.run.withSuccessHandler(response => handleFormSuccess('supplierModal', 'suppliers', 'save', response, supplierData.id || (response.newData ? response.newData.id : null))).withFailureHandler(handleError).addOrUpdateSupplier(supplierData);
+    }
+
+    function handleDeleteSupplier(id) {
+        showConfirmModal('คุณแน่ใจหรือไม่ว่าต้องการลบซัพพลายเออร์นี้?', () => {
+            showLoader();
+            google.script.run.withSuccessHandler(response => handleFormSuccess(null, 'suppliers', 'delete', response)).withFailureHandler(handleError).deleteSupplier(id);
+        });
+    }
+
+    function showUserModal(user = null) {
+        const isEditing = user !== null;
+        const title = isEditing ? 'แก้ไขข้อมูลผู้ใช้' : 'เพิ่มผู้ใช้ใหม่';
+        const formContent = `
+            <div><label class="form-label">อีเมล</label>
+                <input type="email" name="email" required class="form-input ${isEditing ? 'bg-gray-100' : ''}" value="${isEditing ? user.email : ''}" ${isEditing ? 'readonly' : ''}>
+                <div class="form-error-text"></div>
+            </div>
+            <div><label class="form-label">ชื่อ-นามสกุล</label>
+                <input type="text" name="name" required class="form-input" value="${isEditing && user.name ? user.name : ''}">
+                <div class="form-error-text"></div>
+            </div>
+            <div><label class="form-label">สิทธิ์ (Role)</label>
+                <input type="text" name="role" required class="form-input" list="role-suggestions" value="${isEditing ? user.role : ''}" placeholder="เช่น admin, staff">
+                <datalist id="role-suggestions"><option value="admin"></option><option value="staff"></option></datalist>
+                <div class="form-error-text"></div>
+            </div>
+            <div><label class="form-label">สถานะ (Status)</label>
+                <select name="status" required class="form-input">
+                    <option value="Active" ${isEditing && user.status === 'Active' ? 'selected' : ''}>Active (เปิดใช้งาน)</option>
+                    <option value="Inactive" ${isEditing && user.status === 'Inactive' ? 'selected' : ''}>Inactive (ปิดใช้งาน)</option>
+                </select>
+                <div class="form-error-text"></div>
+            </div>
+        `;
+        createModal('userModal', title, formContent, 'userForm', isEditing ? handleUpdateUser : handleAddUser);
+        openModal('userModal');
+    }
+
+    function handleAddUser(event) {
+        showLoader();
+        const userData = Object.fromEntries(new FormData(event.target));
+        google.script.run.withSuccessHandler(response => handleFormSuccess('userModal', 'users', 'add', response)).withFailureHandler(handleError).updateUser(userData);
+    }
+
+    function handleUpdateUser(event) {
+        showLoader();
+        const userData = Object.fromEntries(new FormData(event.target));
+        google.script.run.withSuccessHandler(response => handleFormSuccess('userModal', 'users', 'update', response, userData.email)).withFailureHandler(handleError).updateUser(userData);
+    }
+
+    function handleDeleteUser(email) {
+        showConfirmModal(`คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้ ${email}? การกระทำนี้ไม่สามารถย้อนกลับได้`, () => {
+            showLoader();
+            google.script.run.withSuccessHandler(response => {
+                if (response.success) {
+                    refreshAllData(() => showSection('users'));
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: response.message, showConfirmButton: false, timer: 2000 });
+                } else {
+                    handleError({ message: response.message });
+                }
+                hideLoader();
+            }).withFailureHandler(handleError).deleteUser(email);
+        });
+    }
+
+
+    // =================================================================
+    // --- UTILITY & HELPER FUNCTIONS ---
+    // =================================================================
+    function clearProductFilters() {
+        document.getElementById('productSearch').value = '';
+        document.getElementById('productCategoryFilter').value = '';
+        document.getElementById('productStockStatusFilter').value = '';
+        
+        STATE.pagination.currentSearch = '';
+        STATE.pagination.currentCategory = '';
+        STATE.pagination.currentStockStatus = '';
+        
+        fetchProducts(1);
+    }
+    
+    function openNestedSupplierModal() {
+        showSupplierModal(null, (newSupplier) => {
+            if (newSupplier && newSupplier.id) {
+                const newOption = new Option(newSupplier.name, newSupplier.id, true, true);
+                $('#transactionSupplierSelect').append(newOption).trigger('change');
+                 // Refresh supplier list in STATE
+                 STATE.allSuppliers.push(newSupplier);
+            }
+            // No need to close modal here, handleFormSuccess will do it.
+        });
+    }
+
+    function openNestedProjectModal() {
+        showProjectModal(null, (newProject) => {
+            if (newProject && newProject.id) {
+                const newOption = new Option(newProject.projectName, newProject.id, true, true);
+                $('#transactionProjectSelect').append(newOption).trigger('change');
+                // Refresh project list in STATE
+                STATE.allProjects.push(newProject);
+            }
+             // No need to close modal here, handleFormSuccess will do it.
+        });
+    }
+
+    function validateForm(formId) {
+        const form = document.getElementById(formId);
+        let isValid = true;
+        form.querySelectorAll('.form-error-text').forEach(el => el.innerHTML = '');
+
+        form.querySelectorAll('[required]').forEach(input => {
+            input.classList.remove('form-input-invalid', 'form-input-valid', 'form-textarea-invalid', 'form-textarea-valid');
+            const errorContainer = input.parentElement.querySelector('.form-error-text'); // Find error container within parent
+
+            if (!input.value.trim() && input.offsetParent !== null) { // Check if field is visible
+                input.classList.add(input.tagName === 'TEXTAREA' ? 'form-textarea-invalid' : 'form-input-invalid');
+                if (errorContainer) {
+                    errorContainer.innerHTML = `<i class='bx bxs-error-circle'></i><span>กรุณากรอกข้อมูลนี้</span>`;
+                }
+                isValid = false;
+            } else if (input.offsetParent !== null) {
+                input.classList.add(input.tagName === 'TEXTAREA' ? 'form-textarea-valid' : 'form-input-valid');
+            }
+        });
+        return isValid;
+    }
+
+    function handleFormSuccess(modalIdToClose, sectionToRefresh, actionType, response, updatedItemId = null) {
+        hideLoader();
+        if (response.success) {
+            const formId = modalIdToClose ? modalIdToClose.replace('Modal', 'Form') : '';
+            const form = document.getElementById(formId);
+            const callback = form ? $(form).data('callback') : null;
+            
+            // If it was a nested modal and there's new data, call the callback
+            if (callback && response.newData) {
+                 if (modalIdToClose) closeModal(modalIdToClose); // Close the nested modal first
+                 callback(response.newData); // Pass new data back to the parent modal's context
+                 refreshAllData(); // Refresh underlying data
+                 return; // Stop further processing for nested modals
+            }
+
+            // Standard success handling for non-nested modals or deletions
+            const successActions = (itemId) => {
+                refreshAllData(() => {
+                    if (sectionToRefresh) showSection(sectionToRefresh);
+
+                    if (itemId && (actionType === 'update' || actionType === 'save')) {
+                        setTimeout(() => {
+                            let rowId, cardId;
+                            if (sectionToRefresh === 'products') {
+                                rowId = `product-row-${itemId}`;
+                                cardId = `product-card-${itemId}`;
+                            } else if (sectionToRefresh === 'projects') {
+                                rowId = `project-row-${itemId}`;
+                                cardId = `project-card-${itemId}`;
+                            } else if (sectionToRefresh === 'suppliers') {
+                                rowId = `supplier-row-${itemId}`;
+                                cardId = `supplier-card-${itemId}`;
+                            } else if (sectionToRefresh === 'users') {
+                                const safeId = itemId.replace(/[@.]/g, '-');
+                                rowId = `user-row-${safeId}`;
+                                cardId = `user-card-${safeId}`;
+                            }
+                            
+                            [document.getElementById(rowId), document.getElementById(cardId)].forEach(el => {
+                                if (el) {
+                                    el.classList.add('row-highlight');
+                                    setTimeout(() => {
+                                        el.classList.remove('row-highlight');
+                                    }, 5000);
+                                }
+                            });
+                        }, 100); 
+                    }
+                });
+            };
+
+            if (actionType === 'add') {
+                 if(modalIdToClose) closeModal(modalIdToClose); // Close modal before showing Swal confirm
+                 Swal.fire({
+                    title: response.message || 'บันทึกสำเร็จ!',
+                    icon: 'success',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#6e7881',
+                    confirmButtonText: 'เพิ่มรายการต่อไป',
+                    cancelButtonText: 'กลับไปหน้ารายการ'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        refreshAllData(() => { // Refresh first, then show modal again
+                            if (modalIdToClose === 'productModal') showProductModal();
+                            else if (modalIdToClose === 'transactionModal') showTransactionModal();
+                            else if (modalIdToClose === 'projectModal') showProjectModal();
+                            else if (modalIdToClose === 'userModal') showUserModal();
+                            else if (modalIdToClose === 'supplierModal') showSupplierModal();
+                        });
+                    } else {
+                        successActions(); // Just refresh the list
+                    }
+                });
+            } else { // For 'update', 'delete', 'save' (non-nested)
+                if (modalIdToClose) closeModal(modalIdToClose);
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: response.message || 'ดำเนินการสำเร็จ',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+
+                const finalItemId = (actionType === 'save' && response.newData) ? response.newData.id : updatedItemId;
+                successActions(finalItemId);
+            }
+        } else {
+            handleError({ message: response.message });
+        }
+    }
+
+
+    function showConfirmModal(message, onConfirm, options = {}) {
+        Swal.fire({
+            title: options.title || 'ยืนยันการกระทำ',
+            text: message,
+            icon: options.icon || 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: options.confirmButtonText || 'ใช่, ยืนยัน',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                onConfirm();
+            }
+        });
+    }
+
+    function renderEmptyState(container, text, iconClass = 'bx-data') {
+        if (!container) return;
+        container.innerHTML = `
+            <div class="empty-state-container col-span-full">
+                <i class='bx ${iconClass}'></i>
+                <p class="mt-4 font-medium">${text}</p>
+            </div>`;
+    }
+
+    function showLoader() { 
+        const loader = document.getElementById('loader');
+        if (loader) loader.classList.remove('hidden'); 
+    }
+
+    function hideLoader() { 
+        const loader = document.getElementById('loader');
+        if (loader) loader.classList.add('hidden'); 
+    }
+
+    function handleError(error) {
+        hideLoader(); 
+        console.error(error); 
+        Swal.fire({
+            icon: 'error',
+            title: 'เกิดข้อผิดพลาด',
+            text: 'ระบบไม่สามารถทำงานต่อได้ กรุณาลองอีกครั้งในภายหลัง',
+            footer: `<div class="text-xs text-left"><b>รายละเอียดทางเทคนิค:</b><br>${error.message || 'ไม่ทราบสาเหตุ'}</div>`,
+            confirmButtonColor: '#d32f2f'
+        });
+    }
+    </script>
+
+</body>
+</html>
+
+
