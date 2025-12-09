@@ -1362,7 +1362,7 @@
                     console.error('Error loading dropdown data:', error);
                 },
             });
-            
+
             // Load data from Google Sheets on startup
             loadDataFromSheets();
 
@@ -1372,14 +1372,14 @@
                     console.log('Navigating to Complain Data View tab');
                     let complainId = location.parameter.id;
                     if (complainId) {
-                        while(isLoading){
+                        while (isLoading) {
                             await new Promise(resolve => setTimeout(resolve, 200));
                         }
                         setTimeout(() => {
                             editData(complainId);
                         }, 200);
                     }
-                    
+
                 }
             }));
         });
@@ -2300,7 +2300,7 @@
             const isEdit = !!editId;
 
             if (isEdit) {
-                formData.id = parseInt(editId);
+                formData.id = editId;
             }
 
             // Save to Google Sheets
@@ -2628,6 +2628,10 @@
                     // Delete from Google Sheets
                     deleteDataFromSheets(id)
                         .then(response => {
+                            reponse = JSON.parse(response); // Parse JSON string
+                            if (!response.success) {
+                                throw new Error(response.error || 'ไม่สามารถลบข้อมูลได้');
+                            }
                             // Remove from local data
                             complainData = complainData.filter(item => item.id !== id);
                             updateDataTable();
@@ -2647,6 +2651,7 @@
                             });
                         })
                         .catch(error => {
+                            error = JSON.parse(error); // Parse JSON string
                             console.error('Error deleting data:', error);
 
                             Swal.fire({
