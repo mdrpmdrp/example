@@ -98,12 +98,12 @@ function addComplainData(formData) {
     sheet.getRange(newRowNum, 10).setNumberFormat('#,##0.00');
 
     // // Send notification asynchronously (non-blocking)
-    // try {
-    //   sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline, 
-    //                formData.responsibleTeam, formData.teamRepresentative, 'add', formData.store, nextId);
-    // } catch (notifError) {
-    //   console.warn('Notification failed but data saved:', notifError);
-    // }
+    try {
+      sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline, 
+                   formData.responsibleTeam, formData.teamRepresentative, 'add', formData.store, nextId);
+    } catch (notifError) {
+      console.warn('Notification failed but data saved:', notifError);
+    }
 
     return JSON.stringify({
       success: true,
@@ -158,12 +158,12 @@ function updateComplainData(formData) {
     sheet.getRange(actualRow, 1, 1, 15).setValues([rowData]);
 
     // // Send notification asynchronously (non-blocking)
-    // try {
-    //   sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline,
-    //                formData.responsibleTeam, formData.teamRepresentative, 'update', formData.store, formData.id);
-    // } catch (notifError) {
-    //   console.warn('Notification failed but data updated:', notifError);
-    // }
+    try {
+      sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline,
+                   formData.responsibleTeam, formData.teamRepresentative, 'update', formData.store, formData.id);
+    } catch (notifError) {
+      console.warn('Notification failed but data updated:', notifError);
+    }
 
     return JSON.stringify({
       success: true,
