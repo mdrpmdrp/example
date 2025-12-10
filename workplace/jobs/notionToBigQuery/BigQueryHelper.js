@@ -5,8 +5,6 @@
 
 /**
  * Converts schema to BigQuery parameter type format
- * @param {Array} schema - Schema definition array
- * @returns {Array} - BigQuery struct types
  */
 function convertSchemaToStructTypes(schema) {
     return schema.map(field => ({
@@ -19,11 +17,6 @@ function convertSchemaToStructTypes(schema) {
 
 /**
  * Builds merge query for BigQuery
- * @param {string} projectId - BigQuery project ID
- * @param {string} datasetId - BigQuery dataset ID
- * @param {string} tableId - BigQuery table ID
- * @param {Array} schema - Schema definition array
- * @returns {string} - SQL merge query
  */
 function buildMergeQuery(projectId, datasetId, tableId, schema) {
     const updateFields = schema
@@ -89,10 +82,6 @@ function convertToParameterValue(transformedData, schema) {
 
 /**
  * Builds query parameters for BigQuery
- * @param {Array} transformedData - Transformed data array
- * @param {Array} schema - Schema definition array
- * @param {string} paramName - Parameter name (default: 'notionData')
- * @returns {Array} - BigQuery query parameters
  */
 function buildQueryParameters(transformedData, schema, paramName = 'notionData') {
     const structTypes = convertSchemaToStructTypes(schema);

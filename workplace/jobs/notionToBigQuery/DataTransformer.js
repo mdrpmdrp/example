@@ -5,8 +5,6 @@
 
 /**
  * Transforms Notion task data to BigQuery format
- * @param {Object} page - Notion page object
- * @returns {Object} - Transformed task object
  */
 function transformTaskData(page) {
     const props = page.properties;
@@ -44,8 +42,6 @@ function transformTaskData(page) {
 
 /**
  * Transforms Notion project data to BigQuery format
- * @param {Object} page - Notion page object
- * @returns {Object} - Transformed project object
  */
 function transformProjectData(page) {
     const props = page.properties;
@@ -72,9 +68,6 @@ function transformProjectData(page) {
 
 /**
  * Transforms Notion data based on type
- * @param {Array} data - Array of Notion pages
- * @param {string} type - Type of data ('tasks' or 'projects')
- * @returns {Array} - Array of transformed objects
  */
 function transformNotionData(data, type) {
     if (type === 'tasks') {

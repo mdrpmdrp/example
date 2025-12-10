@@ -1,6 +1,14 @@
 /**
  * Main entry point for syncing Notion tasks to BigQuery
  */
+function syncNotionToBigQuery() {
+    syncNotionTasks();
+    syncNotionProjects();
+}
+
+/**
+ * Syncs Notion tasks to BigQuery
+ */
 function syncNotionTasks() {
     const config = getConfig();
     const notionTaskData = getNotionTaskData();
@@ -15,6 +23,9 @@ function syncNotionTasks() {
     );
 }
 
+/**
+ * Syncs Notion projects to BigQuery
+ */
 function syncNotionProjects() {
     const config = getConfig();
     const notionProjectData = getNotionProjectData();

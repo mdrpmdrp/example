@@ -3,22 +3,26 @@
  * Manages all configuration and constants
  */
 
+
+/** 
+ * Retrieves configuration settings
+ */
 function getConfig() {
     const scriptProps = PropertiesService.getScriptProperties();
     
     return {
         // BigQuery Configuration
         bigQuery: {
-            // projectId: scriptProps.getProperty('BIGQUERY_PROJECT_ID') || 'door-to-anywhere',
-            // datasetId: scriptProps.getProperty('BIGQUERY_DATASET_ID') || 'test_dataset',
-            // taskTableId: scriptProps.getProperty('BIGQUERY_TASK_TABLE_ID') || 'notion_test',
-            // projectTableId: scriptProps.getProperty('BIGQUERY_PROJECT_TABLE_ID')
+            projectId: scriptProps.getProperty('BIGQUERY_PROJECT_ID') || 'door-to-anywhere',
+            datasetId: scriptProps.getProperty('BIGQUERY_DATASET_ID') || 'test_dataset',
+            taskTableId: scriptProps.getProperty('BIGQUERY_TASK_TABLE_ID') || 'notion_test',
+            projectTableId: scriptProps.getProperty('BIGQUERY_PROJECT_TABLE_ID')
 
             // for testing
-            projectId: 'door-to-anywhere',
-            datasetId: 'test_dataset',
-            taskTableId: 'notion_test',
-            projectTableId: 'notion_projects'
+            // projectId: 'door-to-anywhere',
+            // datasetId: 'test_dataset',
+            // taskTableId: 'notion_test',
+            // projectTableId: 'notion_projects'
         },
         
         // Notion Configuration
@@ -37,6 +41,9 @@ function getConfig() {
     };
 }
 
+/**
+ * Sets the last edited time after sync
+ */
 function setLastEditedTime(timestamp) {
     PropertiesService.getScriptProperties().setProperty('last_edited_time', timestamp);
 }

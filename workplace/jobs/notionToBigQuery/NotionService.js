@@ -65,7 +65,7 @@ function getNotionTaskData() {
     const config = getConfig();
     const databaseId = config.notion.taskDatabaseId;
     let lastEditedTime = config.sync.lastEditedTime;
-    lastEditedTime = new Date(1).toISOString(); // for test - remove this line in production
+    // lastEditedTime = new Date(1).toISOString(); // for test - remove this line in production
     
     return fetchNotionData(databaseId, lastEditedTime);
 }
@@ -78,7 +78,7 @@ function getNotionProjectData() {
     const config = getConfig();
     const databaseId = config.notion.projectDatabaseId;
     let lastEditedTime = config.sync.lastEditedTime;
-    lastEditedTime = new Date(1).toISOString(); // for test - remove this line in production
+    // lastEditedTime = new Date(1).toISOString(); // for test - remove this line in production
     
     return fetchNotionData(databaseId, lastEditedTime);
 }

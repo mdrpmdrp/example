@@ -5,12 +5,6 @@
 
 /**
  * Merges data into BigQuery using MERGE query
- * @param {Array} transformedData - Transformed data array
- * @param {Array} schema - Schema definition array
- * @param {string} projectId - BigQuery project ID
- * @param {string} datasetId - BigQuery dataset ID
- * @param {string} tableId - BigQuery table ID
- * @returns {Object} - Query result
  */
 function mergeDataToBigQuery(transformedData, schema, projectId, datasetId, tableId) {
     if (transformedData.length === 0) {
@@ -48,11 +42,6 @@ function mergeDataToBigQuery(transformedData, schema, projectId, datasetId, tabl
 
 /**
  * Inserts data into BigQuery
- * @param {Array} transformedData - Transformed data array
- * @param {string} projectId - BigQuery project ID
- * @param {string} datasetId - BigQuery dataset ID
- * @param {string} tableId - BigQuery table ID
- * @returns {Object} - Insert result
  */
 function insertDataToBigQuery(transformedData, projectId, datasetId, tableId) {
     if (transformedData.length === 0) {
