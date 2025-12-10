@@ -938,7 +938,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-sort-numeric-up mr-2 gray-accent"></i>จำนวน
                     </label>
-                    <input type="number" id="quantity" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                    <input type="number" id="quantity" inputmode="numeric" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
                 </div>
 
                 <!-- ร้านค้า -->
@@ -956,7 +956,9 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-box mr-2 gray-accent"></i>หน่วยสินค้า
                     </label>
-                    <input type="text" id="unit" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                    <select id="unit" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
+                        <option value="">— เลือกหน่วยสินค้า —</option>
+                    </select>
                 </div>
 
                 <!-- ประเภท -->
@@ -965,13 +967,7 @@
                         <i class="fas fa-tags mr-2 gray-accent"></i>ประเภท
                     </label>
                     <select id="type" class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
-                        <option value="">เลือกประเภท</option>
-                        <option value="A">A. Order ผิด</option>
-                        <option value="B">B. ส่งสินค้าไม่ครบ / ส่งผิด</option>
-                        <option value="C">C. ส่งสินค้าไม่ได้คุณภาพ</option>
-                        <option value="D">D. ส่งไม่ถูกต้องเช่น label</option>
-                        <option value="E">E. ส่งเอกสารผิด</option>
-                        <option value="F">F. ตกเครื่อง</option>
+                        <option value="">— เลือกประเภท —</option>
                     </select>
                 </div>
 
@@ -984,10 +980,7 @@
                     <select id="severity"
                         class="w-full px-4 py-3 input-minimal rounded-lg font-medium transition-colors duration-300"
                         required>
-                        <option value="">เลือกความรุนแรง</option>
-                        <option value="1">🟢 1. ต่ำ</option>
-                        <option value="2">🟡 2. ปานกลาง</option>
-                        <option value="3">🔴 3. สูง</option>
+                        <option value="">— เลือกความรุนแรง —</option>
                     </select>
                 </div>
 
@@ -996,7 +989,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-dollar-sign mr-2 gray-accent"></i>มูลค่าเคลม (บาท)
                     </label>
-                    <input type="number" id="claimValue" step="0.01"
+                    <input type="number" id="claimValue" step="0.01" inputmode="decimal"
                         class="w-full px-4 py-3 input-minimal rounded-lg font-medium">
                 </div>
 
@@ -1494,19 +1487,23 @@
         }
 
         function populateDropdowns(list) {
+            console.log('Populating dropdowns with data:', list);
             const dropdowns = [
-                { id: 'product', data: list['สินค้า'] },
-                { id: 'store', data: list['ร้านค้า'] },
-                { id: 'responsibleTeam', data: list['ทีมรับผิดชอบ'] },
-                { id: 'modal-solution-team', data: list['ทีมรับผิดชอบ'] }
+                { id: 'product', data: list['สินค้า'].sort() },
+                { id: 'store', data: list['ร้านค้า'].sort() },
+                { id: 'responsibleTeam', data: list['ทีมรับผิดชอบ'].sort() },
+                { id: 'unit', data: list['หน่วยสินค้า'].sort() },
+                { id: 'type', data: list['ประเภท'].sort() },
+                { id: 'severity', data: list['ความรุนแรง']},
+                { id: 'modal-solution-team', data: list['ทีมรับผิดชอบ'].sort() }
             ];
 
             dropdowns.forEach(({ id, data }) => {
                 const selectEl = document.getElementById(id);
                 data.forEach(item => {
                     const opt = document.createElement('option');
-                    opt.value = item;
-                    opt.textContent = item;
+                    opt.value = item.includes('.') ? item.split('.')[0].trim() : item;
+                    opt.textContent = item
                     selectEl.appendChild(opt);
                 });
             });
