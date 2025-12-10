@@ -40,6 +40,7 @@ function syncNotionTasks() {
     const queryRequest = {
         query: mergeQuery,
         useLegacySql: false,
+        location: 'US',
         parameterMode: 'NAMED',
         queryParameters: [
             {
@@ -200,4 +201,15 @@ function transformNotionData(data) {
             progress: props["Progress"]?.rollup?.number || 0
         };
     });
+}
+function testBigQueryConnection() {
+    const projectId = PropertiesService.getScriptProperties().getProperty('BIGQUERY_PROJECT_ID');
+    const queryRequest = {
+        query: 'SELECT CURRENT_DATE() AS today',
+        useLegacySql: false,
+        location: 'Asia-Southeast2'
+    };
+    const bigquery = BigQuery.Jobs;
+    const response = bigquery.query(queryRequest, projectId);
+    Logger.log(response);
 }
