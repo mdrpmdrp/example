@@ -36,7 +36,10 @@ function getConfig() {
         // Sync Configuration
         sync: {
             pageSize: 100,
-            lastEditedTime: scriptProps.getProperty('last_edited_time') || new Date(1).toISOString()
+            lastEditedTime: {
+                tasks: scriptProps.getProperty('last_edited_time_' + scriptProps.getProperty('BIGQUERY_TASK_TABLE_ID')) || null,
+                projects: scriptProps.getProperty('last_edited_time_' + scriptProps.getProperty('BIGQUERY_PROJECT_TABLE_ID')) || null
+            }
         }
     };
 }
@@ -44,6 +47,6 @@ function getConfig() {
 /**
  * Sets the last edited time after sync
  */
-function setLastEditedTime(timestamp) {
-    PropertiesService.getScriptProperties().setProperty('last_edited_time', timestamp);
+function setLastEditedTime(timestamp,tableId) {
+    PropertiesService.getScriptProperties().setProperty('last_edited_time_' + tableId, timestamp);
 }

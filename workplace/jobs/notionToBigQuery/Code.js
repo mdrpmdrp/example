@@ -21,6 +21,9 @@ function syncNotionTasks() {
         config.bigQuery.datasetId,
         config.bigQuery.taskTableId
     );
+
+    config.sync.lastEditedTime = new Date().toISOString();
+    setLastEditedTime(config.sync.lastEditedTime, config.bigQuery.taskTableId);
 }
 
 /**
@@ -38,6 +41,9 @@ function syncNotionProjects() {
         config.bigQuery.datasetId,
         config.bigQuery.projectTableId
     );
+
+    config.sync.lastEditedTime = new Date().toISOString();
+    setLastEditedTime(config.sync.lastEditedTime, config.bigQuery.projectTableId);
 }
 
 /**
