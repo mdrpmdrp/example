@@ -13,14 +13,12 @@ function fetchNotionData(databaseId, lastEditedTime) {
     const config = getConfig();
     const apiKey = config.notion.apiKey;
     const apiVersion = config.notion.apiVersion;
-    const pageSize = config.sync.pageSize;
     
     let allResults = [];
     let next_cursor = undefined;
     
     do {
         const payload = {
-            page_size: pageSize,
             filter: {
                 timestamp: "last_edited_time",
                 last_edited_time: {
