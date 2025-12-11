@@ -1050,16 +1050,49 @@
                             <div class="step-label">ปิดเคสแล้ว</div>
                         </div>
                     </div>
-
                 </div>
 
-                <!-- ปัญหา -->
+                  <!-- ปัญหา -->
                 <div class="space-y-2 md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-exclamation-triangle mr-2 gray-accent"></i>ปัญหา
                     </label>
                     <textarea id="problem" class="w-full px-4 py-3 input-minimal rounded-lg font-medium"
                         rows="3"></textarea>
+                </div>
+
+                <!-- รูปภาพ -->
+                <div class="space-y-2 md:col-span-2">
+                    <template id="img-template">
+                        <div class="flex justify-center items-center relative border rounded-lg mt-3">
+                            <span class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer hover:bg-red-600 transition-colors">
+                                <i class="fas fa-times text-xs"></i>
+                            </span>
+                            <img src="https://getbootstrap.com/docs/5.3/assets/brand/bootstrap-logo-shadow.png"
+                                alt="" class="rounded-lg cursor-pointer max-w-full h-auto">
+                        </div>
+                    </template>
+                    
+                    <label for="complainImage">
+                        <i class="fas fa-image mr-2 gray-accent"></i>รูปภาพ 
+                        <span class="text-gray-500 text-sm">(สูงสุด 3 รูป)</span><br>
+                    </label>
+                    
+                    <div class="rounded-lg border border-gray-300 bg-gray-50 p-3 text-center cursor-pointer hover:bg-gray-100 transition-colors" 
+                         id="image-label">
+                        <i class="fas fa-cloud-upload-alt text-2xl text-gray-400 mb-2"></i>
+                        <p class="text-base text-gray-600">คลิกเพื่อเลือกรูปภาพ</p>
+                    </div>
+                    
+                    <input type="file" class="hidden" id="complainImage" name="complainImage"
+                        accept="image/*" multiple>
+                    <input type="file" name="temp-imgs" id="temp-imgs" class="hidden" multiple>
+                    
+                    <div class="flex flex-wrap justify-center gap-2 mt-4" id="imagePreviewContainer">
+                        <div class="w-full sm:w-[calc(33.33%-0.5rem)] img-grid-col" id="img-col-1"></div>
+                        <div class="w-full sm:w-[calc(33.33%-0.5rem)] img-grid-col" id="img-col-2"></div>
+                        <div class="w-full sm:w-[calc(33.33%-0.5rem)] img-grid-col" id="img-col-3"></div>
+                    </div>
                 </div>
 
                 <!-- Solutions Section (แสดงเฉพาะในโหมดแก้ไข) -->
@@ -1425,6 +1458,7 @@
 
                 }
             }));
+
         });
 
         // Pipeline Stepper Function
@@ -2434,6 +2468,13 @@
             currentSolutions = []; // Clear solutions
             renderSolutions(); // Re-render empty state
 
+            // Clear selected images
+            if (window.getSelectedImages) {
+                const selectedImages = window.getSelectedImages();
+                selectedImages.length = 0;
+                $('#img-col-1, #img-col-2, #img-col-3').empty();
+            }
+
             // Reset TomSelect dropdowns
             ['#product', '#store', '#responsibleTeam'].forEach(selector => {
                 const ts = $(selector)[0].tomselect;
@@ -3126,6 +3167,288 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/plugins/rangePlugin.js"></script>
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+      <script
+        src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js">
+        </script>
+    <script>
+        const MAX_IMAGES = 3;
+        const $imageLabel = $('#image-label');
+        const $complainImage = $('#complainImage');
+        const $tempImgs = $('#temp-imgs');
+        const $imgTemplate = $('#img-template');
+
+        // Cache DOM queries
+        const getImageColumns = () => $('.img-grid-col');
+        const getExistingImages = () => $('.img-grid-col img').not('.isNew');
+        const getNewImages = () => $('.img-grid-col .isNew');
+
+        // Optimized click handler
+        $imageLabel.on('click', () => {
+            if (!$imageLabel.hasClass('cursor-not-allowed')) {
+                $complainImage.click();
+            }
+        });
+
+        // Optimized change handler with debouncing
+        let changeTimeout;
+        $complainImage.on('change', function(e) {
+            clearTimeout(changeTimeout);
+            changeTimeout = setTimeout(() => handleImageChange(e), 100);
+        });
+
+        function handleImageChange(e) {
+            const files = Array.from(e.target.files);
+            const tempFiles = Array.from($tempImgs[0].files);
+            
+            // Remove duplicates efficiently
+            const fileMap = new Map();
+            [...tempFiles, ...files].forEach(file => fileMap.set(file.name, file));
+            const allFiles = Array.from(fileMap.values());
+            
+            const existingCount = getExistingImages().length;
+            const availableSlots = MAX_IMAGES - existingCount;
+            
+            if (allFiles.length > availableSlots) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'เกินจำนวนที่กำหนด! ⚠️',
+                    text: `สามารถเลือกได้สูงสุด ${MAX_IMAGES} รูปเท่านั้น`,
+                    timer: 3000,
+                    showConfirmButton: false,
+                    timerProgressBar: true,
+                    background: '#ffffff',
+                    color: '#1f2937',
+                    iconColor: '#f59e0b',
+                    customClass: {
+                        popup: 'rounded-3xl shadow-2xl',
+                        title: 'text-gray-900 font-bold',
+                        htmlContainer: 'text-gray-600'
+                    }
+                });
+                return;
+            }
+            
+            showLoadingSwal();
+            
+            const datatransfer = new DataTransfer();
+            allFiles.forEach(file => datatransfer.items.add(file));
+            $tempImgs[0].files = datatransfer.files;
+            
+            renderImagePreview(allFiles);
+        }
+
+        function showLoadingSwal() {
+            Swal.fire({
+                iconHtml: '<div class="rounded-full h-12 w-12 border-b-2 border-gray-700"><i class="fas fa-image text-2xl text-gray-700"></i></div>',
+                title: 'กำลังโหลดรูปภาพ...',
+                html: '<p class="text-gray-600 mt-2">กรุณารอสักครู่</p>',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                background: '#ffffff',
+                color: '#1f2937',
+                customClass: {
+                    icon: 'border-0',
+                    popup: 'rounded-3xl shadow-2xl',
+                    title: 'text-gray-900 font-bold',
+                    htmlContainer: 'text-gray-600'
+                },
+                didOpen: () => Swal.showLoading()
+            });
+        }
+
+        function renderImagePreview(allFiles) {
+            // Remove old new images efficiently
+            getNewImages().parent().remove();
+            
+            const existingCount = getExistingImages().length;
+            const fragment = document.createDocumentFragment();
+            const columns = getImageColumns().toArray();
+            
+            let loadedCount = 0;
+            
+            allFiles.forEach((file, i) => {
+                const colIndex = (i + existingCount) % 3;
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    const $img = $($imgTemplate.html()).removeClass('hidden');
+                    const $imgEl = $img.find('img').attr('src', e.target.result).addClass('isNew');
+                    
+                    // Optimized event handlers
+                    $img.find('span').one('click', () => handleImageRemove(file));
+                    $imgEl.one('click', function() { showImagePreview(this.src); });
+                    
+                    $(columns[colIndex]).append($img);
+                    
+                    if (++loadedCount === allFiles.length) {
+                        Swal.close();
+                        updateImageLabel();
+                    }
+                };
+                
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function handleImageRemove(fileToRemove) {
+            const datatransfer = new DataTransfer();
+            const files = $tempImgs[0].files;
+            
+            for (let i = 0; i < files.length; i++) {
+                if (files[i].name !== fileToRemove.name) {
+                    datatransfer.items.add(files[i]);
+                }
+            }
+            
+            $tempImgs[0].files = datatransfer.files;
+            renderImagePreview(Array.from(datatransfer.files));
+        }
+
+        function updateImageLabel() {
+            const count = $('.img-grid-col img').length;
+            $imageLabel.html('<i class="fas fa-camera mr-2"></i> เพิ่มรูปภาพ (' + count + '/' + MAX_IMAGES + ')');
+            if (count >= MAX_IMAGES) {
+                $imageLabel.addClass('cursor-not-allowed opacity-50')
+            } else {
+                $imageLabel.removeClass('cursor-not-allowed opacity-50');
+            }
+        }
+
+        function showImagePreview(src) {
+            Swal.fire({
+                imageUrl: src,
+                imageAlt: 'Preview',
+                showConfirmButton: false,
+                showCloseButton: true,
+                width: '95vw',
+                padding: '1rem',
+                background: 'rgba(0, 0, 0, 0.95)',
+                backdrop: 'rgba(0, 0, 0, 0.9)',
+                customClass: {
+                    popup: 'rounded-3xl shadow-2xl',
+                    image: 'rounded-2xl max-h-[90vh] w-auto object-contain',
+                    closeButton: 'text-white hover:text-gray-300 text-3xl'
+                },
+                didOpen: () => {
+                    // Make image clickable to close
+                    const image = Swal.getHtmlContainer().querySelector('img');
+                    if (image) {
+                        image.style.cursor = 'zoom-out';
+                        image.style.maxHeight = '90vh';
+                        image.style.width = 'auto';
+                        image.style.height = 'auto';
+                        image.style.objectFit = 'contain';
+                        image.addEventListener('click', () => Swal.close());
+                    }
+                }
+            });
+        }
+        
+        
+        async function uploadFiles() {
+            const f = document.getElementById("temp-imgs");
+            if (f.files.length == 0) {
+                return []
+            }
+            Swal.fire({
+                icon: 'info',
+                title: 'กำลังอัพโหลดไฟล์',
+                html: '<div class="w-full"><div class="flex flex-col gap-2" id="progress"></div></div>',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                background: '#ffffff',
+                color: '#1f2937',
+                iconColor: '#3b82f6',
+                customClass: {
+                    popup: 'rounded-3xl shadow-2xl',
+                    title: 'text-gray-900 font-bold',
+                    htmlContainer: 'text-gray-600'
+                },
+                didOpen: () => {
+                    Swal.showLoading()
+                },
+            })
+            const { token, folderId } = await getDownloadToken(complainId, solutionId);
+            let file = await new Promise((resolve, reject) => {
+                let length = f.files.length;
+                let count = 0;
+                let uploadfiles = [];
+                [...f.files].forEach((file, i) => {
+                    let fr = new FileReader();
+                    fr.fileName = file.name;
+                    fr.fileSize = file.size;
+                    fr.fileType = file.type;
+                    fr.readAsArrayBuffer(file);
+                    fr.onload = e => {
+                        var id = "p" + ++i;
+                        var div = $("<div>", { class: 'col-12 text-truncate' });
+                        div.attr("id", id);
+                        $("#progress").append(div);
+                        $('#' + id).text('Initialising (' + fr.fileName + ')')
+                        const f = e.target;
+                        const resource = {
+                            fileName: f.fileName,
+                            fileSize: f.fileSize,
+                            fileType: f.fileType,
+                            fileBuffer: f.result,
+                            accessToken: token,
+                            folderId: folder_id,
+                            fields: "id",
+                        };
+                        const ru = new ResumableUploadToGoogleDrive();
+                        ru.Do(resource, function (res, err) {
+                            if (err) {
+                                console.log(err);
+                                return;
+                            }
+                            console.log(res);
+                            let msg = "";
+                            if (res.status == 'start' || res.status == 'getLocation' || res.status == 'initialize') {
+                                msg = '<i class="fas fa-cloud-upload-alt"></i> กำลังเตรียมอัพโหลด ' + f.fileName;
+                            }
+                            else if (res.status == "Uploading") {
+                                msg =
+                                    '<i class="fas fa-hourglass-half text-orange-500"></i> กำลังอัพโหลด ' +
+                                    Math.round(
+                                        (res.progressNumber.current / res.progressNumber.end) * 100
+                                    ) +
+                                    "% (" +
+                                    f.fileName +
+                                    ")";
+                            } else {
+                                msg = '<i class="fas fa-check-circle text-green-500"></i> อัพโหลดสำเร็จ  (' + f.fileName + ")";
+                            }
+
+                            // If you want to put the uploaded file information to the active Spreadsheet,
+                            // please use the following function.
+                            if (res.status == "Done") {
+                                uploadfiles.push(res.result.id);
+                                if (uploadfiles.length == length) {
+                                    resolve(uploadfiles);
+                                }
+                            }
+
+                            $('#' + id).html(msg)
+                        });
+                    };
+                });
+            });
+            return file;
+        }
+
+        function getDownloadToken(complainId, solutionId) {
+            return new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler((res) => {
+                    res = JSON.parse(res);
+                    if (res.success) {
+                        resolve(res.data);
+                    } else {
+                        reject(res.message);
+                    }
+                }).getDownloadToken(complainId, solutionId);
+            });
+        }
+    </script>
 </body>
 
 </html>

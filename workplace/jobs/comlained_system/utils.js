@@ -92,3 +92,29 @@ function testSetup() {
     return 'Setup failed: ' + error.toString();
   }
 }
+
+/**
+ * Generate download token for a specific complain and solution
+ */
+function getDownloadToken(complainId, solutionId) {
+  const token = Utilities.getUuid();
+  let mainFolder = DriveApp.getFolderById('1KPys5yGNFyv0Q1IGCmHbAsruR6HZkjVx'); // Replace with actual folder ID
+  let complainFolder = getOrCreateFolder(complainId, mainFolder);
+  let solutionFolder = getOrCreateFolder(solutionId, complainFolder);
+
+  return {
+    token: token,
+    folderId: solutionFolder.getId()
+  }
+}
+
+/** Helper to get or create a folder by name under a parent folder
+ */
+function getOrCreateFolder(folderName, parentFolder) {
+  const folders = parentFolder.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  } else {
+    return parentFolder.createFolder(folderName);
+  }
+}
