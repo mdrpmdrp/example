@@ -13,9 +13,9 @@ function getConfig() {
     return {
         // BigQuery Configuration
         bigQuery: {
-            projectId: scriptProps.getProperty('BIGQUERY_PROJECT_ID') || 'door-to-anywhere',
-            datasetId: scriptProps.getProperty('BIGQUERY_DATASET_ID') || 'test_dataset',
-            taskTableId: scriptProps.getProperty('BIGQUERY_TASK_TABLE_ID') || 'notion_test',
+            projectId: scriptProps.getProperty('BIGQUERY_PROJECT_ID'),
+            datasetId: scriptProps.getProperty('BIGQUERY_DATASET_ID'),
+            taskTableId: scriptProps.getProperty('BIGQUERY_TASK_TABLE_ID'),
             projectTableId: scriptProps.getProperty('BIGQUERY_PROJECT_TABLE_ID')
 
             // for testing
