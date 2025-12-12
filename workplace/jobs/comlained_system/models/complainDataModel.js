@@ -15,7 +15,7 @@ function getComplainData() {
     }
 
     // Read all columns including pipeline (column 14) in one batch
-    const range = sheet.getRange(2, 1, lastRow - 1, 14);
+    const range = sheet.getRange(2, 1, lastRow - 1, 16);
     const values = range.getValues();
 
     // Pre-allocate array for better performance
@@ -25,10 +25,10 @@ function getComplainData() {
     // Use for loop with cached length for better performance
     for (let i = 0; i < len; i++) {
       const row = values[i];
-      
+
       // Parse solutions JSON with helper
       const solutions = parseSolutionsJson(row[12]);
-      
+
       data[i] = {
         id: row[0],
         date: formatDate(row[1]),
@@ -43,7 +43,9 @@ function getComplainData() {
         responsibleTeam: row[10],
         teamRepresentative: row[11],
         solutions: solutions,
-        pipeline: row[13]
+        pipeline: row[13],
+        timestamp: row[14],
+        images: row[15] ? row[15].split('\n') : []
       };
     }
     return JSON.stringify({ success: true, data: data });
@@ -65,10 +67,10 @@ function addComplainData(formData) {
     const timestamp = new Date();
 
     const nextId = getComplainId();
-    
+
     // Convert solutions array to JSON string
     const solutionsJson = formData.solutions ? JSON.stringify(formData.solutions) : '';
-    
+
     const rowData = [
       nextId,
       formData.date,
@@ -84,31 +86,56 @@ function addComplainData(formData) {
       formData.teamRepresentative,
       solutionsJson,
       formData.pipeline,
-      timestamp
+      timestamp,
+      formData.images || []
     ];
 
     sheet.appendRow(rowData);
+
+    // change folder name to match complain ID
+    const folder = DriveApp.getFolderById(formData.folderId);
+    if (folder) {
+      folder.setName(nextId);
+    }
 
     const newRowNum = sheet.getLastRow();
 
     // Batch all formatting operations together for better performance
     if (newRowNum % 2 === 0) {
-      sheet.getRange(newRowNum, 1, 1, 15).setBackground('#f9fafb');
+      sheet.getRange(newRowNum, 1, 1, 16).setBackground('#f9fafb');
     }
     sheet.getRange(newRowNum, 10).setNumberFormat('#,##0.00');
 
     // // Send notification asynchronously (non-blocking)
-    try {
-      sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline, 
-                   formData.responsibleTeam, formData.teamRepresentative, 'add', formData.store, nextId);
-    } catch (notifError) {
-      console.warn('Notification failed but data saved:', notifError);
-    }
+    // try {
+    //   sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline, 
+    //                formData.responsibleTeam, formData.teamRepresentative, 'add', formData.store, nextId);
+    // } catch (notifError) {
+    //   console.warn('Notification failed but data saved:', notifError);
+    // }
 
     return JSON.stringify({
       success: true,
       message: 'เพิ่มข้อมูลสำเร็จ',
-      id: nextId
+      id: nextId,
+      newRecord: {
+        id: nextId,
+        date: formData.date,
+        product: formData.product,
+        quantity: formData.quantity,
+        unit: formData.unit,
+        problem: formData.problem,
+        store: formData.store,
+        type: formData.type,
+        severity: formData.severity,
+        claimValue: formData.claimValue,
+        responsibleTeam: formData.responsibleTeam,
+        teamRepresentative: formData.teamRepresentative,
+        solutions: formData.solutions || [],
+        pipeline: formData.pipeline,
+        timestamp: timestamp,
+        images: formData.images ? formData.images.split('\n') : []
+      }
     });
 
   } catch (error) {
@@ -152,18 +179,19 @@ function updateComplainData(formData) {
       formData.teamRepresentative,
       solutionsJson,
       formData.pipeline,
-      timestamp
+      timestamp,
+      formData.images || []
     ];
 
-    sheet.getRange(actualRow, 1, 1, 15).setValues([rowData]);
+    sheet.getRange(actualRow, 1, 1, 16).setValues([rowData]);
 
     // // Send notification asynchronously (non-blocking)
-    try {
-      sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline,
-                   formData.responsibleTeam, formData.teamRepresentative, 'update', formData.store, formData.id);
-    } catch (notifError) {
-      console.warn('Notification failed but data updated:', notifError);
-    }
+    // try {
+    //   sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline,
+    //                formData.responsibleTeam, formData.teamRepresentative, 'update', formData.store, formData.id);
+    // } catch (notifError) {
+    //   console.warn('Notification failed but data updated:', notifError);
+    // }
 
     return JSON.stringify({
       success: true,
@@ -181,7 +209,8 @@ function updateComplainData(formData) {
  * @param {string} id - ID of the record to delete
  * @returns {string} JSON string with success status
  */
-function deleteComplainData(id) {
+function deleteComplainData({ id }) {
+  console.log('deleteComplainData called with id:', id);
   try {
     const sheet = getOrCreateSheet();
     const rowIndex = findRowIndexById(sheet, id);
@@ -191,6 +220,11 @@ function deleteComplainData(id) {
     }
 
     const actualRow = rowIndex + 2; // +2 because array is 0-indexed and we start from row 2
+    let folder = getOrCreateFolder(id, DriveApp.getFolderById(MAIN_FOLDER_ID));
+    if (folder) {
+      folder.setTrashed(true);
+    }
+
     sheet.deleteRow(actualRow);
 
     return JSON.stringify({

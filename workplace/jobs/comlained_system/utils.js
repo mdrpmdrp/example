@@ -24,9 +24,9 @@ function getComplainId() {
   const prefix = 'C';
   const sheet = getOrCreateSheet('ComplainData');
   const lastRow = sheet.getLastRow();
-  
+
   if (lastRow <= 1) return prefix + '00001';
-  
+
   const lastId = sheet.getRange(lastRow, 1).getValue();
   const nextIdNum = lastId ? parseInt(lastId.slice(1)) + 1 : 1;
   return prefix + String(nextIdNum).padStart(5, '0');
@@ -62,10 +62,10 @@ function formatDate(date) {
         month: '2-digit',
         day: '2-digit',
         // 2. Explicitly set the time zone to UTC+7 (Asia/Bangkok)
-        timeZone: 'Asia/Bangkok' 
+        timeZone: 'Asia/Bangkok'
       });
     }
-    
+
     // 3. The 'sv-SE' (Swedish) locale is used because it natively outputs in 'yyyy-MM-dd' format
     return formatDate.formatter.format(date);
   }
@@ -96,16 +96,23 @@ function testSetup() {
 /**
  * Generate download token for a specific complain and solution
  */
-function getDownloadToken(complainId, solutionId) {
-  const token = Utilities.getUuid();
-  let mainFolder = DriveApp.getFolderById('1KPys5yGNFyv0Q1IGCmHbAsruR6HZkjVx'); // Replace with actual folder ID
+const MAIN_FOLDER_ID = '1KPys5yGNFyv0Q1IGCmHbAsruR6HZkjVx'; // Replace with actual folder ID
+function getDownloadToken({complainId, solutionId}) {
+  const token = ScriptApp.getOAuthToken();
+  let mainFolder = DriveApp.getFolderById(MAIN_FOLDER_ID); // Replace with actual folder ID
   let complainFolder = getOrCreateFolder(complainId, mainFolder);
+  if (!solutionId || solutionId == null) {
+    return JSON.stringify({
+      token: token,
+      folderId: complainFolder.getId()
+    })
+  }
   let solutionFolder = getOrCreateFolder(solutionId, complainFolder);
 
-  return {
+  return JSON.stringify({
     token: token,
     folderId: solutionFolder.getId()
-  }
+  })
 }
 
 /** Helper to get or create a folder by name under a parent folder
@@ -116,5 +123,68 @@ function getOrCreateFolder(folderName, parentFolder) {
     return folders.next();
   } else {
     return parentFolder.createFolder(folderName);
+  }
+}
+
+/** 
+ * Delete complain folder by complain ID
+ */
+function deleteComplainFolder(complainId) {
+  const mainFolder = DriveApp.getFolderById(MAIN_FOLDER_ID); // Replace with actual folder ID
+  const folders = mainFolder.getFoldersByName(complainId);
+  if (folders.hasNext()) {
+    const complainFolder = folders.next();
+    complainFolder.setTrashed(true);
+  }
+}
+
+/**
+ * Delete solution folder by complain ID and solution ID
+ */
+function deleteSolutionFolder(complainId, solutionId) {
+  const mainFolder = DriveApp.getFolderById(MAIN_FOLDER_ID); // Replace with actual folder ID
+  const complainFolders = getOrCreateFolder(complainId, mainFolder);
+  const solutionFolders = complainFolders.getFoldersByName(solutionId);
+  if (solutionFolders.hasNext()) {
+    const solutionFolder = solutionFolders.next();
+    solutionFolder.setTrashed(true);
+  }
+}
+
+/**
+ * Delete file from Google Drive by file ID
+ */
+function deleteFileFromDrive({fileId}) {
+  console.log('Deleting file with ID:', fileId);
+  try {
+    const file = DriveApp.getFileById(fileId);
+    file.setTrashed(true);
+    
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ComplainData');
+    const finder = sheet.createTextFinder(fileId).findNext();
+    
+    if (!finder) return true;
+    
+    const row = finder.getRow();
+    const column = finder.getColumn();
+    const cell = sheet.getRange(row, column);
+    
+    if (column === 16) {
+      // Remove from images column
+      const fileIds = cell.getValue().split('\n').filter(url => !url.includes(fileId)).join('\n');
+      cell.setValue(fileIds.trim());
+    } else if (column === 13) {
+      // Remove from solutions images
+      const solutions = parseSolutionsJson(cell.getValue());
+      solutions.forEach(solution => {
+        solution.images = solution.images.filter(imgUrl => !imgUrl.includes(fileId));
+      });
+      cell.setValue(JSON.stringify(solutions));
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    return false;
   }
 }

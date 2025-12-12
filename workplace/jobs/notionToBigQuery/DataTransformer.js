@@ -29,7 +29,7 @@ function getRelationIds(relation) {
  * Helper function to extract people names
  */
 function getPeopleNames(people) {
-    return people?.map(p => p.name) || [];
+    return people?.map(p => p.name || "").filter(name => name) || [];
 }
 
 /**

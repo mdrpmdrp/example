@@ -29,7 +29,8 @@ function addSolution({complainId, solutionData}) {
       team: solutionData.team,
       rep: solutionData.rep,
       date: solutionData.date,
-      createAt: new Date().toISOString()
+      createAt: new Date().toISOString(),
+      images: solutionData.images || []
     };
     
     solutions.push(newSolution);
@@ -38,6 +39,8 @@ function addSolution({complainId, solutionData}) {
     const now = new Date();
     sheet.getRange(actualRow, 13).setValue(JSON.stringify(solutions));
     sheet.getRange(actualRow, 15).setValue(now);
+    newSolution
+    DriveApp.getFolderById(solutionData.folderId).setName(newSolution.id);
 
     return JSON.stringify({
       success: true,
@@ -92,7 +95,8 @@ function updateSolution({complainId, solutionId, solutionData}) {
       rep: solutionData.rep,
       date: solutionData.date,
       createAt: solutions[solutionIndex].createAt, // Keep original creation time
-      updateAt: new Date().toISOString() // Add update timestamp
+      updateAt: new Date().toISOString(), // Add update timestamp
+      images: solutionData.images || []
     };
     
     // Save back to sheet
@@ -143,6 +147,12 @@ function deleteSolution({complainId, solutionId}) {
     
     if (solutionIndex === -1) {
       throw new Error('ไม่พบแนวทางแก้ไขที่ต้องการลบ');
+    }
+
+    const folder = getOrCreateFolder(complainId, DriveApp.getFolderById(MAIN_FOLDER_ID));
+    const solutionFolder = getOrCreateFolder(solutionId, folder);
+    if (solutionFolder) {
+      solutionFolder.setTrashed(true);
     }
     
     // Remove solution from array
