@@ -198,6 +198,109 @@
             overflow-y: auto;
         }
 
+        /* SweetAlert2 Tailwind Customization */
+        .swal2-popup {
+            font-family: 'Noto Sans Thai', sans-serif !important;
+            border-radius: 1.5rem !important;
+            padding: 2rem !important;
+        }
+        
+        .swal2-title {
+            font-size: 1.875rem !important;
+            font-weight: 700 !important;
+            color: #008894 !important;
+            margin-bottom: 1rem !important;
+        }
+        
+        .swal2-html-container {
+            font-size: 1rem !important;
+            color: #4b5563 !important;
+            line-height: 1.5 !important;
+        }
+        
+        .swal2-confirm {
+            background-color: #008894 !important;
+            color: white !important;
+            font-weight: 600 !important;
+            padding: 0.75rem 2rem !important;
+            border-radius: 0.75rem !important;
+            border: none !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 4px 6px rgba(0, 136, 148, 0.3) !important;
+        }
+        
+        .swal2-confirm:hover {
+            background-color: #006a73 !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 8px rgba(0, 136, 148, 0.4) !important;
+        }
+        
+        .swal2-cancel {
+            background-color: #ef4444 !important;
+            color: white !important;
+            font-weight: 600 !important;
+            padding: 0.75rem 2rem !important;
+            border-radius: 0.75rem !important;
+            border: none !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3) !important;
+        }
+        
+        .swal2-cancel:hover {
+            background-color: #dc2626 !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 8px rgba(239, 68, 68, 0.4) !important;
+        }
+        
+        .swal2-icon {
+            border-width: 4px !important;
+            margin: 0 auto 1.5rem !important;
+        }
+        
+        .swal2-icon.swal2-success {
+            border-color: #10b981 !important;
+        }
+        
+        .swal2-icon.swal2-success [class^='swal2-success-line'] {
+            background-color: #10b981 !important;
+        }
+        
+        .swal2-icon.swal2-success .swal2-success-ring {
+            border-color: rgba(16, 185, 129, 0.3) !important;
+        }
+        
+        .swal2-icon.swal2-error {
+            border-color: #ef4444 !important;
+        }
+        
+        .swal2-icon.swal2-error [class^='swal2-x-mark-line'] {
+            background-color: #ef4444 !important;
+        }
+        
+        .swal2-icon.swal2-warning {
+            border-color: #f59e0b !important;
+            color: #f59e0b !important;
+        }
+        
+        .swal2-icon.swal2-info {
+            border-color: #3b82f6 !important;
+            color: #3b82f6 !important;
+        }
+        
+        .swal2-icon.swal2-question {
+            border-color: #8b5cf6 !important;
+            color: #8b5cf6 !important;
+        }
+        
+        .swal2-loader {
+            border-color: #008894 transparent #008894 transparent !important;
+        }
+        
+        .swal2-actions {
+            gap: 1rem !important;
+            margin-top: 2rem !important;
+        }
+
         .collapse-toggle {
             cursor: pointer;
             user-select: none;
@@ -705,8 +808,7 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'Preview Error',
-                    text: error.message,
-                    confirmButtonColor: '#008894'
+                    text: error.message
                 });
             }
         }
@@ -739,14 +841,14 @@
                 Swal.fire({
                     icon: 'warning',
                     title: 'No Files Selected',
-                    text: 'Please select at least one file to upload',
-                    confirmButtonColor: '#008894'
+                    text: 'Please select at least one file to upload'
                 });
                 return;
             }
 
             // Show processing dialog
             Swal.fire({
+                icon: 'info',
                 title: 'Processing Files...',
                 text: 'Please wait while we read and merge your files',
                 allowOutsideClick: false,
@@ -761,6 +863,7 @@
                 await processFileGroup('fileInput1', 'Income Files');
                 await processFileGroup('fileInput2', 'Expense Files');
                 await processFileGroup('fileInput3', 'Product List File');
+                console.log('Parsed Data:', parsedData);
 
                 if (parsedData.length === 0) {
                     throw new Error('No data to upload');
@@ -774,8 +877,6 @@
                     text: `You are about to upload ${totalRows} rows of data`,
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonColor: '#008894',
-                    cancelButtonColor: '#d33',
                     confirmButtonText: 'Yes, upload!',
                     cancelButtonText: 'Cancel'
                 }).then((result) => {
@@ -787,8 +888,7 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'Failed to process files: ' + error.message,
-                    confirmButtonColor: '#008894'
+                    text: 'Failed to process files: ' + error.message
                 });
             }
         });
@@ -968,6 +1068,7 @@
 
         function showLoading() {
             Swal.fire({
+                icon: 'info',
                 title: 'Processing Files...',
                 text: 'Please wait while we read your files',
                 allowOutsideClick: false,
@@ -1021,6 +1122,7 @@
 
         function uploadToGoogleSheets() {
             Swal.fire({
+                icon: 'info',
                 title: 'Uploading...',
                 text: 'Please wait while we upload your data to Google Sheets',
                 allowOutsideClick: false,
@@ -1031,11 +1133,18 @@
 
             google.script.run
                 .withSuccessHandler(function (response) {
+                    if (!response.success) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Upload Failed',
+                            text: response.message
+                        });
+                        return;
+                    }
                     Swal.fire({
                         icon: 'success',
                         title: 'Upload Complete!',
-                        text: response.message,
-                        confirmButtonColor: '#008894'
+                        text: response.message
                     }).then(() => {
                         // Reset form
                         $('#fileInput1, #fileInput2, #fileInput3').val('');
@@ -1048,11 +1157,10 @@
                     Swal.fire({
                         icon: 'error',
                         title: 'Upload Failed',
-                        text: error.message,
-                        confirmButtonColor: '#008894'
+                        text: error.message
                     });
                 })
-                .uploadExcelData(parsedData);
+                .uploadExcelData(JSON.stringify(parsedData));
         }
     </script>
 </body>

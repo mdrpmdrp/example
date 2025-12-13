@@ -40,7 +40,12 @@ function addSolution({complainId, solutionData}) {
     sheet.getRange(actualRow, 13).setValue(JSON.stringify(solutions));
     sheet.getRange(actualRow, 15).setValue(now);
     newSolution
-    DriveApp.getFolderById(solutionData.folderId).setName(newSolution.id);
+    if(solutionData.folderId){
+      let folder = DriveApp.getFolderById(solutionData.folderId);
+      if(folder){
+        folder.setName(newSolution.id);
+      }
+    }
 
     return JSON.stringify({
       success: true,

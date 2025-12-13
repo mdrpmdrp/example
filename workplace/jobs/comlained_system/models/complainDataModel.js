@@ -93,9 +93,11 @@ function addComplainData(formData) {
     sheet.appendRow(rowData);
 
     // change folder name to match complain ID
-    const folder = DriveApp.getFolderById(formData.folderId);
-    if (folder) {
-      folder.setName(nextId);
+    if (formData.folderId) {
+      const folder = DriveApp.getFolderById(formData.folderId);
+      if (folder) {
+        folder.setName(nextId);
+      }
     }
 
     const newRowNum = sheet.getLastRow();
