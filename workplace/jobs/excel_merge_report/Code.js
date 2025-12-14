@@ -8,7 +8,10 @@ const EXPENSE_ARCHIVE_FOLDER = 'https://drive.google.com/drive/folders/1RyOqEKva
 const MASTER_DATA_ARCHIVE_FOLDER = 'https://drive.google.com/drive/folders/1_1lepHb6vP1fnruA66DK4P8jcSB2Lp8b?usp=drive_link';
 // Serve upload page
 function doGet(e) {
-  return HtmlService.createHtmlOutputFromFile('search')
+  let html = HtmlService.createTemplateFromFile('search');
+  html.userEmail = '';
+  html.isLoggedIn = false;
+  return html.evaluate()
     .setTitle('Search & Dashboard')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .setSandboxMode(HtmlService.SandboxMode.IFRAME)
@@ -212,23 +215,44 @@ function findColumnIndex(headers, possibleNames) {
   return -1;
 }
 
-// Login with Google
-function loginWithGoogle() {
+// Login with email and password
+function loginWithEmailPassword(email, password) {
   try {
-    // const userEmail = Session.getActiveUser().getEmail();
-    const userEmail = 'tnaraporn@hotmail.com' // For testing purpose only, replace with above line in production
-    if (!userEmail) {
-      return {
+    if (!email || !password) {
+      return JSON.stringify({
         success: false,
-        message: 'Unable to retrieve user email. Please ensure you are logged in with your Google account.'
-      };
+        message: 'Email and password are required.'
+      });
     }
-    return getUserData(userEmail);
+    let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let userSheet = ss.getSheetByName('Users');
+    if (!userSheet) {
+      return JSON.stringify({
+        success: false,
+        message: 'User sheet not found.'
+      });
+    }
+    let userData = userSheet.getDataRange().getValues();
+    let authenticatedUser = userData.find(row => row[0].toLowerCase() === email.toLowerCase() && row[1] == password);
+    if (authenticatedUser) {
+      return JSON.stringify({
+        success: true,
+        message: 'Login successful.',
+        name: authenticatedUser[2] || email,
+        email: email
+      });
+    } else {
+
+      return JSON.stringify({
+        success: false,
+        message: 'Invalid email or password.'
+      });
+    }
   } catch (error) {
-    return {
+    return JSON.stringify({
       success: false,
       message: 'An error occurred during login: ' + error.message
-    };
+    });
   }
 }
 
@@ -239,25 +263,25 @@ function getUserData(email) {
   let expenseSheet = ss.getSheetByName('Expense Files');
 
   if (!incomeSheet || !expenseSheet) {
-    return {
+    return JSON.stringify({
       success: false,
       message: 'Required sheets (Income Files or Expense Files) are missing.'
-    };
+    });
   }
 
   let incomeData = incomeSheet.getDataRange().getValues().filter(row => {
-    // Assuming email is in column Z (index 25)
-    return row[25] === email && row[0] != ""
+    // Assuming email is in column AA (index 26)
+    return row[26] === email && row[0] != ""
   });
   let expenseData = expenseSheet.getDataRange().getValues().filter(row => {
     // Assuming email is in column J (index 10)
     return row[9] === email && row[0] != ""
   });
   if (incomeData.length === 0 && expenseData.length === 0) {
-    return {
+    return JSON.stringify({
       success: false,
       message: 'No data found for the provided email.'
-    };
+    });
   }
   if (incomeData.length > 0) {
     incomeData = incomeData.map(row => {
@@ -286,8 +310,10 @@ function getUserData(email) {
         payout_date: row[21],
         bank_account_logic: row[22],
         bank_account: row[23],
-        owner_name: row[24],
-        owner_email: row[25]
+        listing_name: row[24],
+        owner_name: row[25],
+        owner_email: row[26],
+        room_link: row[27]
       }
     })
   }
@@ -315,7 +341,7 @@ function getUserData(email) {
     expense: expenseData
   };
 
-  return  JSON.stringify({
+  return JSON.stringify({
     success: true,
     data: userData
   });
