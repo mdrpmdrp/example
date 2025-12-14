@@ -270,7 +270,8 @@ function sendComplainChatText(date, product, problem, pipeline, responsibleTeam,
     "\nสถานะ : " + status;
 
   // 🔗 URL เว็บที่อยากให้ปุ่มลิงก์ไป (แก้ตรงนี้เป็นของจริง)
-  var linkUrl = "https://script.google.com/macros/s/" + ScriptApp.getScriptId() + "/exec?page=complainDataView&id=" + encodeURIComponent(id);
+  var linkUrl = ScriptApp.getService().getUrl() + "?page=complainDataView&id=" + encodeURIComponent(id);
+  console.log("🚀 ~ sendComplainChatText ~ linkUrl:", linkUrl)
   // ✅ payload แบบ Card + ปุ่ม
   var payload = {
     // text: text,  // fallback ถ้า Card แสดงไม่ได้

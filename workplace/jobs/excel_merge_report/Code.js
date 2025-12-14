@@ -315,5 +315,8 @@ function getUserData(email) {
     expense: expenseData
   };
 
-  return userData;
+  return  JSON.stringify({
+    success: true,
+    data: userData
+  });
 }
