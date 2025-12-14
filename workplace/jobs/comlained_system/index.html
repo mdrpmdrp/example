@@ -1093,7 +1093,8 @@
                                 class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer hover:bg-red-600 transition-colors z-10 remove-image-btn">
                                 <i class="fas fa-times text-xs"></i>
                             </span>
-                            <div class="pending-upload-overlay absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center hidden">
+                            <div
+                                class="pending-upload-overlay absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center hidden">
                                 <div class="text-center">
                                     <span class="text-white font-semibold text-sm">รออัพโหลด</span>
                                 </div>
@@ -1488,7 +1489,8 @@
 
         // Initialize
         let dateInput, reportDateInput, modalDateInput;
-        const originalSolutionImageLabelHTML = $('#solution-image-label').html();
+        const originalComplainImageLabelHTML = $('#image-label').html(), originalComplainImageLabeClass = $('#solution-image-label').attr('class');
+        const originalSolutionImageLabelHTML = $('#solution-image-label').html(), originalSolutionImageLabeClass = $('#solution-image-label').attr('class');
         $(document).ready(function () {
             NProgress.configure({
                 showSpinner: false,
@@ -1724,7 +1726,7 @@
             editingSolutionIndex = null;
             $solutionImage.val('');
             $solutionTempImgs.val('');
-            $solutionImageLabel.html(originalSolutionImageLabelHTML).removeClass('cursor-not-allowed opacity-50');
+            $solutionImageLabel.html(originalSolutionImageLabelHTML).attr('class', originalSolutionImageLabeClass);
             hideAllErrors();
         }
 
@@ -1786,12 +1788,14 @@
                 // Check if we're editing an existing complaint (has ID in Google Sheets)
                 const complainId = $('#editId').val() || currentEditId;
                 let imagesData = '', folder_id = '';
+                let existingImages = getExistingSolutionImages().toArray().map((img) => img.src);
                 if ($solutionTempImgs[0].files.length > 0) {
                     const uploadData = await uploadSolutionFiles(complainId, editingSolutionIndex);
                     imagesData = uploadData.imageIds.filter(img => img !== null).map(id => 'https://lh3.googleusercontent.com/d/' + id)
-                    let existingImages = getExistingSolutionImages().toArray().map((img) => img.src);
                     imagesData = existingImages.concat(imagesData);
                     folder_id = uploadData.folderId;
+                } else {
+                    imagesData = existingImages;
                 }
 
                 Swal.fire({
@@ -2612,8 +2616,8 @@
 
                     // scroll to top of form
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                } 
-                
+                }
+
                 else {
                     $('#formSection').removeClass('editing');
                     $('#formTitle').text('เพิ่มข้อมูล Complain');
@@ -2630,12 +2634,14 @@
         $('#complainForm').on('submit', async function (e) {
             e.preventDefault();
             let imagesData = '', folder_id = '';
+            let existingImages = getExistingImages().toArray().map((img) => img.src).join('\n');
             if ($tempImgs[0].files.length > 0) {
                 const uploadData = await uploadComplainFiles();
                 imagesData = uploadData.imageIds.filter(img => img !== null).map(id => 'https://lh3.googleusercontent.com/d/' + id).join('\n');
-                let existingImages = getExistingImages().toArray().map((img) => img.src).join('\n');
                 imagesData = existingImages.concat('\n', imagesData).trim();
                 folder_id = uploadData.folderId;
+            } else {
+                imagesData = existingImages;
             }
 
             Swal.fire({
@@ -2700,10 +2706,7 @@
                             htmlContainer: 'text-gray-600'
                         }
                     });
-                    $tempImgs.val('');
-                    $complainImage.val('');
-                    updateImageLabel();
-                    updateDataTable();
+
                     if (isEdit) {
                         // Update local data
                         const index = complainData.findIndex(item => item.id == editId);
@@ -2711,6 +2714,7 @@
                             formData.images = formData.images == '' ? [] : formData.images.split('\n');
                             complainData[index] = formData;
                         }
+                        resetForm();
                         showTab('list', false);
                         setTimeout(() => {
                             const $row = $(`tr[data-complain-id="${editId}"]`);
@@ -2729,12 +2733,15 @@
                         // Add to local data
                         formData.images = formData.images == '' ? [] : formData.images.split('\n');
                         formData.id = response.id; // Assign new ID from response
-                        complainData.push(formData);
                         console.log(formData)
                         console.log(complainData)
                         resetForm();
                         showTab('form', false);
                     }
+                    $tempImgs.val('');
+                    $complainImage.val('');
+                    updateImageLabel();
+                    updateDataTable();
                 })
                 .catch(error => {
                     console.error('Error saving data:', error);
@@ -2811,9 +2818,8 @@
 
             // reset images data
             $tempImgs.val('');
-            $complainImage.val('');
-            $('#image-label').html('<i class="fas fa-cloud-upload-alt text-2xl text-gray-400 mb-2"></i><p class="text-base text-gray-600">คลิกเพื่อเลือกรูปภาพ</p>');
             $('.img-grid-col').empty();
+            $('#image-label').html(originalComplainImageLabelHTML).removeAttr('class').addClass(originalComplainImageLabeClass);
             selectedImages = [];
 
 
@@ -2914,8 +2920,8 @@
                     if (dateB - dateA !== 0) {
                         return dateB - dateA; // Sort by date descending (newest first)
                     }
-                    // If dates are equal, sort by severity descending (high to low: 3, 2, 1)
-                    return parseInt(b.severity || 0) - parseInt(a.severity || 0);
+                    // If dates are equal, sort by id descending (newest first)
+                    return (b.id || '').localeCompare(a.id || '');
                 });
                 // Calculate pagination
                 totalPages = Math.ceil(dataToDisplay.length / pageSize) || 1;
@@ -3206,6 +3212,7 @@
                             }
                             // Remove from local data
                             complainData = complainData.filter(item => item.id !== id);
+                            filteredData = filteredData.filter(item => item.id !== id);
                             updateDataTable();
 
                             Swal.fire({
@@ -3840,6 +3847,7 @@
                                     let images = item.images.filter(img => img != url) || [];
                                     item.images = images;
                                     complainData = complainData.map(cd => cd.id === item.id ? item : cd);
+                                    filteredData = filteredData.map(fd => fd.id === item.id ? item : fd);
                                     updateDataTable();
                                     let newImages = $('.img-grid-col img.isNew').toArray().map(img => $(img).attr('src'));
                                     images = images.concat(newImages);
@@ -3878,6 +3886,16 @@
                                             });
                                         }
                                     })
+                                    filteredData = filteredData.map(fd => {
+                                        if (fd.id === complainId) {
+                                            fd.solutions = fd.solutions.map(sol => {
+                                                if (sol.id === item.id) {
+                                                    return item;
+                                                }
+                                                return sol;
+                                            });
+                                        }
+                                    });
                                     updateDataTable();
                                     let newImages = $('.solution-img-grid-col img.isNew').toArray().map(img => $(img).attr('src'));
                                     images = images.concat(newImages);

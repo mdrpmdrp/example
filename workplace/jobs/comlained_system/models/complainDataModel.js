@@ -3,7 +3,6 @@
 
 /**
  * Get all data from sheet
- * @returns {string} JSON string with success status and data
  */
 function getComplainData() {
   try {
@@ -58,8 +57,6 @@ function getComplainData() {
 
 /**
  * Add new data to sheet
- * @param {Object} formData - Form data object
- * @returns {string} JSON string with success status and new ID
  */
 function addComplainData(formData) {
   try {
@@ -109,12 +106,12 @@ function addComplainData(formData) {
     sheet.getRange(newRowNum, 10).setNumberFormat('#,##0.00');
 
     // // Send notification asynchronously (non-blocking)
-    // try {
-    //   sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline, 
-    //                formData.responsibleTeam, formData.teamRepresentative, 'add', formData.store, nextId);
-    // } catch (notifError) {
-    //   console.warn('Notification failed but data saved:', notifError);
-    // }
+    try {
+      sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline, 
+                   formData.responsibleTeam, formData.teamRepresentative, 'add', formData.store, nextId);
+    } catch (notifError) {
+      console.warn('Notification failed but data saved:', notifError);
+    }
 
     return JSON.stringify({
       success: true,
@@ -148,8 +145,6 @@ function addComplainData(formData) {
 
 /**
  * Update existing data in sheet
- * @param {Object} formData - Form data object with ID
- * @returns {string} JSON string with success status
  */
 function updateComplainData(formData) {
   try {
@@ -188,12 +183,12 @@ function updateComplainData(formData) {
     sheet.getRange(actualRow, 1, 1, 16).setValues([rowData]);
 
     // // Send notification asynchronously (non-blocking)
-    // try {
-    //   sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline,
-    //                formData.responsibleTeam, formData.teamRepresentative, 'update', formData.store, formData.id);
-    // } catch (notifError) {
-    //   console.warn('Notification failed but data updated:', notifError);
-    // }
+    try {
+      sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline,
+                   formData.responsibleTeam, formData.teamRepresentative, 'update', formData.store, formData.id);
+    } catch (notifError) {
+      console.warn('Notification failed but data updated:', notifError);
+    }
 
     return JSON.stringify({
       success: true,
@@ -208,8 +203,6 @@ function updateComplainData(formData) {
 
 /**
  * Delete data from sheet
- * @param {string} id - ID of the record to delete
- * @returns {string} JSON string with success status
  */
 function deleteComplainData({ id }) {
   console.log('deleteComplainData called with id:', id);
@@ -240,7 +233,9 @@ function deleteComplainData({ id }) {
   }
 }
 
-
+/**
+ * Send Google Chat notification for complain
+ */
 function sendComplainChatText(date, product, problem, pipeline, responsibleTeam, teamRepresentative, action, store, id) {
   // แปลง pipeline -> สถานะเป็น emoji
   var status = '';

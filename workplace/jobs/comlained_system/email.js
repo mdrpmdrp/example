@@ -2,9 +2,9 @@
 
 /***** CONFIG *****/
 const SPREADSHEET_ID = '1Id3ZJ0RkgQUNIgbE3cqk3yzdLBS7tCAu0NhPwKawE4g';
-const SHEET_NAME     = 'ComplainData';
-const DATE_COL       = 2;                 // คอลัมน์ "วันที่" (B = 2)
-const TZ             = 'Asia/Bangkok';
+const SHEET_NAME = 'ComplainData';
+const DATE_COL = 2;                 // คอลัมน์ "วันที่" (B = 2)
+const TZ = 'Asia/Bangkok';
 
 // const RECIPIENTS = ["info@freshconnect.in.th"]; // <-- เปลี่ยนเป็นอีเมลผู้รับจริง (คั่นด้วยคอมมาถ้ามีหลายคน)
 const RECIPIENTS = [
@@ -41,7 +41,7 @@ function getTodayRows() {
   const sheet = getOrCreateSheet(); // Use cached sheet
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
-  
+
   if (lastRow < 2) return [];
 
   const values = sheet.getRange(1, 1, lastRow, lastCol).getValues();
@@ -99,11 +99,11 @@ function getTodayRows() {
   }
 
   console.log(`พบ ${todayRows.length} แถวของวันที่ ${todayStr}`);
-  
+
   if (todayRows.length === 0) {
     return [header];
   }
-  
+
   return [header, ...todayRows];
 }
 
@@ -178,22 +178,20 @@ function linkButton(url, label) {
 }
 
 function tableHtml(header, data) {
-  const thead = `<tr>${
-    header.map(h => `<th style="border:1px solid #e5e7eb;padding:8px;background:#f8fafc;text-align:left;">${escapeHtml(h)}</th>`).join('')
-  }</tr>`;
+  const thead = `<tr>${header.map(h => `<th style="border:1px solid #e5e7eb;padding:8px;background:#f8fafc;text-align:left;">${escapeHtml(h)}</th>`).join('')
+    }</tr>`;
 
   const tbody = data.map(r =>
-    `<tr>${
-      r.map(c => {
-        let text = "";
-        if (c instanceof Date) {
-          // ถ้าเป็น Date → format สวยงาม
-          text = Utilities.formatDate(c, TZ, "dd/MM/yyyy");
-        } else {
-          text = c == null ? "" : String(c);
-        }
-        return `<td style="border:1px solid #e5e7eb;padding:8px;vertical-align:top;">${escapeHtml(text)}</td>`;
-      }).join('')
+    `<tr>${r.map(c => {
+      let text = "";
+      if (c instanceof Date) {
+        // ถ้าเป็น Date → format สวยงาม
+        text = Utilities.formatDate(c, TZ, "dd/MM/yyyy");
+      } else {
+        text = c == null ? "" : String(c);
+      }
+      return `<td style="border:1px solid #e5e7eb;padding:8px;vertical-align:top;">${escapeHtml(text)}</td>`;
+    }).join('')
     }</tr>`
   ).join('');
 
@@ -220,8 +218,8 @@ function rowsToCsvBlob(rows, filename) {
 function escapeHtml(value) {
   const s = value == null ? '' : String(value);
   return s.replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 /***** QUICK TEST *****/

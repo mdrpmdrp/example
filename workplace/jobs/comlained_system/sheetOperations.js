@@ -3,8 +3,6 @@
 
 /**
  * Initialize spreadsheet and create sheet if not exists
- * @param {string} sheetName - Name of the sheet to get or create
- * @returns {Sheet} The sheet object
  */
 function getOrCreateSheet(sheetName = 'ComplainData') {
   // Check cache first
@@ -68,9 +66,6 @@ function getOrCreateSheet(sheetName = 'ComplainData') {
 
 /**
  * Helper function to find row index by ID (reusable)
- * @param {Sheet} sheet - Sheet object
- * @param {string} targetId - ID to search for
- * @returns {number} Row index (0-based) or -1 if not found
  */
 function findRowIndexById(sheet, targetId) {
   const lastRow = sheet.getLastRow();
@@ -82,7 +77,6 @@ function findRowIndexById(sheet, targetId) {
 
 /**
  * Get dropdown list data from sheet
- * @returns {string} JSON string of dropdown list data
  */
 function getDropdownList() {
   const sheet = getOrCreateSheet('Dropdown list');

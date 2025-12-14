@@ -3,11 +3,8 @@
 
 /**
  * Add solution to a complaint
- * @param {string} complainId - ID of the complaint
- * @param {Object} solutionData - Solution data object
- * @returns {string} JSON string with success status and solution
  */
-function addSolution({complainId, solutionData}) {
+function addSolution({ complainId, solutionData }) {
   try {
     const sheet = getOrCreateSheet();
     const rowIndex = findRowIndexById(sheet, complainId);
@@ -17,11 +14,11 @@ function addSolution({complainId, solutionData}) {
     }
 
     const actualRow = rowIndex + 2;
-    
+
     // Get current solutions using helper
     const solutionsStr = sheet.getRange(actualRow, 13).getValue();
     const solutions = parseSolutionsJson(solutionsStr);
-    
+
     // Create new solution with unique ID
     const newSolution = {
       id: getFollowUpId(),
@@ -32,17 +29,16 @@ function addSolution({complainId, solutionData}) {
       createAt: new Date().toISOString(),
       images: solutionData.images || []
     };
-    
+
     solutions.push(newSolution);
-    
+
     // Batch update: solutions and timestamp together
     const now = new Date();
     sheet.getRange(actualRow, 13).setValue(JSON.stringify(solutions));
     sheet.getRange(actualRow, 15).setValue(now);
-    newSolution
-    if(solutionData.folderId){
+    if (solutionData.folderId) {
       let folder = DriveApp.getFolderById(solutionData.folderId);
-      if(folder){
+      if (folder) {
         folder.setName(newSolution.id);
       }
     }
@@ -61,12 +57,8 @@ function addSolution({complainId, solutionData}) {
 
 /**
  * Update solution in a complaint
- * @param {string} complainId - ID of the complaint
- * @param {string} solutionId - ID of the solution to update
- * @param {Object} solutionData - Updated solution data
- * @returns {string} JSON string with success status and updated solution
  */
-function updateSolution({complainId, solutionId, solutionData}) {
+function updateSolution({ complainId, solutionId, solutionData }) {
   try {
     const sheet = getOrCreateSheet();
     const rowIndex = findRowIndexById(sheet, complainId);
@@ -76,22 +68,22 @@ function updateSolution({complainId, solutionId, solutionData}) {
     }
 
     const actualRow = rowIndex + 2;
-    
+
     // Get current solutions using helper
     const solutionsStr = sheet.getRange(actualRow, 13).getValue();
     const solutions = parseSolutionsJson(solutionsStr);
-    
+
     if (solutions.length === 0) {
       throw new Error('ไม่สามารถอ่านข้อมูลแนวทางแก้ไขได้');
     }
-    
+
     // Find and update the solution
     const solutionIndex = solutions.findIndex(sol => sol.id === solutionId);
-    
+
     if (solutionIndex === -1) {
       throw new Error('ไม่พบแนวทางแก้ไขที่ต้องการแก้ไข');
     }
-    
+
     // Update solution keeping the original ID and createAt
     solutions[solutionIndex] = {
       id: solutionId,
@@ -103,13 +95,21 @@ function updateSolution({complainId, solutionId, solutionData}) {
       updateAt: new Date().toISOString(), // Add update timestamp
       images: solutionData.images || []
     };
-    
+
     // Save back to sheet
     const solutionsCell = sheet.getRange(actualRow, 13);
     solutionsCell.setValue(JSON.stringify(solutions));
-    
+
     // Update timestamp in column 15
     sheet.getRange(actualRow, 15).setValue(new Date());
+
+    // Rename folder if folderId provided
+    if (solutionData.folderId) {
+      let folder = DriveApp.getFolderById(solutionData.folderId);
+      if (folder) {
+        folder.setName(solutionId);
+      }
+    }
 
     return JSON.stringify({
       success: true,
@@ -124,11 +124,8 @@ function updateSolution({complainId, solutionId, solutionData}) {
 
 /**
  * Delete solution from a complaint
- * @param {string} complainId - ID of the complaint
- * @param {string} solutionId - ID of the solution to delete
- * @returns {string} JSON string with success status
  */
-function deleteSolution({complainId, solutionId}) {
+function deleteSolution({ complainId, solutionId }) {
   try {
     const sheet = getOrCreateSheet();
     const rowIndex = findRowIndexById(sheet, complainId);
@@ -138,18 +135,18 @@ function deleteSolution({complainId, solutionId}) {
     }
 
     const actualRow = rowIndex + 2;
-    
+
     // Get current solutions using helper
     const solutionsStr = sheet.getRange(actualRow, 13).getValue();
     const solutions = parseSolutionsJson(solutionsStr);
-    
+
     if (solutions.length === 0) {
       throw new Error('ไม่สามารถอ่านข้อมูลแนวทางแก้ไขได้');
     }
-    
+
     // Find and remove the solution
     const solutionIndex = solutions.findIndex(sol => sol.id === solutionId);
-    
+
     if (solutionIndex === -1) {
       throw new Error('ไม่พบแนวทางแก้ไขที่ต้องการลบ');
     }
@@ -159,14 +156,14 @@ function deleteSolution({complainId, solutionId}) {
     if (solutionFolder) {
       solutionFolder.setTrashed(true);
     }
-    
+
     // Remove solution from array
     solutions.splice(solutionIndex, 1);
-    
+
     // Save back to sheet
     const solutionsCell = sheet.getRange(actualRow, 13);
     solutionsCell.setValue(JSON.stringify(solutions));
-    
+
     // Update timestamp in column 15
     sheet.getRange(actualRow, 15).setValue(new Date());
 
@@ -183,8 +180,6 @@ function deleteSolution({complainId, solutionId}) {
 
 /**
  * Get solutions for a specific complaint
- * @param {string} complainId - ID of the complaint
- * @returns {string} JSON string with success status and solutions array
  */
 function getSolutions(complainId) {
   try {
@@ -196,7 +191,7 @@ function getSolutions(complainId) {
     }
 
     const actualRow = rowIndex + 2;
-    
+
     // Get solutions using helper
     const solutionsStr = sheet.getRange(actualRow, 13).getValue();
     const solutions = parseSolutionsJson(solutionsStr);

@@ -9,8 +9,6 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Get cached sheet or create new cache entry
- * @param {string} sheetName - Name of the sheet
- * @returns {Sheet|null} Cached sheet or null if not found/expired
  */
 function getCachedSheet(sheetName) {
   const now = Date.now();
@@ -24,8 +22,6 @@ function getCachedSheet(sheetName) {
 
 /**
  * Update sheet cache
- * @param {string} sheetName - Name of the sheet
- * @param {Sheet} sheet - Sheet object to cache
  */
 function setCachedSheet(sheetName, sheet) {
   cachedSheets[sheetName] = sheet;

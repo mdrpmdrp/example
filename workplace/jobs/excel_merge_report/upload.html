@@ -204,20 +204,20 @@
             border-radius: 1.5rem !important;
             padding: 2rem !important;
         }
-        
+
         .swal2-title {
             font-size: 1.875rem !important;
             font-weight: 700 !important;
             color: #008894 !important;
             margin-bottom: 1rem !important;
         }
-        
+
         .swal2-html-container {
             font-size: 1rem !important;
             color: #4b5563 !important;
             line-height: 1.5 !important;
         }
-        
+
         .swal2-confirm {
             background-color: #008894 !important;
             color: white !important;
@@ -228,13 +228,13 @@
             transition: all 0.3s ease !important;
             box-shadow: 0 4px 6px rgba(0, 136, 148, 0.3) !important;
         }
-        
+
         .swal2-confirm:hover {
             background-color: #006a73 !important;
             transform: translateY(-2px) !important;
             box-shadow: 0 6px 8px rgba(0, 136, 148, 0.4) !important;
         }
-        
+
         .swal2-cancel {
             background-color: #ef4444 !important;
             color: white !important;
@@ -245,57 +245,57 @@
             transition: all 0.3s ease !important;
             box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3) !important;
         }
-        
+
         .swal2-cancel:hover {
             background-color: #dc2626 !important;
             transform: translateY(-2px) !important;
             box-shadow: 0 6px 8px rgba(239, 68, 68, 0.4) !important;
         }
-        
+
         .swal2-icon {
             border-width: 4px !important;
             margin: 0 auto 1.5rem !important;
         }
-        
+
         .swal2-icon.swal2-success {
             border-color: #10b981 !important;
         }
-        
+
         .swal2-icon.swal2-success [class^='swal2-success-line'] {
             background-color: #10b981 !important;
         }
-        
+
         .swal2-icon.swal2-success .swal2-success-ring {
             border-color: rgba(16, 185, 129, 0.3) !important;
         }
-        
+
         .swal2-icon.swal2-error {
             border-color: #ef4444 !important;
         }
-        
+
         .swal2-icon.swal2-error [class^='swal2-x-mark-line'] {
             background-color: #ef4444 !important;
         }
-        
+
         .swal2-icon.swal2-warning {
             border-color: #f59e0b !important;
             color: #f59e0b !important;
         }
-        
+
         .swal2-icon.swal2-info {
             border-color: #3b82f6 !important;
             color: #3b82f6 !important;
         }
-        
+
         .swal2-icon.swal2-question {
             border-color: #8b5cf6 !important;
             color: #8b5cf6 !important;
         }
-        
+
         .swal2-loader {
             border-color: #008894 transparent #008894 transparent !important;
         }
-        
+
         .swal2-actions {
             gap: 1rem !important;
             margin-top: 2rem !important;
@@ -726,10 +726,10 @@
                     // Parse dates in DD/MM/YYYY format
                     const parseDate = (dateStr, stringFormat, dateFormat) => {
                         if (!dateStr) return new Date(0);
-                        let date =  moment(dateStr, stringFormat)
-                        if(dateFormat){
+                        let date = moment(dateStr, stringFormat)
+                        if (dateFormat) {
                             return date.format(dateFormat);
-                        }else{
+                        } else {
                             return date.toDate();
                         }
                     };
@@ -765,20 +765,20 @@
                         //     return row;
                         // });
 
-                        for(let i=0; i<dataRows.length; i++){
+                        for (let i = 0; i < dataRows.length; i++) {
                             let row = dataRows[i];
                             row[21] = row[0] ? parseDate(row[0], "DD/MM/YYYY", "DD/MMM/YYYY") : '';
-                            if(row[10] == '' || String(row[2]).startsWith("Resolution")){
-                                if(row[10] == '' || dataRows[i > 0? i-1 : 0][10] == ''){
-                                    row[22] = dataRows[i > 0? i-1 : 0][22];
-                                }else{
-                                    if(String(row[2]).toLowerCase().includes("Resolution")){
-                                         row[22] = dataRows[i > 0? i-1 : 0][22];
-                                    }else{
+                            if (row[10] == '' || String(row[2]).startsWith("Resolution")) {
+                                if (row[10] == '' || dataRows[i > 0 ? i - 1 : 0][10] == '') {
+                                    row[22] = dataRows[i > 0 ? i - 1 : 0][22];
+                                } else {
+                                    if (String(row[2]).toLowerCase().includes("Resolution")) {
+                                        row[22] = dataRows[i > 0 ? i - 1 : 0][22];
+                                    } else {
                                         row[22] = row[10]
                                     }
                                 }
-                            }else{
+                            } else {
                                 row[22] = row[10];
                             }
                             row[23] = row[22]?.slice(12)
@@ -916,28 +916,69 @@
                 // Sort by Date column if this is Income Files group
                 if (groupName === 'Income Files' && mergedData.length > 1) {
                     const header = mergedData[0];
-                    const dateColIndex = header.findIndex(h => h && (h.toLowerCase().includes('date') || h === 'Date'));
+                    const dateColIndex = 0;
+                    // Parse dates in DD/MM/YYYY format
+                    const parseDate = (dateStr, stringFormat, dateFormat) => {
+                        if (!dateStr) return new Date(0);
+                        let date = moment(dateStr, stringFormat)
+                        if (dateFormat) {
+                            return date.format(dateFormat);
+                        } else {
+                            return date.toDate();
+                        }
+                    };
 
                     if (dateColIndex !== -1) {
                         const headerRow = mergedData[0];
                         const dataRows = mergedData.slice(1);
 
+
                         dataRows.sort((a, b) => {
                             const dateA = a[dateColIndex];
                             const dateB = b[dateColIndex];
-
-                            // Parse dates in DD/MM/YYYY format
-                            const parseDate = (dateStr) => {
-                                if (!dateStr) return new Date(0);
-                                const parts = String(dateStr).split('/');
-                                if (parts.length === 3) {
-                                    return new Date(parts[2], parts[1] - 1, parts[0]);
-                                }
-                                return new Date(dateStr);
-                            };
-
-                            return parseDate(dateA) - parseDate(dateB);
+                            return parseDate(dateA, "DD/MM/YYYY") - parseDate(dateB, "DD/MM/YYYY");
                         });
+
+                        headerRow[21] = 'Payout Date';
+                        headerRow[22] = 'Bank Account Logic'
+                        headerRow[23] = 'Bank Account'
+                        // dataRows = dataRows.map((row,i) => {
+                        //     row[21] = row[0] ? parseDate(row[0], "DD/MM/YYYY", "DD/MMM/YYYY") : '';
+                        //     if(row[10] == '' || String(row[2]).startsWith("Resolution")){
+                        //         if(row[10] == '' || dataRows[i-1][10] == ''){
+                        //             row[22] = dataRows[i-1][22];
+                        //         }else{
+                        //             if(String(row[2]).toLowerCase().includes("Resolution")){
+                        //                  row[22] = dataRows[i-1][22];
+                        //             }else{
+                        //                 row[22] = row[10]
+                        //             }
+                        //         }
+                        //     }else{
+                        //         row[22] = row[10];
+                        //     }
+                        //     row[23] = row[22]?.slice(12)
+                        //     return row;
+                        // });
+
+                        for (let i = 0; i < dataRows.length; i++) {
+                            let row = dataRows[i];
+                            row[21] = row[0] ? parseDate(row[0], "DD/MM/YYYY", "DD/MMM/YYYY") : '';
+                            if (row[10] == '' || String(row[2]).startsWith("Resolution")) {
+                                if (row[10] == '' || dataRows[i > 0 ? i - 1 : 0][10] == '') {
+                                    row[22] = dataRows[i > 0 ? i - 1 : 0][22];
+                                } else {
+                                    if (String(row[2]).toLowerCase().includes("Resolution")) {
+                                        row[22] = dataRows[i > 0 ? i - 1 : 0][22];
+                                    } else {
+                                        row[22] = row[10]
+                                    }
+                                }
+                            } else {
+                                row[22] = row[10];
+                            }
+                            row[23] = row[22]?.slice(12)
+                        }
 
                         mergedData.length = 0;
                         mergedData.push(headerRow, ...dataRows);

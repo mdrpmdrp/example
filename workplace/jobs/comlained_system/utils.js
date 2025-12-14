@@ -98,10 +98,11 @@ function testSetup() {
  */
 const MAIN_FOLDER_ID = '1KPys5yGNFyv0Q1IGCmHbAsruR6HZkjVx'; // Replace with actual folder ID
 function getDownloadToken({complainId, solutionId}) {
+  Logger.log('Generating download token for Complain ID:', complainId, 'Solution ID:', solutionId || 'N/A');
   const token = ScriptApp.getOAuthToken();
   let mainFolder = DriveApp.getFolderById(MAIN_FOLDER_ID); // Replace with actual folder ID
   let complainFolder = getOrCreateFolder(complainId, mainFolder);
-  if (!solutionId || solutionId == null) {
+  if (!solutionId) {
     return JSON.stringify({
       token: token,
       folderId: complainFolder.getId()
