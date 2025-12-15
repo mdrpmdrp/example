@@ -1,11 +1,11 @@
 // Configuration - Update with your Google Sheet ID
 const SHEET_ID = 'YOUR_SHEET_ID_HERE'; // Replace with your actual Google Sheet ID
-const INCOME_FOLDER = 'https://drive.google.com/drive/folders/1c51FoO2-FpO-5oeAYNhAe0l0RFMDdJLK?usp=drive_link';
-const EXPENSE_FOLDER = 'https://drive.google.com/drive/folders/10v5M1wn_HOUi47SkZ-tEkOQqa5WI_Mvs?usp=drive_link';
-const MASTER_DATA_FOLDER = 'https://drive.google.com/drive/folders/1_1lepHb6vP1fnruA66DK4P8jcSB2Lp8b?usp=sharing';
-const INCOME_ARCHIVE_FOLDER = 'https://drive.google.com/drive/folders/1AtjBJz5awB3nKl9ZckjvVgqz7hH4Ou1w?usp=drive_link';
-const EXPENSE_ARCHIVE_FOLDER = 'https://drive.google.com/drive/folders/1RyOqEKvawsBJtpG2AHAAeSxlq3cLNuaR?usp=drive_link';
-const MASTER_DATA_ARCHIVE_FOLDER = 'https://drive.google.com/drive/folders/1_1lepHb6vP1fnruA66DK4P8jcSB2Lp8b?usp=drive_link';
+const INCOME_FOLDER = 'https://drive.google.com/drive/folders/1nRrPE-4Dx8qgbPRRMXLQxEJoDXmR8QFS?usp=drive_link';
+const EXPENSE_FOLDER = 'https://drive.google.com/drive/folders/1HXqLLr5l4XudL-Hozu4LLiln15BFkiiv?usp=drive_link';
+const MASTER_DATA_FOLDER = 'https://drive.google.com/drive/folders/1hDSvH4_ycEAbrc2Djh6qt1t84NWntMsy?usp=drive_link';
+const INCOME_ARCHIVE_FOLDER = 'https://drive.google.com/drive/folders/1bHD0sOmem6Wg3iqQNX2yUiTK3CQ9t4jk?usp=drive_link';
+const EXPENSE_ARCHIVE_FOLDER = 'https://drive.google.com/drive/folders/1XPGSLrUtAJt1RqZ0Hklq-xDQdee2hpPx?usp=drive_link';
+const MASTER_DATA_ARCHIVE_FOLDER = 'https://drive.google.com/drive/folders/1KZsEeVY9Bos1Pi8hWH8mLvsv7G9Fm152?usp=drive_link';
 // Serve upload page
 function doGet(e) {
   let html = HtmlService.createTemplateFromFile('search');
@@ -36,6 +36,7 @@ function importIncomeFiles() {
     if (!file.getName().endsWith('.csv')) {
       continue;
     }
+    SpreadsheetApp.getActive().toast('Processing file: ' + file.getName(), 'Import Income Files', -1);
 
     let mergedData = Utilities.parseCsv(file.getBlob().getDataAsString()).slice(1); // Skip header
     Logger.log('⏳ Importing file: ' + file.getName() + ' with ' + mergedData.length + ' rows');
@@ -51,12 +52,14 @@ function importIncomeFiles() {
     file.moveTo(archiveFolder);
     Logger.log('📁 File ' + file.getName() + ' processed and moved to archive.');
   }
+  SpreadsheetApp.getActive().toast('Import Income Data with ' + importData.length + ' rows', 'Import Income Files', -1);
   if (importData.length > 0) {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Income Files');
     let lastRow = SuperScript.getRealLastRow('A', sheet);
     sheet.getRange(lastRow + 1, 1, importData.length, importData[0].length).setValues(importData);
     Logger.log('✅ Imported total ' + importData.length + ' rows to Income Files sheet.');
+    SpreadsheetApp.getActive().toast('✅ Imported Income Data Completed', 'Import Income Files', 5);
   }
 }
 
@@ -108,6 +111,7 @@ function importExpenseFiles() {
     if (!file.getName().endsWith('.xlsx') && !file.getName().endsWith('.xls')) {
       continue;
     }
+    SpreadsheetApp.getActive().toast('Processing file: ' + file.getName(), 'Import Expense Files', -1);
 
     let excelFile = DriveApp.getFileById(Drive.Files.create({
       title: file.getName(),
@@ -132,12 +136,14 @@ function importExpenseFiles() {
     excelFile.setTrashed(true);
     Logger.log('📁 File ' + file.getName() + ' processed and moved to archive.');
   }
+  SpreadsheetApp.getActive().toast('Import Expense Data with ' + importData.length + ' rows', 'Import Expense Files', -1);
   if (importData.length > 0) {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Expense Files');
     let lastRow = SuperScript.getRealLastRow('A', sheet);
     sheet.getRange(lastRow + 1, 1, importData.length, importData[0].length).setValues(importData);
     Logger.log('✅ Imported total ' + importData.length + ' rows to Expense Files sheet.');
+    SpreadsheetApp.getActive().toast('✅ Imported Expense Data Completed', 'Import Expense Files', 5);
   }
 }
 
@@ -156,6 +162,7 @@ function importMasterData() {
     if (!file.getName().endsWith('.xlsx') && !file.getName().endsWith('.xls')) {
       continue;
     }
+    SpreadsheetApp.getActive().toast('Processing file: ' + file.getName(), 'Import Master Data Files', -1);
     let excelFile = DriveApp.getFileById(Drive.Files.create({
       title: file.getName(),
       mimeType: MimeType.GOOGLE_SHEETS,
@@ -178,12 +185,14 @@ function importMasterData() {
     excelFile.setTrashed(true);
     Logger.log('📁 File ' + file.getName() + ' processed and moved to archive.');
   }
+  SpreadsheetApp.getActive().toast('Import Master Data with ' + importData.length + ' rows', 'Import Master Data Files', -1);
   if (importData.length > 0) {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Master Data');
-    let lastRow = SuperScript.getRealLastRow('A', sheet);
-    sheet.getRange(lastRow + 1, 1, importData.length, importData[0].length).setValues(importData);
+    sheet.getDataRange().clearContent();
+    sheet.getRange(1, 1, importData.length, importData[0].length).setValues(importData);
     Logger.log('✅ Imported total ' + importData.length + ' rows to Master Data sheet.');
+    SpreadsheetApp.getActive().toast('✅ Imported Master Data Completed', 'Import Master Data Files', 5);
   }
 }
 

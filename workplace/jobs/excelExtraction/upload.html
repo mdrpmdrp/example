@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Order File</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- jQuery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- SheetJS for Excel parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Noto Sans Thai', sans-serif;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .animate-pulse-slow {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* SweetAlert2 Customizations */
+        .swal2-popup {
+            border-radius: 1.5rem !important;
+            padding: 2rem !important;
+        }
+
+        .swal2-title {
+            font-family: 'Noto Sans Thai', sans-serif !important;
+            font-size: 1.5rem !important;
+        }
+
+        .swal2-html-container {
+            font-family: 'Noto Sans Thai', sans-serif !important;
+        }
+    </style>
+
+</head>
+
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8 px-4">
+
+    <div class="max-w-2xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-file-upload text-indigo-600 mr-2"></i>
+                จัดการไฟล์ Order
+            </h1>
+            <p class="text-gray-600">กรุณาเลือกร้านค้าและอัพโหลดไฟล์ของคุณ</p>
+        </div>
+
+        <!-- Form Card -->
+        <div class="bg-white rounded-2xl shadow-xl p-8">
+            <form id="uploadForm" class="space-y-6">
+
+                <!-- Store Dropdown -->
+                <div class="form-group">
+                    <label for="storeName" class="block text-sm font-semibold text-gray-700 mb-2">
+                        ชื่อร้านค้า <span class="text-red-500">*</span>
+                    </label>
+                    <select id="storeName" name="storeName" required
+                        class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none appearance-none bg-white cursor-pointer">
+                        <option value="" selected disabled>-- เลือกร้านค้า --</option>
+                        <option value="FRF">FRF</option>
+                    </select>
+                </div>
+
+                <!-- File Upload Areas - Grid Layout -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-cloud-upload-alt text-indigo-600 mr-2"></i>
+                        อัพโหลดไฟล์
+                    </h3>
+
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <!-- Order File Upload -->
+                        <div class="form-group">
+                            <label class="block text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                <span
+                                    class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold mr-2">1</span>
+                                ไฟล์ Order จากลูกค้า
+                                <span class="text-red-500 ml-1">*</span>
+                            </label>
+
+                            <!-- Drag and Drop Zone -->
+                            <div id="dropZone"
+                                class="relative border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer transition-all duration-300 hover:border-indigo-500 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50 hover:shadow-md group">
+
+                                <input type="file" id="fileInput" name="file" accept=".xlsx,.xls,.csv" class="hidden"
+                                    required>
+
+                                <div id="uploadPrompt" class="space-y-2">
+                                    <!-- Upload Icon -->
+                                    <div
+                                        class="mx-auto w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                        <i class="fas fa-file-excel text-3xl text-indigo-600"></i>
+                                    </div>
+
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-700">
+                                            ลากไฟล์มาวางที่นี่
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            หรือ <span class="text-indigo-600 font-semibold">คลิก</span> เพื่อเลือก
+                                        </p>
+                                    </div>
+
+                                    <div class="flex items-center justify-center gap-1 text-xs text-gray-400 mt-2">
+                                        <i class="fas fa-info-circle"></i>
+                                        <span>XLSX, XLS, CSV (สูงสุด 10MB)</span>
+                                    </div>
+                                </div>
+
+                                <!-- File Preview -->
+                                <div id="filePreview" class="hidden animate-fadeIn">
+                                    <div
+                                        class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-4">
+                                        <div class="flex items-center space-x-3">
+                                            <!-- File Icon -->
+                                            <div class="flex-shrink-0">
+                                                <div
+                                                    class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                                    <i class="fas fa-file-excel text-2xl text-green-600"></i>
+                                                </div>
+                                            </div>
+                                            <div class="flex-1 min-w-0 text-left">
+                                                <p id="fileName" class="text-sm font-semibold text-gray-800 truncate">
+                                                </p>
+                                                <p id="fileSize" class="text-xs text-gray-600 mt-0.5"></p>
+                                            </div>
+                                            <button type="button" id="removeFile"
+                                                class="flex-shrink-0 p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                                                <i class="fas fa-times text-lg"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Database File Upload -->
+                        <div class="form-group">
+                            <label class="block text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                <span
+                                    class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-600 text-xs font-bold mr-2">2</span>
+                                List Database
+                                <span class="text-red-500 ml-1">*</span>
+                            </label>
+
+                            <!-- Drag and Drop Zone -->
+                            <div id="dropZoneDb"
+                                class="relative border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer transition-all duration-300 hover:border-purple-500 hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50 hover:shadow-md group">
+
+                                <input type="file" id="fileInputDb" name="fileDb" accept=".xlsx,.xls,.csv"
+                                    class="hidden" required>
+
+                                <div id="uploadPromptDb" class="space-y-2">
+                                    <!-- Upload Icon -->
+                                    <div
+                                        class="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                        <i class="fas fa-database text-3xl text-purple-600"></i>
+                                    </div>
+
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-700">
+                                            ลากไฟล์มาวางที่นี่
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            หรือ <span class="text-purple-600 font-semibold">คลิก</span> เพื่อเลือก
+                                        </p>
+                                    </div>
+
+                                    <div class="flex items-center justify-center gap-1 text-xs text-gray-400 mt-2">
+                                        <i class="fas fa-info-circle"></i>
+                                        <span>XLSX, XLS, CSV (สูงสุด 10MB)</span>
+                                    </div>
+                                </div>
+
+                                <!-- File Preview -->
+                                <div id="filePreviewDb" class="hidden animate-fadeIn">
+                                    <div
+                                        class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-4">
+                                        <div class="flex items-center space-x-3">
+                                            <!-- File Icon -->
+                                            <div class="flex-shrink-0">
+                                                <div
+                                                    class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                                    <i class="fas fa-file-excel text-2xl text-green-600"></i>
+                                                </div>
+                                            </div>
+                                            <div class="flex-1 min-w-0 text-left">
+                                                <p id="fileNameDb" class="text-sm font-semibold text-gray-800 truncate">
+                                                </p>
+                                                <p id="fileSizeDb" class="text-xs text-gray-600 mt-0.5"></p>
+                                            </div>
+                                            <button type="button" id="removeFileDb"
+                                                class="flex-shrink-0 p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                                                <i class="fas fa-times text-lg"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-4">
+                    <button type="submit"
+                        class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold py-4 rounded-lg hover:from-indigo-600 hover:to-purple-700 transform hover:scale-[1.02] transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                        <span class="flex items-center justify-center space-x-2">
+                            <i class="fas fa-upload"></i>
+                            <span>อัพโหลดไฟล์</span>
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Info Box -->
+        <div class="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+            <div class="flex">
+                <i class="fas fa-info-circle text-blue-500 mr-3 text-lg"></i>
+                <div class="text-sm text-blue-700">
+                    <p class="font-semibold mb-1">คำแนะนำ:</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>กรุณาเลือกร้านค้าก่อนอัพโหลดไฟล์</li>
+                        <li>ตรวจสอบให้แน่ใจว่าไฟล์เป็นรูปแบบที่ถูกต้อง</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            // jQuery element references
+            const $dropZone = $('#dropZone');
+            const $fileInput = $('#fileInput');
+            const $uploadPrompt = $('#uploadPrompt');
+            const $filePreview = $('#filePreview');
+            const $fileName = $('#fileName');
+            const $fileSize = $('#fileSize');
+            const $removeFileBtn = $('#removeFile');
+            const $uploadForm = $('#uploadForm');
+
+            // Database elements
+            const $dropZoneDb = $('#dropZoneDb');
+            const $fileInputDb = $('#fileInputDb');
+            const $uploadPromptDb = $('#uploadPromptDb');
+            const $filePreviewDb = $('#filePreviewDb');
+            const $fileNameDb = $('#fileNameDb');
+            const $fileSizeDb = $('#fileSizeDb');
+            const $removeFileBtnDb = $('#removeFileDb');
+
+            // Prevent default drag behaviors
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            // Setup drag and drop for Order file
+            $dropZone.on('click', function (e) {
+                // Prevent triggering if click came from the file input itself
+                if (e.target !== $fileInput[0]) {
+                    $fileInput[0].click(); // Use native click to avoid event bubbling
+                }
+            });
+
+            $dropZone.on('dragenter dragover', function (e) {
+                preventDefaults(e);
+                $(this).addClass('border-indigo-500 bg-indigo-50 scale-105');
+            });
+
+            $dropZone.on('dragleave drop', function (e) {
+                preventDefaults(e);
+                $(this).removeClass('border-indigo-500 bg-indigo-50 scale-105');
+            });
+
+            $dropZone.on('drop', function (e) {
+                const files = e.originalEvent.dataTransfer.files;
+                if (files.length > 0) {
+                    $fileInput[0].files = files;
+                    handleFiles(files);
+                }
+            });
+
+            $fileInput.on('change', function (e) {
+                handleFiles(e.target.files);
+            });
+
+            // Setup drag and drop for Database file
+            $dropZoneDb.on('click', function (e) {
+                // Prevent triggering if click came from the file input itself
+                if (e.target !== $fileInputDb[0]) {
+                    $fileInputDb[0].click(); // Use native click to avoid event bubbling
+                }
+            });
+
+            $dropZoneDb.on('dragenter dragover', function (e) {
+                preventDefaults(e);
+                $(this).addClass('border-indigo-500 bg-indigo-50 scale-105');
+            });
+
+            $dropZoneDb.on('dragleave drop', function (e) {
+                preventDefaults(e);
+                $(this).removeClass('border-indigo-500 bg-indigo-50 scale-105');
+            });
+
+            $dropZoneDb.on('drop', function (e) {
+                const files = e.originalEvent.dataTransfer.files;
+                if (files.length > 0) {
+                    $fileInputDb[0].files = files;
+                    handleFilesDb(files);
+                }
+            });
+
+            $fileInputDb.on('change', function (e) {
+                handleFilesDb(e.target.files);
+            });
+
+            // Prevent default drag on body
+            $(document).on('dragenter dragover dragleave drop', function (e) {
+                preventDefaults(e);
+            });
+
+            // Handle Order file upload
+            function handleFiles(files) {
+                if (files.length === 0) return;
+
+                const file = files[0];
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+                const validExtensions = ['xlsx', 'xls', 'csv'];
+
+                if (!validExtensions.includes(fileExtension)) {
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-times-circle"></i>',
+                        title: 'ไฟล์ไม่ถูกต้อง',
+                        text: 'กรุณาอัพโหลดไฟล์ XLSX, XLS หรือ CSV เท่านั้น',
+                        confirmButtonColor: '#6366f1',
+                        customClass: {
+                            icoon: 'text-xl border-none text-red-600'
+                        }
+                    });
+                    $fileInput.val('');
+                    return;
+                }
+
+                const maxSize = 10 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-times-circle"></i>',
+                        title: 'ไฟล์ใหญ่เกินไป',
+                        text: 'กรุณาอัพโหลดไฟล์ที่มีขนาดไม่เกิน 10MB',
+                        confirmButtonColor: '#6366f1',
+                        customClass: {
+                            icoon: 'text-xl border-none text-red-600'
+                        }
+                    });
+                    $fileInput.val('');
+                    return;
+                }
+
+                // Show file preview
+                $fileName.text(file.name);
+                $fileSize.text(formatFileSize(file.size));
+                $uploadPrompt.addClass('hidden');
+                $filePreview.removeClass('hidden');
+            }
+
+            // Handle Database file upload
+            function handleFilesDb(files) {
+                if (files.length === 0) return;
+
+                const file = files[0];
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+                const validExtensions = ['xlsx', 'xls', 'csv'];
+
+                if (!validExtensions.includes(fileExtension)) {
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-times-circle"></i>',
+                        title: 'ไฟล์ไม่ถูกต้อง',
+                        text: 'กรุณาอัพโหลดไฟล์ XLSX, XLS หรือ CSV เท่านั้น',
+                        confirmButtonColor: '#6366f1',
+                        customClass: {
+                            icoon: 'text-xl border-none text-red-600'
+                        }
+                    });
+                    $fileInputDb.val('');
+                    return;
+                }
+
+                const maxSize = 10 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-times-circle"></i>',
+                        title: 'ไฟล์ใหญ่เกินไป',
+                        text: 'กรุณาอัพโหลดไฟล์ที่มีขนาดไม่เกิน 10MB',
+                        confirmButtonColor: '#6366f1',
+                        customClass: {
+                            icoon: 'text-xl border-none text-red-600'
+                        }
+                    });
+                    $fileInputDb.val('');
+                    return;
+                }
+
+                // Show file preview
+                $fileNameDb.text(file.name);
+                $fileSizeDb.text(formatFileSize(file.size));
+                $uploadPromptDb.addClass('hidden');
+                $filePreviewDb.removeClass('hidden');
+            }
+
+            // Remove Order file
+            $removeFileBtn.on('click', function (e) {
+                e.stopPropagation();
+                $fileInput.val('');
+                $uploadPrompt.removeClass('hidden');
+                $filePreview.addClass('hidden');
+            });
+
+            // Remove Database file
+            $removeFileBtnDb.on('click', function (e) {
+                e.stopPropagation();
+                $fileInputDb.val('');
+                $uploadPromptDb.removeClass('hidden');
+                $filePreviewDb.addClass('hidden');
+            });
+
+            // Format file size
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+            }
+
+            // Form submission
+            $uploadForm.on('submit', async function (e) {
+                e.preventDefault();
+
+                if (!storeName) {
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
+                        title: 'กรุณาเลือกร้านค้า',
+                        text: 'โปรดเลือกร้านค้าก่อนอัพโหลดไฟล์',
+                        confirmButtonColor: '#6366f1'
+                    });
+                    return;
+                }
+
+                if (!file) {
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
+                        title: 'กรุณาเลือกไฟล์',
+                        text: 'โปรดเลือกไฟล์ Order ที่ต้องการอัพโหลด',
+                        confirmButtonColor: '#6366f1'
+                    });
+                    return;
+                }
+
+                if (!fileDb) {
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
+                        title: 'กรุณาเลือกไฟล์',
+                        text: 'โปรดเลือกไฟล์ List Database ที่ต้องการอัพโหลด',
+                        confirmButtonColor: '#6366f1'
+                    });
+                    return;
+                }
+
+                const storeName = $('#storeName').val();
+                const fileOrder = await new Promise((resolve) => {
+                    const files = $fileInput[0].files;
+                    let fr = new FileReader();
+                    fr.onload = function (e) {
+                        resolve(e.target.result);
+                    };
+                    fr.readAsArrayBuffer(files[0]);
+                });
+                const fileDb = await new Promise((resolve) => {
+                    const files = $fileInputDb[0].files;
+                    let fr = new FileReader();
+                    fr.onload = function (e) {
+                        resolve(e.target.result);
+                    };
+                    fr.readAsArrayBuffer(files[0]);
+                });
+
+                // Show loading
+                Swal.fire({
+                    title: 'กำลังอัพโหลด...',
+                    text: 'กรุณารอสักครู่',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                google.script.run.withSuccessHandler(function (response) {
+                    Swal.close();
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-check-circle"></i>',
+                        title: 'อัพโหลดสำเร็จ',
+                        text: response,
+                        confirmButtonColor: '#6366f1'
+                    });
+                    // Reset form
+                    $uploadForm[0].reset();
+                    $fileInput.val('');
+                    $uploadPrompt.removeClass('hidden');
+                    $filePreview.addClass('hidden');
+                    $fileInputDb.val('');
+                    $uploadPromptDb.removeClass('hidden');
+                    $filePreviewDb.addClass('hidden');
+                }).withFailureHandler(function (error) {
+                    Swal.close();
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-times-circle"></i>',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: error.message,
+                        confirmButtonColor: '#6366f1',
+                        customClass: {
+                            icoon: 'text-xl border-none text-red-600'
+                        }
+                    });                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             uitls
+                }).processOrder({storeName, fileOrder, fileDb});
+
+            });
+        });
+    </script>
+
+</body>
+
+</html>
