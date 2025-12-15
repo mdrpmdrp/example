@@ -15,7 +15,8 @@ function doGet(e) {
     .setTitle('Search & Dashboard')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .setSandboxMode(HtmlService.SandboxMode.IFRAME)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setFaviconUrl('https://img5.pic.in.th/file/secure-sv1/Sabai-Rent-Logo-Symbol-Y.png');  
 }
 
 function getFolderId(url) {
@@ -221,7 +222,7 @@ function loginWithEmailPassword(email, password) {
     if (!email || !password) {
       return JSON.stringify({
         success: false,
-        message: 'Email and password are required.'
+        message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง.'
       });
     }
     let ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -229,7 +230,7 @@ function loginWithEmailPassword(email, password) {
     if (!userSheet) {
       return JSON.stringify({
         success: false,
-        message: 'User sheet not found.'
+        message: 'User sheet is missing.'
       });
     }
     let userData = userSheet.getDataRange().getValues();
@@ -237,7 +238,7 @@ function loginWithEmailPassword(email, password) {
     if (authenticatedUser) {
       return JSON.stringify({
         success: true,
-        message: 'Login successful.',
+        message: 'ลงชื่อเข้าใช้งานสำเร็จ.',
         name: authenticatedUser[2] || email,
         email: email
       });
@@ -245,13 +246,13 @@ function loginWithEmailPassword(email, password) {
 
       return JSON.stringify({
         success: false,
-        message: 'Invalid email or password.'
+        message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง.'
       });
     }
   } catch (error) {
     return JSON.stringify({
       success: false,
-      message: 'An error occurred during login: ' + error.message
+      message: 'เกิดข้อผิดพลาดระหว่างการเข้าสู่ระบบ: ' + error.message
     });
   }
 }
@@ -284,7 +285,7 @@ function getUserData(email) {
     });
   }
   if (incomeData.length > 0) {
-    incomeData = incomeData.map(row => {
+    incomeData = incomeData.filter(row => row[2] !== 'Payout').map(row => {
       return {
         date: row[0],
         arriving_by_date: row[1],
