@@ -378,6 +378,22 @@
             </div>
         </div>
 
+        <!-- Tabs Navigation -->
+        <div class="mb-4">
+            <div class="bg-white rounded-xl shadow-sm p-2">
+                <div class="flex gap-2">
+                    <button id="incomeTab" class="flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 bg-primary text-gray-900">
+                        <i class="fas fa-money-bill-wave mr-2"></i>
+                        รายรับ
+                    </button>
+                    <button id="expenseTab" class="flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 bg-gray-100 text-gray-600 hover:bg-gray-200">
+                        <i class="fas fa-credit-card mr-2"></i>
+                        รายจ่าย
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Global Filters (apply to all sections) - Responsive -->
         <div class="mb-4">
             <div class="bg-white rounded-xl shadow-sm p-3 md:p-3">
@@ -437,7 +453,7 @@
         </div>
 
         <!-- income summary -->
-        <div class="bg-white rounded-2xl shadow-xl p-4 md:p-8 mb-8 border-t-4 border-primary">
+        <div id="incomeSection" class="bg-white rounded-2xl shadow-xl p-4 md:p-8 mb-8 border-t-4 border-primary">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-4">
                 <h2 class="text-xl md:text-2xl font-bold text-secondary">
                     <i class="fas fa-money-bill-wave mr-2 text-primary"></i>
@@ -449,17 +465,13 @@
                     ส่งออกเป็น CSV
                 </button>
             </div>
-            <div class="overflow-x-auto -mx-4 md:mx-0">
-                <div class="inline-block min-w-full align-middle">
-                    <div class="overflow-hidden shadow-sm md:rounded-lg">
-                        <table class="min-w-full divide-y divide-gray-200" id="incomeSummaryTable"></table>
-                    </div>
-                </div>
+            <div class="-mx-4 md:mx-0" style="max-height: 900px; overflow-y: auto; overflow-x: auto;">
+                <table class="min-w-full divide-y divide-gray-200" id="incomeSummaryTable"></table>
             </div>
         </div>
 
         <!-- expense summary -->
-        <div class="bg-white rounded-2xl shadow-xl p-4 md:p-8 mb-8 border-t-4 border-primary">
+        <div id="expenseSection" class="bg-white rounded-2xl shadow-xl p-4 md:p-8 mb-8 border-t-4 border-primary hidden">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-4">
                 <h2 class="text-xl md:text-2xl font-bold text-secondary">
                     <i class="fas fa-credit-card mr-2 text-primary"></i>
@@ -471,12 +483,8 @@
                     ส่งออกเป็น CSV
                 </button>
             </div>
-            <div class="overflow-x-auto -mx-4 md:mx-0">
-                <div class="inline-block min-w-full align-middle">
-                    <div class="overflow-hidden shadow-sm md:rounded-lg">
-                        <table class="min-w-full divide-y divide-gray-200" id="expenseSummaryTable"></table>
-                    </div>
-                </div>
+            <div class="-mx-4 md:mx-0" style="max-height: 900px; overflow-y: auto; overflow-x: auto;">
+                <table class="min-w-full divide-y divide-gray-200" id="expenseSummaryTable"></table>
             </div>
         </div>
     </div>
@@ -634,6 +642,21 @@
                     localStorage.removeItem('sabairentSessionKey');
                 }
             })
+        });
+
+        // Tab handlers
+        $('#incomeTab').on('click', function () {
+            $('#incomeTab').removeClass('bg-gray-100 text-gray-600 hover:bg-gray-200').addClass('bg-primary text-gray-900');
+            $('#expenseTab').removeClass('bg-primary text-gray-900').addClass('bg-gray-100 text-gray-600 hover:bg-gray-200');
+            $('#incomeSection').removeClass('hidden');
+            $('#expenseSection').addClass('hidden');
+        });
+
+        $('#expenseTab').on('click', function () {
+            $('#expenseTab').removeClass('bg-gray-100 text-gray-600 hover:bg-gray-200').addClass('bg-primary text-gray-900');
+            $('#incomeTab').removeClass('bg-primary text-gray-900').addClass('bg-gray-100 text-gray-600 hover:bg-gray-200');
+            $('#expenseSection').removeClass('hidden');
+            $('#incomeSection').addClass('hidden');
         });
 
         // Search handlers
@@ -818,7 +841,7 @@
             let tableHeader = `
                         <thead class="bg-secondary sticky top-0 z-10">
                         <tr>
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider sticky left-0 bg-secondary z-20 min-w-[150px]">Listing Name</th>
+                            <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider  bg-secondary z-20 min-w-[150px]">Listing Name</th>
                             <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[220px]">Listing</th>   
                             <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">Payout Date</th>
                             <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">Bank Account</th>
@@ -864,6 +887,13 @@
                 const sortedDates = Object.keys(dates).sort();
                 const listingRowspan = sortedDates.length;
 
+                // Calculate subtotals for this listing
+                const listingSubtotals = {};
+                let listingTotal = 0;
+                typeColumns.forEach(type => {
+                    listingSubtotals[type] = 0;
+                });
+
                 sortedDates.forEach((date, dateIndex) => {
                     const dateData = dates[date];
                     const bankAccount = dateData.bankAccount;
@@ -879,8 +909,8 @@
                     // Only add listing_name and listing cells for first row of each listing_name group
                     if (dateIndex === 0) {
                         tableHTML += `
-                        <td rowspan="${listingRowspan}" class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-700 whitespace-nowrap align-top sticky left-0 bg-white z-10">${listing_name}</td>
-                        <td rowspan="${listingRowspan}" class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-900 font-semibold whitespace-nowrap align-top bg-white"><a href="${room_link || '#'}" target="_blank" class="text-secondary hover:underline">${listing}</a></td>
+                        <td rowspan="${listingRowspan}" class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-700 whitespace-nowrap align-top  bg-white z-10">${listing_name}</td>
+                        <td rowspan="${listingRowspan}" class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-900 font-semibold whitespace-nowrap align-top bg-white">${listing}</td>
                 `;
                     }
 
@@ -894,23 +924,43 @@
                         const amount = types[type] || 0;
                         rowTotal += amount;
                         grandTotals[type] += amount;
+                        listingSubtotals[type] += amount;
                         const formattedAmount = amount == 0 ? '-' : `${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                        const textColorClass = amount < 0 ? 'text-error font-bold' : 'text-gray-900';
                         tableHTML += `
-                            <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm ${textColorClass} text-right whitespace-nowrap">${formattedAmount}</td>
+                            <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-900 text-right whitespace-nowrap">${formattedAmount}</td>
                 `;
                     });
 
                     overallGrandTotal += rowTotal;
+                    listingTotal += rowTotal;
 
                     // Add row total
                     tableHTML += `
-                        <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold text-right whitespace-nowrap ${rowTotal < 0 ? 'text-error' : 'text-primary'}">${rowTotal === 0 ? '-' : `${rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</td>
+                        <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold text-right whitespace-nowrap text-gray-900">${rowTotal === 0 ? '-' : `${rowTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</td>
                     </tr>
                 `;
 
                     rowIndex++;
                 });
+
+                // Add subtotal row for this listing
+                tableHTML += `
+                    <tr class="bg-blue-50 border-t-2 border-blue-200 font-semibold">
+                        <td colspan="4" class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-right text-blue-900">Total - ${listing_name}</td>
+                `;
+                
+                typeColumns.forEach(type => {
+                    const subtotal = listingSubtotals[type];
+                    tableHTML += `
+                        <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-right whitespace-nowrap text-blue-900">${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    `;
+                });
+
+                tableHTML += `
+                        <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold text-right whitespace-nowrap text-blue-900">${listingTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    </tr>
+                `;
+                rowIndex++;
             });
 
             // Add Grand Total Row
@@ -940,7 +990,10 @@
         }
 
         function renderExpenseSummary(expenseData) {
+            // Sort by listing_name first, then by date
             expenseData = expenseData.sort((a, b) => {
+                const listingCompare = (a.listing_name || 'Uncategorized').localeCompare(b.listing_name || 'Uncategorized');
+                if (listingCompare !== 0) return listingCompare;
                 const dateA = new Date(a.date);
                 const dateB = new Date(b.date);
                 return dateA - dateB;
@@ -948,8 +1001,8 @@
             let tableHeader = `
                         <thead class="bg-secondary sticky top-0 z-10">
                         <tr>
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[150px]">Date</th>
                             <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[200px]">Listing Name</th>
+                            <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[150px]">Date</th>
                             <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[250px]">Description</th>
                             <th class="px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap min-w-[100px]">Amount</th>
                             <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[200px]">Category</th> 
@@ -966,7 +1019,12 @@
                     </tr>
                 `;
             }
-            expenseData.forEach(item => {
+            
+            // Group expenses by listing
+            let currentListing = null;
+            let listingSubtotal = 0;
+            
+            expenseData.forEach((item, index) => {
                 const date = item.date || 'Uncategorized';
                 const listing_name = item.listing_name || 'Uncategorized';
                 const description = item.description || 'Uncategorized';
@@ -975,19 +1033,47 @@
                 const formattedAmount = amount == 0 ? '-' : `${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 const textColorClass = amount < 0 ? 'text-error font-bold' : 'text-gray-900';
 
+                // Check if we're starting a new listing group
+                if (currentListing !== null && currentListing !== listing_name) {
+                    // Add subtotal row for previous listing
+                    tableHTML += `
+                        <tr class="bg-blue-50 border-t-2 border-blue-200 font-semibold">
+                            <td colspan="3" class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-right text-blue-900">Total - ${currentListing}</td>
+                            <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold text-right whitespace-nowrap text-blue-900">${listingSubtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td></td>
+                        </tr>
+                    `;
+                    listingSubtotal = 0;
+                    rowIndex++;
+                }
+                
+                currentListing = listing_name;
+                listingSubtotal += amount;
                 grandTotal += amount;
                 const rowClass = rowIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white';
 
                 tableHTML += `
                     <tr class="${rowClass} hover:bg-primary hover:bg-opacity-10 transition">
-                        <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-700 whitespace-nowrap">${formatDate(date)}</td>
                         <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-900 font-semibold whitespace-nowrap">${listing_name}</td>
+                        <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-700 whitespace-nowrap">${formatDate(date)}</td>
                         <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-700">${description}</td>
-                        <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold text-right whitespace-nowrap ${amount < 0 ? 'text-error font-bold' : 'text-gray-900'}">${formattedAmount}</td>
+                        <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold text-right whitespace-nowrap text-gray-900">${formattedAmount}</td>
                         <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-700">${category}</td>
                     </tr>
                 `;
                 rowIndex++;
+                
+                // If this is the last item, add subtotal row
+                if (index === expenseData.length - 1) {
+                    tableHTML += `
+                        <tr class="bg-blue-50 border-t-2 border-blue-200 font-semibold">
+                            <td colspan="3" class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-right text-blue-900">Total - ${currentListing}</td>
+                            <td class="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold text-right whitespace-nowrap text-blue-900">${listingSubtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td></td>
+                        </tr>
+                    `;
+                    rowIndex++;
+                }
             });
             // Add Grand Total Row
             tableHTML += `
@@ -1127,7 +1213,12 @@
 
                 rows.push(rowData.join(','));
             });
-
+            rows = rows.map(row =>{
+                if(row.startsWith('Total')){
+                    row = ",,"+ row; //shift total rows to match columns
+                    return row;
+                }
+            })
             const csvContent = rows.join('\n');
             const timestamp = new Date().toISOString().slice(0, 10);
             downloadCSV(csvContent, `สรุป_รายรับ_${timestamp}.csv`);

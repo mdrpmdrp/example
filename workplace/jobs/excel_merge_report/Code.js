@@ -74,11 +74,11 @@ function processIncomeData(mergedData) {
       row[5] = row[5] ? Utilities.parseDate(row[5], 'GMT+7', "MM/dd/yyyy") : '';
       row[6] = row[6] ? Utilities.parseDate(row[6], 'GMT+7', "MM/dd/yyyy") : '';
       row[21] = row[0];
-      if (row[10] == '' || String(row[2]).startsWith("Resolution")) {
+      if (row[10] == '' || String(row[2]).toLowerCase().startsWith("resolution")) {
         if (row[10] == '' || dataRows[i > 0 ? i - 1 : 0][10] == '') {
           row[22] = dataRows[i > 0 ? i - 1 : 0][22];
         } else {
-          if (String(row[2]).toLowerCase().includes("Resolution")) {
+          if (String(row[2]).toLowerCase().startsWith("resolution")) {
             row[22] = dataRows[i > 0 ? i - 1 : 0][22];
           } else {
             row[22] = row[10]
@@ -87,7 +87,7 @@ function processIncomeData(mergedData) {
       } else {
         row[22] = row[10];
       }
-      row[23] = row[22]?.slice(12)
+      row[23] = row[22]?.slice(11).trim();
     }
     // Sort by date (first column)
     dataRows.sort((a, b) => {

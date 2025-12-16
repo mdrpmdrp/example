@@ -6,10 +6,10 @@ function doGet(e){
     .setSandboxMode(HtmlService.SandboxMode.IFRAME);
 }
 
-function processOrder({storeName, fileOrder, fileDb}){
+function processOrder({storeName, fileOrderDataURL, fileDbDataURL}){
     switch(storeName.toLowerCase()){
         case 'frf':
-            return processFRFOrder({fileOrder, fileDb});
+            return processFRFOrder({fileOrderDataURL, fileDbDataURL});
         default:
             throw new Error('Store not recognized');
     }

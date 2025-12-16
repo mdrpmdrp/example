@@ -489,7 +489,23 @@
             // Form submission
             $uploadForm.on('submit', async function (e) {
                 e.preventDefault();
-
+                const storeName = $('#storeName').val();
+                const fileOrderDataURL = await new Promise((resolve) => {
+                    const files = $fileInput[0].files;
+                    let fr = new FileReader();
+                    fr.onload = function (e) {
+                        resolve(e.target.result);
+                    };
+                    fr.readAsDataURL(files[0]);
+                });
+                const fileDbDataURL = await new Promise((resolve) => {
+                    const files = $fileInputDb[0].files;
+                    let fr = new FileReader();
+                    fr.onload = function (e) {
+                        resolve(e.target.result);
+                    };
+                    fr.readAsDataURL(files[0]);
+                });
                 if (!storeName) {
                     Swal.fire({
                         iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
@@ -500,51 +516,43 @@
                     return;
                 }
 
-                if (!file) {
+                if (!fileOrderDataURL) {
                     Swal.fire({
                         iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
                         title: 'กรุณาเลือกไฟล์',
                         text: 'โปรดเลือกไฟล์ Order ที่ต้องการอัพโหลด',
-                        confirmButtonColor: '#6366f1'
+                        confirmButtonColor: '#6366f1',
+                        customClass: {
+                            icoon: 'text-xl border-none text-red-600'
+                        }
                     });
                     return;
                 }
 
-                if (!fileDb) {
+                if (!fileDbDataURL) {
                     Swal.fire({
                         iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
                         title: 'กรุณาเลือกไฟล์',
                         text: 'โปรดเลือกไฟล์ List Database ที่ต้องการอัพโหลด',
-                        confirmButtonColor: '#6366f1'
+                        confirmButtonColor: '#6366f1',
+                        ciustomClass: {
+                            icoon: 'text-xl border-none text-red-600'
+                        }
                     });
                     return;
                 }
 
-                const storeName = $('#storeName').val();
-                const fileOrder = await new Promise((resolve) => {
-                    const files = $fileInput[0].files;
-                    let fr = new FileReader();
-                    fr.onload = function (e) {
-                        resolve(e.target.result);
-                    };
-                    fr.readAsArrayBuffer(files[0]);
-                });
-                const fileDb = await new Promise((resolve) => {
-                    const files = $fileInputDb[0].files;
-                    let fr = new FileReader();
-                    fr.onload = function (e) {
-                        resolve(e.target.result);
-                    };
-                    fr.readAsArrayBuffer(files[0]);
-                });
+
 
                 // Show loading
                 Swal.fire({
+                    icon: '<i class="fas fa-spinner fa-pulse"></i>',
                     title: 'กำลังอัพโหลด...',
                     text: 'กรุณารอสักครู่',
                     allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
+                    showConfirmButton: false,
+                    customClass: {
+                        icon: 'text-xl border-none text-indigo-600'
                     }
                 });
 
@@ -554,7 +562,10 @@
                         iconHtml: '<i class="fas fa-check-circle"></i>',
                         title: 'อัพโหลดสำเร็จ',
                         text: response,
-                        confirmButtonColor: '#6366f1'
+                        confirmButtonColor: '#6366f1',
+                        customClass: {
+                            icoon: 'text-xl border-none text-green-600'
+                        }
                     });
                     // Reset form
                     $uploadForm[0].reset();
@@ -574,8 +585,8 @@
                         customClass: {
                             icoon: 'text-xl border-none text-red-600'
                         }
-                    });                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             uitls
-                }).processOrder({storeName, fileOrder, fileDb});
+                    }); uitls
+                }).processOrder({ storeName, fileOrderDataURL, fileDbDataURL });
 
             });
         });
