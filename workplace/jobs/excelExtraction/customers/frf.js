@@ -8,8 +8,6 @@ function processFRFOrder({fileOrderDataURL, fileDbDataURL}){
 }
 
 function generateFRFTransactionFile({orderRows, dbRows} = {}) {
-    // orderRows = temp_orderRows;
-    // dbRows = temp_dbRows;
     orderRows = orderRows.slice(2); // Remove header rows
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -19,18 +17,18 @@ function generateFRFTransactionFile({orderRows, dbRows} = {}) {
     // Build optimized maps for O(1) lookups
     const productMap = new Map();
     const branchMap = new Map();
-    const dbMap = new Map();
     
     // Pre-process matcher data once
-    matcherData.forEach(row => {
+    for (const row of matcherData) {
         const productKey = String(row[1]).toLowerCase().trim();
         const branchKey = String(row[5]).toLowerCase().trim();
         if (productKey) productMap.set(productKey, String(row[0]).trim());
         if (branchKey) branchMap.set(branchKey, String(row[4]).trim());
-    });
+    }
     
     // Build database map for O(1) product lookups
-    dbRows.forEach(row => {
+    const dbMap = new Map();
+    for (const row of dbRows) {
         const code = String(row[0]).toLowerCase().trim();
         if (code) {
             dbMap.set(code, {
@@ -39,54 +37,49 @@ function generateFRFTransactionFile({orderRows, dbRows} = {}) {
                 price: row[4]
             });
         }
-    });
+    }
     
     const header = ["Product Code", "Name (Eng)", "Name (Thai", "ราคา", "Volume", "Unit"];
-    const today = new Date();
-    const dateStr = Utilities.formatDate(today, Session.getScriptTimeZone(), 'yyyy-MMdd');
+    const dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MMdd');
     const newSpreadsheet = SpreadsheetApp.create(`order_${dateStr}-Fresh Flavors`);
     
     // Pre-normalize branch names for reuse
     const branches = orderRows[0].slice(4).map((branchName, index) => ({
-        name: branchName,
         code: branchMap.get(String(branchName).toLowerCase().trim()) || 'UNKNOWN',
         index: index + 4
     }));
     
     // Process each branch
-    branches.forEach(branch => {
-        const branchSheet = newSpreadsheet.getSheetByName(branch.code) || newSpreadsheet.insertSheet(branch.code);
-        
-        // Build branch orders with combined filter/map for better performance
+    for (const branch of branches) {
+        const branchSheet = newSpreadsheet.insertSheet(branch.code);
         const branchOrders = [];
+        
         for (let i = 1; i < orderRows.length; i++) {
             const row = orderRows[i];
             const quantity = row[branch.index];
             
-            // Skip invalid rows
             if (!quantity || quantity <= 0 || row[0] === 'TOTAL') continue;
             
             const productName = String(row[0]).toLowerCase().trim();
             const productCode = productMap.get(productName) || 'UNKNOWN';
-            const pack = String(row[3]).trim();
-            
-            // O(1) database lookup using pre-built map
             const dbData = dbMap.get(productCode.toLowerCase());
             
             branchOrders.push([
                 productCode,
-                dbData ? dbData.nameEN : row[0],
-                dbData ? dbData.nameTH : 'N/A',
-                dbData ? dbData.price : 0,
+                dbData?.nameEN ?? row[0],
+                dbData?.nameTH ?? 'N/A',
+                dbData?.price ?? 0,
                 quantity,
-                pack
+                String(row[3]).trim()
             ]);
         }
         
         // Write data in a single batch operation
-        branchSheet.getRange(1, 1, 1, header.length).setValues([header]);
         if (branchOrders.length > 0) {
-            branchSheet.getRange(2, 1, branchOrders.length, header.length).setValues(branchOrders);
+            branchSheet.getRange(1, 1, branchOrders.length + 1, header.length)
+                .setValues([header, ...branchOrders]);
+        } else {
+            branchSheet.getRange(1, 1, 1, header.length).setValues([header]);
         }
         
         // Format header
@@ -94,23 +87,16 @@ function generateFRFTransactionFile({orderRows, dbRows} = {}) {
             .setBackground('#fde9d9')
             .setFontWeight('bold');
         branchSheet.getDataRange().setFontSize(8);
-        
-    });
-    
-    // remove First Sheet
-    if (newSpreadsheet.getSheets().length > 1) {
-        newSpreadsheet.deleteSheet(newSpreadsheet.getSheets()[0]);
     }
-
-    // sort sheet tab alphabetically
-    const sheets = newSpreadsheet.getSheets();
-    sheets.sort((a, b) => a.getName().localeCompare(b.getName()));
+    
+    // Remove first sheet and sort
+    newSpreadsheet.deleteSheet(newSpreadsheet.getSheets()[0]);
+    
+    const sheets = newSpreadsheet.getSheets().sort((a, b) => a.getName().localeCompare(b.getName()));
     sheets.forEach((sheet, index) => {
         newSpreadsheet.setActiveSheet(sheet);
         newSpreadsheet.moveActiveSheet(index + 1);
     });
     
-    const url = newSpreadsheet.getUrl();
-    Logger.log('Transaction file generated: ' + url);
-    return url;
+    return newSpreadsheet.getUrl();
 }
