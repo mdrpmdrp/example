@@ -388,7 +388,7 @@
                         text: 'กรุณาอัพโหลดไฟล์ XLSX, XLS หรือ CSV เท่านั้น',
                         confirmButtonColor: '#6366f1',
                         customClass: {
-                            icoon: 'text-xl border-none text-red-600'
+                            icon: 'text-xl border-none text-red-600'
                         }
                     });
                     $fileInput.val('');
@@ -403,7 +403,7 @@
                         text: 'กรุณาอัพโหลดไฟล์ที่มีขนาดไม่เกิน 10MB',
                         confirmButtonColor: '#6366f1',
                         customClass: {
-                            icoon: 'text-xl border-none text-red-600'
+                            icon: 'text-xl border-none text-red-600'
                         }
                     });
                     $fileInput.val('');
@@ -432,7 +432,7 @@
                         text: 'กรุณาอัพโหลดไฟล์ XLSX, XLS หรือ CSV เท่านั้น',
                         confirmButtonColor: '#6366f1',
                         customClass: {
-                            icoon: 'text-xl border-none text-red-600'
+                            icon: 'text-xl border-none text-red-600'
                         }
                     });
                     $fileInputDb.val('');
@@ -447,7 +447,7 @@
                         text: 'กรุณาอัพโหลดไฟล์ที่มีขนาดไม่เกิน 10MB',
                         confirmButtonColor: '#6366f1',
                         customClass: {
-                            icoon: 'text-xl border-none text-red-600'
+                            icon: 'text-xl border-none text-red-600'
                         }
                     });
                     $fileInputDb.val('');
@@ -523,7 +523,7 @@
                         text: 'โปรดเลือกไฟล์ Order ที่ต้องการอัพโหลด',
                         confirmButtonColor: '#6366f1',
                         customClass: {
-                            icoon: 'text-xl border-none text-red-600'
+                            icon: 'text-xl border-none text-red-600'
                         }
                     });
                     return;
@@ -536,7 +536,7 @@
                         text: 'โปรดเลือกไฟล์ List Database ที่ต้องการอัพโหลด',
                         confirmButtonColor: '#6366f1',
                         ciustomClass: {
-                            icoon: 'text-xl border-none text-red-600'
+                            icon: 'text-xl border-none text-red-600'
                         }
                     });
                     return;
@@ -546,8 +546,8 @@
 
                 // Show loading
                 Swal.fire({
-                    icon: '<i class="fas fa-spinner fa-pulse"></i>',
-                    title: 'กำลังอัพโหลด...',
+                    iconHtml: '<i class="fas fa-spinner fa-pulse"></i>',
+                    title: 'กำลังดึงข้อมูล...',
                     text: 'กรุณารอสักครู่',
                     allowOutsideClick: false,
                     showConfirmButton: false,
@@ -556,7 +556,42 @@
                     }
                 });
 
+                let {orderRows, dbRows} = await getOrderData(storeName, fileOrderDataURL, fileDbDataURL);
+
+                Swal.fire({
+                    iconHtml: '<i class="fas fa-spinner fa-pulse"></i>',
+                    title: 'กำลังสร้างไฟล์ Transaction...',
+                    text: 'กรุณารอสักครู่',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    customClass: {
+                        icon: 'text-xl border-none text-indigo-600'
+                    }
+                });
+
+                let transactionURL = await generateTransactionFile(storeName, orderRows, dbRows);
+
+                Swal.fire({
+                    iconHtml: '<i class="fas fa-check-circle"></i>',
+                    title: 'ไฟล์พร้อมดาวน์โหลด',
+                    html: `<p class="mb-4">ไฟล์ Transaction ของคุณถูกสร้างเรียบร้อยแล้ว คลิกปุ่มดูไฟล์</p>
+                           <a href="${transactionURL}" target="_blank" class="inline-block px-6 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors">
+                               ดูไฟล์ Transaction
+                           </a>`,
+                    confirmButtonColor: '#6366f1',
+                    showConfirmButton: false,
+                    customClass: {
+                        icon: 'text-xl border-none text-green-600'
+                    }
+                })
+
+            });
+        });
+
+        function getOrderData(storeName, fileOrderDataURL, fileDbDataURL) {
+            return new Promise((resolve, reject) => {
                 google.script.run.withSuccessHandler(function (response) {
+                    response = JSON.parse(response);
                     Swal.close();
                     Swal.fire({
                         iconHtml: '<i class="fas fa-check-circle"></i>',
@@ -564,17 +599,18 @@
                         text: response,
                         confirmButtonColor: '#6366f1',
                         customClass: {
-                            icoon: 'text-xl border-none text-green-600'
+                            icon: 'text-xl border-none text-green-600'
                         }
                     });
+                    resolve(response);
                     // Reset form
-                    $uploadForm[0].reset();
-                    $fileInput.val('');
-                    $uploadPrompt.removeClass('hidden');
-                    $filePreview.addClass('hidden');
-                    $fileInputDb.val('');
-                    $uploadPromptDb.removeClass('hidden');
-                    $filePreviewDb.addClass('hidden');
+                    // $uploadForm[0].reset();
+                    // $fileInput.val('');
+                    // $uploadPrompt.removeClass('hidden');
+                    // $filePreview.addClass('hidden');
+                    // $fileInputDb.val('');
+                    // $uploadPromptDb.removeClass('hidden');
+                    // $filePreviewDb.addClass('hidden');
                 }).withFailureHandler(function (error) {
                     Swal.close();
                     Swal.fire({
@@ -583,13 +619,44 @@
                         text: error.message,
                         confirmButtonColor: '#6366f1',
                         customClass: {
-                            icoon: 'text-xl border-none text-red-600'
+                            icon: 'text-xl border-none text-red-600'
                         }
-                    }); uitls
+                    });
+                    reject(error);
                 }).processOrder({ storeName, fileOrderDataURL, fileDbDataURL });
-
             });
-        });
+        }
+
+        function generateTransactionFile(storeName, orderRows, dbRows) {
+            console.log("🚀 ~ generateTransactionFile ~ orderRows:", orderRows)
+            return new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler(function (dataURL) {
+                    Swal.close();
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-check-circle"></i>',
+                        title: 'สร้างไฟล์สำเร็จ',
+                        text: 'ไฟล์ Transaction ถูกสร้างเรียบร้อยแล้ว',
+                        confirmButtonColor: '#6366f1',
+                        customClass: {
+                            icon: 'text-xl border-none text-green-600'
+                        }
+                    });
+                    resolve(dataURL);
+                }).withFailureHandler(function (error) {
+                    Swal.close();
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-times-circle"></i>',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: error.message,
+                        confirmButtonColor: '#6366f1',
+                        customClass: {
+                            icon: 'text-xl border-none text-red-600'
+                        }
+                    });
+                    reject(error);
+                }).generateTransactionFile({ storeName, orderRows, dbRows });
+            });
+        }
     </script>
 
 </body>

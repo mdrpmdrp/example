@@ -25,7 +25,7 @@ function readExcelData(dataUrl) {
         };
 
         // Inserts the blob and converts it to a Google Sheet
-        const convertedFile = Drive.Files.insert(resource, excelBlob, {
+        const convertedFile = Drive.Files.create(resource, excelBlob, {
             convert: true
         });
 

@@ -14,3 +14,12 @@ function processOrder({storeName, fileOrderDataURL, fileDbDataURL}){
             throw new Error('Store not recognized');
     }
 }
+
+function generateTransactionFile({storeName, orderRows, dbRows}){
+    switch(storeName.toLowerCase()){
+        case 'frf':
+            return generateFRFTransactionFile({orderRows, dbRows});
+        default:
+            throw new Error('Store not recognized');
+    }
+}
