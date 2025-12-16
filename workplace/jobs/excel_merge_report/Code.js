@@ -72,9 +72,10 @@ function processIncomeData(mergedData) {
     return Utilities.parseDate(dateString, 'GMT+7', format);
   }
   if (mergedData?.length > 0) {
-    const dataRows = mergedData.slice(1);
+    const dataRows = mergedData;
     for (let i = 0; i < dataRows.length; i++) {
       let row = dataRows[i];
+      Logger.log('Processing row ' + (i + 1) + ': ' + row);
       row[0] = row[0] ? parseDate(row[0]) : '';
       row[1] = row[1] ? parseDate(row[1]) : '';
       row[4] = row[4] ? parseDate(row[4]) : '';
