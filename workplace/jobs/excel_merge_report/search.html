@@ -830,6 +830,7 @@
 
             // Apply filters
             const filteredIncome = filterDataByMonthYear(incomeData);
+            console.log("🚀 ~ updateSummary ~ filteredIncome:", filteredIncome)
             const filteredExpense = filterDataByMonthYear(expenseData);
 
             // Transform data - optimized
@@ -858,9 +859,6 @@
 
                 const dateTypes = incomeGroupByListing[listing_name][date].types;
                 dateTypes[type] = (dateTypes[type] || 0) + amount;
-                if (type === 'Co-Host payout') {
-                    console.log("🚀 ~ updateSummary ~ Co-Host payout amount:", amount);
-                }
             }
 
             console.log("🚀 ~ updateSummary ~ incomeGroupByListing:", incomeGroupByListing);
@@ -877,15 +875,16 @@
             }
 
             return data.filter(item => {
-                const date = item.payout_date || item.date;
+                const date = item.date;
                 if (!date || date === 'Uncategorized') return false;
-
+                
                 const itemDate = new Date(date);
                 if (isNaN(itemDate.getTime())) return false;
-
+                
                 const itemMonth = itemDate.getMonth() + 1; // 1-12
                 const itemYear = itemDate.getFullYear();
-
+                console.log(date,selectedMonth, itemMonth,selectedYear, itemYear);
+                
                 let matchMonth = true;
                 let matchYear = true;
 
@@ -1593,7 +1592,7 @@
                 filterText += 'ทั้งหมด';
             }
 
-            const rows = [];
+            let rows = [];
             // Add filter information as first row
             rows.push(filterText);
             rows.push(''); // Empty row for spacing
@@ -1657,8 +1656,10 @@
             rows = rows.map(row =>{
                 if(row.startsWith('Total')){
                     row = ",,"+ row; //shift total rows to match columns
-                    return row;
+                }else if(row.startsWith('Grand Total')){
+                    row = ",,"+ row; //shift grand total row to match columns
                 }
+                return row;
             })
             const csvContent = rows.join('\n');
             const timestamp = new Date().toISOString().slice(0, 10);

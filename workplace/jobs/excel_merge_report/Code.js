@@ -64,15 +64,22 @@ function importIncomeFiles() {
 }
 
 function processIncomeData(mergedData) {
+  const parseDate = (dateString) => {
+    let format = "MM/dd/yyyy";
+    if(dateString.includes("-")){
+      format = "dd-MM-yy";
+    }
+    return Utilities.parseDate(dateString, 'GMT+7', format);
+  }
   if (mergedData?.length > 0) {
     const dataRows = mergedData.slice(1);
     for (let i = 0; i < dataRows.length; i++) {
       let row = dataRows[i];
-      row[0] = row[0] ? Utilities.parseDate(row[0], 'GMT+7', "MM/dd/yyyy") : '';
-      row[1] = row[1] ? Utilities.parseDate(row[1], 'GMT+7', "MM/dd/yyyy") : '';
-      row[4] = row[4] ? Utilities.parseDate(row[4], 'GMT+7', "MM/dd/yyyy") : '';
-      row[5] = row[5] ? Utilities.parseDate(row[5], 'GMT+7', "MM/dd/yyyy") : '';
-      row[6] = row[6] ? Utilities.parseDate(row[6], 'GMT+7', "MM/dd/yyyy") : '';
+      row[0] = row[0] ? parseDate(row[0]) : '';
+      row[1] = row[1] ? parseDate(row[1]) : '';
+      row[4] = row[4] ? parseDate(row[4]) : '';
+      row[5] = row[5] ? parseDate(row[5]) : '';
+      row[6] = row[6] ? parseDate(row[6]) : '';
       row[21] = row[0];
       if (row[10] == '' || String(row[2]).toLowerCase().startsWith("resolution")) {
         if (row[10] == '' || dataRows[i > 0 ? i - 1 : 0][10] == '') {
