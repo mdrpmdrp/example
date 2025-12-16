@@ -322,6 +322,29 @@
             background: linear-gradient(90deg, rgba(var(--brand-secondary-rgb), 0.95), rgba(var(--brand-secondary-rgb), 0.85));
             color: #fff;
         }
+
+        /* Sortable column headers */
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: background-color 0.2s ease;
+        }
+
+        .sortable-header:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .sort-icon {
+            display: inline-block;
+            margin-left: 6px;
+            opacity: 0.5;
+            font-size: 0.75rem;
+        }
+
+        .sort-icon.active {
+            opacity: 1;
+        }
     </style>
 </head>
 
@@ -458,12 +481,18 @@
                 <h2 class="text-xl md:text-2xl font-bold text-secondary">
                     <i class="fas fa-money-bill-wave mr-2 text-primary"></i>
                     รายรับ</h2>
-                <button id="exportIncomeBtn" class="btn-primary flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    ส่งออกเป็น CSV
-                </button>
+                <div class="flex gap-2">
+                    <button id="sortGroupIncomeBtn" class="btn-outline flex items-center gap-2">
+                        <i class="fas fa-sort-amount-down"></i>
+                        Sort Group
+                    </button>
+                    <button id="exportIncomeBtn" class="btn-primary flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        ส่งออกเป็น CSV
+                    </button>
+                </div>
             </div>
             <div class="-mx-4 md:mx-0" style="max-height: 900px; overflow-y: auto; overflow-x: auto;">
                 <table class="min-w-full divide-y divide-gray-200" id="incomeSummaryTable"></table>
@@ -476,15 +505,55 @@
                 <h2 class="text-xl md:text-2xl font-bold text-secondary">
                     <i class="fas fa-credit-card mr-2 text-primary"></i>
                     รายจ่าย</h2>
-                <button id="exportExpenseBtn" class="btn-primary flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    ส่งออกเป็น CSV
-                </button>
+                <div class="flex gap-2">
+                    <button id="sortGroupExpenseBtn" class="btn-outline flex items-center gap-2">
+                        <i class="fas fa-sort-amount-down"></i>
+                        Sort Group
+                    </button>
+                    <button id="exportExpenseBtn" class="btn-primary flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        ส่งออกเป็น CSV
+                    </button>
+                </div>
             </div>
             <div class="-mx-4 md:mx-0" style="max-height: 900px; overflow-y: auto; overflow-x: auto;">
                 <table class="min-w-full divide-y divide-gray-200" id="expenseSummaryTable"></table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sort Group Modal -->
+    <div id="sortGroupModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+            <div class="bg-secondary text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-xl font-bold">
+                    <i class="fas fa-sort-amount-down mr-2"></i>
+                    Multi-Level Sort
+                </h3>
+                <button id="closeSortModal" class="text-white hover:text-primary transition">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto" style="max-height: calc(90vh - 140px);">
+                <div id="sortCriteria" class="space-y-4">
+                    <!-- Sort criteria will be added here dynamically -->
+                </div>
+                <button id="addSortCriteria" class="mt-4 btn-outline w-full flex items-center justify-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    Add Sort Level
+                </button>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 flex gap-3 justify-end">
+                <button id="clearSortBtn" class="btn-outline px-6 py-2">
+                    <i class="fas fa-eraser mr-2"></i>
+                    Clear All
+                </button>
+                <button id="applySortBtn" class="btn-primary px-6 py-2">
+                    <i class="fas fa-check mr-2"></i>
+                    Apply Sort
+                </button>
             </div>
         </div>
     </div>
@@ -517,6 +586,11 @@
         let filteredData = [];
         let incomeExpenseChart = null;
         let monthlyTrendChart = null;
+        let incomeSortConfig = { column: 'listing_name', direction: 'asc' };
+        let expenseSortConfig = { column: 'listing_name', direction: 'asc' };
+        let incomeMultiSort = [{ column: 'listing_name', direction: 'asc' }];
+        let expenseMultiSort = [{ column: 'listing_name', direction: 'asc' }];
+        let currentSortTable = 'income'; // 'income' or 'expense'
         let sessionKey = localStorage.getItem('sabairentSessionKey');
         if (sessionKey) {
             try {
@@ -837,35 +911,65 @@
             });
             const typeColumns = Array.from(allTypes).sort();
 
-            // Build table HTML
+            // Build table HTML with sortable headers
+            // Helper function for sort icons
+            const getSortIcon = (column) => {
+                if (incomeSortConfig.column === column) {
+                    return incomeSortConfig.direction === 'asc' ? 
+                        '<i class="fas fa-sort-up sort-icon active"></i>' : 
+                        '<i class="fas fa-sort-down sort-icon active"></i>';
+                }
+                return '<i class="fas fa-sort sort-icon"></i>';
+            };
+
             let tableHeader = `
                         <thead class="bg-secondary sticky top-0 z-10">
                         <tr>
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider  bg-secondary z-20 min-w-[150px]">Listing Name</th>
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[220px]">Listing</th>   
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">Payout Date</th>
+                            <th class="sortable-header px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider  bg-secondary z-20 min-w-[150px]" data-sort="listing_name">
+                                Listing Name
+                                ${getSortIcon('listing_name')}
+                            </th>
+                            <th class="sortable-header px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[220px]" data-sort="listing">
+                                Listing
+                                ${getSortIcon('listing')}
+                            </th>
+                            <th class="sortable-header px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]" data-sort="payout_date">
+                                Payout Date
+                                ${getSortIcon('payout_date')}
+                            </th>
                             <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">Bank Account</th>
             `;
 
             // Add dynamic type columns
             typeColumns.forEach(type => {
+                const sortAttr = `type_${type.replace(/\s+/g, '_')}`;
                 tableHeader += `
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap min-w-[100px]">${type}</th>
+                            <th class="sortable-header px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap min-w-[100px]" data-sort="${sortAttr}">
+                                ${type}
+                                ${getSortIcon(sortAttr)}
+                            </th>
                 `;
             });
 
             tableHeader += `
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap min-w-[100px]">Total</th>
+                            <th class="sortable-header px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap min-w-[100px]" data-sort="total">
+                                Total
+                                ${getSortIcon('total')}
+                            </th>
                             </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                 `;
 
             $('#incomeSummaryTable').html(tableHeader);
+            
+            // Apply sorting to income data
+            const sortedIncomeData = sortIncomeData(incomeGroupByListing, typeColumns);
+            
             let tableHTML = '<tbody class="bg-white divide-y divide-gray-200">';
             // Build table rows with rowspan logic
             let rowIndex = 0;
-            const listingNames = Object.keys(incomeGroupByListing).sort();
+            const listingNames = Object.keys(sortedIncomeData);
 
             // Calculate grand totals for each type
             const grandTotals = {};
@@ -883,8 +987,14 @@
             }
 
             listingNames.forEach(listing_name => {
-                const dates = incomeGroupByListing[listing_name];
-                const sortedDates = Object.keys(dates).sort();
+                const dates = sortedIncomeData[listing_name];
+                // Get dates in the order they appear in sorted data
+                const sortedDates = Object.keys(dates).sort((a, b) => {
+                    if (dates[a]._sortOrder !== undefined && dates[b]._sortOrder !== undefined) {
+                        return dates[a]._sortOrder - dates[b]._sortOrder;
+                    }
+                    return new Date(a).getTime() - new Date(b).getTime();
+                });
                 const listingRowspan = sortedDates.length;
 
                 // Calculate subtotals for this listing
@@ -990,22 +1100,42 @@
         }
 
         function renderExpenseSummary(expenseData) {
-            // Sort by listing_name first, then by date
-            expenseData = expenseData.sort((a, b) => {
-                const listingCompare = (a.listing_name || 'Uncategorized').localeCompare(b.listing_name || 'Uncategorized');
-                if (listingCompare !== 0) return listingCompare;
-                const dateA = new Date(a.date);
-                const dateB = new Date(b.date);
-                return dateA - dateB;
-            });
+            // Apply sorting
+            expenseData = sortExpenseData(expenseData);
+            
+            // Helper function for sort icons
+            const getSortIcon = (column) => {
+                if (expenseSortConfig.column === column) {
+                    return expenseSortConfig.direction === 'asc' ? 
+                        '<i class="fas fa-sort-up sort-icon active"></i>' : 
+                        '<i class="fas fa-sort-down sort-icon active"></i>';
+                }
+                return '<i class="fas fa-sort sort-icon"></i>';
+            };
+            
             let tableHeader = `
                         <thead class="bg-secondary sticky top-0 z-10">
                         <tr>
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[200px]">Listing Name</th>
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[150px]">Date</th>
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[250px]">Description</th>
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap min-w-[100px]">Amount</th>
-                            <th class="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[200px]">Category</th> 
+                            <th class="sortable-header px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[200px]" data-sort="listing_name">
+                                Listing Name
+                                ${getSortIcon('listing_name')}
+                            </th>
+                            <th class="sortable-header px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[150px]" data-sort="date">
+                                Date
+                                ${getSortIcon('date')}
+                            </th>
+                            <th class="sortable-header px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[250px]" data-sort="description">
+                                Description
+                                ${getSortIcon('description')}
+                            </th>
+                            <th class="sortable-header px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap min-w-[100px]" data-sort="amount">
+                                Amount
+                                ${getSortIcon('amount')}
+                            </th>
+                            <th class="sortable-header px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[200px]" data-sort="category">
+                                Category
+                                ${getSortIcon('category')}
+                            </th>
                         </tr>
                         </thead>`
             $('#expenseSummaryTable').html(tableHeader);
@@ -1089,6 +1219,318 @@
             $('#expenseSummaryTable').append(tableHTML);
         }
 
+
+        // Sorting functions
+        function sortIncomeData(incomeGroupByListing, typeColumns) {
+            // Flatten data for sorting
+            const flatData = [];
+            Object.keys(incomeGroupByListing).forEach(listing_name => {
+                Object.keys(incomeGroupByListing[listing_name]).forEach(date => {
+                    const item = incomeGroupByListing[listing_name][date];
+                    flatData.push({
+                        listing_name,
+                        listing: item.listing,
+                        payout_date: date,
+                        bankAccount: item.bankAccount,
+                        types: item.types,
+                        total: Object.values(item.types).reduce((sum, val) => sum + val, 0)
+                    });
+                });
+            });
+            
+            // Sort flat data
+            if (incomeSortConfig.multiLevel) {
+                // Multi-level sort
+                flatData.sort((a, b) => {
+                    for (const criteria of incomeMultiSort) {
+                        let aVal, bVal;
+                        const col = criteria.column;
+                        
+                        if (col === 'listing_name' || col === 'listing' || col === 'bankAccount') {
+                            aVal = (a[col] || '').toString().toLowerCase();
+                            bVal = (b[col] || '').toString().toLowerCase();
+                        } else if (col === 'payout_date') {
+                            aVal = new Date(a.payout_date).getTime();
+                            bVal = new Date(b.payout_date).getTime();
+                        } else if (col === 'total') {
+                            aVal = a.total;
+                            bVal = b.total;
+                        } else if (col.startsWith('type_')) {
+                            const typeName = col.replace('type_', '').replace(/_/g, ' ');
+                            aVal = a.types[typeName] || 0;
+                            bVal = b.types[typeName] || 0;
+                        }
+                        
+                        if (aVal !== bVal) {
+                            if (aVal < bVal) return criteria.direction === 'asc' ? -1 : 1;
+                            if (aVal > bVal) return criteria.direction === 'asc' ? 1 : -1;
+                        }
+                    }
+                    return 0;
+                });
+            } else if (incomeSortConfig.column) {
+                flatData.sort((a, b) => {
+                    let aVal, bVal;
+                    const col = incomeSortConfig.column;
+                    
+                    if (col === 'listing_name' || col === 'listing' || col === 'bankAccount') {
+                        aVal = (a[col] || '').toString().toLowerCase();
+                        bVal = (b[col] || '').toString().toLowerCase();
+                    } else if (col === 'payout_date') {
+                        aVal = new Date(a.payout_date).getTime();
+                        bVal = new Date(b.payout_date).getTime();
+                    } else if (col === 'total') {
+                        aVal = a.total;
+                        bVal = b.total;
+                    } else if (col.startsWith('type_')) {
+                        const typeName = col.replace('type_', '').replace(/_/g, ' ');
+                        aVal = a.types[typeName] || 0;
+                        bVal = b.types[typeName] || 0;
+                    }
+                    
+                    if (aVal < bVal) return incomeSortConfig.direction === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return incomeSortConfig.direction === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            } else {
+                // Default sort by listing_name
+                flatData.sort((a, b) => {
+                    const listingCompare = (a.listing_name || '').localeCompare(b.listing_name || '');
+                    if (listingCompare !== 0) return listingCompare;
+                    return new Date(a.payout_date).getTime() - new Date(b.payout_date).getTime();
+                });
+            }
+            
+            // Rebuild grouped structure maintaining sort order
+            const sorted = {};
+            const orderedKeys = [];
+            flatData.forEach(item => {
+                const key = `${item.listing_name}|${item.payout_date}`;
+                if (!sorted[item.listing_name]) {
+                    sorted[item.listing_name] = {};
+                    orderedKeys.push(item.listing_name);
+                }
+                sorted[item.listing_name][item.payout_date] = {
+                    listing: item.listing,
+                    bankAccount: item.bankAccount,
+                    types: item.types,
+                    _sortOrder: flatData.indexOf(item)
+                };
+            });
+            
+            return sorted;
+        }
+        
+        function sortExpenseData(expenseData) {
+            if (expenseSortConfig.multiLevel) {
+                // Multi-level sort
+                return expenseData.sort((a, b) => {
+                    for (const criteria of expenseMultiSort) {
+                        let aVal, bVal;
+                        const col = criteria.column;
+                        
+                        if (col === 'listing_name' || col === 'description' || col === 'category') {
+                            aVal = (a[col] || '').toString().toLowerCase();
+                            bVal = (b[col] || '').toString().toLowerCase();
+                        } else if (col === 'date') {
+                            aVal = new Date(a.date).getTime();
+                            bVal = new Date(b.date).getTime();
+                        } else if (col === 'amount') {
+                            aVal = parseFloat(a.amount) || 0;
+                            bVal = parseFloat(b.amount) || 0;
+                        }
+                        
+                        if (aVal !== bVal) {
+                            if (aVal < bVal) return criteria.direction === 'asc' ? -1 : 1;
+                            if (aVal > bVal) return criteria.direction === 'asc' ? 1 : -1;
+                        }
+                    }
+                    return 0;
+                });
+            } else if (!expenseSortConfig.column) {
+                // Default sort by listing_name, then date
+                return expenseData.sort((a, b) => {
+                    const listingCompare = (a.listing_name || 'Uncategorized').localeCompare(b.listing_name || 'Uncategorized');
+                    if (listingCompare !== 0) return listingCompare;
+                    const dateA = new Date(a.date);
+                    const dateB = new Date(b.date);
+                    return dateA - dateB;
+                });
+            }
+            
+            return expenseData.sort((a, b) => {
+                let aVal, bVal;
+                const col = expenseSortConfig.column;
+                
+                if (col === 'listing_name' || col === 'description' || col === 'category') {
+                    aVal = (a[col] || '').toString().toLowerCase();
+                    bVal = (b[col] || '').toString().toLowerCase();
+                } else if (col === 'date') {
+                    aVal = new Date(a.date).getTime();
+                    bVal = new Date(b.date).getTime();
+                } else if (col === 'amount') {
+                    aVal = parseFloat(a.amount) || 0;
+                    bVal = parseFloat(b.amount) || 0;
+                }
+                
+                if (aVal < bVal) return expenseSortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return expenseSortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        
+        // Sort Group Modal Functions
+        const incomeColumns = [
+            { value: 'listing_name', label: 'Listing Name' },
+            { value: 'listing', label: 'Listing' },
+            { value: 'payout_date', label: 'Payout Date' },
+            { value: 'total', label: 'Total' }
+        ];
+        
+        const expenseColumns = [
+            { value: 'listing_name', label: 'Listing Name' },
+            { value: 'date', label: 'Date' },
+            { value: 'description', label: 'Description' },
+            { value: 'amount', label: 'Amount' },
+            { value: 'category', label: 'Category' }
+        ];
+        
+        function renderSortCriteria() {
+            const sortArray = currentSortTable === 'income' ? incomeMultiSort : expenseMultiSort;
+            const columns = currentSortTable === 'income' ? incomeColumns : expenseColumns;
+            
+            let html = '';
+            sortArray.forEach((criteria, index) => {
+                html += `
+                    <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
+                        <div class="flex items-center justify-center w-8 h-8 bg-secondary text-white rounded-full font-bold text-sm">
+                            ${index + 1}
+                        </div>
+                        <select class="sort-column flex-1 px-3 py-2 rounded-lg border-2 border-gray-300 focus:border-secondary focus:ring-2 focus:ring-secondary focus:ring-opacity-20 transition outline-none" data-index="${index}">
+                            ${columns.map(col => `<option value="${col.value}" ${criteria.column === col.value ? 'selected' : ''}>${col.label}</option>`).join('')}
+                        </select>
+                        <select class="sort-direction px-3 py-2 rounded-lg border-2 border-gray-300 focus:border-secondary focus:ring-2 focus:ring-secondary focus:ring-opacity-20 transition outline-none" data-index="${index}">
+                            <option value="asc" ${criteria.direction === 'asc' ? 'selected' : ''}>Ascending ↑</option>
+                            <option value="desc" ${criteria.direction === 'desc' ? 'selected' : ''}>Descending ↓</option>
+                        </select>
+                        ${sortArray.length > 1 ? `
+                            <button class="remove-sort-criteria text-error hover:text-red-700 p-2" data-index="${index}">
+                                <i class="fas fa-trash text-lg"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            $('#sortCriteria').html(html);
+        }
+        
+        // Open sort modal
+        $(document).on('click', '#sortGroupIncomeBtn', function() {
+            currentSortTable = 'income';
+            renderSortCriteria();
+            $('#sortGroupModal').removeClass('hidden');
+        });
+        
+        $(document).on('click', '#sortGroupExpenseBtn', function() {
+            currentSortTable = 'expense';
+            renderSortCriteria();
+            $('#sortGroupModal').removeClass('hidden');
+        });
+        
+        // Close modal
+        $(document).on('click', '#closeSortModal', function() {
+            $('#sortGroupModal').addClass('hidden');
+        });
+        
+        // Close modal when clicking outside
+        $(document).on('click', '#sortGroupModal', function(e) {
+            if (e.target.id === 'sortGroupModal') {
+                $('#sortGroupModal').addClass('hidden');
+            }
+        });
+        
+        // Add sort criteria
+        $(document).on('click', '#addSortCriteria', function() {
+            const sortArray = currentSortTable === 'income' ? incomeMultiSort : expenseMultiSort;
+            const columns = currentSortTable === 'income' ? incomeColumns : expenseColumns;
+            
+            if (sortArray.length < columns.length) {
+                sortArray.push({ column: columns[0].value, direction: 'asc' });
+                renderSortCriteria();
+            }
+        });
+        
+        // Remove sort criteria
+        $(document).on('click', '.remove-sort-criteria', function() {
+            const index = parseInt($(this).data('index'));
+            const sortArray = currentSortTable === 'income' ? incomeMultiSort : expenseMultiSort;
+            
+            if (sortArray.length > 1) {
+                sortArray.splice(index, 1);
+                renderSortCriteria();
+            }
+        });
+        
+        // Update sort criteria
+        $(document).on('change', '.sort-column', function() {
+            const index = parseInt($(this).data('index'));
+            const sortArray = currentSortTable === 'income' ? incomeMultiSort : expenseMultiSort;
+            sortArray[index].column = $(this).val();
+        });
+        
+        $(document).on('change', '.sort-direction', function() {
+            const index = parseInt($(this).data('index'));
+            const sortArray = currentSortTable === 'income' ? incomeMultiSort : expenseMultiSort;
+            sortArray[index].direction = $(this).val();
+        });
+        
+        // Clear all sort
+        $(document).on('click', '#clearSortBtn', function() {
+            const columns = currentSortTable === 'income' ? incomeColumns : expenseColumns;
+            if (currentSortTable === 'income') {
+                incomeMultiSort = [{ column: columns[0].value, direction: 'asc' }];
+                incomeSortConfig = { column: columns[0].value, direction: 'asc' };
+            } else {
+                expenseMultiSort = [{ column: columns[0].value, direction: 'asc' }];
+                expenseSortConfig = { column: columns[0].value, direction: 'asc' };
+            }
+            renderSortCriteria();
+        });
+        
+        // Apply sort
+        $(document).on('click', '#applySortBtn', function() {
+            if (currentSortTable === 'income') {
+                incomeSortConfig = { multiLevel: true };
+            } else {
+                expenseSortConfig = { multiLevel: true };
+            }
+            $('#sortGroupModal').addClass('hidden');
+            updateSummary();
+        });
+
+        // Event handlers for sortable headers
+        $(document).on('click', '#incomeSummaryTable .sortable-header', function() {
+            const column = $(this).data('sort');
+            if (incomeSortConfig.column === column) {
+                incomeSortConfig.direction = incomeSortConfig.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                incomeSortConfig.column = column;
+                incomeSortConfig.direction = 'asc';
+            }
+            updateSummary();
+        });
+        
+        $(document).on('click', '#expenseSummaryTable .sortable-header', function() {
+            const column = $(this).data('sort');
+            if (expenseSortConfig.column === column) {
+                expenseSortConfig.direction = expenseSortConfig.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                expenseSortConfig.column = column;
+                expenseSortConfig.direction = 'asc';
+            }
+            updateSummary();
+        });
 
         function formatDate(dateString) {
             if (!dateString || dateString === 'Uncategorized') return dateString;
@@ -1210,7 +1652,6 @@
                         rowData.push(escapeCSV(cells[i].textContent.trim()));
                     }
                 }
-
                 rows.push(rowData.join(','));
             });
             rows = rows.map(row =>{
@@ -1275,6 +1716,11 @@
                     cells.forEach(cell => {
                         rowData.push(escapeCSV(cell.textContent.trim()));
                     });
+                    if(rowData[0].startsWith('Total')){
+                        rowData.unshift('',''); //shift total rows to match columns
+                    }else if(rowData[0] === 'Grand Total'){
+                        rowData.unshift('',''); //shift grand total row to match columns
+                    }
                     rows.push(rowData.join(','));
                 }
             });
