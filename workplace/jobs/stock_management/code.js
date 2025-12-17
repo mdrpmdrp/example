@@ -653,7 +653,11 @@ function addProduct(productData) {
       productData.location || '', // I
       initialStock,   // J
       initialStockDate,// K
-      now             // L (LastUpdate)
+      now,             // L (LastUpdate)
+      productData.subcategory || '', // M (SubCategory if column exists)
+      productData.supplierId || '', // N (SupplierID if column exists)
+      productData.note || '' // O (Note if column exists)
+
     ]);
 
     logUserAction('Create Product', `Code: ${autoCode}, Name: ${productData.name}`);
@@ -777,7 +781,10 @@ function updateProduct(productData) {
       minStock,                       // MinStock H
       productData.location || '',     // Location I
       initialStock,                   // InitialStock J
-      initialStockDate                // InitialStockDate K
+      initialStockDate,                // InitialStockDate K
+      productData.subcategory || '',   // SubCategory L
+      productData.supplierId || '',    // SupplierID M
+      productData.note || ''           // Note N
     ]]);
     // Update LastUpdate in Column L (index 12)
     productsSheet.getRange(rowIndex, 12).setValue(now);
@@ -1508,7 +1515,10 @@ function parseProducts(data) {
         initialStock: parseInt(row[9]) || 0, // Column J
         initialStockDate: row[10] && !isNaN(new Date(row[10]).getTime()) ? new Date(row[10]).toISOString() : null, // Column K
         lastUpdate: row[11] && !isNaN(new Date(row[11]).getTime()) ? new Date(row[11]).toISOString() : null, // Column L
-        stock: 0 // Will be calculated later
+        stock: 0, // Will be calculated later
+        subcategory: row[12] || '', // Column M
+        supplierId: row[13] || '', // Column N
+        note: row[14] || '' // Column O
       };
     } catch (e) {
       Logger.log(`Error parsing product row index ${index + 2}: ${e.message}. Data: ${JSON.stringify(row)}`);
