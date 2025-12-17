@@ -87,7 +87,7 @@
 
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8 px-4">
 
-    <div class="max-w-2xl mx-auto">
+    <div class="max-w-5xl mx-auto">
         <!-- Header -->
         <div class="text-center mb-8">
             <h1 class="text-4xl font-bold text-gray-800 mb-2">
@@ -134,8 +134,7 @@
                             <div id="dropZone"
                                 class="relative border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer transition-all duration-300 hover:border-indigo-500 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50 hover:shadow-md group">
 
-                                <input type="file" id="fileInput" name="file" accept=".xlsx,.xls,.csv" class="hidden"
-                                    required>
+                                <input type="file" id="fileInput" name="file" class="hidden">
 
                                 <div id="uploadPrompt" class="space-y-2">
                                     <!-- Upload Icon -->
@@ -155,7 +154,7 @@
 
                                     <div class="flex items-center justify-center gap-1 text-xs text-gray-400 mt-2">
                                         <i class="fas fa-info-circle"></i>
-                                        <span>XLSX, XLS, CSV (สูงสุด 10MB)</span>
+                                        <span>XLSX, XLS, CSV, PDF, JPEG (สูงสุด 10MB)</span>
                                     </div>
                                 </div>
 
@@ -200,7 +199,7 @@
                                 class="relative border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer transition-all duration-300 hover:border-purple-500 hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50 hover:shadow-md group">
 
                                 <input type="file" id="fileInputDb" name="fileDb" accept=".xlsx,.xls,.csv"
-                                    class="hidden" required>
+                                    class="hidden">
 
                                 <div id="uploadPromptDb" class="space-y-2">
                                     <!-- Upload Icon -->
@@ -279,34 +278,109 @@
                 </div>
             </div>
         </div>
+
+        <!-- Table Preview Section -->
+        <div id="tablePreviewSection" class="hidden mt-8">
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-table text-indigo-600 mr-2"></i>
+                        ตัวอย่างข้อมูล Transaction
+                    </h2>
+                    <button id="downloadBtn" class="px-6 py-3 text-white font-semibold rounded-lg h transform hover:scale-105 transition-all shadow-lg hover:shadow-xl bg-green-700">
+                        <i class="fas fa-download mr-2"></i>
+                        ดาวน์โหลดไฟล์
+                    </button>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="mb-6 border-b border-gray-200 overflow-x-auto">
+                    <div id="tabNavigation" class="flex gap-1 -mb-px pb-2" style="overflow-x: auto; scrollbar-width: thin; scrollbar-color: #6366f1 #e5e7eb;">
+                        <!-- Tabs will be dynamically inserted here -->
+                    </div>
+                </div>
+
+                <!-- Tab Content Info -->
+                <div id="tabInfo" class="mb-4 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="font-semibold text-gray-700">
+                            สาขา: <span id="currentTabName" class="text-indigo-600">-</span>
+                        </span>
+                        <span class="text-gray-600">
+                            <i class="fas fa-box mr-2"></i>
+                            รายการสินค้า: <span id="currentItemCount" class="font-semibold">0</span> รายการ
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Table Container with Scroll -->
+                <div class="overflow-x-auto border rounded-lg">
+                    <table id="tablePreview" class="min-w-full bg-white">
+                        <!-- Table content will be dynamically inserted here -->
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="hidden text-center py-12">
+                    <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 text-lg">ไม่มีข้อมูลในสาขานี้</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        $(document).ready(function () {
-            // jQuery element references
-            const $dropZone = $('#dropZone');
-            const $fileInput = $('#fileInput');
-            const $uploadPrompt = $('#uploadPrompt');
-            const $filePreview = $('#filePreview');
-            const $fileName = $('#fileName');
-            const $fileSize = $('#fileSize');
-            const $removeFileBtn = $('#removeFile');
-            const $uploadForm = $('#uploadForm');
+        const acceptedFileTypes = {
+            database: ['xlsx', 'xls', 'csv'],
+            order: {
+                frf: ['xlsx', 'xls', 'csv']
+            }
+        }
+        let mainTableObject = null
+        let mainProductMapErrors = null;
+        let mainBranchMapErrors = null;
 
-            // Database elements
-            const $dropZoneDb = $('#dropZoneDb');
-            const $fileInputDb = $('#fileInputDb');
-            const $uploadPromptDb = $('#uploadPromptDb');
-            const $filePreviewDb = $('#filePreviewDb');
-            const $fileNameDb = $('#fileNameDb');
-            const $fileSizeDb = $('#fileSizeDb');
-            const $removeFileBtnDb = $('#removeFileDb');
+        // jQuery element references
+        const $dropZone = $('#dropZone');
+        const $fileInput = $('#fileInput');
+        const $uploadPrompt = $('#uploadPrompt');
+        const $filePreview = $('#filePreview');
+        const $fileName = $('#fileName');
+        const $fileSize = $('#fileSize');
+        const $removeFileBtn = $('#removeFile');
+        const $uploadForm = $('#uploadForm');
+
+        // Database elements
+        const $dropZoneDb = $('#dropZoneDb');
+        const $fileInputDb = $('#fileInputDb');
+        const $uploadPromptDb = $('#uploadPromptDb');
+        const $filePreviewDb = $('#filePreviewDb');
+        const $fileNameDb = $('#fileNameDb');
+        const $fileSizeDb = $('#fileSizeDb');
+        const $removeFileBtnDb = $('#removeFileDb');
+
+        // Table preview elements
+        const $tablePreviewSection = $('#tablePreviewSection');
+        const $tablePreview = $('#tablePreview');
+        const $tabNavigation = $('#tabNavigation');
+        const $currentTabName = $('#currentTabName');
+        const $currentItemCount = $('#currentItemCount');
+        const $emptyState = $('#emptyState');
+        const $downloadBtn = $('#downloadBtn');
+
+        $(document).ready(function () {
 
             // Prevent default drag behaviors
             function preventDefaults(e) {
                 e.preventDefault();
                 e.stopPropagation();
             }
+
+            $downloadBtn.on('click', function () {
+                if (mainTableObject) {
+                    downloadExcel(mainTableObject);
+                }
+            });
 
             // Setup drag and drop for Order file
             $dropZone.on('click', function (e) {
@@ -374,14 +448,14 @@
             });
 
             // Handle Order file upload
+            let orderFileData = []
             function handleFiles(files) {
                 if (files.length === 0) return;
 
                 const file = files[0];
                 const fileExtension = file.name.split('.').pop().toLowerCase();
-                const validExtensions = ['xlsx', 'xls', 'csv'];
 
-                if (!validExtensions.includes(fileExtension)) {
+                if (!acceptedFileTypes.order[$('#storeName').val().toLowerCase()].includes(fileExtension)) {
                     Swal.fire({
                         iconHtml: '<i class="fas fa-times-circle"></i>',
                         title: 'ไฟล์ไม่ถูกต้อง',
@@ -415,6 +489,7 @@
                 $fileSize.text(formatFileSize(file.size));
                 $uploadPrompt.addClass('hidden');
                 $filePreview.removeClass('hidden');
+
             }
 
             // Handle Database file upload
@@ -423,9 +498,8 @@
 
                 const file = files[0];
                 const fileExtension = file.name.split('.').pop().toLowerCase();
-                const validExtensions = ['xlsx', 'xls', 'csv'];
 
-                if (!validExtensions.includes(fileExtension)) {
+                if (!acceptedFileTypes.database.includes(fileExtension)) {
                     Swal.fire({
                         iconHtml: '<i class="fas fa-times-circle"></i>',
                         title: 'ไฟล์ไม่ถูกต้อง',
@@ -490,22 +564,6 @@
             $uploadForm.on('submit', async function (e) {
                 e.preventDefault();
                 const storeName = $('#storeName').val();
-                const fileOrderDataURL = await new Promise((resolve) => {
-                    const files = $fileInput[0].files;
-                    let fr = new FileReader();
-                    fr.onload = function (e) {
-                        resolve(e.target.result);
-                    };
-                    fr.readAsDataURL(files[0]);
-                });
-                const fileDbDataURL = await new Promise((resolve) => {
-                    const files = $fileInputDb[0].files;
-                    let fr = new FileReader();
-                    fr.onload = function (e) {
-                        resolve(e.target.result);
-                    };
-                    fr.readAsDataURL(files[0]);
-                });
                 if (!storeName) {
                     Swal.fire({
                         iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
@@ -516,7 +574,7 @@
                     return;
                 }
 
-                if (!fileOrderDataURL) {
+                if ($fileInput[0].files.length === 0) {
                     Swal.fire({
                         iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
                         title: 'กรุณาเลือกไฟล์',
@@ -529,7 +587,7 @@
                     return;
                 }
 
-                if (!fileDbDataURL) {
+                if ($fileInputDb[0].files.length === 0) {
                     Swal.fire({
                         iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
                         title: 'กรุณาเลือกไฟล์',
@@ -542,6 +600,45 @@
                     return;
                 }
 
+                // Read order file - check if Excel/CSV or other format
+                const orderFile = $fileInput[0].files[0];
+                const orderFileExt = orderFile.name.split('.').pop().toLowerCase();
+                const isOrderExcel = ['xlsx', 'xls', 'csv'].includes(orderFileExt);
+                
+                let fileOrderData;
+                if (isOrderExcel) {
+                    // Read as Excel/CSV and parse to JSON array
+                    fileOrderData = await readFileAsJson(orderFile, orderFileExt);
+                } else {
+                    // Read as DataURL for other formats (PDF, JPEG, etc.)
+                    fileOrderData = await new Promise((resolve) => {
+                        let fr = new FileReader();
+                        fr.onload = function (e) {
+                            resolve(e.target.result);
+                        };
+                        fr.readAsDataURL(orderFile);
+                    });
+                }
+
+                // Read database file - check if Excel/CSV
+                const dbFile = $fileInputDb[0].files[0];
+                const dbFileExt = dbFile.name.split('.').pop().toLowerCase();
+                const isDbExcel = ['xlsx', 'xls', 'csv'].includes(dbFileExt);
+                
+                let fileDbData;
+                if (isDbExcel) {
+                    // Read as Excel/CSV and parse to JSON array
+                    fileDbData = await readFileAsJson(dbFile, dbFileExt);
+                } else {
+                    // Read as DataURL
+                    fileDbData = await new Promise((resolve) => {
+                        let fr = new FileReader();
+                        fr.onload = function (e) {
+                            resolve(e.target.result);
+                        };
+                        fr.readAsDataURL(dbFile);
+                    });
+                }
 
 
                 // Show loading
@@ -556,37 +653,714 @@
                     }
                 });
 
-                let {orderRows, dbRows} = await getOrderData(storeName, fileOrderDataURL, fileDbDataURL);
-
+                // let { orderRows, dbRows } = await getOrderData(storeName, fileOrderData, fileDbData);
+                if(isOrderExcel && isDbExcel){
+                    var orderRows = fileOrderData;
+                    var dbRows = fileDbData;
+                } else {
+                    var { orderRows, dbRows } = await getOrderData(storeName, fileOrderData, fileDbData);
+                }
+                mainTableObject = null;
                 Swal.fire({
-                    iconHtml: '<i class="fas fa-spinner fa-pulse"></i>',
-                    title: 'กำลังสร้างไฟล์ Transaction...',
+                    iconHtml: '<i class="fas fa-table"></i>',
+                    title: 'กำลังสร้างตัวอย่างข้อมูล...',
                     text: 'กรุณารอสักครู่',
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
+                    confirmButtonColor: '#6366f1',
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
                     customClass: {
                         icon: 'text-xl border-none text-indigo-600'
                     }
                 });
+                let { tableObjects, productMapErrors, branchMapErrors } = await generateTransactionJSON(storeName, orderRows, dbRows);
+                // for test purpose
+                // tableObjects = {
+                //     "header": [
+                //         "Product Code",
+                //         "Name (Eng)",
+                //         "Name (Thai)",
+                //         "ราคา",
+                //         "Volume",
+                //         "Unit"
+                //     ],
+                //     "tabs": [
+                //         {
+                //             "tabName": "31",
+                //             "rows": [
+                //                 [
+                //                     "0004/1",
+                //                     "Fresh Kiffir lime ( Magrood)",
+                //                     "ลูกมะกรูดสด",
+                //                     "10.89 USD",
+                //                     2,
+                //                     "TRAY 4 EACH"
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "35",
+                //             "rows": []
+                //         },
+                //         {
+                //             "tabName": "NO-7",
+                //             "rows": [
+                //                 [
+                //                     "0064",
+                //                     "Acacia",
+                //                     "ชะอม",
+                //                     "13.49 USD",
+                //                     1,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "UNKNOWN",
+                //                     "RED CHILI - 50 GR",
+                //                     "N/A",
+                //                     0,
+                //                     1.5,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "0034",
+                //                     "Yard Long Bean",
+                //                     "ถั่วฝักยาว",
+                //                     "14.39 USD",
+                //                     3,
+                //                     "500gr"
+                //                 ],
+                //                 [
+                //                     "0023",
+                //                     "White round eggplant",
+                //                     "มะเขือขาว-มะเขือเปราะ",
+                //                     "12.29 USD",
+                //                     3,
+                //                     "250gr"
+                //                 ],
+                //                 [
+                //                     "0186.025",
+                //                     "GREEN FINGER LIGHT CHILLI",
+                //                     "N/A",
+                //                     0,
+                //                     1,
+                //                     "250GR"
+                //                 ],
+                //                 [
+                //                     "0002",
+                //                     "Galaga",
+                //                     "ข่าสด",
+                //                     "11.19 USD",
+                //                     2,
+                //                     "NO STEM"
+                //                 ],
+                //                 [
+                //                     "0125",
+                //                     "Sweet Mango",
+                //                     "มะม่วงมัน",
+                //                     "12.89 USD",
+                //                     5,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "27",
+                //             "rows": [
+                //                 [
+                //                     "UNKNOWN",
+                //                     "RED CHILLI - LOOSE ",
+                //                     "N/A",
+                //                     0,
+                //                     150,
+                //                     "5KG"
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "10",
+                //             "rows": [
+                //                 [
+                //                     "UNKNOWN",
+                //                     "RED CHILI - 50 GR",
+                //                     "N/A",
+                //                     0,
+                //                     2,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "46",
+                //             "rows": [
+                //                 [
+                //                     "0004/1",
+                //                     "Fresh Kiffir lime ( Magrood)",
+                //                     "ลูกมะกรูดสด",
+                //                     "10.89 USD",
+                //                     2,
+                //                     "TRAY 4 EACH"
+                //                 ],
+                //                 [
+                //                     "UNKNOWN",
+                //                     "RED CHILI - 50 GR",
+                //                     "N/A",
+                //                     0,
+                //                     10,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "34",
+                //             "rows": [
+                //                 [
+                //                     "UNKNOWN",
+                //                     "RED CHILI - 50 GR",
+                //                     "N/A",
+                //                     0,
+                //                     10,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "32",
+                //             "rows": [
+                //                 [
+                //                     "UNKNOWN",
+                //                     "RED CHILI - 50 GR",
+                //                     "N/A",
+                //                     0,
+                //                     12,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "48-1",
+                //             "rows": [
+                //                 [
+                //                     "0064",
+                //                     "Acacia",
+                //                     "ชะอม",
+                //                     "13.49 USD",
+                //                     3,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "57",
+                //             "rows": [
+                //                 [
+                //                     "0125",
+                //                     "Sweet Mango",
+                //                     "มะม่วงมัน",
+                //                     "12.89 USD",
+                //                     5,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "48",
+                //             "rows": []
+                //         },
+                //         {
+                //             "tabName": "2",
+                //             "rows": [
+                //                 [
+                //                     "UNKNOWN",
+                //                     "RED CHILI - 50 GR",
+                //                     "N/A",
+                //                     0,
+                //                     5,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "22",
+                //             "rows": []
+                //         },
+                //         {
+                //             "tabName": "47",
+                //             "rows": [
+                //                 [
+                //                     "UNKNOWN",
+                //                     "RED CHILI - 50 GR",
+                //                     "N/A",
+                //                     0,
+                //                     5,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "51",
+                //             "rows": []
+                //         },
+                //         {
+                //             "tabName": "51-1",
+                //             "rows": [
+                //                 [
+                //                     "0005",
+                //                     "Bergamot Leaf",
+                //                     "ใบมะกรูด",
+                //                     "13.99 USD",
+                //                     1,
+                //                     "100 GR"
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "6",
+                //             "rows": []
+                //         },
+                //         {
+                //             "tabName": "16",
+                //             "rows": [
+                //                 [
+                //                     "0064",
+                //                     "Acacia",
+                //                     "ชะอม",
+                //                     "13.49 USD",
+                //                     4,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "18",
+                //             "rows": []
+                //         },
+                //         {
+                //             "tabName": "61",
+                //             "rows": [
+                //                 [
+                //                     "0004/1",
+                //                     "Fresh Kiffir lime ( Magrood)",
+                //                     "ลูกมะกรูดสด",
+                //                     "10.89 USD",
+                //                     1,
+                //                     "TRAY 4 EACH"
+                //                 ],
+                //                 [
+                //                     "0023",
+                //                     "White round eggplant",
+                //                     "มะเขือขาว-มะเขือเปราะ",
+                //                     "12.29 USD",
+                //                     4,
+                //                     "250gr"
+                //                 ],
+                //                 [
+                //                     "0027",
+                //                     "Betal Leaf",
+                //                     "ใบพลู",
+                //                     "12.69 USD",
+                //                     1,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "56",
+                //             "rows": [
+                //                 [
+                //                     "0064",
+                //                     "Acacia",
+                //                     "ชะอม",
+                //                     "13.49 USD",
+                //                     2,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "UNKNOWN",
+                //                     "RED CHILI - 50 GR",
+                //                     "N/A",
+                //                     0,
+                //                     1,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "0012",
+                //                     "Bird Chilli",
+                //                     "พริกขี้หนูสวน",
+                //                     "15.59 USD",
+                //                     1,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "0027",
+                //                     "Betal Leaf",
+                //                     "ใบพลู",
+                //                     "12.69 USD",
+                //                     2,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "65",
+                //             "rows": [
+                //                 [
+                //                     "0125",
+                //                     "Sweet Mango",
+                //                     "มะม่วงมัน",
+                //                     "12.89 USD",
+                //                     10,
+                //                     ""
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "63",
+                //             "rows": []
+                //         },
+                //         {
+                //             "tabName": "NO-62",
+                //             "rows": []
+                //         },
+                //         {
+                //             "tabName": "38",
+                //             "rows": []
+                //         },
+                //         {
+                //             "tabName": "53",
+                //             "rows": []
+                //         },
+                //         {
+                //             "tabName": "NO-9",
+                //             "rows": [
+                //                 [
+                //                     "0005",
+                //                     "Bergamot Leaf",
+                //                     "ใบมะกรูด",
+                //                     "13.99 USD",
+                //                     2,
+                //                     "100 GR"
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "UNKNOWN",
+                //             "rows": []
+                //         },
+                //         {
+                //             "tabName": "26-1",
+                //             "rows": [
+                //                 [
+                //                     "0004/1",
+                //                     "Fresh Kiffir lime ( Magrood)",
+                //                     "ลูกมะกรูดสด",
+                //                     "10.89 USD",
+                //                     20,
+                //                     "TRAY 4 EACH"
+                //                 ],
+                //                 [
+                //                     "0070",
+                //                     "Yanang Leaf",
+                //                     "ใบย่านาง",
+                //                     "9.59 USD",
+                //                     5,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "0002",
+                //                     "Galaga",
+                //                     "ข่าสด",
+                //                     "11.19 USD",
+                //                     8,
+                //                     "NO STEM"
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "26-2",
+                //             "rows": [
+                //                 [
+                //                     "0004/1",
+                //                     "Fresh Kiffir lime ( Magrood)",
+                //                     "ลูกมะกรูดสด",
+                //                     "10.89 USD",
+                //                     2,
+                //                     "TRAY 4 EACH"
+                //                 ],
+                //                 [
+                //                     "0070",
+                //                     "Yanang Leaf",
+                //                     "ใบย่านาง",
+                //                     "9.59 USD",
+                //                     1,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "0002",
+                //                     "Galaga",
+                //                     "ข่าสด",
+                //                     "11.19 USD",
+                //                     12,
+                //                     "NO STEM"
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "26-3",
+                //             "rows": [
+                //                 [
+                //                     "0004/1",
+                //                     "Fresh Kiffir lime ( Magrood)",
+                //                     "ลูกมะกรูดสด",
+                //                     "10.89 USD",
+                //                     1,
+                //                     "TRAY 4 EACH"
+                //                 ],
+                //                 [
+                //                     "0070",
+                //                     "Yanang Leaf",
+                //                     "ใบย่านาง",
+                //                     "9.59 USD",
+                //                     1,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "0002",
+                //                     "Galaga",
+                //                     "ข่าสด",
+                //                     "11.19 USD",
+                //                     5,
+                //                     "NO STEM"
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "26-4",
+                //             "rows": [
+                //                 [
+                //                     "0004/1",
+                //                     "Fresh Kiffir lime ( Magrood)",
+                //                     "ลูกมะกรูดสด",
+                //                     "10.89 USD",
+                //                     1,
+                //                     "TRAY 4 EACH"
+                //                 ],
+                //                 [
+                //                     "0070",
+                //                     "Yanang Leaf",
+                //                     "ใบย่านาง",
+                //                     "9.59 USD",
+                //                     3,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "0002",
+                //                     "Galaga",
+                //                     "ข่าสด",
+                //                     "11.19 USD",
+                //                     4,
+                //                     "NO STEM"
+                //                 ]
+                //             ]
+                //         },
+                //         {
+                //             "tabName": "UNKNOWN",
+                //             "rows": [
+                //                 [
+                //                     "0005",
+                //                     "Bergamot Leaf",
+                //                     "ใบมะกรูด",
+                //                     "13.99 USD",
+                //                     3,
+                //                     "100 GR"
+                //                 ],
+                //                 [
+                //                     "0004/1",
+                //                     "Fresh Kiffir lime ( Magrood)",
+                //                     "ลูกมะกรูดสด",
+                //                     "10.89 USD",
+                //                     29,
+                //                     "TRAY 4 EACH"
+                //                 ],
+                //                 [
+                //                     "0064",
+                //                     "Acacia",
+                //                     "ชะอม",
+                //                     "13.49 USD",
+                //                     10,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "UNKNOWN",
+                //                     "RED CHILI - 50 GR",
+                //                     "N/A",
+                //                     0,
+                //                     46.5,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "UNKNOWN",
+                //                     "RED CHILLI - LOOSE ",
+                //                     "N/A",
+                //                     0,
+                //                     150,
+                //                     "5KG"
+                //                 ],
+                //                 [
+                //                     "0070",
+                //                     "Yanang Leaf",
+                //                     "ใบย่านาง",
+                //                     "9.59 USD",
+                //                     10,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "0034",
+                //                     "Yard Long Bean",
+                //                     "ถั่วฝักยาว",
+                //                     "14.39 USD",
+                //                     3,
+                //                     "500gr"
+                //                 ],
+                //                 [
+                //                     "0023",
+                //                     "White round eggplant",
+                //                     "มะเขือขาว-มะเขือเปราะ",
+                //                     "12.29 USD",
+                //                     7,
+                //                     "250gr"
+                //                 ],
+                //                 [
+                //                     "0186.025",
+                //                     "GREEN FINGER LIGHT CHILLI",
+                //                     "N/A",
+                //                     0,
+                //                     1,
+                //                     "250GR"
+                //                 ],
+                //                 [
+                //                     "0012",
+                //                     "Bird Chilli",
+                //                     "พริกขี้หนูสวน",
+                //                     "15.59 USD",
+                //                     1,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "0002",
+                //                     "Galaga",
+                //                     "ข่าสด",
+                //                     "11.19 USD",
+                //                     31,
+                //                     "NO STEM"
+                //                 ],
+                //                 [
+                //                     "0027",
+                //                     "Betal Leaf",
+                //                     "ใบพลู",
+                //                     "12.69 USD",
+                //                     3,
+                //                     ""
+                //                 ],
+                //                 [
+                //                     "0125",
+                //                     "Sweet Mango",
+                //                     "มะม่วงมัน",
+                //                     "12.89 USD",
+                //                     20,
+                //                     ""
+                //                 ]
+                //             ]
+                //         }
+                //     ]
+                // }
 
-                let transactionURL = await generateTransactionFile(storeName, orderRows, dbRows);
+                // productMapErrors = ["red chili - 50 gr", "red chilli - loose"]
+                // branchMapErrors = ["no-39"]
 
-                Swal.fire({
-                    iconHtml: '<i class="fas fa-check-circle"></i>',
-                    title: 'ไฟล์พร้อมดาวน์โหลด',
-                    html: `<p class="mb-4">ไฟล์ Transaction ของคุณถูกสร้างเรียบร้อยแล้ว คลิกปุ่มดูไฟล์</p>
-                           <a href="${transactionURL}" target="_blank" class="inline-block px-6 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors">
-                               ดูไฟล์ Transaction
-                           </a>`,
-                    confirmButtonColor: '#6366f1',
-                    showConfirmButton: false,
-                    customClass: {
-                        icon: 'text-xl border-none text-green-600'
-                    }
-                })
+                mainTableObject = tableObjects;
+                mainProductMapErrors = productMapErrors;
+                mainBranchMapErrors = branchMapErrors;
+                console.log("🚀 ~ file: upload.html:1933 ~ $uploadForm.on ~ mainBranchMapErrors:", mainBranchMapErrors)
+                console.log("🚀 ~ file: upload.html:1933 ~ $uploadForm.on ~ mainProductMapErrors:", mainProductMapErrors)
+                console.log("🚀 ~ file: upload.html:1933 ~ $uploadForm.on ~ mainTableObject:", mainTableObject)
+                showTablePreview();
+
+                // Swal.fire({
+                //     iconHtml: '<i class="fas fa-spinner fa-pulse"></i>',
+                //     title: 'กำลังสร้างไฟล์ Transaction...',
+                //     text: 'กรุณารอสักครู่',
+                //     allowOutsideClick: false,
+                //     showConfirmButton: false,
+                //     customClass: {
+                //         icon: 'text-xl border-none text-indigo-600'
+                //     }
+                // });
+
+                // let transactionURL = await generateTransactionFile(storeName, orderRows, dbRows);
+
+                // Swal.fire({
+                //     iconHtml: '<i class="fas fa-check-circle"></i>',
+                //     title: 'ไฟล์พร้อมดาวน์โหลด',
+                //     html: `<p class="mb-4">ไฟล์ Transaction ของคุณถูกสร้างเรียบร้อยแล้ว คลิกปุ่มดูไฟล์</p>
+                //            <a href="${transactionURL}" target="_blank" class="inline-block px-6 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors">
+                //                ดูไฟล์ Transaction
+                //            </a>`,
+                //     confirmButtonColor: '#6366f1',
+                //     showConfirmButton: false,
+                //     customClass: {
+                //         icon: 'text-xl border-none text-green-600'
+                //     }
+                // })
 
             });
         });
+
+        // Helper function to read Excel/CSV files as JSON array
+        function readFileAsJson(file, fileExtension) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        if (fileExtension === 'csv') {
+                            // Parse CSV
+                            const text = e.target.result;
+                            const rows = text.split('\n').map(row => {
+                                // Handle CSV with quoted values that may contain commas
+                                const regex = /(".*?"|[^",\s]+)(?=\s*,|\s*$)/g;
+                                const matches = [];
+                                let match;
+                                while ((match = regex.exec(row)) !== null) {
+                                    matches.push(match[1].replace(/^"|"$/g, ''));
+                                }
+                                return matches;
+                            }).filter(row => row.length > 0);
+                            resolve(rows);
+                        } else {
+                            // Parse Excel (xlsx, xls)
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const firstSheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[firstSheetName];
+                            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                            resolve(jsonData);
+                        }
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                
+                reader.onerror = function(error) {
+                    reject(error);
+                };
+                
+                if (fileExtension === 'csv') {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsArrayBuffer(file);
+                }
+            });
+        }
 
         function getOrderData(storeName, fileOrderDataURL, fileDbDataURL) {
             return new Promise((resolve, reject) => {
@@ -627,6 +1401,26 @@
             });
         }
 
+        function generateTransactionJSON(storeName, orderRows, dbRows) {
+            return new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler(function (json) {
+                    resolve(JSON.parse(json));
+                }).withFailureHandler(function (error) {
+                    Swal.close();
+                    Swal.fire({
+                        iconHtml: '<i class="fas fa-times-circle"></i>',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: error.message,
+                        confirmButtonColor: '#6366f1',
+                        customClass: {
+                            icon: 'text-xl border-none text-red-600'
+                        }
+                    });
+                    reject(error);
+                }).generateTransactionJSON({ storeName, orderRows, dbRows });
+            });
+        }
+
         function generateTransactionFile(storeName, orderRows, dbRows) {
             console.log("🚀 ~ generateTransactionFile ~ orderRows:", orderRows)
             return new Promise((resolve, reject) => {
@@ -656,6 +1450,285 @@
                     reject(error);
                 }).generateTransactionFile({ storeName, orderRows, dbRows });
             });
+        }
+
+        function showTablePreview() {
+            if((mainProductMapErrors && mainProductMapErrors.length > 0) || (mainBranchMapErrors && mainBranchMapErrors.length > 0)){
+                let errorHtml = '<div class="text-left space-y-4">';
+                
+                if(mainProductMapErrors && mainProductMapErrors.length > 0){
+                    errorHtml += `
+                        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+                            <div class="flex items-start">
+                                <i class="fas fa-box-open text-red-500 mt-1 mr-3"></i>
+                                <div class="flex-1">
+                                    <p class="font-semibold text-red-800 mb-2">รายการสินค้าที่ไม่มีในฐานข้อมูล:</p>
+                                    <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+                                        ${mainProductMapErrors.map(error => `
+                                            <li>${error}</li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                if(mainBranchMapErrors && mainBranchMapErrors.length > 0){
+                    errorHtml += `
+                        <div class="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
+                            <div class="flex items-start">
+                                <i class="fas fa-box-open text-red-500 mt-1 mr-3"></i>
+                                <div class="flex-1">
+                                    <p class="font-semibold text-red-800 mb-2">รายการสาขาที่ไม่มีในฐานข้อมูล:</p>
+                                    <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+                                        ${mainBranchMapErrors.map(error => `
+                                            <li>${error}</li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                errorHtml += '</div>';
+                
+                Swal.hideLoading()
+                Swal.fire({
+                    iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
+                    title: 'พบข้อผิดพลาดในการแมปข้อมูล',
+                    html: `
+                        <p class="text-gray-600 mb-4">กรุณาตรวจสอบข้อมูลต่อไปนี้:</p>
+                        ${errorHtml}
+                        <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                            <p class="text-sm text-blue-800">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                ข้อมูลที่แสดงจะถูกแมปเป็น "UNKNOWN" ในไฟล์ผลลัพธ์
+                            </p>
+                        </div>
+                    `,
+                    width: '600px',
+                    confirmButtonColor: '#6366f1',
+                    confirmButtonText: '<i class="fas fa-check mr-2"></i>เข้าใจแล้ว',
+                    customClass: {
+                        icon: 'text-xl border-none text-yellow-500',
+                        popup: 'rounded-2xl',
+                        confirmButton: 'rounded-lg px-6 py-3 font-semibold'
+                    },
+                    didOpen: () => {
+                       Swal.hideLoading()
+                    }
+                });
+            }
+            // Clear previous content
+            $tablePreview.empty();
+            $tabNavigation.empty();
+
+            if (!mainTableObject || !mainTableObject.tabs || mainTableObject.tabs.length === 0) {
+                $tablePreviewSection.addClass('hidden');
+                return;
+            }
+
+            // Create table header
+            let thead = '<thead class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white sticky top-0"><tr>';
+            mainTableObject.header.forEach(header => {
+                thead += `<th class="px-4 py-3 text-left font-semibold">${header}</th>`;
+            });
+            thead += '</tr></thead>';
+            $tablePreview.append(thead);
+            mainTableObject.tabs.sort((a, b) => {
+                const nameA = a.tabName.toUpperCase();
+                const nameB = b.tabName.toUpperCase();
+                if (nameA < nameB) return -1;
+                if (nameA > nameB) return 1;
+                return 0;
+            });
+            // Create tabs
+            mainTableObject.tabs.forEach((tab, index) => {
+                const itemCount = tab.rows.length;
+                const tabBtn = $(`
+                    <button class="tab-btn px-4 py-2 font-semibold rounded-t-lg transition-all whitespace-nowrap flex-shrink-0 ${index === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" 
+                            data-tab-index="${index}">
+                        ${tab.tabName}
+                        <span class="ml-2 px-2 py-0.5 text-xs rounded-full ${index === 0 ? 'bg-white text-indigo-600' : 'bg-gray-300 text-gray-700'}">
+                            ${itemCount}
+                        </span>
+                    </button>
+                `);
+                
+                tabBtn.on('click', function() {
+                    const tabIndex = $(this).data('tab-index');
+                    switchTab(tabIndex);
+                });
+                
+                $tabNavigation.append(tabBtn);
+            });
+
+            // Show first tab by default
+            switchTab(0);
+
+            // Show table preview section
+            $tablePreviewSection.removeClass('hidden');
+
+            // Scroll to table preview
+            $tablePreviewSection[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function switchTab(tabIndex) {
+            if (!mainTableObject || !mainTableObject.tabs[tabIndex]) return;
+
+            const currentTab = mainTableObject.tabs[tabIndex];
+            
+            // Update active tab styling
+            $('.tab-btn').each(function() {
+                const $btn = $(this);
+                const btnIndex = $btn.data('tab-index');
+                const itemCount = mainTableObject.tabs[btnIndex].rows.length;
+                
+                if (btnIndex === tabIndex) {
+                    $btn.removeClass('bg-gray-100 text-gray-600 hover:bg-gray-200')
+                        .addClass('bg-indigo-600 text-white');
+                    $btn.find('span').removeClass('bg-gray-300 text-gray-700')
+                        .addClass('bg-white text-indigo-600');
+                } else {
+                    $btn.removeClass('bg-indigo-600 text-white')
+                        .addClass('bg-gray-100 text-gray-600 hover:bg-gray-200');
+                    $btn.find('span').removeClass('bg-white text-indigo-600')
+                        .addClass('bg-gray-300 text-gray-700');
+                }
+            });
+
+            // Update tab info
+            $currentTabName.text(currentTab.tabName);
+            $currentItemCount.text(currentTab.rows.length);
+
+            // Remove existing tbody
+            $tablePreview.find('tbody').remove();
+
+            // Create table body with current tab's data
+            if (currentTab.rows.length === 0) {
+                $tablePreview.addClass('hidden');
+                $emptyState.removeClass('hidden');
+            } else {
+                $tablePreview.removeClass('hidden');
+                $emptyState.addClass('hidden');
+
+                let tbody = '<tbody>';
+                currentTab.rows.forEach((row, rowIndex) => {
+                    tbody += `<tr class="${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-indigo-50 transition-colors">`;
+                    row.forEach(cell => {
+                        tbody += `<td class="px-4 py-3 border-b border-gray-200 text-sm text-gray-700">${cell == "null" ? "" : (cell || '')}</td>`;
+                    });
+                    tbody += '</tr>';
+                });
+                tbody += '</tbody>';
+                $tablePreview.append(tbody);
+            }
+        }
+
+        function downloadExcel(tableObject) {
+            if (!tableObject || !tableObject.tabs || tableObject.tabs.length === 0) {
+                Swal.fire({
+                    iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
+                    title: 'ไม่มีข้อมูล',
+                    text: 'ไม่มีข้อมูลสำหรับดาวน์โหลด',
+                    confirmButtonColor: '#6366f1',
+                    customClass: {
+                        icon: 'text-xl border-none text-yellow-500'
+                    }
+                });
+                return;
+            }
+
+            try {
+                // Show loading
+                Swal.fire({
+                    iconHtml: '<i class="fas fa-spinner fa-pulse"></i>',
+                    title: 'กำลังสร้างไฟล์...',
+                    text: 'กรุณารอสักครู่',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    customClass: {
+                        icon: 'text-xl border-none text-indigo-600'
+                    }
+                });
+
+                // Create a new workbook
+                const workbook = XLSX.utils.book_new();
+
+                // Process each tab
+                tableObject.tabs.forEach(tab => {
+                    // Skip empty tabs if desired, or include them
+                    const worksheetData = [];
+                    
+                    // Add header row
+                    worksheetData.push(tableObject.header);
+                    
+                    // Add data rows
+                    tab.rows.forEach(row => {
+                        worksheetData.push(row);
+                    });
+
+                    // Create worksheet from data
+                    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+                    // Set column widths for better readability
+                    const columnWidths = tableObject.header.map(() => ({ wch: 20 }));
+                    worksheet['!cols'] = columnWidths;
+
+                    // Sanitize sheet name (Excel has restrictions on sheet names)
+                    let sheetName = tab.tabName.toString()
+                        .replace(/[:\\/?*\[\]]/g, '-') // Replace invalid characters
+                        .substring(0, 31); // Excel sheet names max 31 characters
+
+                    // Add worksheet to workbook
+                    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+                });
+
+                // Generate Excel file
+                const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                
+                // Generate filename with timestamp
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+                link.download = `Transaction_${timestamp}.xlsx`;
+                
+                // Trigger download
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                // Show success message
+                Swal.fire({
+                    iconHtml: '<i class="fas fa-check-circle"></i>',
+                    title: 'ดาวน์โหลดสำเร็จ',
+                    text: 'ไฟล์ Excel ถูกดาวน์โหลดเรียบร้อยแล้ว',
+                    confirmButtonColor: '#6366f1',
+                    timer: 2000,
+                    customClass: {
+                        icon: 'text-xl border-none text-green-600'
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error generating Excel:', error);
+                Swal.fire({
+                    iconHtml: '<i class="fas fa-times-circle"></i>',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถสร้างไฟล์ Excel ได้',
+                    confirmButtonColor: '#6366f1',
+                    customClass: {
+                        icon: 'text-xl border-none text-red-600'
+                    }
+                });
+            }
         }
     </script>
 

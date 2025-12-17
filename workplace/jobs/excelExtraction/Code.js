@@ -3,22 +3,23 @@ function doGet(e){
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setTitle('File Upload')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+    .setFaviconUrl('https://img.icons8.com/color/48/upload-2--v1.png')
 }
 
-function processOrder({storeName, fileOrderDataURL, fileDbDataURL}){
+function processOrder({storeName, fileOrderData, fileDbData}){
     switch(storeName.toLowerCase()){
         case 'frf':
-            return processFRFOrder({fileOrderDataURL, fileDbDataURL});
+            return generateFRFTransactionJSON({orderRows: fileOrderData, dbRows: fileDbData});
         default:
             throw new Error('Store not recognized');
     }
 }
 
-function generateTransactionFile({storeName, orderRows, dbRows}){
+function generateTransactionJSON({storeName, orderRows, dbRows}){
     switch(storeName.toLowerCase()){
         case 'frf':
-            return generateFRFTransactionFile({orderRows, dbRows});
+            return generateFRFTransactionJSON({orderRows, dbRows});
         default:
             throw new Error('Store not recognized');
     }
