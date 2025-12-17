@@ -95,32 +95,8 @@ function generateFRFTransactionJSON({ orderRows, dbRows } = {}) {
                 String(row[3]).trim()
             ]);
         }
-
-        // // Write data in a single batch operation
-        // if (branchOrders.length > 0) {
-        //     branchSheet.getRange(1, 1, branchOrders.length + 1, header.length)
-        //         .setValues([header, ...branchOrders]);
-        // } else {
-        //     branchSheet.getRange(1, 1, 1, header.length).setValues([header]);
-        // }
-
-        // // Format header
-        // branchSheet.getRange(1, 1, 1, header.length)
-        //     .setBackground('#fde9d9')
-        //     .setFontWeight('bold');
-        // branchSheet.getDataRange().setFontSize(8);
     }
 
-    // // Remove first sheet and sort
-    // newSpreadsheet.deleteSheet(newSpreadsheet.getSheets()[0]);
-
-    // const sheets = newSpreadsheet.getSheets().sort((a, b) => a.getName().localeCompare(b.getName()));
-    // sheets.forEach((sheet, index) => {
-    //     newSpreadsheet.setActiveSheet(sheet);
-    //     newSpreadsheet.moveActiveSheet(index + 1);
-    // });
-
-    // return newSpreadsheet.getUrl();
     productMapErrors = [...productMapErrors];
     branchMapErrors = [...branchMapErrors];
     return JSON.stringify({ tableObjects, productMapErrors, branchMapErrors });

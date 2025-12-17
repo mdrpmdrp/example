@@ -336,11 +336,18 @@
                 frf: ['xlsx', 'xls', 'csv']
             }
         }
+        const acceptMultipleFiles = {
+            database: false,
+            order: {
+                frf: false
+            }
+        }
         let mainTableObject = null
         let mainProductMapErrors = null;
         let mainBranchMapErrors = null;
 
         // jQuery element references
+        const $storeName = $('#storeName');
         const $dropZone = $('#dropZone');
         const $fileInput = $('#fileInput');
         const $uploadPrompt = $('#uploadPrompt');
@@ -375,6 +382,19 @@
                 e.preventDefault();
                 e.stopPropagation();
             }
+
+            $storeName.on('change', function () {
+                // Reset file inputs and previews when store changes
+                $fileInput.val('').attr('multiple', acceptMultipleFiles.order[$('#storeName').val().toLowerCase()] ? true : false);
+                $uploadPrompt.removeClass('hidden');
+                $filePreview.addClass('hidden');
+
+                $fileInputDb.val('').attr('multiple', acceptMultipleFiles.database ? true : false);
+                $uploadPromptDb.removeClass('hidden');
+                $filePreviewDb.addClass('hidden');
+
+
+            });
 
             $downloadBtn.on('click', function () {
                 if (mainTableObject) {
