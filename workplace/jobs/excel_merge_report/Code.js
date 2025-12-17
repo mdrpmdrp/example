@@ -19,6 +19,7 @@ function doGet(e) {
     .setFaviconUrl('https://img5.pic.in.th/file/secure-sv1/Sabai-Rent-Logo-Symbol-Y.png');  
 }
 
+
 function getFolderId(url) {
   const regex = /folders\/([a-zA-Z0-9_-]+)/;
   const match = url.match(regex);
