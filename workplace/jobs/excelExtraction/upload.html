@@ -87,7 +87,7 @@
 
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8 px-4">
 
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-7xl mx-auto">
         <!-- Header -->
         <div class="text-center mb-8">
             <h1 class="text-4xl font-bold text-gray-800 mb-2">
@@ -98,8 +98,8 @@
         </div>
 
         <!-- Form Card -->
-        <div class="bg-white rounded-2xl shadow-xl p-8">
-            <form id="uploadForm" class="space-y-6">
+        <div class="bg-white rounded-2xl shadow-xl p-8 max-w-4xl mx-auto">
+            <form id="uploadForm" class="space-y-6"> 
 
                 <!-- Store Dropdown -->
                 <div class="form-group">
@@ -266,7 +266,7 @@
         </div>
 
         <!-- Info Box -->
-        <div class="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+        <div class="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg max-w-4xl mx-auto">
             <div class="flex">
                 <i class="fas fa-info-circle text-blue-500 mr-3 text-lg"></i>
                 <div class="text-sm text-blue-700">
@@ -646,20 +646,7 @@
                 const isDbExcel = ['xlsx', 'xls', 'csv'].includes(dbFileExt);
                 
                 let fileDbData;
-                if (isDbExcel) {
-                    // Read as Excel/CSV and parse to JSON array
-                    fileDbData = await readFileAsJson(dbFile, dbFileExt);
-                } else {
-                    // Read as DataURL
-                    fileDbData = await new Promise((resolve) => {
-                        let fr = new FileReader();
-                        fr.onload = function (e) {
-                            resolve(e.target.result);
-                        };
-                        fr.readAsDataURL(dbFile);
-                    });
-                }
-
+                fileDbData = await readFileAsJson(dbFile, dbFileExt, "list");
 
                 // Show loading
                 Swal.fire({
@@ -1336,7 +1323,7 @@
         });
 
         // Helper function to read Excel/CSV files as JSON array
-        function readFileAsJson(file, fileExtension) {
+        function readFileAsJson(file, fileExtension, tabName) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 
@@ -1360,10 +1347,19 @@
                             // Parse Excel (xlsx, xls)
                             const data = new Uint8Array(e.target.result);
                             const workbook = XLSX.read(data, { type: 'array' });
-                            const firstSheetName = workbook.SheetNames[0];
-                            const worksheet = workbook.Sheets[firstSheetName];
-                            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                            resolve(jsonData);
+                            if(tabName){
+                                const worksheet = workbook.Sheets[tabName];
+                                if(!worksheet){
+                                    throw new Error(`ไม่พบแผ่นงานชื่อ "${tabName}" ในไฟล์ฐานข้อมูล`);
+                                }
+                                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                                resolve(jsonData);
+                            } else {
+                                const firstSheetName = workbook.SheetNames[0];
+                                const worksheet = workbook.Sheets[firstSheetName];
+                                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                                resolve(jsonData);
+                            }
                         }
                     } catch (error) {
                         reject(error);

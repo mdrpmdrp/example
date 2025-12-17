@@ -57,7 +57,7 @@ function generateFRFTransactionJSON({ orderRows, dbRows } = {}) {
             Logger.log(`Branch mapping not found for branch name: "${branchName}"`);
         }
         return {
-            code: branchMap.get(String(branchName).toLowerCase().trim()) || branchName.trim(),
+            code: branchMap.get(String(branchName).toLowerCase().trim()) || ("ไม่มีชื่อสาขา " + branchName.trim()),
             index: index + 4
         }
     });
@@ -66,7 +66,7 @@ function generateFRFTransactionJSON({ orderRows, dbRows } = {}) {
     // Process each branch
     for (const branch of branches) {
         // const branchSheet = newSpreadsheet.insertSheet(branch.code);
-        if(branch.code === 'TOTAL') continue;
+        if(branch.code === 'ไม่มีชื่อสาขา TOTAL') continue;
         const tabObject = { tabName: branch.code, rows: [] };
         const branchOrders = tabObject.rows;
         tableObjects.tabs.push(tabObject);
@@ -89,10 +89,10 @@ function generateFRFTransactionJSON({ orderRows, dbRows } = {}) {
             branchOrders.push([
                 productCode,
                 dbData?.nameEN ?? row[0],
-                dbData?.nameTH ?? 'N/A',
+                dbData?.nameTH ?? "",
                 dbData?.price ?? 0,
                 quantity,
-                String(row[3]).trim()
+                dbData?.unit ?? "" // For FRF, unit is in db
             ]);
         }
     }
