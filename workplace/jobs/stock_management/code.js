@@ -1,8 +1,7 @@
 // =================================================================
 // --- CONFIGURATION ---
 // =================================================================
-const SPREADSHEET_ID = "124gb_3GHSZ4wqphYGS1fquv1mWotr5KVYLvSY9tJm2o"; // Please replace with your actual Spreadsheet ID
-const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+const ss = SpreadsheetApp.getActiveSpreadsheet();
 
 // const FOLDER_ID = '1xxuY4Wznv9AM1oyhfxbo_-QvBBpq8_Ah'; // Please replace with your actual Folder ID for reports/backups
 const FOLDER_ID = '1CEWlvFURW0X6uRa_uAAPDjyczE5cr329';
@@ -25,6 +24,10 @@ const CACHE = CacheService.getScriptCache();
 // --- ROUTING & HTML SERVICE ---
 // =================================================================
 function doGet(e) {
+  // // for testing purpose
+  // return generateWithdrawalReportHTML()
+
+
   // Check if 'e' and 'e.parameter' exist before accessing 'page'
   const pageParameter = e && e.parameter ? e.parameter.page : null;
 
@@ -721,7 +724,8 @@ function addTransaction(tData) {
       tData.projectId || '', // G
       tData.supplierId || '', // H
       tData.note || '',   // I
-      getUserInfo().email // J
+      tData.email || getUserInfo().email || '', // J
+      Utilities.getUuid() // K - Unique Transaction Code
     ]);
 
     // Update LastUpdate in Products sheet
@@ -1045,9 +1049,6 @@ function generateInventoryReportPDF() {
 
     let htmlContent = template.evaluate().getContent().replace(/\[\[LOGO_IMAGE\]\]/g, logoBase64);
 
-    // for test, save html text to a file
-    const testHtmlFile = DriveApp.getFolderById(FOLDER_ID).createFile(`Inventory_Report_${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd")}.html`, htmlContent, MimeType.HTML);
-
     // Use MimeType constants for clarity
     const blob = Utilities.newBlob(htmlContent, MimeType.HTML, `Inventory_Report_${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd")}.pdf`).getAs(MimeType.PDF);
     const folder = DriveApp.getFolderById(FOLDER_ID);
@@ -1083,16 +1084,28 @@ function generateWithdrawalReportPrint(data) {
   return generateWithdrawalReportHTML(data);
 }
 
-function generateWithdrawalReportHTML(data) {
+function generateWithdrawalReportHTML(data={}) {
+  // // for testing purpose
+  // data = {
+  //   startDate: '2025-01-01',
+  //   endDate: '2025-12-31',
+  //   category: 'All',
+  //   subCategory: 'All',
+  // }
+
   try {
     // Validate dates
     if (!data || !data.startDate || !data.endDate) {
-      throw new Error("กรุณาระบุช่วงวันที่ให้ครบถ้วน");
+      return { success: false, message: "กรุณาเลือกช่วงวันที่สำหรับรายงาน" };
     }
+
+    if(!data.category) data.category = 'All';
+    if(!data.subCategory) data.subCategory = 'All';
+
     const startDate = new Date(data.startDate); startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(data.endDate); endDate.setHours(23, 59, 59, 999);
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      throw new Error("รูปแบบวันที่ไม่ถูกต้อง");
+      return { success: false, message: "วันที่ที่ป้อนไม่ถูกต้อง" };
     }
 
     const products = getAllFromCache('products', productsSheet, parseProducts);
@@ -1102,6 +1115,13 @@ function generateWithdrawalReportHTML(data) {
     const filtered = transactions.filter(t => {
       if (!t || !t.transactionDate) return false; // Skip invalid transactions
       const tDate = new Date(t.transactionDate);
+      const prod = products.find(p => p && String(p.id) === String(t.productId));
+      if(data.category && data.category !== 'All') {
+        if(!prod || prod.category !== data.category) return false;
+      }
+      if(data.subCategory && data.subCategory !== 'All') {
+        if(!prod || prod.subcategory !== data.subCategory) return false;
+      }
       return t.type === 'out' && tDate >= startDate && tDate <= endDate;
     });
 
@@ -1120,14 +1140,16 @@ function generateWithdrawalReportHTML(data) {
 
         let note = t.note || '';
         if (project) {
-          note = project.projectName + (note ? ` (${note})` : ''); // Combine project name and note
+          note = note ? `${note} [ ${project.projectName}]` : `[${project.projectName}]`;
         }
 
         return {
-          date: new Date(t.transactionDate).toLocaleString('th-TH'),
+          date: new Date(t.transactionDate).toLocaleString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric' }),
+          time: new Date(t.transactionDate).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
           productName: product ? product.name : 'N/A',
           quantity: quantity.toLocaleString(),
-          cost: cost.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+          unitPrice: price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          totalCost: cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
           note: note
         };
       });
@@ -1137,9 +1159,21 @@ function generateWithdrawalReportHTML(data) {
     // Use the HTML template
     const template = HtmlService.createTemplateFromFile('WithdrawalReportTemplate');
     template.transactions = transactionDataForTemplate;
-    template.startDate = startDate.toLocaleDateString('th-TH');
-    template.endDate = endDate.toLocaleDateString('th-TH');
-    template.totalValue = totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    template.startDate = startDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric' });
+    template.endDate = endDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric' });
+    template.generatedDate = new Date().toLocaleString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric'}) + '  , ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }); 
+    template.categoryFilter = (data.category === 'All' ? 'ทุกหมวด' : data.category) + ' / ' + (data.subCategory === 'All' ? 'ทุกประเภท' : data.subCategory);
+    template.totalValue = totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    template.totalSKU = [...new Set(filtered.map(t => t.productId))].length;
+    template.totalRemaining = [...new Set(filtered.map(t => t.productId))].reduce((sum, pid) => {
+      const prod = products.find(p => String(p.id) === String(pid));
+      if (prod) {
+        const liveStock = calculateLiveStock([prod], transactions)[0];
+        return sum + (liveStock ? (Number(liveStock.stock) || 0) : 0);
+      }
+      return sum;
+    }, 0).toLocaleString();
+    template.totalCost = totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const html = template.evaluate().getContent().replace(/\[\[LOGO_IMAGE\]\]/g, logoBase64);
 
