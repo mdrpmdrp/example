@@ -80,6 +80,10 @@ function handleTextMessage(event) {
     return getSummaryAssetInBranch(event);
   }
 
+  if (message === '**') {
+    return getSummaryAssetInAllBranches(event);
+  }
+
   const userGroup = groupList.find(g => g.groupId === groupId);
   if (!userGroup) {
     return ok();
@@ -107,10 +111,11 @@ function handleTextMessage(event) {
   const branch = userGroup.branch;
   const percent = Number(percentText.replace('%', ''));
   const weight = Number(weightText.replace('@', '').trim());
-  const [silverPrice = 0, platinumPrice = 0, percentOfOrnament = 0] = sheet.getRange('H1:H3').getValues().flat().map(Number);
+  const [, platinumPrice = 0, percentOfOrnament = 0] = sheet.getRange('H1:H3').getValues().flat().map(Number);
 
   let price = 0;
   let goldPrice = 0;
+  let silverPerGram = 0;
 
   if (type === 'ทอง' || type === 'รูปพรรณ') {
     goldPrice = getGoldPrice(type);
@@ -118,15 +123,19 @@ function handleTextMessage(event) {
       ? goldPrice - (goldPrice * (Math.abs(percentOfOrnament) / 100))
       : goldPrice;
   } else if (type === 'เงิน') {
-    price = silverPrice;
+    price = getSilverPrice();
   } else if (type === 'แพลตตินัม') {
     price = platinumPrice;
   }
 
-  let estimatedPrice = (price - (branch === 'ร้อยเอ็ด' ? 0 : criteria.meltPrice)) * 0.0656 * (percent / 100) * weight;
-  estimatedPrice -= estimatedPrice * ((branch === 'ร้อยเอ็ด' ? 7 : criteria.percent) / 100);
-
-  if (type === 'ทอง') {
+  let estimatedPrice = 0
+  if (type === 'รูปพรรณ') {
+    estimatedPrice = (price - (branch === 'ร้อยเอ็ด' ? 0 : criteria.meltPrice)) * 0.0656 * (percent / 100) * weight;
+    estimatedPrice -= estimatedPrice * ((branch === 'ร้อยเอ็ด' ? 7 : criteria.percent) / 100);
+  }
+  else if (type === 'ทอง') {
+    estimatedPrice = (price - (branch === 'ร้อยเอ็ด' ? 0 : criteria.meltPrice)) * 0.0656 * (percent / 100) * weight;
+    estimatedPrice -= estimatedPrice * ((branch === 'ร้อยเอ็ด' ? 7 : criteria.percent) / 100);
     const range = branch === 'ร้อยเอ็ด' ? 'J14:K17' : 'J2:K6';
     const commissions = sheet.getRange(range).getDisplayValues()
       .filter(([rangeText]) => rangeText)
@@ -147,12 +156,15 @@ function handleTextMessage(event) {
         break;
       }
     }
+  }else if(type === 'เงิน'){
+    silverPerGram = Math.floor(((price - criteria.meltPrice)/1000) * (percent / 100));
+    estimatedPrice = perGram * weight;
   }
 
   estimatedPrice = Math.floor(estimatedPrice);
 
   return reply(`ประเภท: ${type} (${percent}%)
-น้ำหนัก: ${weight} กรัม${type === 'ทอง' ? `\n\nราคาทอง: ${goldPrice.toLocaleString()} บาท` : ''}${type === 'รูปพรรณ' ? `\n\nราคารูปพรรณ: ${price.toLocaleString()} บาท` : ''}
+น้ำหนัก: ${weight} กรัม${type === 'ทอง' ? `\n\nราคาทอง: ${goldPrice.toLocaleString()} บาท` : type === 'เงิน' ? `\n\nเงินกรัมละ: ${silverPerGram.toLocaleString()} บาท` : ''}${type === 'รูปพรรณ' ? `\n\nราคารูปพรรณ: ${price.toLocaleString()} บาท` : ''}
 
 👉 ราคาประเมิน: 
 ${estimatedPrice.toLocaleString()} บาท`, true);
@@ -163,6 +175,13 @@ function getGoldPrice() {
   let response = UrlFetchApp.fetch(endPoint);
   let data = JSON.parse(response.getContentText());
   return Number(data.response.price.gold_bar.sell.replace(/,/g, ''));
+}
+
+function getSilverPrice() {
+  let endPoint = 'http://27.254.77.78/rest/public/rest/silver';
+  let response = UrlFetchApp.fetch(endPoint);
+  let data = JSON.parse(response.getContentText());
+  return Number(data.Silver.bid.replace(/,/g, ''));
 }
 
 function getCriteria(type, percent) {
@@ -224,7 +243,7 @@ function getSummaryAssetInBranch(event) {
   meltData.forEach(row => {
     let type = row[2];
     let percent = Number(row[11] || 0);
-    let weight = Number(row[5] || 0);
+    let weight = Number(row[3] || 0);
     if (type.indexOf('ทอง') !== -1) {
       if (percent >= 99) {
         gold_equalOrMoreThan99.push(weight);
@@ -242,6 +261,82 @@ function getSummaryAssetInBranch(event) {
     }
   });
   let replyMessages = [`สาขา: ${branch}\nสรุปสินทรัพย์:`];
+  replyMessages.push(`ทอง >=99%:\nจำนวน ${gold_equalOrMoreThan99.length} รายการ\nน้ำหนักรวม ${gold_equalOrMoreThan99.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`ทอง <99%:\nจำนวน ${gold_lessThan99.length} รายการ\nน้ำหนักรวม ${gold_lessThan99.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`เงิน >=90%:\nจำนวน ${silver_equalOrMoreThan90.length} รายการ\nน้ำหนักรวม ${silver_equalOrMoreThan90.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  replyMessages.push(`เงิน <90%:\nจำนวน ${silver_lessThan90.length} รายการ\nน้ำหนักรวม ${silver_lessThan90.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  for (let [type, weights] of Object.entries(otherAssets)) {
+    if (type === 'ค่าบริการ') continue; // ข้ามค่าบริการ
+    replyMessages.push(`${type}:\nจำนวน ${weights.length} รายการ\nน้ำหนักรวม ${weights.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
+  }
+  event.replyToline([replyMessages.join('\n\n')], true);
+  return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+}
+
+function getSummaryAssetInAllBranches(event) {
+  let prop = PropertiesService.getScriptProperties();
+  let groups = prop.getProperty('registeredGroups');
+  let groupList = groups ? JSON.parse(groups) : [];
+  let group = groupList.find(g => g.groupId === event.groupId);
+  if (!group) {
+    event.replyToline(["กลุ่มนี้ยังไม่ได้ลงทะเบียน"]);
+    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+  }
+  let branch = group.branch;
+
+  if (branch.toLowerCase() !== 'all') {
+    event.replyToline(["คำสั่งนี้ใช้ได้เฉพาะกลุ่มที่ลงทะเบียนสาขาเป็น All เท่านั้น"]);
+    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.JSON);
+  }
+
+  let ss = SpreadsheetApp.openById('1Z1mHUQMc4N_bLOtXPBraOC3YJRWOcgFoDJgmLb_PafA');
+  let buySheet = ss.getSheetByName('บันทึกซื้อ');
+  let meltSheet = ss.getSheetByName('บันทึกหลอม');
+  let buyData = buySheet.getRange('A2:K').getDisplayValues().filter(r => r[0] != '' && r[9] !== 'ยกเลิก' && !r[10].match(/^\d{7,}$/)).map(r => percentExtract(r, 2));
+  let meltData = meltSheet.getRange('A2:L').getDisplayValues().filter(r => r[0] != '' && r[10] === 'รอส่ง')
+  let gold_equalOrMoreThan99 = [], gold_lessThan99 = [];
+  let silver_equalOrMoreThan90 = [], silver_lessThan90 = [];
+  let otherAssets = {}
+  buyData.forEach(row => {
+    let type = row[1];
+    let percent = row[2];
+    let weight = Number(row[3]);
+    if (type.indexOf('ทอง') !== -1) {
+      if (percent >= 99) {
+        gold_equalOrMoreThan99.push(weight);
+      }
+      else gold_lessThan99.push(weight);
+    } else if (type.indexOf('เงิน') !== -1) {
+      if (percent >= 90) silver_equalOrMoreThan90.push(weight);
+      else silver_lessThan90.push(weight);
+    } else {
+      if (!otherAssets[type]) {
+        otherAssets[type] = []
+      }
+      otherAssets[type].push(weight);
+    }
+  });
+  meltData.forEach(row => {
+    let type = row[2];
+    let percent = Number(row[11] || 0);
+    let weight = Number(row[3] || 0);
+    if (type.indexOf('ทอง') !== -1) {
+      if (percent >= 99) {
+        gold_equalOrMoreThan99.push(weight);
+      }
+      else gold_lessThan99.push(weight);
+    } else if (type.indexOf('เงิน') !== -1) {
+      if (percent >= 90) silver_equalOrMoreThan90.push(weight);
+      else silver_lessThan90.push(weight);
+    } else {
+      if (type === 'ค่าบริการ') return; // ข้ามค่าบริการ
+      if (!otherAssets[type]) {
+        otherAssets[type] = []
+      }
+      otherAssets[type].push(weight);
+    }
+  });
+  let replyMessages = [`สรุปสินทรัพย์รวมทุกสาขา:`];
   replyMessages.push(`ทอง >=99%:\nจำนวน ${gold_equalOrMoreThan99.length} รายการ\nน้ำหนักรวม ${gold_equalOrMoreThan99.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
   replyMessages.push(`ทอง <99%:\nจำนวน ${gold_lessThan99.length} รายการ\nน้ำหนักรวม ${gold_lessThan99.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
   replyMessages.push(`เงิน >=90%:\nจำนวน ${silver_equalOrMoreThan90.length} รายการ\nน้ำหนักรวม ${silver_equalOrMoreThan90.reduce((a, b) => a + b, 0).toLocaleString()} กรัม`);
