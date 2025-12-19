@@ -775,7 +775,7 @@ function updateProduct(productData) {
 
 
     // Update range B to K (10 columns), assuming structure ID(A), Code(B)...InitialStockDate(K), LastUpdate(L)
-    productsSheet.getRange(rowIndex, 2, 1, 10).setValues([[
+    productsSheet.getRange(rowIndex, 2, 1, 13).setValues([[
       productData.code || '',         // Code B
       productData.name || '',         // Name C
       productData.category || '',     // Category D
@@ -788,7 +788,7 @@ function updateProduct(productData) {
       initialStockDate,                // InitialStockDate K
       productData.subcategory || '',   // SubCategory L
       productData.supplierId || '',    // SupplierID M
-      productData.note || ''           // Note N
+      productData.note || ''          // Note N
     ]]);
     // Update LastUpdate in Column L (index 12)
     productsSheet.getRange(rowIndex, 12).setValue(now);
@@ -1019,33 +1019,73 @@ function getBase64Image(imageUrl) {
     return ''; // Return empty string on error
   }
 }
-function generateInventoryReportPDF() {
+function generateInventoryReportPDF(data) {
+  // data = {
+  //   "category": "",
+  //   "subcategory": "",
+  //   "startDate": "2025-10-03",
+  //   "endDate": "2025-12-31"
+  // }; // For testing purposes
   try {
+    // Validate dates
+    if (!data || !data.startDate || !data.endDate) {
+      return { success: false, message: "กรุณาเลือกช่วงวันที่สำหรับรายงาน" };
+    }
+
+    if (!data.category) data.category = 'All';
+    if (!data.subcategory) data.subcategory = 'All';
+
     let products = getAllFromCache('products', productsSheet, parseProducts);
     const transactions = getAllFromCache('transactions', transactionsSheet, parseTransactions);
     products = calculateLiveStock(products, transactions); // Ensure live stock
 
-    if (!Array.isArray(products) || products.length === 0) return { success: false, message: "ไม่มีข้อมูลสินค้าสำหรับสร้างรายงาน" };
+    const startDate = new Date(data.startDate); startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(data.endDate); endDate.setHours(23, 59, 59, 999);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return { success: false, message: "วันที่ที่ป้อนไม่ถูกต้อง" };
+    }
 
-    const totalValue = products.reduce((sum, p) => sum + ((Number(p.stock) || 0) * (Number(p.price) || 0)), 0);
-    const date = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+    let filtered = products.filter(p => {
+      // Apply category and subcategory filters
+      if (data.category && data.category !== 'All' && p.category !== data.category) {
+        return false;
+      }
+      if (data.subcategory && data.subcategory !== 'All' && p.subcategory !== data.subcategory) {
+        return false;
+      }
+      // apply date filter based on update date
+      const lastUpdate = p.lastUpdate ? new Date(p.lastUpdate) : null;
+      if (lastUpdate) {
+        if (lastUpdate < startDate || lastUpdate > endDate) {
+          return false;
+        }
+      } else {
+        return false; // Exclude products with no last update date when date filter is applied
+      }
+      return true;
+    });
+    if (!Array.isArray(filtered) || filtered.length === 0) return { success: false, message: "ไม่มีข้อมูลสินค้าสำหรับสร้างรายงาน" };
 
-    // Prepare data for the template
-    const productDataForTemplate = products.map(p => ({
-      code: p.code || 'N/A',
-      name: p.name || 'N/A',
-      stock: (Number(p.stock) || 0).toLocaleString(),
-      price: (Number(p.price) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }),
-      totalValue: ((Number(p.stock) || 0) * (Number(p.price) || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })
+    filtered = filtered.map(p => ({
+      ...p,
+      price: Number(p.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00',
+      stock: Number(p.stock || 0).toLocaleString() || '0',
+      totalValue: ((Number(p.stock || 0)) * (Number(p.price || 0))).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'
     }));
 
     // Use the HTML template
     const template = HtmlService.createTemplateFromFile('InventoryReportTemplate');
-    
-    const logoBase64 = getBase64Image('https://placehold.co/150x50/eee/333?text=LOGO'); // Helper function to get base64 image
-    template.products = productDataForTemplate;
-    template.date = date;
-    template.totalValue = totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 });
+
+    const logoBase64 = getBase64Image('https://placehold.co/300/eee/333?text=LOGO'); // Helper function to get base64 image
+    template.inventories = filtered.sort((a, b) => a.code.localeCompare(b.code)); // Sort by code
+    template.startDate = startDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric' });
+    template.endDate = endDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric' });
+    template.generatedDate = new Date().toLocaleString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric' }) + '  , ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+    template.categoryFilter = (data.category === 'All' ? 'ทุกหมวด' : data.category) + ' / ' + (data.subcategory === 'All' ? 'ทุกประเภท' : data.subcategory);
+    template.totalSKU = filtered.length;
+    template.totalRemaining = filtered.reduce((sum, p) => sum + (Number(p.stock) || 0), 0).toLocaleString();
+    template.totalCost = filtered.reduce((sum, p) => sum + ((Number(p.stock) || 0) * (Number(p.price) || 0)), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 
     let htmlContent = template.evaluate().getContent().replace(/\[\[LOGO_IMAGE\]\]/g, logoBase64);
 
@@ -1081,26 +1121,25 @@ function generateWithdrawalReportPDF(data) {
 function generateWithdrawalReportPrint(data) {
   // This function now just returns the HTML generated by the helper
   logUserAction('Generate Report', `Withdrawal Report (Print) Dates: ${data.startDate} to ${data.endDate}`);
-  return generateWithdrawalReportHTML(data);
+  let htmlContent = generateWithdrawalReportHTML(data).html;
+  return { success: true, htmlContent };
 }
 
-function generateWithdrawalReportHTML(data={}) {
-  // // for testing purpose
+function generateWithdrawalReportHTML(data = {}) {
   // data = {
-  //   startDate: '2025-01-01',
-  //   endDate: '2025-12-31',
-  //   category: 'All',
-  //   subCategory: 'All',
+  //   "category": "All",
+  //   "subcategory": "All",
+  //   "startDate": "2025-10-01",
+  //   "endDate": "2025-12-31"
   // }
-
   try {
     // Validate dates
     if (!data || !data.startDate || !data.endDate) {
       return { success: false, message: "กรุณาเลือกช่วงวันที่สำหรับรายงาน" };
     }
 
-    if(!data.category) data.category = 'All';
-    if(!data.subCategory) data.subCategory = 'All';
+    if (!data.category) data.category = 'All';
+    if (!data.subcategory) data.subcategory = 'All';
 
     const startDate = new Date(data.startDate); startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(data.endDate); endDate.setHours(23, 59, 59, 999);
@@ -1116,11 +1155,11 @@ function generateWithdrawalReportHTML(data={}) {
       if (!t || !t.transactionDate) return false; // Skip invalid transactions
       const tDate = new Date(t.transactionDate);
       const prod = products.find(p => p && String(p.id) === String(t.productId));
-      if(data.category && data.category !== 'All') {
-        if(!prod || prod.category !== data.category) return false;
+      if (data.category && data.category !== 'All') {
+        if (!prod || prod.category !== data.category) return false;
       }
-      if(data.subCategory && data.subCategory !== 'All') {
-        if(!prod || prod.subcategory !== data.subCategory) return false;
+      if (data.subcategory && data.subcategory !== 'All') {
+        if (!prod || prod.subcategory !== data.subcategory) return false;
       }
       return t.type === 'out' && tDate >= startDate && tDate <= endDate;
     });
@@ -1154,15 +1193,15 @@ function generateWithdrawalReportHTML(data={}) {
         };
       });
 
-    const logoBase64 = getBase64Image('https://placehold.co/150x50/eee/333?text=LOGO'); // Helper function to get base64 image
+    const logoBase64 = getBase64Image('https://placehold.co/300/eee/333?text=LOGO'); // Helper function to get base64 image
 
     // Use the HTML template
     const template = HtmlService.createTemplateFromFile('WithdrawalReportTemplate');
     template.transactions = transactionDataForTemplate;
     template.startDate = startDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric' });
     template.endDate = endDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric' });
-    template.generatedDate = new Date().toLocaleString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric'}) + '  , ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }); 
-    template.categoryFilter = (data.category === 'All' ? 'ทุกหมวด' : data.category) + ' / ' + (data.subCategory === 'All' ? 'ทุกประเภท' : data.subCategory);
+    template.generatedDate = new Date().toLocaleString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric' }) + '  , ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+    template.categoryFilter = (data.category === 'All' ? 'ทุกหมวด' : data.category) + ' / ' + (data.subcategory === 'All' ? 'ทุกประเภท' : data.subcategory);
     template.totalValue = totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     template.totalSKU = [...new Set(filtered.map(t => t.productId))].length;
     template.totalRemaining = [...new Set(filtered.map(t => t.productId))].reduce((sum, pid) => {
@@ -1174,9 +1213,7 @@ function generateWithdrawalReportHTML(data={}) {
       return sum;
     }, 0).toLocaleString();
     template.totalCost = totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
     const html = template.evaluate().getContent().replace(/\[\[LOGO_IMAGE\]\]/g, logoBase64);
-
     return { success: true, html: html };
   } catch (e) {
     Logger.log("Error generating Withdrawal HTML: " + e);
@@ -1217,7 +1254,7 @@ function generateProjectReportPrint(projectId) {
     const generatedDate = new Date().toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' });
     const vat = totalCost * 0.07;
     const grandTotal = totalCost + vat;
-    const logoBase64 = getBase64Image('https://placehold.co/150x50/eee/333?text=LOGO'); // Helper function to get base64 image
+    const logoBase64 = getBase64Image('https://placehold.co/300/eee/333?text=LOGO'); // Helper function to get base64 image
 
     // Use the HTML template
     const template = HtmlService.createTemplateFromFile('ProjectReportTemplate');

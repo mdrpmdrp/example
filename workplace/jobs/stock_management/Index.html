@@ -53,7 +53,7 @@
         --- LAYOUT & THEME ---
         ================================================================= */
         .business-gradient {
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            background: linear-gradient(135deg, #0c948a, #07b3cf);
         }
 
         .sidebar-item {
@@ -73,7 +73,7 @@
         }
 
         .sidebar-item.active {
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            background: linear-gradient(135deg, #0c948a, #07b3cf);
             color: white;
             font-weight: 600;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -858,10 +858,10 @@
         const DASHBOARD_COMPONENTS = {
             metrics: {
                 title: 'ภาพรวม', html: () => `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="metric-card bg-blue-600 p-6 rounded-xl shadow-lg text-white"><p class="text-blue-100 text-sm mb-1">SKU ทั้งหมด</p><p class="text-3xl font-bold mb-2" id="totalSKU">0</p></div>
-                    <div class="metric-card bg-green-600 p-6 rounded-xl shadow-lg text-white"><p class="text-green-100 text-sm mb-1">สต็อกคงเหลือ</p><p class="text-3xl font-bold mb-2" id="totalQuantity">0</p></div>
-                    <div class="metric-card bg-yellow-500 p-6 rounded-xl shadow-lg text-white"><p class="text-yellow-100 text-sm mb-1">มูลค่าคงคลัง</p><p class="text-3xl font-bold mb-2" id="inventoryValue">฿0</p></div>
-                    <div class="metric-card bg-red-600 p-6 rounded-xl shadow-lg text-white"><p class="text-red-100 text-sm mb-1">ต่ำกว่าจุดสั่งซื้อ</p><p class="text-3xl font-bold mb-2" id="reorderAlerts">0</p></div>
+                    <div class="metric-card bg-gradient-to-br from-blue-600 to-indigo-500 p-6 rounded-xl shadow-lg text-white"><p class="text-blue-100 text-sm mb-1">SKU ทั้งหมด</p><p class="text-3xl font-bold mb-2" id="totalSKU">0</p></div>
+                    <div class="metric-card bg-gradient-to-br from-green-600 to-emerald-400 p-6 rounded-xl shadow-lg text-white"><p class="text-green-100 text-sm mb-1">สต็อกคงเหลือ</p><p class="text-3xl font-bold mb-2" id="totalQuantity">0</p></div>
+                    <div class="metric-card bg-gradient-to-br from-yellow-500 to-orange-400 p-6 rounded-xl shadow-lg text-white"><p class="text-yellow-100 text-sm mb-1">มูลค่าคงคลัง</p><p class="text-3xl font-bold mb-2" id="inventoryValue">฿0</p></div>
+                    <div class="metric-card bg-gradient-to-br from-red-600 to-pink-500 p-6 rounded-xl shadow-lg text-white"><p class="text-red-100 text-sm mb-1">ต่ำกว่าจุดสั่งซื้อ</p><p class="text-3xl font-bold mb-2" id="reorderAlerts">0</p></div>
                 </div>` },
             stockTrend: {
                 title: 'แนวโน้มสต็อก', html: () => `<div class="bg-white rounded-xl shadow-lg p-6 flex flex-col">
@@ -894,7 +894,7 @@
 
             let html = `<div class="flex justify-between items-center mb-6 flex-wrap gap-4">
                         <h1 class="text-3xl font-bold text-gray-800">แดชบอร์ด</h1>
-                        <button onclick="showDashboardEditor()" class="admin-only bg-white text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 shadow-md hover:shadow-lg border">
+                        <button onclick="showDashboardEditor()" class="admin-only text-white px-4 py-2 rounded-lg flex items-center space-x-2 shadow-md hover:shadow-lg border business-gradient">
                             <i class='bx bx-edit'></i><span>แก้ไข Layout</span>
                         </button>
                     </div>`;
@@ -1595,7 +1595,9 @@
                         const printWindow = window.open('', '_blank');
                         printWindow.document.write(response.htmlContent);
                         printWindow.document.close();
-                        printWindow.print();
+                        setTimeout(() => {
+                            printWindow.focus();
+                        }, 1000);
                     } else {
                         handleError({ message: response.message });
                     }
@@ -1692,14 +1694,66 @@
             <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class='bx bxs-package mr-2'></i>รายงานสต็อกสินค้าคงคลัง</h3>
                 <p class="text-gray-600 mb-6">สร้างเอกสารสรุปรายการสินค้าทั้งหมด, จำนวนคงเหลือ, และมูลค่าคงคลัง ณ ปัจจุบัน</p>
-                <button onclick="generateReport('inventory_pdf')" class="business-gradient text-white px-6 py-3 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:shadow-lg">
-                    <i class='bx bxs-file-pdf'></i><span>สร้างรายงาน (PDF)</span>
-                </button>
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="form-label">หมวดหมู่สินค้า</label>
+                        <select id="inventoryCategoryFilter" class="form-input">
+                             <option value="" selected>-- เลือกหมวดหมู่ --</option>
+                            <option value="วัตถุดิบ">วัตถุดิบ</option>
+                            <option value="วัตถุดิบสิ้นเปลือง">วัตถุดิบสิ้นเปลือง</option>
+                            <option value="อุปกรณ์ช่าง">อุปกรณ์ช่าง</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">ประเภทสินค้า</label>
+                        <select id="inventorySubcategoryFilter" class="form-input">
+                            <option value="" selected>-- เลือกประเภท --</option>
+                        <option value="สแตนเลส">สแตนเลส</option>
+                        <option value="น็อต">น็อต</option>
+                        <option value="เหล็ก">เหล็ก</option>
+                        <option value="อื่นๆ">อื่นๆ</option></select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="form-label">วันที่เริ่มต้น</label>
+                        <input type="date" id="inventoryStartDate" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">วันที่สิ้นสุด</label>
+                        <input type="date" id="inventoryEndDate" class="form-input">
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-4">
+                    <button onclick="generateReport('inventory_pdf')" class="business-gradient text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:shadow-lg">
+                        <i class='bx bxs-file-pdf'></i><span>สร้าง PDF</span>
+                    </button>
+                </div>
             </div>
 
             <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class='bx bx-line-chart mr-2'></i>รายงานสรุปการเบิกจ่าย</h3>
                 <p class="text-gray-600 mb-6">เลือกช่วงวันที่เพื่อสร้างรายงานสรุปรายการเบิกจ่ายทั้งหมดในช่วงเวลานั้นๆ</p>
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="form-label">หมวดหมู่สินค้า</label>
+                        <select id="withdrawalCategoryFilter" class="form-input">
+                             <option value="" selected>-- เลือกหมวดหมู่ --</option>
+                            <option value="วัตถุดิบ">วัตถุดิบ</option>
+                            <option value="วัตถุดิบสิ้นเปลือง">วัตถุดิบสิ้นเปลือง</option>
+                            <option value="อุปกรณ์ช่าง">อุปกรณ์ช่าง</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">ประเภทสินค้า</label>
+                        <select id="withdrawalSubcategoryFilter" class="form-input">
+                            <option value="" selected>-- เลือกประเภท --</option>
+                        <option value="สแตนเลส">สแตนเลส</option>
+                        <option value="น็อต">น็อต</option>
+                        <option value="เหล็ก">เหล็ก</option>
+                        <option value="อื่นๆ">อื่นๆ</option></select>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                         <label class="form-label">วันที่เริ่มต้น</label>
@@ -1743,24 +1797,19 @@
                 </div>
             </div>
         `;
-
-            const today = new Date();
-            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-            const firstDayStr = firstDay.toISOString().split('T')[0];
-            const lastDayStr = lastDay.toISOString().split('T')[0];
-
-            document.getElementById('withdrawalStartDate').value = firstDayStr;
-            document.getElementById('withdrawalEndDate').value = lastDayStr;
-            document.getElementById('exportStartDate').value = firstDayStr;
-            document.getElementById('exportEndDate').value = lastDayStr;
         }
 
         function generateReport(reportType) {
             showLoader();
             let reportData = {};
-
-            if (reportType.startsWith('withdrawal')) {
+            if (reportType === 'inventory_pdf') {
+                reportData.category = document.getElementById('inventoryCategoryFilter').value;
+                reportData.subcategory = document.getElementById('inventorySubcategoryFilter').value;
+                reportData.startDate = document.getElementById('inventoryStartDate').value;
+                reportData.endDate = document.getElementById('inventoryEndDate').value;
+            } else if (reportType.startsWith('withdrawal')) {
+                reportData.category = document.getElementById('withdrawalCategoryFilter').value;
+                reportData.subcategory = document.getElementById('withdrawalSubcategoryFilter').value
                 reportData.startDate = document.getElementById('withdrawalStartDate').value;
                 reportData.endDate = document.getElementById('withdrawalEndDate').value;
             } else if (reportType.startsWith('transactions')) {
@@ -1768,7 +1817,7 @@
                 reportData.endDate = document.getElementById('exportEndDate').value;
             }
 
-            if ((reportType.startsWith('withdrawal') || reportType.startsWith('transactions')) && (!reportData.startDate || !reportData.endDate)) {
+            if (!reportData.startDate || !reportData.endDate) {
                 handleError({ message: 'กรุณาเลือกช่วงวันที่ให้ครบถ้วน' });
                 return;
             }
