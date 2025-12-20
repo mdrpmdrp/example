@@ -31,20 +31,21 @@ function getComplainData() {
       data[i] = {
         id: row[0],
         date: formatDate(row[1]),
-        product: row[2],
-        quantity: row[3],
-        unit: row[4],
-        problem: row[5],
-        store: row[6],
-        type: row[7],
-        severity: row[8],
-        claimValue: row[9],
-        responsibleTeam: row[10],
-        teamRepresentative: row[11],
+        weekOfYear: row[2],
+        product: row[3],
+        quantity: row[4],
+        unit: row[5],
+        problem: row[6],
+        store: row[7],
+        type: row[8],
+        severity: row[9],
+        claimValue: row[10],
+        responsibleTeam: row[11],
+        teamRepresentative: row[12],
         solutions: solutions,
-        pipeline: row[13],
-        timestamp: row[14],
-        images: row[15] ? row[15].split('\n') : []
+        pipeline: row[14],
+        timestamp: row[15],
+        images: row[16] ? row[16].split('\n') : []
       };
     }
     return JSON.stringify({ success: true, data: data });
@@ -71,6 +72,7 @@ function addComplainData(formData) {
     const rowData = [
       nextId,
       formData.date,
+      formData.weekOfYear,
       formData.product,
       formData.quantity,
       formData.unit,
@@ -107,12 +109,11 @@ function addComplainData(formData) {
 
     // // Send notification asynchronously (non-blocking)
     try {
-      sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline, 
-                   formData.responsibleTeam, formData.teamRepresentative, 'add', formData.store, nextId);
+      sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline,
+        formData.responsibleTeam, formData.teamRepresentative, 'add', formData.store, nextId);
     } catch (notifError) {
       console.warn('Notification failed but data saved:', notifError);
     }
-
     return JSON.stringify({
       success: true,
       message: 'เพิ่มข้อมูลสำเร็จ',
@@ -120,6 +121,7 @@ function addComplainData(formData) {
       newRecord: {
         id: nextId,
         date: formData.date,
+        weekOfYear: formData.weekOfYear,
         product: formData.product,
         quantity: formData.quantity,
         unit: formData.unit,
@@ -147,6 +149,11 @@ function addComplainData(formData) {
  * Update existing data in sheet
  */
 function updateComplainData(formData) {
+  const getWeekOfYear = (date) => {
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+    const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+  }
   try {
     const sheet = getOrCreateSheet();
     const rowIndex = findRowIndexById(sheet, formData.id);
@@ -160,10 +167,10 @@ function updateComplainData(formData) {
 
     // Convert solutions array to JSON string
     const solutionsJson = formData.solutions ? JSON.stringify(formData.solutions) : '';
-
     const rowData = [
       formData.id,
       formData.date,
+      formData.weekOfYear,
       formData.product,
       formData.quantity,
       formData.unit,
@@ -180,15 +187,15 @@ function updateComplainData(formData) {
       formData.images || []
     ];
 
-    sheet.getRange(actualRow, 1, 1, 16).setValues([rowData]);
+    sheet.getRange(actualRow, 1, 1, 17).setValues([rowData]);
 
     // // Send notification asynchronously (non-blocking)
-    try {
-      sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline,
-                   formData.responsibleTeam, formData.teamRepresentative, 'update', formData.store, formData.id);
-    } catch (notifError) {
-      console.warn('Notification failed but data updated:', notifError);
-    }
+    // try {
+    //   sendComplainChatText(formData.date, formData.product, formData.problem, formData.pipeline,
+    //                formData.responsibleTeam, formData.teamRepresentative, 'update', formData.store, formData.id);
+    // } catch (notifError) {
+    //   console.warn('Notification failed but data updated:', notifError);
+    // }
 
     return JSON.stringify({
       success: true,
@@ -262,6 +269,7 @@ function sendComplainChatText(date, product, problem, pipeline, responsibleTeam,
   var text =
     prefix + "\n" +
     "วันที่ : " + d +
+    "\nWeek : " + String(getWeekOfYear(new Date(date))) + "/" + String(new Date(date).getFullYear()) +
     "\nร้านค้า : " + String(store) +
     "\nสินค้า : " + String(product) +
     "\nปัญหา : " + String(problem) +
@@ -279,40 +287,86 @@ function sendComplainChatText(date, product, problem, pipeline, responsibleTeam,
       {
         cardId: "complain-card",
         card: {
-          header: {
-            title: prefix || "แจ้งปัญหา",
-            subtitle: "ระบบ Complain",
+          "header": {
+            "title": "แจ้งปัญหา",
+            "subtitle": "ระบบ Complain"
           },
-          sections: [
+          "sections": [
             {
-              widgets: [
+              "widgets": [
                 {
-                  textParagraph: {
-                    // แปลง \n เป็น <br> เพื่อให้ขึ้นบรรทัดใน Card
-                    text: text.replace(/\n/g, "<br>")
+                  "textParagraph": {
+                    "text": `<br><font color=\"#1e64d4\"><strong>📅 Week : ${getWeekOfYear(new Date(date))}/${new Date(date).getFullYear()}</strong></font><br>วันที่ : ${Utilities.formatDate(new Date(date), "Asia/Bangkok", "dd MMMM yyyy")}<br>`
                   }
                 },
                 {
-                  buttonList: {
-                    buttons: [
-                      {
-                        text: "เปิดหน้าเว็บดูรายละเอียด",
-                        onClick: {
-                          openLink: {
-                            url: linkUrl
-                          }
-                        }
-                      }
-                    ]
+                  "textParagraph": {
+                    "text": `ร้านค้า : ${store}<br>สินค้า : ${product}`
+                  }
+                },
+                {
+                  "textParagraph": {
+                    "text": `<font color=\"#ff0e0e\"><strong>⚠️ ปัญหา : ${problem}</strong></font><br>สถานะ : ${status}`
+                  }
+                },
+                {
+                  "textParagraph": {
+                    "text": `👤ทีมรับผิดชอบ : ${responsibleTeam}<br>ตัวแทนทีม : ${teamRepresentative}`
                   }
                 }
               ]
             }
-          ]
+          ],
+          "fixedFooter": {
+            "primaryButton": {
+              "text": "เปิดหน้าเว็บดูรายละเอียด",
+              "type": "FILLED",
+              "onClick": {
+                "openLink": {
+                  "url": linkUrl
+                }
+              }
+            }
+          }
         }
       }
     ]
   };
 
+  Logger.log(JSON.stringify(payload));
+
   sendGoogleChatText(payload);
+}
+
+function testSendComplainChatFromLastRow() {
+  try {
+    var sheet = getOrCreateSheet();
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      console.log('testSendComplainChatFromLastRow: no data rows');
+      return { success: false, message: 'no data rows' };
+    }
+
+    // Read the full row where columns follow the addComplainData ordering
+    var row = sheet.getRange(lastRow, 1, 1, 17).getValues()[0];
+
+    var id = row[0];
+    var date = row[1];
+    var product = row[3];
+    var problem = row[6];
+    var store = row[7];
+    var responsibleTeam = row[11];
+    var teamRepresentative = row[12];
+    var pipeline = row[14];
+
+    console.log('testSendComplainChatFromLastRow -> id:', id, 'date:', date);
+
+    // Call existing sender — action 'test' to differentiate notifications
+    sendComplainChatText(date, product, problem, pipeline, responsibleTeam, teamRepresentative, 'test', store, id);
+
+    return { success: true, id: id };
+  } catch (err) {
+    console.error('testSendComplainChatFromLastRow error:', err);
+    return { success: false, error: err.toString() };
+  }
 }
