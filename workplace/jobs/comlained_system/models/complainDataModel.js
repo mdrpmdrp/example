@@ -333,8 +333,6 @@ function sendComplainChatText(date, product, problem, pipeline, responsibleTeam,
     ]
   };
 
-  Logger.log(JSON.stringify(payload));
-
   sendGoogleChatText(payload);
 }
 
