@@ -53,12 +53,14 @@ function isUserAuthenticated() {
 }
 
 function checkUserAccess() {
+  Logger = BetterLog.useSpreadsheet()
   if (!usersSheet) {
     Logger.log("Sheet 'Users' not found during login check.");
     return { success: false, message: "Sheet 'Users' not found." };
   }
 
   const email = Session.getActiveUser().getEmail();
+  Logger.log(`Login attempt by: ${email}`);
   const usersData = usersSheet.getDataRange().getValues();
   usersData.shift(); // remove header
 
@@ -250,6 +252,7 @@ function updateUser(userData) {
       // Append row A=Email, B=Role, C=Name, D=Status, E=LastLogin(empty), F=Settings(empty)
       const defaultSettings = parseDashboardSettings(null); // Get default settings
       usersSheet.appendRow([userData.email, role, name, status, '', JSON.stringify(defaultSettings)]); // Add default settings string
+      SpreadsheetApp.getActiveSpreadsheet().addEditor(userData.email); // Grant access to the spreadsheet
     }
     // Users aren't typically cached server-side in this pattern, but clear if needed
     // clearCache();
@@ -275,6 +278,7 @@ function deleteUser(email) {
       const userName = usersSheet.getRange(rowIndex, 3).getValue(); // Get Name (Column C)
       logUserAction('Delete User', `Email: ${email}, Name: ${userName}`);
       usersSheet.deleteRow(rowIndex);
+      ss.removeEditor(email); // Remove access from the spreadsheet
       // clearCache(); // Clear potentially dependent caches if necessary
       return { success: true, message: "ลบผู้ใช้สำเร็จ" };
     }
@@ -1803,3 +1807,16 @@ function getAuditLogs() {
   }
 }
 
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('Inventory System')
+    .addItem('Allow Access', 'allowAccess')
+    .addToUi();
+}
+
+function allowAccess() {
+  let users = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+  let emails = users.getRange(2, 1, users.getLastRow() - 1, 1).getValues().flat();
+  DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId()).addEditors(emails);
+  SpreadsheetApp.getUi().alert('Access granted to all users in the Users sheet.');
+}
