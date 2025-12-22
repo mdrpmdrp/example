@@ -9,7 +9,7 @@
     <!-- no cache -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>แบบฟอร์มสมัครสมาชิก สมาคมช่างกุญแจไทยแห่งประเทศไทย</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
         integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
@@ -22,8 +22,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
     <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
-    <link rel="stylesheet"
-        href="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dist/jquery.Thailand.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
@@ -153,15 +151,8 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/plugins/rangePlugin.js"></script>
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
-    <script type="text/javascript"
-        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dependencies/JQL.min.js"></script>
-    <script type="text/javascript"
-        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dependencies/typeahead.bundle.js"></script>
-    <script
-        src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js">
+     <script src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js">
         </script>
-    <script type="text/javascript"
-        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dist/jquery.Thailand.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@5.1.3/dist/signature_pad.umd.min.js"></script>
 
     <main class="min-h-screen bg-gray-50 py-10">
@@ -652,15 +643,6 @@
                     }
                 }
             });
-            // Thailand.js init (if available)
-            if (typeof $.Thailand === 'function') {
-                $.Thailand({
-                    $district: $('.district'),
-                    $amphoe: $('.amphoe'),
-                    $province: $('.province'),
-                    $zipcode: $('.zipcode')
-                });
-            }
 
             // INIT signature pad
             const applicantCanvas = document.getElementById('applicant_signature');
@@ -804,6 +786,7 @@
                         autocorrect: 'off'
                     },
                     confirmButtonText: '<i class="fa fa-check"></i> ยืนยัน',
+                    allowOutsideClick: false,
                     customClass: {
                         popup: 'rounded-3xl shadow-2xl',
                         title: 'text-gray-900 font-bold',
@@ -819,7 +802,6 @@
                                 func: 'verifyOfficerPassword',
                                 params: { password: password, appId: params.get('appId') || '' },
                                 onSuccess: (result) => {
-                                    result = JSON.parse(result);
                                     if (result.success) {
                                         resolve(result);
                                     } else {
@@ -835,9 +817,11 @@
                     },
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        console.log("🚀 ~ result:", result)
                         Swal.fire({
                             icon: 'success',
                             title: 'ยืนยันตัวตนสำเร็จ',
+                            confirmButtonText: 'ดำเนินการต่อ',
                             customClass: {
                                 popup: 'rounded-3xl shadow-2xl',
                                 title: 'text-gray-900 font-bold',
@@ -1000,7 +984,7 @@
                     Swal.fire({
                         icon: 'success',
                         title: 'ส่งใบสมัครเรียบร้อย',
-                        text: 'ขอบคุณที่สมัครเป็นสมาชิกสมาคมฯ เราจะติดต่อกลับไปยังท่านในเร็วๆ นี้',
+                        text: 'ขอบคุณที่สมัครเป็นสมาชิกสมาคมฯ\nฃืเราจะแจ้งผลการสมัครให้ทราบทางโทรศัพท์หรืออีเมลภายใน 7 วันทำการ',
                         customClass: {
                             popup: 'rounded-3xl shadow-2xl',
                             title: 'text-gray-900 font-bold',
@@ -1047,6 +1031,9 @@
                         const radio = document.querySelector(`input[name="${key}"][value="${value}"]`);
                         if (radio) radio.checked = true;
                     } else {
+                        if (key === 'date_of_birth') {
+                            $('#date_of_birth')[0]._flatpickr.setDate(value);
+                        } else
                         field.value = value;
                     }
                 }

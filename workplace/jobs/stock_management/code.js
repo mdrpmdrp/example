@@ -1080,7 +1080,7 @@ function generateInventoryReportPDF(data) {
     // Use the HTML template
     const template = HtmlService.createTemplateFromFile('InventoryReportTemplate');
 
-    const logoBase64 = getBase64Image('https://placehold.co/300/eee/333?text=LOGO'); // Helper function to get base64 image
+    const logoBase64 = getBase64Image('https://img2.pic.in.th/pic/be503e88-1d81-4a83-bc3b-a75e914247da.jpg'); // Helper function to get base64 image
     template.inventories = filtered.sort((a, b) => a.code.localeCompare(b.code)); // Sort by code
     template.startDate = startDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric' });
     template.endDate = endDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'numeric', day: 'numeric' });
@@ -1197,7 +1197,7 @@ function generateWithdrawalReportHTML(data = {}) {
         };
       });
 
-    const logoBase64 = getBase64Image('https://placehold.co/300/eee/333?text=LOGO'); // Helper function to get base64 image
+    const logoBase64 = getBase64Image('https://img2.pic.in.th/pic/be503e88-1d81-4a83-bc3b-a75e914247da.jpg'); // Helper function to get base64 image
 
     // Use the HTML template
     const template = HtmlService.createTemplateFromFile('WithdrawalReportTemplate');
@@ -1258,7 +1258,7 @@ function generateProjectReportPrint(projectId) {
     const generatedDate = new Date().toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' });
     const vat = totalCost * 0.07;
     const grandTotal = totalCost + vat;
-    const logoBase64 = getBase64Image('https://placehold.co/300/eee/333?text=LOGO'); // Helper function to get base64 image
+    const logoBase64 = getBase64Image('https://img2.pic.in.th/pic/be503e88-1d81-4a83-bc3b-a75e914247da.jpg'); // Helper function to get base64 image
 
     // Use the HTML template
     const template = HtmlService.createTemplateFromFile('ProjectReportTemplate');

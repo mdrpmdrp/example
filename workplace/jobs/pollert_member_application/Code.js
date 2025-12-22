@@ -32,14 +32,52 @@ function verifyOfficerPassword(e) {
 }
 
 function getApplicationDataById(appId) {
-    // Implement your logic to fetch application data by appId
-    // This is just a placeholder function
-    return {
-        id: appId,
-        name: 'John Doe',
-        position: 'Software Engineer'
-        // Add more fields as necessary
-    };
+   let ss = SpreadsheetApp.getActiveSpreadsheet();
+   let sheet = ss.getSheetByName('Member Applications');
+   let data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
+         if (data[i][0] == appId) { // Assuming application_id is in the first column
+              return {
+                application_id: data[i][0],
+                prefix: data[i][1],
+                full_name: data[i][2],
+                id_card_number: data[i][3],
+                date_of_birth: data[i][4],
+                age: data[i][5],
+                nationality: data[i][6],
+                religion: data[i][7],
+                mobile_phone: data[i][8],
+                email: data[i][9],
+                address_registration: data[i][10],
+                address_current: data[i][11],
+                occupation: data[i][12],
+                business_name: data[i][13],
+                address_business: data[i][14],
+                business_location_details: data[i][15],
+                business_phone: data[i][16],
+                years_experience: data[i][17],
+                expertise: data[i][18].split(',').map(s => s.trim()),
+                delivery_address_type: data[i][19],
+                health_status: data[i][20],
+                health_chronic_detail: data[i][21],
+                health_disability_detail: data[i][22],
+                beneficiary_name: data[i][23],
+                beneficiary_relationship: data[i][24],
+                beneficiary_id_card: data[i][25],
+                beneficiary_phone: data[i][26],
+                beneficiary_address: data[i][27],
+                is_approved: data[i][28],
+                copy_id_card: data[i][29],
+                copy_house_reg: data[i][30],
+                photo_1_inch: data[i][31],
+                occupation_proof: data[i][32],
+                reviewer_officer: data[i][33],
+                approval_date: data[i][34],
+                signatures: data[i][35]
+              };
+         }
+    }
+    return null; // Return null if application not found
 }
 
 function getDownloadToken(e) {
@@ -79,6 +117,7 @@ function submitMemberApplication(e) {
         e.parameter.business_location_details,
         e.parameter.business_phone,
         e.parameter.years_experience,
+        e.parameter.expertise.join(', '),
         e.parameter.delivery_address_type,
         e.parameter.health_status,
         e.parameter.health_chronic_detail,
