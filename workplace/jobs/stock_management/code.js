@@ -1,10 +1,12 @@
+// Version: 2.0.0
+
 // =================================================================
 // --- CONFIGURATION ---
 // =================================================================
-const ss = SpreadsheetApp.getActiveSpreadsheet();
+const SPREADSHEET_ID = "124gb_3GHSZ4wqphYGS1fquv1mWotr5KVYLvSY9tJm2o"; // Please replace with your actual Spreadsheet ID
+const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
-// const FOLDER_ID = '1xxuY4Wznv9AM1oyhfxbo_-QvBBpq8_Ah'; // Please replace with your actual Folder ID for reports/backups
-const FOLDER_ID = '1CEWlvFURW0X6uRa_uAAPDjyczE5cr329';
+const FOLDER_ID = '1xxuY4Wznv9AM1oyhfxbo_-QvBBpq8_Ah'; // Please replace with your actual Folder ID for reports/backups
 
 const TELEGRAM_BOT_TOKEN = '8343157193:AAHPy65lVcRMTfoXF5fpduy81w1ogQb5fbw'; // Replace with your Bot Token if needed
 const TELEGRAM_CHAT_ID = '7721419671'; // Replace with your Chat ID if needed
@@ -16,7 +18,6 @@ const usersSheet = ss.getSheetByName("Users");
 const projectsSheet = ss.getSheetByName("Projects");
 const suppliersSheet = ss.getSheetByName("Suppliers");
 const auditLogSheet = ss.getSheetByName("AuditLog");
-
 const CACHE = CacheService.getScriptCache();
 
 
