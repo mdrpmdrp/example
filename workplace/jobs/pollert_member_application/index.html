@@ -82,12 +82,6 @@
             width: 1.25rem;
             text-align: center;
         }
-
-        input[name="health_chronic_detail"][disabled],
-        input[name="health_disability_detail"][disabled],
-        input[id="expertise_others_text"][disabled] {
-            background-color: #f3f4f6 !important;
-        }
     </style>
     <style>
         /* Improve input contrast and focus visibility */
@@ -133,10 +127,17 @@
         #memberForm input[disabled],
         #memberForm textarea[disabled],
         #memberForm select[disabled] {
-            background-color: #f9fafb;
+            background-color: rgba(11, 62, 111, 0.04);
             color: #6b7280;
-            border-color: #d1d5db;
+            border-color: rgba(11, 62, 111, 0.12);
             box-shadow: none;
+        }
+
+
+        input[name="health_chronic_detail"][disabled],
+        input[name="health_disability_detail"][disabled],
+        input[id="expertise_others_text"][disabled] {
+            background-color: #f3f4f6 !important;
         }
 
         .signature-pad {
@@ -164,6 +165,8 @@
         src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js">
         </script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@5.1.3/dist/signature_pad.umd.min.js"></script>
+    <script src="https://fastly.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://fastly.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
 
     <main class="min-h-screen bg-gray-50 py-10">
         <div class="max-w-4xl mx-auto bg-white shadow-md rounded-lg p-8">
@@ -172,10 +175,11 @@
                 <h1 class="text-2xl font-bold mb-0 text-center accent-text">ใบสมัครสมาชิก สมาคมช่างกุญแจไทยแห่งประเทศไทย
                 </h1>
             </div>
-            <p class="text-sm text-gray-600 mb-6 text-center">Application form — กรอกข้อมูลให้ครบถ้วน</p>
+            <p class="text-base text-gray-600 mb-6 text-center">Application form — กรอกข้อมูลให้ครบถ้วน</p>
 
             <form id="memberForm" class="space-y-6">
                 <!-- Personal Information -->
+                <input type="hidden" name="application_id" />
                 <section>
                     <h2 class="text-lg font-semibold mb-3">ข้อมูลส่วนตัว (Personal Information)</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -194,9 +198,18 @@
                         <div>
                             <label>
                                 <i class="fa-solid fa-user form-icon"></i>
-                                ชื่อ นามสกุล</label>
+                                ชื่อ</label>
                             <div class="relative mt-1">
-                                <input name="full_name" type="text" requiredxx
+                                <input name="first_name" type="text" requiredxx
+                                    class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                            </div>
+                        </div>
+                        <div>
+                            <label>
+                                <i class="fa-solid fa-user form-icon"></i>
+                                นามสกุล</label>
+                            <div class="relative mt-1">
+                                <input name="last_name" type="text" requiredxx
                                     class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
                             </div>
                         </div>
@@ -354,12 +367,12 @@
                         การจัดส่งเอกสาร (Document Delivery)</label>
                     <div class="space-y-1 pl-4 mt-2">
                         <label class="flex items-center radio-label">
-                            <input type="radio" name="delivery_address_type" value="ตามที่อยู่ ทะเบียนบ้าน" checked
-                                class="mr-2" /> ตามที่อยู่ ทะเบียนบ้าน
+                            <input type="radio" name="delivery_address_type" value="ตามที่อยู่ตามทะเบียนบ้าน" checked
+                                class="mr-2" /> ตามที่อยู่ตามทะเบียนบ้าน
                         </label>
                         <label class="flex items-center radio-label">
-                            <input type="radio" name="delivery_address_type" value="ตามที่อยู่ ปัจจุบัน" class="mr-2" />
-                            ตามที่อยู่ ปัจจุบัน
+                            <input type="radio" name="delivery_address_type" value="ตามที่อยู่ปัจจุบัน" class="mr-2" />
+                            ตามที่อยู่ปัจจุบัน
                         </label>
                         <label class="flex items-center radio-label">
                             <input type="radio" name="delivery_address_type" value="ตามที่อยู่ร้าน / สถานประกอบการ"
@@ -419,7 +432,7 @@
                             <i class="fa-solid fa-wrench form-icon"></i>
                             ประเภทงานที่ถนัด (เลือกได้
                             หลายข้อ)</label>
-                        <div class="mt-2 space-y-1 text-sm text-gray-800 ml-4">
+                        <div class="mt-2 space-y-1 text-base text-gray-800 ml-4">
                             <label class="flex items-center checkbox-label"><input type="checkbox" name="expertise"
                                     value="กลุ่มกุญแจบ้าน" class="mr-2"> กลุ่มกุญแจบ้าน</label>
                             <label class="flex items-center checkbox-label"><input type="checkbox" name="expertise"
@@ -479,13 +492,13 @@
                             <div class="flex-1">
                                 <label>
                                     <i class="fa-solid fa-camera form-icon"></i>
-                                    รูปถ่าย 1 นิ้ว 1 รูป</label>
-                                <input type="file" name="photo_1_inch" accept="image/*"
+                                    รูปถ่ายหน้าตรง</label>
+                                <input type="file" name="portrait_photo" accept="image/*"
                                     onchange="previewFile(event, 'preview_photo')" accept="image/*"
                                     class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:border-gray-300 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     requiredxx />
                             </div>
-                            <div id="preview_photo" data-preview="photo_1_inch"
+                            <div id="preview_photo" data-preview="portrait_photo"
                                 class="hidden w-10 h-10 border rounded-md flex items-center justify-center text-sm text-gray-500 preview-container">
                                 No file</div>
                         </div>
@@ -509,7 +522,7 @@
                 <!-- Beneficiary -->
                 <section>
                     <h2 class="text-lg font-semibold mb-1">ผู้รับผลประโยชน์ (Beneficiary)</h2>
-                    <p class="text-sm text-gray-600 mb-3">กรณีที่ ข้าพเจ้าเสียชีวิต</p>
+                    <p class="text-base text-gray-600 mb-3">กรณีที่ ข้าพเจ้าเสียชีวิต</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label>
@@ -560,7 +573,7 @@
                 <!-- Fees (static) -->
                 <section>
                     <h2 class="text-lg font-semibold mb-3">ค่าธรรมเนียม (Fees)</h2>
-                    <div class="prose text-sm text-red-800">
+                    <div class="prose text-base text-red-800">
                         <p>1. ค่าขึ้นทะเบียนสมาชิก 500 บาท และค่าบำรุงสมาชิก ปีละ 2,000 บาท รวมค่าสมัครสมาชิก 2,500 บาท
                         </p>
                         <p>2. การสมัครเป็นสมาชิกสมาคมฯ จะมีผลสมบูรณ์ต่อเมื่อเป็นไปตามเงื่อนไขของสมาคมฯ</p>
@@ -575,7 +588,7 @@
                             <label>
                                 <i class="fa-solid fa-pen form-icon"></i>
                                 ลงชื่อผู้สมัคร (ลายเซ็น)</label>
-                            <p class="text-sm text-gray-600 my-2">ข้าพเจ้าขอสมัครเป็นสมาชิกสมาคมฯ
+                            <p class="text-base text-gray-600 my-2">ข้าพเจ้าขอสมัครเป็นสมาชิกสมาคมฯ
                                 และยินยอมปฏิบัติตามกฎระเบียบทุกประการ</p>
                             <div class="mb-2 space-y-2">
                                 <canvas id="applicant_signature"
@@ -592,13 +605,17 @@
                             การตรวจสอบและอนุมัติใบสมัคร (สำหรับเจ้าหน้าที่สมาคมฯ)
                         </h2>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">เลขที่สมาชิก
+                            <label>
+                                <i class="fa-solid fa-id-card form-icon"></i>
+                                เลขที่สมาชิก
                                 (สำหรับเจ้าหน้าที่)</label>
-                            <input name="member_id" type="text"
+                            <input name="officer_id" type="text"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">สถานะการสมัคร</label>
+                            <label>
+                                <i class="fa-solid fa-check form-icon"></i>
+                                สถานะการสมัคร</label>
                             <div class="flex items-center space-x-4 mt-2">
                                 <label class="flex items-center">
                                     <input type="radio" name="application_status" value="approved" class="mr-2">
@@ -611,7 +628,9 @@
                             </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">เหตุผล (กรณีไม่อนุมัติ)</label>
+                            <label>
+                                <i class="fa-solid fa-circle-exclamation form-icon"></i>
+                                เหตุผล (กรณีไม่อนุมัติ)</label>
                             <textarea name="reviewer_officer" rows="3"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
                         </div>
@@ -775,6 +794,12 @@
                         input: 'border border-gray-300 rounded-md shadow-sm p-2 mt-2 overflow-x-auto'
                     },
                     preConfirm: (password) => {
+                        if (!password || password.trim() === '') {
+                            Swal.showValidationMessage(
+                                `กรุณากรอกรหัสผ่าน`
+                            );
+                            return;
+                        }
                         Swal.update({
                             text: 'กำลังตรวจสอบรหัสผ่าน...',
                         });
@@ -822,7 +847,7 @@
                         window.location.href = window.location.pathname;
                     }
                 });
-            }else{
+            } else {
                 document.getElementById('for_officer').classList.add('hidden');
             }
             $('#prefix').on('change', function () {
@@ -935,6 +960,49 @@
                     return;
                 }
             }
+
+            if (!isApproved) {
+                Swal.fire({
+                    icon: 'question',
+                    title: 'ยืนยันการส่งใบสมัคร หรือไม่?',
+                    html: '<span  class="block mb-2 text-red-700">กรุณาตรวจสอบข้อมูลให้ถูกต้องก่อนยืนยันการส่งใบสมัคร<br><br><u>เมื่อส่งใบสมัครแล้วจะไม่สามารถแก้ไขข้อมูลได้</u></span>',
+                    width: '600px',
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="fa fa-check-circle"></i> ยืนยัน',
+                    cancelButtonText: 'ตรวจสอบข้อมูลอีกครั้ง',
+                    customClass: {
+                        popup: 'rounded-3xl shadow-2xl',
+                        title: 'text-gray-900 font-bold',
+                    }
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        // proceed to upload files and submit
+                        await proceedSubmitApplication();
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'question',
+                    title: 'ยืนยันการบันทึกผลการสมัคร หรือไม่?',
+                    html: '<span  class="block mb-2 text-red-700">กรุณาตรวจสอบข้อมูลให้ถูกต้องก่อนยืนยันการบันทึกผลการสมัคร<br><br><u>เมื่อบันทึกผลการสมัครแล้วจะไม่สามารถแก้ไขข้อมูลได้</u></span>',
+                    width: '600px',
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="fa fa-check-circle"></i> ยืนยัน',
+                    cancelButtonText: 'ตรวจสอบข้อมูลอีกครั้ง',
+                    customClass: {
+                        popup: 'rounded-3xl shadow-2xl',
+                        title: 'text-gray-900 font-bold',
+                    }
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        // proceed to upload files and submit
+                        await proceedSubmitApproval();
+                    }
+                })
+            }
+        });
+        async function proceedSubmitApplication() {
+            let formData = $('#memberForm').serializeArray();
             let files = $('input[type="file"]').not('#temp-imgs').toArray().map(input => {
                 return { inputName: input.name, file: input.files[0] };
             }).filter(f => f.file);
@@ -998,7 +1066,7 @@
                 }, {});
             }
             console.log("🚀 ~ uploadFiles:", uploadFiles)
-            let formData = $('#memberForm').serializeArray();
+
             formData.push({ name: 'application_id', value: applicationId });
             formData.push({ name: 'is_approved', value: isApproved });
             formData.push({ name: 'uploaded_files', value: JSON.stringify(uploadFiles) });
@@ -1039,11 +1107,11 @@
                         html: `
                             <div class="text-left">
                                 <h3 class="text-lg font-semibold text-gray-800">ขอบคุณที่สมัครเป็นสมาชิกสมาคมฯ</h3>
-                                <p class="mt-2 text-sm text-gray-600">
+                                <p class="mt-2 text-base text-gray-600 text-center">
                                     เราได้รับใบสมัครของคุณเรียบร้อยแล้ว และจะดำเนินการตรวจสอบข้อมูลของคุณ
                                     <br>ผลการสมัครจะถูกแจ้งให้ทราบทาง <span class="font-medium text-gray-800">อีเมล</span> ภายใน <span class="font-medium text-gray-800">7 วันทำการ</span>.
                                 </p>
-                                <p class="mt-4 text-sm text-gray-600">
+                                <p class="mt-4 text-base text-gray-600 text-center">
                                     หากคุณมีคำถามเพิ่มเติม กรุณาติดต่อเจ้าหน้าที่สมาคมฯ
                                 </p>
                             </div>
@@ -1069,7 +1137,65 @@
                     });
                 }
             });
-        });
+        };
+
+        function proceedSubmitApproval() {
+            let formData = $('#memberForm').serializeArray();
+            let signatures = {
+                applicant_signature: applicantSignaturePad.toData(),
+                officer_signature: officerSignaturePad.toData()
+            }
+            formData.push({ name: 'is_approved', value: isApproved });
+            formData.push({ name: 'signatures', value: JSON.stringify(signatures) });
+            Swal.fire({
+                iconHtml: "<i class='fa fa-cloud-upload-alt'></i>",
+                title: 'กำลังบันทึกผลการสมัคร...',
+                text: 'โปรดรอสักครู่ ขณะกำลังบันทึกผลการสมัคร',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                customClass: {
+                    popup: 'rounded-3xl shadow-2xl',
+                    title: 'text-gray-900 font-bold',
+                    icon: 'text-blue-600 border-none'
+                }
+            });
+            formData = formData.reduce((acc, curr) => {
+                acc[curr.name] = curr.value;
+                return acc;
+            }, {});
+            console.log("🚀 ~ formData:", formData)
+
+            callScript({
+                func: 'submitMemberApplication',
+                params: formData,
+                onSuccess: (result) => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกผลการสมัครเรียบร้อย',
+                        customClass: {
+                            popup: 'rounded-3xl shadow-2xl',
+                            title: 'text-gray-900 font-bold',
+                        }
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                },
+                onFailure: (error) => {
+                    console.error('Error submitting application approval:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาดในการบันทึกผลการสมัคร',
+                        text: 'โปรดลองอีกครั้งในภายหลัง หากปัญหายังเกิดขึ้น กรุณาติดต่อเจ้าหน้าที่',
+                        customClass: {
+                            popup: 'rounded-3xl shadow-2xl',
+                            title: 'text-gray-900 font-bold',
+                        }
+                    });
+                }
+            });
+        };
 
         function generateUniqueId() {
             const timestamp = Date.now().toString(36);
@@ -1088,6 +1214,12 @@
                     if (field.type === 'checkbox') {
                         if (Array.isArray(value)) {
                             value.forEach(val => {
+                                if (val.startsWith('อื่นๆ(') && val.endsWith(')')) {
+                                    const othersText = val.slice(4, -1);
+                                    $('#expertise_others').prop('checked', true);
+                                    $('#expertise_others_text').val(othersText);
+                                    val = 'อื่นๆ';
+                                }
                                 const checkbox = document.querySelector(`input[name="${key}"][value="${val}"]`);
                                 if (checkbox) checkbox.checked = true;
                             });
@@ -1115,7 +1247,6 @@
                                 if (checkbox) checkbox.checked = true;
                             });
                         } else if ($(field).attr('type') === 'file' && value) {
-                            console.log("🚀 ~ populatedApplicationData ~ key:", key)
                             renderFilePreview(value, key);
                         } else {
                             field.value = value;
@@ -1124,8 +1255,7 @@
                 }
             }
             let signatures = typeof data.signatures === 'string' ? JSON.parse(data.signatures) : data.signatures;
-            if (signatures.applicant_signature &&  signatures.applicant_signature.length > 0) {
-                console.log("🚀 ~ populatedApplicationData ~ data.signatures:", data.signatures)
+            if (signatures.applicant_signature && signatures.applicant_signature.length > 0) {
                 applicantSignaturePad.fromData(signatures.applicant_signature);
                 applicantSignaturePad.off();
                 $('#clear_applicant_signature').addClass('hidden');
@@ -1133,6 +1263,9 @@
             if (signatures.officer_signature && signatures.officer_signature.length > 0) {
                 officerSignaturePad.fromData(signatures.officer_signature);
             }
+
+            $('#memberForm').append('<input type="hidden" name="submission_date" value="' + data.submission_date + '" />');
+            $('#memberForm').append('<input type="hidden" name="approval_date" value="' + moment().format('YYYY-MM-DD') + '" />');
             // re init officer signature pad
             officerSignaturePad.off();
             officerSignaturePad.on();
@@ -1141,6 +1274,7 @@
                 $('html, body').animate({
                     scrollTop: $('body').offset().top
                 }, 500);
+                generatePDF()
             }, 300);
 
         }
@@ -1179,7 +1313,7 @@
             $(parent).append(`
                 <div class="preview-container mt-2 p-3 border border-gray-300 rounded-lg bg-gray-50" data-preview="${inputName}">
                     <span class="block text-sm font-medium text-gray-700">ไฟล์ที่อัพโหลด:</span>
-                    <a href="${fileUrl}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center text-sm font-medium text-blue-600 hover:underline">
+                    <a href="${fileUrl}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center text-sm font-medium text-blue-600 hover:underline" data-for="${inputName}">
                         <i class="fa fa-file-alt text-blue-600 mr-2"></i>
                         เปิดดูไฟล์
                     </a>
@@ -1413,6 +1547,283 @@
                     }
                 });
             });
+        }
+    </script>
+    <script>
+        var pdfDoc
+        var PDFDocument = PDFLib.PDFDocument;
+        var StandardFonts = PDFLib.StandardFonts;
+        var form_pdf_bytes, font_bytes, applicant_signature_bytes, officer_signature_bytes, portrait_photo_bytes;
+        async function generatePDF() {
+            await initPDFGeneration();
+            if (!pdfDoc) pdfDoc = await PDFDocument.load(form_pdf_bytes)
+            pdfDoc.registerFontkit(fontkit);
+            var form = pdfDoc.getForm()
+            const sarabun = await pdfDoc.embedFont(font_bytes, { subset: true })
+            const symbol = await pdfDoc.embedFont(StandardFonts.ZapfDingbats, { subset: true })
+
+            // embed images
+            const applicant_signature_image = applicant_signature_bytes?  await embedImage(applicant_signature_bytes, 'png') : null
+            const officer_signature_image = officer_signature_bytes ? await embedImage(officer_signature_bytes, 'png') : null
+            const portrait_photo_image = await embedImage(portrait_photo_bytes, $('a[data-for="portrait_photo"]').attr('data-type'))
+            const setChecked = (textFieldName) => {
+                let textField = form.getTextField(textFieldName)
+                textField.setText('✓')
+                textField.updateAppearances(symbol)
+            }
+            let textField
+            switch ($('input[name="delivery_address_type"]:checked').val()) {
+                case 'ตามที่อยู่ตามทะเบียนบ้าน':
+                    setChecked('delivery_address_type[1]')
+                    break;
+                case 'ตามที่อยู่ปัจจุบัน':
+                    setChecked('delivery_address_type[2]')
+                    break;
+                case 'ตามที่อยู่ร้าน / สถานประกอบการ':
+                    setChecked('delivery_address_type[3]')
+                    break;
+            }
+
+            switch ($('input[name="health_status"]:checked').val()) {
+                case 'ร่างกายครบ 32':
+                    setChecked('health_status[1]')
+                    break;
+                case 'มีโรคประจำตัว':
+                    setChecked('health_status[2]')
+                    break;
+                case 'ร่างกายไม่ครบ 32':
+                    setChecked('health_status[3]')
+                    break;
+            }
+
+            switch ($('input[name="expertise"]:checked').val()) {
+                case 'กลุ่มกุญแจบ้าน':
+                    setChecked('expertise[1]')
+                    break;
+                case 'กลุ่มกุญแจรถยนต์':
+                    setChecked('expertise[2]')
+                    break;
+                case 'กลุ่มกุญแจมอเตอร์ไซด์':
+                    setChecked('expertise[3]')
+                    break;
+                case 'กลุ่มทำกุญแจดอกใหม่':
+                    setChecked('expertise[4]')
+                    break;
+                case 'รีโมทรถยนต์ / อิมโมบิไลเซอร์':
+                    setChecked('expertise[5]')
+                    break;
+            }
+
+            if ($('input[name="address_registration"]').val() != "") {
+                setChecked('has_address_registration')
+            }
+            if ($('input[name="address_current"]').val() != "") {
+                setChecked('has_address_current')
+            }
+            if ($('input[name="address_business"]').val() != "") {
+                setChecked('has_address_business')
+            }
+
+            if ($('input[name="health_chronic_detail"]').val() != "") {
+                setChecked('health_status[2]')
+            }
+            if ($('input[name="health_disability_detail"]').val() != "") {
+                setChecked('health_status[3]')
+            }
+
+            if ($('input[name="expertise_others_text"]').val() != "") {
+                setChecked('expertise[6]')
+            }
+
+            if ($('a[data-for="copy_id_card"]')) {
+                setChecked('has_copy_id_card')
+            }
+            if ($('a[data-for="copy_house_reg"]')) {
+                setChecked('has_copy_house_reg')
+            }
+
+            if ($('a[data-for="portrait_photo"]')) {
+                setChecked('has_portrait_photo')
+                form.getTextField('portrait_photo').setImage(portrait_photo_image)
+            }
+            if ($('a[data-for="occupation_proof"]')) {
+                setChecked('has_occupation_proof')
+            }
+
+            // fill form fields
+            form.getTextField('first_name').setText(($('input[name="prefix"]').val() || '') +  ($('input[name="first_name"]').val() || ''))
+            form.getTextField('last_name').setText($('input[name="last_name"]').val() || '')
+            form.getTextField('age').setText($('input[name="age"]').val() || '')
+            form.getTextField('date_of_birth').setText(convertToThaiDate($('input[name="date_of_birth"]').val() || ''))
+            form.getTextField('id_card_number').setText(formatThaiIDCard($('input[name="id_card_number"]').val() || ''))
+            form.getTextField('nationality').setText($('input[name="nationality"]').val() || '')
+            form.getTextField('religion').setText($('input[name="religion"]').val() || '')
+            form.getTextField('address_registration').setText($('textarea[name="address_registration"]').val() || '')
+            form.getTextField('address_current').setText($('textarea[name="address_current"]').val() || '')
+            form.getTextField('address_business').setText($('textarea[name="address_business"]').val() || '')
+            form.getTextField('mobile_phone').setText($('input[name="mobile_phone"]').val() || '')
+            form.getTextField('email').setText($('input[name="email"]').val() || '')
+            form.getTextField('occupation').setText($('input[name="occupation"]').val() || '')
+            form.getTextField('business_name').setText($('input[name="business_name"]').val() || '')
+            form.getTextField('business_location_details').setText($('input[name="business_location_details"]').val() || '')
+            form.getTextField('business_phone').setText($('input[name="business_phone"]').val() || '')
+            form.getTextField('health_chronic_detail').setText($('input[name="health_chronic_detail"]').val() || '')
+            form.getTextField('health_disability_detail').setText($('input[name="health_disability_detail"]').val() || '')
+            form.getTextField('years_experience').setText($('input[name="years_experience"]').val() || '')
+            form.getTextField('expertise_other').setText($('input[name="expertise_others_text"]').val() || '')
+            form.getTextField('beneficiary_name').setText($('input[name="beneficiary_name"]').val() || '')
+            form.getTextField('beneficiary_phone').setText($('input[name="beneficiary_phone"]').val() || '')
+            form.getTextField('beneficiary_relationship').setText($('input[name="beneficiary_relationship"]').val() || '')
+            form.getTextField('beneficiary_id_card').setText(formatThaiIDCard($('input[name="beneficiary_id_card"]').val() || ''))
+            form.getTextField('beneficiary_address').setText($('textarea[name="beneficiary_address"]').val() || '')
+            form.getTextField('officer_id').setText($('input[name="officer_id"]').val() || '')
+            form.getTextField('approval_date').setText(convertToThaiDate($('input[name="approval_date"]').val() || ''))
+
+            let [submit_day, submit_month, submit_year] = $('input[name="submission_date"]').val().split('-').reverse().map(num => parseInt(num, 10));
+            submit_year += 543; // Convert to Thai year
+            form.getTextField('submit_date').setText(submit_day.toString().padStart(2, '0'));
+            form.getTextField('submit_month').setText(submit_month.toString().padStart(2, '0'));
+            form.getTextField('submit_year').setText(submit_year.toString());
+
+            let [approval_day, approval_month, approval_year] = $('input[name="approval_date"]').val().split('-').reverse().map(num => parseInt(num, 10));
+            approval_year += 543; // Convert to Thai year
+            form.getTextField('approve_date').setText(approval_day.toString().padStart(2, '0'));
+            form.getTextField('approve_month').setText(approval_month.toString().padStart(2, '0'));
+            form.getTextField('approve_year').setText(approval_year.toString());
+
+            // set signatures
+            if(applicant_signature_image && applicant_signature_image !== null){
+                console.log("🚀 ~ generatePDF ~ applicant_signature_image:", applicant_signature_image)
+                form.getTextField('applicant_signature').setImage(applicant_signature_image)
+            }
+            if(officer_signature_image && officer_signature_image !== null){
+                form.getTextField('officer_signature').setImage(officer_signature_image)
+            }
+            form.updateFieldAppearances(sarabun);
+            form.flatten()
+            var pdfBytes = await pdfDoc.save()
+            var pdfdatauri = await pdfDoc.saveAsBase64({ dataUri: true })
+
+            // open PDF in new tab
+            var pdfWindow = window.open("");
+            pdfWindow.document.write("<iframe width='100%' height='100%' src='" + pdfdatauri + "'></iframe>");
+            return pdfBytes;
+
+        }
+
+        async function initPDFGeneration() {
+            return new Promise((resolve, reject) => {
+                // form_pdf_bytes = await fetch('../teampm/formDecom v-2.pdf').then(res => res.arrayBuffer())
+                // font_bytes = await fetch('../teampm/THSarabun.ttf').then(res => res.arrayBuffer())
+                Promise.all([
+                    fetch('./application_template.pdf').then(res => res.arrayBuffer()),
+                    fetch('./THSarabun.ttf').then(res => res.arrayBuffer()),
+                    getSignatureImageAsArrayBuffer(applicantSignaturePad),
+                    getSignatureImageAsArrayBuffer(officerSignaturePad),
+                    fetch($('a[data-for="portrait_photo"]').attr('href')).then(res =>{
+                        const contentType = res.headers.get('Content-Type');
+                        return res.arrayBuffer().then(buffer => {
+                            // Store the content type as a data attribute for later use
+                            $('a[data-for="portrait_photo"]').attr('data-type', contentType.split('/')[1]);
+                            return buffer;
+                        });
+                    })
+                ]).then(([pdfBytes, fontBytes, applicantSignatureBytes, officerSignatureBytes, portraitPhotoBytes]) => {
+                    form_pdf_bytes = pdfBytes;
+                    font_bytes = fontBytes;
+                    applicant_signature_bytes = applicantSignatureBytes;
+                    officer_signature_bytes = officerSignatureBytes;
+                    portrait_photo_bytes = portraitPhotoBytes;
+                    resolve();
+                }).catch(err => {
+                    console.error('Error loading PDF or font:', err);
+                    reject(err);
+                });
+            });
+        }
+
+        function getSignatureImageAsArrayBuffer(signaturePad) {
+            return new Promise((resolve, reject) => {
+                if (signaturePad.isEmpty()) {
+                    resolve(null);
+                } else {
+                    const dataURL = signaturePad.toDataURL('image/png');
+                    const base64 = dataURL.split(',')[1];
+                    const blob = base64ToBlob(base64, 'image/png');
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        resolve(reader.result);
+                    };
+                    reader.onerror = (error) => {
+                        reject(error);
+                    };
+                    reader.readAsArrayBuffer(blob);
+                }
+            });
+        }
+        function base64ToBlob(base64, type) {
+            {
+                let binary = atob(base64)
+                let array = []
+                for (let i = 0; i < binary.length; i++) {
+                    array.push(binary.charCodeAt(i))
+                }
+                return new Blob([new Uint8Array(array)], { type: type })
+            }
+        }
+
+        async function embedImage(bytes, type) {
+            console.log("🚀 ~ embedImage ~ type:", type)
+            console.log("🚀 ~ embedImage ~ bytes:", bytes)
+            let e_img
+            if (type == 'png') {
+                e_img = await pdfDoc.embedPng(bytes)
+            } else if (type == 'jpg') {
+                e_img = await pdfDoc.embedJpg(bytes)
+            } else if (type == 'jpeg') {
+                e_img = await pdfDoc.embedJpg(bytes)
+            }
+            return e_img
+        }
+
+        function convertToThaiDate(dateString) {
+            try {
+                if (!dateString || dateString.trim() === '') return '';
+                let [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
+                if (isNaN(year) || isNaN(month) || isNaN(day)) {
+                    return '';
+                }
+                year += 543; // Convert to Buddhist Era
+                return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+            } catch (error) {
+                console.error("Error converting date:", error);
+                return '';
+            }
+        }
+
+        function formatThaiIDCard(id) {
+            if (!id || id.trim() === '') return '';
+            try {
+                // Convert to string and remove all non-digit characters
+                let digits = String(id).replace(/\D/g, '');
+
+                // Limit to 13 digits max
+                if (digits.length > 13) {
+                    digits = digits.substring(0, 13);
+                }
+
+                // Apply formatting step-by-step
+                let formatted = digits
+                    .replace(/^(\d{1})(\d)/, '$1-$2')           // X-
+                    .replace(/^(\d{1})-(\d{4})(\d)/, '$1-$2-$3') // X-XXXX-
+                    .replace(/^(\d{1})-(\d{4})-(\d{5})(\d)/, '$1-$2-$3-$4') // X-XXXX-XXXXX-
+                    .replace(/^(\d{1})-(\d{4})-(\d{5})-(\d{2})(\d)/, '$1-$2-$3-$4-$5'); // X-XXXX-XXXXX-XX-X
+
+                return formatted;
+            } catch (error) {
+                console.error("Error formatting Thai ID:", error);
+                return '';
+            }
         }
     </script>
 </body>
