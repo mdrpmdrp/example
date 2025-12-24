@@ -1065,7 +1065,7 @@
                 }, {});
             }
             console.log("🚀 ~ uploadFiles:", uploadFiles)
-
+            formData.push({ name: 'folder_id', value: uploadFiles['folderId'] || '' });
             formData.push({ name: 'application_id', value: applicationId });
             formData.push({ name: 'is_approved', value: isApproved });
             formData.push({ name: 'uploaded_files', value: JSON.stringify(uploadFiles) });
@@ -1104,14 +1104,14 @@
                         icon: 'success',
                         title: 'ส่งใบสมัครเรียบร้อย',
                         html: `
-                            <div class="text-left">
+                            <div class="text-center">
                                 <h3 class="text-lg font-semibold text-gray-800">ขอบคุณที่สมัครเป็นสมาชิกสมาคมฯ</h3>
-                                <p class="mt-2 text-base text-gray-600 text-center">
-                                    เราได้รับใบสมัครของคุณเรียบร้อยแล้ว และจะดำเนินการตรวจสอบข้อมูลของคุณ
+                                <p class="mt-4 text-base text-gray-600">
+                                    เราได้รับใบสมัครของคุณเรียบร้อยแล้ว และกำลังดำเนินการตรวจสอบข้อมูลของคุณ
                                     <br>ผลการสมัครจะถูกแจ้งให้ทราบทาง <span class="font-medium text-gray-800">อีเมล</span> ภายใน <span class="font-medium text-gray-800">7 วันทำการ</span>.
                                 </p>
-                                <p class="mt-4 text-base text-gray-600 text-center">
-                                    หากคุณมีคำถามเพิ่มเติม กรุณาติดต่อเจ้าหน้าที่สมาคมฯ
+                                <p class="mt-6 text-base text-gray-600">
+                                    หากคุณมีคำถามเพิ่มเติม กรุณาติดต่อผู้ดูแลระบบ.
                                 </p>
                             </div>
                         `,
@@ -1146,7 +1146,7 @@
                 officer_id: $('input[name="officer_id"]').val(),
                 application_status: $('input[name="application_status"]:checked').val(),
                 reviewer_officer: $('textarea[name="reviewer_officer"]').val(),
-                approval_date: moment().format('YYYY-MM-DD')
+                approval_date: moment().format('YYYY-MM-DD'),
             }
             let signatures = {
                 applicant_signature: applicantSignaturePad.toData(),
@@ -1203,29 +1203,29 @@
                     });
                 })
             ])
-            .then(() => {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'บันทึกผลการสมัครเรียบร้อย',
-                    customClass: {
-                        popup: 'rounded-3xl shadow-2xl',
-                        title: 'text-gray-900 font-bold',
-                    }
-                }).then(() => {
-                    window.location.reload();
+                .then(() => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกผลการสมัครเรียบร้อย',
+                        customClass: {
+                            popup: 'rounded-3xl shadow-2xl',
+                            title: 'text-gray-900 font-bold',
+                        }
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                })
+                .catch((error) => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาดในการบันทึกผลการสมัคร',
+                        text: 'โปรดลองอีกครั้งในภายหลัง หากปัญหายังเกิดขึ้น กรุณาติดต่อเจ้าหน้าที่',
+                        customClass: {
+                            popup: 'rounded-3xl shadow-2xl',
+                            title: 'text-gray-900 font-bold',
+                        }
+                    });
                 });
-            })
-            .catch((error) => {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาดในการบันทึกผลการสมัคร',
-                    text: 'โปรดลองอีกครั้งในภายหลัง หากปัญหายังเกิดขึ้น กรุณาติดต่อเจ้าหน้าที่',
-                    customClass: {
-                        popup: 'rounded-3xl shadow-2xl',
-                        title: 'text-gray-900 font-bold',
-                    }
-                });
-            });
         };
 
         function generateUniqueId() {
@@ -1236,7 +1236,7 @@
 
         function populatedApplicationData(data) {
             $('#memberForm').find('input, select, textarea').prop('disabled', true);
-            $('#for_officer').find('input, select, textarea').prop('disabled', false);
+
             // $('#memberForm')[0].reset();
             if (!data) return;
             for (const [key, value] of Object.entries(data)) {
@@ -1285,6 +1285,7 @@
                     }
                 }
             }
+            $('input[name="application_status"][value="' + (data.is_approved ? 'approved' : 'rejected') + '"]').prop('checked', true).trigger('change');
             let signatures = typeof data.signatures === 'string' ? JSON.parse(data.signatures) : data.signatures;
             if (signatures.applicant_signature && signatures.applicant_signature.length > 0) {
                 applicantSignaturePad.fromData(signatures.applicant_signature);
@@ -1293,27 +1294,52 @@
             }
             if (signatures.officer_signature && signatures.officer_signature.length > 0) {
                 officerSignaturePad.fromData(signatures.officer_signature);
+                officerSignaturePad.off();
+                if (data.is_approved === true) {
+                    $('button[type="reset"]').parent().html(`
+                    <p class="text-xl text-gray-600">
+                        <i class="fa fa-check-circle text-green-600 mr-2"></i>
+                        ใบสมัครนี้ได้รับการอนุมัติแล้ว</p>
+                    <a href="https://drive.google.com/uc?export=view&id=${data.approval_pdf_url.split('/')[5]}" id="download_pdf" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                        ดาวน์โหลดไฟล์ PDF
+                    </a>
+                `)
+                } else {
+                    $('button[type="reset"]').parent().html(`
+                    <p class="text-xl text-gray-600">
+                        <i class="fa fa-check-circle text-green-600 mr-2"></i>
+                        ใบสมัครนี้ได้รับการปฏิเสธแล้ว</p>
+                    <a href="https://drive.google.com/uc?export=view&id=${data.approval_pdf_url.split('/')[5]}" id="download_pdf" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                        ดาวน์โหลดไฟล์ PDF
+                    </a>
+                `);
+                }
+                $('#clear_officer_signature').addClass('hidden');
+                $('#for_officer').find('input, select, textarea').prop('disabled', true);
+            } else {
+                $('#for_officer').find('input, select, textarea').prop('disabled', false);
+                $('button[type="submit"]').prop('disabled', false).html('<i class="fa fa-save mr-2"></i>บันทึกผลการสมัคร');
+                if (isApproved) {
+                    $('[name="officer_id"]').prop('required', true);
+                    $('[name="application_status"]').prop('required', true).on('change', function () {
+                        const status = $(this).val();
+                        if (status === 'rejected') {
+                            $('[name="reviewer_officer"]').prop('required', true).prop('disabled', false);
+                        } else {
+                            $('[name="reviewer_officer"]').prop('required', false).prop('disabled', true).val('');
+                        }
+                    });
+                    $('#memberForm').append('<input type="hidden" name="submission_date" value="' + data.submission_date + '" />');
+                    $('#memberForm').append('<input type="hidden" name="approval_date" value="' + moment().format('YYYY-MM-DD') + '" />');
+                    // re init officer signature pad
+                    officerSignaturePad.off();
+                    officerSignaturePad.on();
+                    $('#clear_officer_signature').removeClass('hidden');
+                }
             }
 
-            if(isApproved){
-                $('[name="officer_id"]').prop('required', true);
-                $('[name="application_status"]').prop('required', true).on('change', function(){
-                    const status = $(this).val();
-                    if(status === 'rejected'){
-                        $('[name="reviewer_officer"]').prop('required', true).prop('disabled', false);
-                    } else {
-                        $('[name="reviewer_officer"]').prop('required', false).prop('disabled', true).val('');
-                    }
-                });
 
-            }
 
-            $('#memberForm').append('<input type="hidden" name="submission_date" value="' + data.submission_date + '" />');
-            $('#memberForm').append('<input type="hidden" name="approval_date" value="' + moment().format('YYYY-MM-DD') + '" />');
-            // re init officer signature pad
-            officerSignaturePad.off();
-            officerSignaturePad.on();
-            $('#clear_officer_signature').removeClass('hidden');
             setTimeout(() => {
                 $('html, body').animate({
                     scrollTop: $('body').offset().top
@@ -1334,7 +1360,7 @@
                     reader.onload = function (e) {
                         previewElement.innerHTML = `<img src="${e.target.result}" alt="Preview" onclick="showPreview('${e.target.result}')" class="w-full h-full object-cover rounded-md" />`;
                         previewElement.classList.remove('hidden');
-                        if(previewId === 'preview_photo') {
+                        if (previewId === 'preview_photo') {
                             console.log("🚀 ~ file.type:", file.type.split('/')[1])
                             $('#memberForm').append(`<a href="${e.target.result}" data-for="portrait_photo" data-type="${file.type.split('/')[1]}" class="hidden"></a>`);
                         }
@@ -1655,23 +1681,26 @@
                     break;
             }
 
-            switch ($('input[name="expertise"]:checked').val()) {
-                case 'กลุ่มกุญแจบ้าน':
-                    setChecked('expertise[1]')
-                    break;
-                case 'กลุ่มกุญแจรถยนต์':
-                    setChecked('expertise[2]')
-                    break;
-                case 'กลุ่มกุญแจมอเตอร์ไซด์':
-                    setChecked('expertise[3]')
-                    break;
-                case 'กลุ่มทำกุญแจดอกใหม่':
-                    setChecked('expertise[4]')
-                    break;
-                case 'รีโมทรถยนต์ / อิมโมบิไลเซอร์':
-                    setChecked('expertise[5]')
-                    break;
-            }
+            $('input[name="expertise"]:checked').each(function () {
+                if (this.value === 'อื่นๆ') return;
+                switch (this.value.trim()) {
+                    case 'กลุ่มกุญแจบ้าน':
+                        setChecked('expertise[1]')
+                        break;
+                    case 'กลุ่มกุญแจรถยนต์':
+                        setChecked('expertise[2]')
+                        break;
+                    case 'กลุ่มกุญแจมอเตอร์ไซด์':
+                        setChecked('expertise[3]')
+                        break;
+                    case 'กลุ่มทำกุญแจดอกใหม่':
+                        setChecked('expertise[4]')
+                        break;
+                    case 'รีโมทรถยนต์ / อิมโมบิไลเซอร์':
+                        setChecked('expertise[5]')
+                        break;
+                }
+            });
 
             if ($('input[name="address_registration"]').val() != "") {
                 setChecked('has_address_registration')
@@ -1694,18 +1723,18 @@
                 setChecked('expertise[6]')
             }
 
-            if ($('a[data-for="copy_id_card"]')) {
+            if ($('a[data-for="copy_id_card"]').length > 0) {
                 setChecked('has_copy_id_card')
             }
-            if ($('a[data-for="copy_house_reg"]')) {
+            if ($('a[data-for="copy_house_reg"]').length > 0) {
                 setChecked('has_copy_house_reg')
             }
 
-            if ($('a[data-for="portrait_photo"]')) {
+            if ($('a[data-for="portrait_photo"]').length > 0) {
                 setChecked('has_portrait_photo')
                 form.getTextField('portrait_photo').setImage(portrait_photo_image)
             }
-            if ($('a[data-for="occupation_proof"]')) {
+            if ($('a[data-for="occupation_proof"]').length > 0) {
                 setChecked('has_occupation_proof')
             }
 

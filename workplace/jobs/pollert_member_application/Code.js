@@ -76,7 +76,8 @@ function getApplicationDataById(appId) {
                 officer_id: data[i][35],
                 reviewer_officer: data[i][36],
                 approval_date: data[i][37],
-                signatures: data[i][38]
+                signatures: data[i][38],
+                approval_pdf_url: data[i][39]
             };
         }
     }
@@ -104,9 +105,11 @@ function getDownloadToken(e, raw = false) {
 
 function submitMemberApplication(e) {
     let uploaded_files = e.parameter.uploaded_files ? JSON.parse(e.parameter.uploaded_files) : {};
+    let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let applicationId = generateApplicationId(ss);
     let applicationData = [
         new Date(),
-        e.parameter.application_id,
+        applicationId,
         e.parameter.prefix,
         e.parameter.first_name,
         e.parameter.last_name,
@@ -115,7 +118,7 @@ function submitMemberApplication(e) {
         e.parameter.age,
         e.parameter.nationality,
         e.parameter.religion,
-        e.parameter.mobile_phone,
+        e.parameter.mobile_phone ? "'" + e.parameter.mobile_phone : '',
         e.parameter.email,
         e.parameter.address_registration,
         e.parameter.address_current,
@@ -123,7 +126,7 @@ function submitMemberApplication(e) {
         e.parameter.business_name,
         e.parameter.address_business,
         e.parameter.business_location_details,
-        e.parameter.business_phone,
+        e.parameter.business_phone ? "'" + e.parameter.business_phone : '',
         e.parameter.years_experience,
         e.parameter.expertise,
         e.parameter.delivery_address_type,
@@ -133,7 +136,7 @@ function submitMemberApplication(e) {
         e.parameter.beneficiary_name,
         e.parameter.beneficiary_relationship,
         e.parameter.beneficiary_id_card,
-        e.parameter.beneficiary_phone,
+        e.parameter.beneficiary_phone ? "'" + e.parameter.beneficiary_phone : '',
         e.parameter.beneficiary_address,
         e.parameter.is_approved,
         uploaded_files?.copy_id_card || '',
@@ -146,12 +149,29 @@ function submitMemberApplication(e) {
         e.parameter.signatures
     ]
 
-    let ss = SpreadsheetApp.getActiveSpreadsheet();
+
     let sheet = ss.getSheetByName('Member Applications');
     sheet.appendRow(applicationData);
+    DriveApp.getFolderById(e.parameter.folder_id).setName(applicationId);
     sendSubmissionEmail(applicationData);
     sendAdminLine(applicationData)
     return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function generateApplicationId(ss) {
+    let sheet = ss.getSheetByName('Helper');
+    let lastId = sheet.getRange('B1').getValue();
+    let today = new Date();
+    let year = today.getFullYear().toString().slice(-2);
+    let month = ('0' + (today.getMonth() + 1)).slice(-2);
+    let newId;
+    if (lastId && lastId.startsWith(`APP${year}${month}`)) {
+        let seq = parseInt(lastId.replace(`APP${year}${month}`, '')) + 1;
+        newId = `APP${year}${month}${('0000' + seq).slice(-4)}`;
+    } else {
+        newId = `APP${year}${month}0001`;
+    }
+    return newId;
 }
 
 function approveMemberApplication(e) {
@@ -162,7 +182,7 @@ function approveMemberApplication(e) {
     for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
         if (data[i][1] == applicationId) { // Assuming application_id is in the second column
             sheet.getRange(i + 1, 31).setValue(e.parameter.application_status === 'approved'); // is_approved
-            sheet.getRange(i + 1, 36, 1, 3).setValues([[e.parameter.officer_id, e.parameter.reviewer_officer, new Date()]]); // officer_id, application_status, reviewer_officer, approval_date
+            sheet.getRange(i + 1, 36, 1, 4).setValues([[e.parameter.officer_id, e.parameter.reviewer_officer, new Date(), e.parameter.signatures]]); // officer_id, application_status, reviewer_officer, approval_date
             break;
         }
     }
@@ -215,35 +235,29 @@ function sendSubmissionEmail(applicationData) {
 ทีมงาน Pollert`;
 
     const bodyHtml = `
-<style> :root {
-            /* Colors sampled from attached logo */
-            --primary: #0b3e6f;
-            /* navy */
-            --accent-red: #d72b2b;
-            /* red */
-            --muted-gray: #9b9b9b;
-            /* gray */
-        }
-</style>
-<div style="font-family: Arial, sans-serif; line-height: 1.6; color: var(--muted-gray);">
-    <div style="background-color: var(--primary); color: white; padding: 20px; border-radius: 8px;">
-        <h2 style="margin: 0;">ยืนยันการรับข้อมูลการสมัครสมาชิก</h2>
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="background-color: #0b3e6f; color: white; padding: 20px; border-radius: 8px;">
+        <h2 style="margin: 0;">
+            ยืนยันการรับขอมูลการสมัครสมาชิก
+        </h2>
     </div>
-    <div style="padding: 20px; border: 1px solid var(--primary); border-radius: 8px; margin-top: 10px;">
-        <p>เรียน คุณ<span style="color: var(--accent-red);">${applicationData[2]}${applicationData[3]} ${applicationData[4]}</span>,</p>
+    <div style="padding: 20px; border: 1px solid #0b3e6f; border-radius: 8px; margin-top: 10px;">
+        <p>เรียน คุณ<span style="color: #d72b2b;">${applicationData[3]} ${applicationData[4]}</span>,</p>
         <p>ขอขอบคุณที่ท่านได้สมัครเป็นสมาชิกกับเรา เราได้รับข้อมูลการสมัครของท่านเรียบร้อยแล้ว</p>
-        <h3 style="color: var(--primary);">รายละเอียดการสมัครของท่าน:</h3>
-        <ul style="list-style: none; padding: 0;">
-            <li>- <strong>หมายเลขคำขอสมัคร:</strong> ${applicationData[1]}</li>
-            <li>- <strong>ชื่อ-นามสกุล:</strong> ${applicationData[2]}${applicationData[3]} ${applicationData[4]}</li>
-            <li>- <strong>วันที่สมัคร:</strong> ${Utilities.formatDate(new Date(applicationData[0]), Session.getScriptTimeZone(), "yyyy-MM-dd")}</li>
+        <p>รายละเอียดการสมัครของท่านมีดังนี้:</p>
+        <ul>
+            <li>- หมายเลขคำขอสมัคร: <strong>${applicationData[1]}</strong></li>
+            <li>- ชื่อ-นามสกุล: <strong>${applicationData[2]}${applicationData[3]} ${applicationData[4]}</strong></li>
+            <li>- วันที่สมัคร: <strong>${Utilities.formatDate(new Date(applicationData[0]), Session.getScriptTimeZone(), "yyyy-MM-dd")}</strong></li>
         </ul>
-        <p>ทีมงานของเราจะดำเนินการตรวจสอบข้อมูลและติดต่อกลับไปยังท่านในเร็วๆ นี้ หากท่านมีข้อสงสัยหรือต้องการข้อมูลเพิ่มเติม กรุณาติดต่อเราที่ผู้ดูแลระบบ</p>
-        <p>ขอแสดงความนับถือ,<br>ทีมงาน <span style="color: var(--primary);">Pollert</span></p>
+        <p>ทีมงานของเราจะดำเนินการตรวจสอบข้อมูลและติดต่อกลับไปยังท่านในเร็วๆ นี้</p>
+        <p>หากท่านมีข้อสงสัยหรือต้องการข้อมูลเพิ่มเติม กรุณาติดต่อเราที่ผู้ดูแลระบบ</p>
+        <p>ขอแสดงความนับถือ,<br>ทีมงาน <span style="color: #0b3e6f;">Pollert</span></p>
     </div>
 </div>`;
 
     MailApp.sendEmail(emailAddress, subject, bodyText, {
+        name: 'ทีมงาน Pollert',
         htmlBody: bodyHtml
     });
 }
@@ -256,7 +270,7 @@ function sendApprovalEmail(applicationData, pdfBlob, pdfName) {
     const subject = 'แจ้งผลการสมัครสมาชิก สมาคมช่างกุญแจไทยแห่งประเทศไทย';
     let bodyText, bodyHtml;
     if (applicationData[30] === true) { // is_approved
-        bodyText = `เรียน คุณ${applicationData[2]}${applicationData[3]} ${applicationData[4]}
+        bodyText = `เรียน คุณ${applicationData[3]} ${applicationData[4]}
 
 ขอแสดงความยินดีที่ท่านได้รับการอนุมัติเป็นสมาชิกกับเรา กรุณาดาวน์โหลดใบสมัครสมาชิกที่แนบมาพร้อมอีเมลนี้
 
@@ -266,25 +280,15 @@ function sendApprovalEmail(applicationData, pdfBlob, pdfName) {
 ทีมงาน Pollert`;
 
         bodyHtml = `
-<style> :root {
-            /* Colors sampled from attached logo */
-            --primary: #0b3e6f;
-            /* navy */
-            --accent-red: #d72b2b;
-            /* red */
-            --muted-gray: #9b9b9b;
-            /* gray */
-        }
-</style>
-<div style="font-family: Arial, sans-serif; line-height: 1.6; color: var(--muted-gray);">
-    <div style="background-color: var(--primary); color: white; padding: 20px; border-radius: 8px;">
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="background-color: #0b3e6f; color: white; padding: 20px; border-radius: 8px;">
         <h2 style="margin: 0;">แจ้งผลการสมัครสมาชิก</h2>
     </div>
-    <div style="padding: 20px; border: 1px solid var(--primary); border-radius: 8px; margin-top: 10px;">
-        <p>เรียน คุณ<span style="color: var(--accent-red);">${applicationData[2]}${applicationData[3]} ${applicationData[4]}</span>,</p>
+    <div style="padding: 20px; border: 1px solid #0b3e6f; border-radius: 8px; margin-top: 10px;">
+        <p>เรียน คุณ<span style="color: #d72b2b;">${applicationData[3]} ${applicationData[4]}</span>,</p>
         <p>ขอแสดงความยินดีที่ท่านได้รับการอนุมัติเป็นสมาชิกกับเรา กรุณาดาวน์โหลดใบสมัครสมาชิกที่แนบมาพร้อมอีเมลนี้</p>
         <p>หากท่านมีข้อสงสัยหรือต้องการข้อมูลเพิ่มเติม กรุณาติดต่อเราที่ผู้ดูแลระบบ</p>
-        <p>ขอแสดงความนับถือ,<br>ทีมงาน <span style="color: var(--primary);">Pollert</span></p>
+        <p>ขอแสดงความนับถือ,<br>ทีมงาน <span style="color: #0b3e6f;">Pollert</span></p>
     </div>
 </div>`;
     } else {
@@ -296,29 +300,20 @@ function sendApprovalEmail(applicationData, pdfBlob, pdfName) {
 ทีมงาน Pollert`;
 
         bodyHtml = `
-<style> :root {
-            /* Colors sampled from attached logo */
-            --primary: #0b3e6f;
-            /* navy */
-            --accent-red: #d72b2b;
-            /* red */
-            --muted-gray: #9b9b9b;
-            /* gray */
-        }
-</style>
-<div style="font-family: Arial, sans-serif; line-height: 1.6; color: var(--muted-gray);">
-    <div style="background-color: var(--primary); color: white; padding: 20px; border-radius: 8px;">
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="background-color: #0b3e6f; color: white; padding: 20px; border-radius: 8px;">
         <h2 style="margin: 0;">แจ้งผลการสมัครสมาชิก</h2>
     </div>
-    <div style="padding: 20px; border: 1px solid var(--primary); border-radius: 8px; margin-top: 10px;">
-        <p>เรียน คุณ<span style="color: var(--accent-red);">${applicationData[2]}${applicationData[3]} ${applicationData[4]}</span>,</p>
+    <div style="padding: 20px; border: 1px solid #0b3e6f; border-radius: 8px; margin-top: 10px;">
+        <p>เรียน คุณ<span style="color: #d72b2b;">${applicationData[2]}${applicationData[3]} ${applicationData[4]}</span>,</p>
         <p>ขอแจ้งให้ท่านทราบว่าคำขอสมัครสมาชิกของท่านไม่ได้รับการอนุมัติในครั้งนี้ หากท่านมีข้อสงสัยหรือต้องการข้อมูลเพิ่มเติม กรุณาติดต่อเราที่ผู้ดูแลระบบ</p>
-        <p>ขอแสดงความนับถือ,<br>ทีมงาน <span style="color: var(--primary);">Pollert</span></p>
+        <p>ขอแสดงความนับถือ,<br>ทีมงาน <span style="color: #0b3e6f;">Pollert</span></p>
     </div>
 </div>`;
     }
 
     MailApp.sendEmail(emailAddress, subject, bodyText, {
+        name: 'ทีมงาน Pollert',
         htmlBody: bodyHtml,
         attachments: [pdfBlob]
     });
@@ -367,7 +362,7 @@ function testSendAdminLine() {
         'ไทย',
         'พุทธ',
         '0812345678',
-        '',
+        'makrookyimyam@gmail.com',
         '123 หมู่ 4 ตำบลตัวอย่าง อำเภอเมือง จังหวัดตัวอย่าง 10100',
         '456 หมู่ 5 ตำบลตัวอย่าง อำเภอเมือง จังหวัดตัวอย่าง 10100',
         'ช่างกุญแจ',
@@ -397,4 +392,50 @@ function testSendAdminLine() {
         ''
     ];
     sendAdminLine(applicationData);
+}
+
+function testSendapprovalEmai(){
+    let applicationData = [
+        new Date(),
+        'APP123456',
+        'นาย',
+        'สมชาย',
+        'ใจดี',
+        '1234567890123',
+        '1990-01-01',
+        34,
+        'ไทย',
+        'พุทธ',
+        '0812345678',
+        'makrookyimyam@gmail.com',
+        '123 หมู่ 4 ตำบลตัวอย่าง อำเภอเมือง จังหวัดตัวอย่าง 10100',
+        '456 หมู่ 5 ตำบลตัวอย่าง อำเภอเมือง จังหวัดตัวอย่าง 10100',
+        'ช่างกุญแจ',
+        'ร้านสมชายกุญแจ',
+        '789 ถนนตัวอย่าง แขวงตัวอย่าง เขตตัวอย่าง กรุงเทพมหานคร 10200',
+        'ใกล้กับห้างสรรพสินค้าตัวอย่าง',
+        '021234567',
+        5,
+        'ช่างกุญแจทั่วไป, ช่างกุญแจรถยนต์',
+        'ที่อยู่ตามทะเบียนบ้าน',
+        'ปกติ',
+        '',
+        '',
+        'นางสาวสมหญิง ใจดี',
+        'ภรรยา',
+        '3210987654321',
+        '0898765432',
+        '123 หมู่ 4 ตำบลตัวอย่าง อำเภอเมือง จังหวัดตัวอย่าง 10100',
+        true,
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        ''
+    ];
+    let pdfBlob = Utilities.newBlob('Test PDF Content', 'application/pdf', 'test_application.pdf');
+    sendApprovalEmail(applicationData, pdfBlob, 'test_application.pdf');
 }
