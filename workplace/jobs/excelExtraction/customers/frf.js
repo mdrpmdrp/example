@@ -14,7 +14,7 @@ function generateFRFTransactionJSON({ orderRows, dbRows } = {}) {
     orderRows = orderRows.slice(2); // Remove header rows
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const matcherSheet = ss.getSheetByName('FRF_matcher') || ss.insertSheet('FRF_matcher');
+    const matcherSheet = ss.getSheetByName('FRF') || ss.insertSheet('FRF');
     const matcherData = matcherSheet.getDataRange().getDisplayValues();
 
     // Build optimized maps for O(1) lookups
