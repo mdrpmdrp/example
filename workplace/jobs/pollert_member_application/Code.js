@@ -1,13 +1,13 @@
 function doPost(e) {
     Logger = BetterLog.useSpreadsheet()
-    try{
+    try {
         return handleRequest(e);
-    }catch (e) { //with stack tracing if your exceptions bubble up to here
-    e = (typeof e === 'string') ? new Error(e) : e;
-    Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s" .',e.name||'', 
-               e.message||'', e.lineNumber||'', e.fileName||'', e.stack||'');
-    throw e;
-  }
+    } catch (e) { //with stack tracing if your exceptions bubble up to here
+        e = (typeof e === 'string') ? new Error(e) : e;
+        Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s" .', e.name || '',
+            e.message || '', e.lineNumber || '', e.fileName || '', e.stack || '');
+        throw e;
+    }
 }
 
 
@@ -32,13 +32,13 @@ function verifyOfficerPassword(e) {
 }
 
 function getApplicationDataById(appId) {
-   let ss = SpreadsheetApp.getActiveSpreadsheet();
-   let sheet = ss.getSheetByName('Member Applications');
-   let data = sheet.getDataRange().getValues();
+    let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('Member Applications');
+    let data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
-         if (data[i][1] == appId) { // Assuming application_id is in the first column
-              return {
-                submission_date:Utilities.formatDate(new Date(data[i][0]), Session.getScriptTimeZone(), "yyyy-MM-dd"),
+        if (data[i][1] == appId) { // Assuming application_id is in the first column
+            return {
+                submission_date: Utilities.formatDate(new Date(data[i][0]), Session.getScriptTimeZone(), "yyyy-MM-dd"),
                 application_id: data[i][1],
                 prefix: data[i][2],
                 first_name: data[i][3],
@@ -77,13 +77,13 @@ function getApplicationDataById(appId) {
                 reviewer_officer: data[i][36],
                 approval_date: data[i][37],
                 signatures: data[i][38]
-              };
-         }
+            };
+        }
     }
     return null; // Return null if application not found
 }
 
-function getDownloadToken(e, raw=false) {
+function getDownloadToken(e, raw = false) {
     let applicationId = e.parameter.applicationId;
     if (!applicationId) {
         return ContentService.createTextOutput(JSON.stringify({ success: false, message: 'Missing applicationId' })).setMimeType(ContentService.MimeType.JSON);
@@ -95,7 +95,7 @@ function getDownloadToken(e, raw=false) {
     } else {
         applicationFolder = applicationFolder.next();
     }
-    if(raw){
+    if (raw) {
         return applicationFolder;
     }
     return ContentService.createTextOutput(JSON.stringify({ success: true, token: ScriptApp.getOAuthToken(), folderId: applicationFolder.getId() })).setMimeType(ContentService.MimeType.JSON);
@@ -149,7 +149,8 @@ function submitMemberApplication(e) {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Member Applications');
     sheet.appendRow(applicationData);
-
+    sendSubmissionEmail(applicationData);
+    sendAdminLine(applicationData)
     return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
 }
 
@@ -159,33 +160,196 @@ function approveMemberApplication(e) {
     let sheet = ss.getSheetByName('Member Applications');
     let data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
-         if (data[i][1] == applicationId) { // Assuming application_id is in the second column
-              sheet.getRange(i + 1, 31).setValue(e.parameter.application_status); // is_approved
-              sheet.getRange(i + 1, 36,1,4).setValues([[e.parameter.officer_id, e.parameter.application_status, e.parameter.reviewer_officer, new Date()]]); // officer_id, application_status, reviewer_officer, approval_date
-              break;
-         }
+        if (data[i][1] == applicationId) { // Assuming application_id is in the second column
+            sheet.getRange(i + 1, 31).setValue(e.parameter.application_status === 'approved'); // is_approved
+            sheet.getRange(i + 1, 36, 1, 3).setValues([[e.parameter.officer_id, e.parameter.reviewer_officer, new Date()]]); // officer_id, application_status, reviewer_officer, approval_date
+            break;
+        }
     }
     return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
 }
 
-function uploadApprovalPDF(e){
+function uploadApprovalPDF(e) {
     let applicationId = e.parameter.application_id;
     let pdfDataUrl = e.parameter.pdf_data_url;
 
     let folder = DriveApp.getFolderById('1CEWlvFURW0X6uRa_uAAPDjyczE5cr329');
-    let applicationFolder = getDownloadToken({parameter: {applicationId: applicationId}}, true);
+    let applicationFolder = getDownloadToken({ parameter: { applicationId: applicationId } }, true);
 
     let base64Data = pdfDataUrl.split(',')[1];
-    let blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'application/pdf', `${applicationId}_application.pdf`);
-    let pdf = applicationFolder.createFile(blob);
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Member Applications');
     let data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
-         if (data[i][1] == applicationId) { // Assuming application_id is in the second column
-              sheet.getRange(i + 1, 40).setValue(pdf.getUrl()); // Assuming PDF URL is stored in the 40th column
-              break;
-         }
+        if (data[i][1] == applicationId) { // Assuming application_id is in the second column
+            let fullname = `${data[i][2]}${data[i][3]} ${data[i][4]}`; // prefix + first_name + last_name
+            let pdfName = `application_${fullname}.pdf`;
+            let blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'application/pdf', pdfName);
+            let pdf = applicationFolder.createFile(blob);
+            sheet.getRange(i + 1, 40).setValue(pdf.getUrl()); // Assuming PDF URL is stored in the 40th column
+            sendApprovalEmail(data[i], blob, pdfName);
+            break;
+        }
     }
     return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function sendSubmissionEmail(applicationData) {
+    const emailAddress = applicationData[11]; // email
+    if (!emailAddress) {
+        return;
+    }
+    const subject = 'ยืนยันการรับขอมูลการสมัครสมาชิก สมาคมช่างกุญแจไทยแห่งประเทศไทย';
+    const bodyText = `เรียน คุณ${applicationData[2]}${applicationData[3]} ${applicationData[4]}
+
+ขอขอบคุณที่ท่านได้สมัครเป็นสมาชิกกับเรา เราได้รับข้อมูลการสมัครของท่านเรียบร้อยแล้ว
+
+รายละเอียดการสมัครของท่านมีดังนี้:
+- หมายเลขคำขอสมัคร: ${applicationData[1]}
+- ชื่อ-นามสกุล: ${applicationData[2]}${applicationData[3]} ${applicationData[4]}
+- วันที่สมัคร: ${Utilities.formatDate(new Date(applicationData[0]), Session.getScriptTimeZone(), "yyyy-MM-dd")}
+
+ทีมงานของเราจะดำเนินการตรวจสอบข้อมูลและติดต่อกลับไปยังท่านในเร็วๆ นี้ หากท่านมีข้อสงสัยหรือต้องการข้อมูลเพิ่มเติม กรุณาติดต่อเราที่ผู้ดูแลระบบ
+
+ขอแสดงความนับถือ
+ทีมงาน Pollert`;
+
+    const bodyHtml = `
+<style> :root {
+            /* Colors sampled from attached logo */
+            --primary: #0b3e6f;
+            /* navy */
+            --accent-red: #d72b2b;
+            /* red */
+            --muted-gray: #9b9b9b;
+            /* gray */
+        }
+</style>
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: var(--muted-gray);">
+    <div style="background-color: var(--primary); color: white; padding: 20px; border-radius: 8px;">
+        <h2 style="margin: 0;">ยืนยันการรับข้อมูลการสมัครสมาชิก</h2>
+    </div>
+    <div style="padding: 20px; border: 1px solid var(--primary); border-radius: 8px; margin-top: 10px;">
+        <p>เรียน คุณ<span style="color: var(--accent-red);">${applicationData[2]}${applicationData[3]} ${applicationData[4]}</span>,</p>
+        <p>ขอขอบคุณที่ท่านได้สมัครเป็นสมาชิกกับเรา เราได้รับข้อมูลการสมัครของท่านเรียบร้อยแล้ว</p>
+        <h3 style="color: var(--primary);">รายละเอียดการสมัครของท่าน:</h3>
+        <ul style="list-style: none; padding: 0;">
+            <li>- <strong>หมายเลขคำขอสมัคร:</strong> ${applicationData[1]}</li>
+            <li>- <strong>ชื่อ-นามสกุล:</strong> ${applicationData[2]}${applicationData[3]} ${applicationData[4]}</li>
+            <li>- <strong>วันที่สมัคร:</strong> ${Utilities.formatDate(new Date(applicationData[0]), Session.getScriptTimeZone(), "yyyy-MM-dd")}</li>
+        </ul>
+        <p>ทีมงานของเราจะดำเนินการตรวจสอบข้อมูลและติดต่อกลับไปยังท่านในเร็วๆ นี้ หากท่านมีข้อสงสัยหรือต้องการข้อมูลเพิ่มเติม กรุณาติดต่อเราที่ผู้ดูแลระบบ</p>
+        <p>ขอแสดงความนับถือ,<br>ทีมงาน <span style="color: var(--primary);">Pollert</span></p>
+    </div>
+</div>`;
+
+    const pdf_blob = getBlobFromDataUrl(pdf_data_url, `application${applicationData[2]}${applicationData[3]} ${applicationData[4]}.pdf`); // Assuming PDF URL is stored in the 40th column
+    MailApp.sendEmail(emailAddress, subject, bodyText, {
+        htmlBody: bodyHtml
+    });
+}
+
+function sendApprovalEmail(applicationData, pdfBlob, pdfName) {
+    const emailAddress = applicationData[11]; // email
+    if (!emailAddress) {
+        return;
+    }
+    const subject = 'แจ้งผลการสมัครสมาชิก สมาคมช่างกุญแจไทยแห่งประเทศไทย';
+    let bodyText,bodyHtml;
+    if (applicationData[30] === true) { // is_approved
+        bodyText = `เรียน คุณ${applicationData[2]}${applicationData[3]} ${applicationData[4]}
+
+ขอแสดงความยินดีที่ท่านได้รับการอนุมัติเป็นสมาชิกกับเรา กรุณาดาวน์โหลดใบสมัครสมาชิกที่แนบมาพร้อมอีเมลนี้
+
+หากท่านมีข้อสงสัยหรือต้องการข้อมูลเพิ่มเติม กรุณาติดต่อเราที่ผู้ดูแลระบบ
+
+ขอแสดงความนับถือ
+ทีมงาน Pollert`;
+
+        bodyHtml = `
+<style> :root {
+            /* Colors sampled from attached logo */
+            --primary: #0b3e6f;
+            /* navy */
+            --accent-red: #d72b2b;
+            /* red */
+            --muted-gray: #9b9b9b;
+            /* gray */
+        }
+</style>
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: var(--muted-gray);">
+    <div style="background-color: var(--primary); color: white; padding: 20px; border-radius: 8px;">
+        <h2 style="margin: 0;">แจ้งผลการสมัครสมาชิก</h2>
+    </div>
+    <div style="padding: 20px; border: 1px solid var(--primary); border-radius: 8px; margin-top: 10px;">
+        <p>เรียน คุณ<span style="color: var(--accent-red);">${applicationData[2]}${applicationData[3]} ${applicationData[4]}</span>,</p>
+        <p>ขอแสดงความยินดีที่ท่านได้รับการอนุมัติเป็นสมาชิกกับเรา กรุณาดาวน์โหลดใบสมัครสมาชิกที่แนบมาพร้อมอีเมลนี้</p>
+        <p>หากท่านมีข้อสงสัยหรือต้องการข้อมูลเพิ่มเติม กรุณาติดต่อเราที่ผู้ดูแลระบบ</p>
+        <p>ขอแสดงความนับถือ,<br>ทีมงาน <span style="color: var(--primary);">Pollert</span></p>
+    </div>
+</div>`;
+    } else {
+        bodyText = `เรียน คุณ${applicationData[2]}${applicationData[3]} ${applicationData[4]}
+
+ขอแจ้งให้ท่านทราบว่าคำขอสมัครสมาชิกของท่านไม่ได้รับการอนุมัติในครั้งนี้ หากท่านมีข้อสงสัยหรือต้องการข้อมูลเพิ่มเติม กรุณาติดต่อเราที่ผู้ดูแลระบบ
+
+ขอแสดงความนับถือ
+ทีมงาน Pollert`;
+
+        bodyHtml = `
+<style> :root {
+            /* Colors sampled from attached logo */
+            --primary: #0b3e6f;
+            /* navy */
+            --accent-red: #d72b2b;
+            /* red */
+            --muted-gray: #9b9b9b;
+            /* gray */
+        }
+</style>
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: var(--muted-gray);">
+    <div style="background-color: var(--primary); color: white; padding: 20px; border-radius: 8px;">
+        <h2 style="margin: 0;">แจ้งผลการสมัครสมาชิก</h2>
+    </div>
+    <div style="padding: 20px; border: 1px solid var(--primary); border-radius: 8px; margin-top: 10px;">
+        <p>เรียน คุณ<span style="color: var(--accent-red);">${applicationData[2]}${applicationData[3]} ${applicationData[4]}</span>,</p>
+        <p>ขอแจ้งให้ท่านทราบว่าคำขอสมัครสมาชิกของท่านไม่ได้รับการอนุมัติในครั้งนี้ หากท่านมีข้อสงสัยหรือต้องการข้อมูลเพิ่มเติม กรุณาติดต่อเราที่ผู้ดูแลระบบ</p>
+        <p>ขอแสดงความนับถือ,<br>ทีมงาน <span style="color: var(--primary);">Pollert</span></p>
+    </div>
+</div>`;
+    }
+
+    MailApp.sendEmail(emailAddress, subject, bodyText, {
+        htmlBody: bodyHtml,
+        attachments: [pdfBlob]
+    });
+}
+
+function sendAdminLine(applicationData) {
+    const messaging_api_endpoint = 'https://api.line.me/v2/bot/message/push';
+    const lineToken = 'YOUR_LINE_NOTIFY_TOKEN'; // Replace with your actual LINE Notify token
+    let groupid = 'YOUR_LINE_GROUP_ID'; // Replace with your actual LINE Group ID
+    const approvalLink = `https://your-approval-link.com?approved=${applicationData[1]}`; // Replace with your actual approval link
+    const message = `{everyone}🔔 มีการสมัครสมาชิกใหม่:\n\n👉 หมายเลขคำขอสมัคร: ${applicationData[1]}\n\n👤 ชื่อ-นามสกุล: ${applicationData[2]}${applicationData[3]} ${applicationData[4]}\n\n 📅 วันที่สมัคร: ${Utilities.formatDate(new Date(applicationData[0]), Session.getScriptTimeZone(), "yyyy-MM-dd")}\n\n\n✅ Approve: ${approvalLink}`;
+
+    const options = {
+        'method': 'post',
+        'headers': {
+            'Authorization': 'Bearer ' + lineToken
+        },
+        'payload': {
+            to: groupid,
+            messages: [
+                {
+                    type: 'textV2',
+                    text: message,
+                    substitution: {
+                        everyone: { type: 'mention', mentionee: { type: 'all' } }
+                    }
+                }
+            ]
+        }
+    };
+
+    UrlFetchApp.fetch(messaging_api_endpoint, options);
 }

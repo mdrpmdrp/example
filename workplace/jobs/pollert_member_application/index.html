@@ -1055,7 +1055,6 @@
             });
             let applicationId = generateUniqueId()
             let uploadFiles = await uploadToGoogleDrive(applicationId, $('#temp-imgs'));
-            console.log("🚀 ~ uploadFiles:", uploadFiles)
             if (uploadFiles) {
                 uploadFiles = uploadFiles.files.map(f => {
                     let inputName = files.find(file => file.file.name === f.name).inputName;
@@ -1335,6 +1334,10 @@
                     reader.onload = function (e) {
                         previewElement.innerHTML = `<img src="${e.target.result}" alt="Preview" onclick="showPreview('${e.target.result}')" class="w-full h-full object-cover rounded-md" />`;
                         previewElement.classList.remove('hidden');
+                        if(previewId === 'preview_photo') {
+                            console.log("🚀 ~ file.type:", file.type.split('/')[1])
+                            $('#memberForm').append(`<a href="${e.target.result}" data-for="portrait_photo" data-type="${file.type.split('/')[1]}" class="hidden"></a>`);
+                        }
                     };
                     reader.readAsDataURL(file);
                 } else {
@@ -1771,7 +1774,7 @@
                     getSignatureImageAsArrayBuffer(applicantSignaturePad),
                     getSignatureImageAsArrayBuffer(officerSignaturePad),
                     fetch($('a[data-for="portrait_photo"]').attr('href')).then(res => {
-                        const contentType = res.headers.get('Content-Type');
+                        const contentType = isApproved ? res.headers.get('Content-Type') : $('a[data-for="portrait_photo"]').attr('data-type');
                         return res.arrayBuffer().then(buffer => {
                             // Store the content type as a data attribute for later use
                             $('a[data-for="portrait_photo"]').attr('data-type', contentType.split('/')[1]);
