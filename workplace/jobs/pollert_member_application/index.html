@@ -1137,16 +1137,25 @@
                     });
                 }
             });
-        };
 
-        function proceedSubmitApproval() {
-            let formData = $('#memberForm').serializeArray();
+        }
+
+
+        async function proceedSubmitApproval() {
+            let formData = {
+                application_id: $('input[name="application_id"]').val(),
+                officer_id: $('input[name="officer_id"]').val(),
+                application_status: $('input[name="application_status"]:checked').val(),
+                reviewer_officer: $('textarea[name="reviewer_officer"]').val(),
+                approval_date: moment().format('YYYY-MM-DD')
+            }
             let signatures = {
                 applicant_signature: applicantSignaturePad.toData(),
                 officer_signature: officerSignaturePad.toData()
             }
-            formData.push({ name: 'is_approved', value: isApproved });
-            formData.push({ name: 'signatures', value: JSON.stringify(signatures) });
+            // formData.push({ name: 'is_approved', value:  });
+            // formData.push({ name: 'signatures', value: JSON.stringify(signatures) });
+            formData.signatures = JSON.stringify(signatures);
             Swal.fire({
                 iconHtml: "<i class='fa fa-cloud-upload-alt'></i>",
                 title: 'กำลังบันทึกผลการสมัคร...',
@@ -1161,39 +1170,62 @@
                     icon: 'text-blue-600 border-none'
                 }
             });
-            formData = formData.reduce((acc, curr) => {
-                acc[curr.name] = curr.value;
-                return acc;
-            }, {});
             console.log("🚀 ~ formData:", formData)
-
-            callScript({
-                func: 'submitMemberApplication',
-                params: formData,
-                onSuccess: (result) => {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'บันทึกผลการสมัครเรียบร้อย',
-                        customClass: {
-                            popup: 'rounded-3xl shadow-2xl',
-                            title: 'text-gray-900 font-bold',
-                        }
-                    }).then(() => {
-                        window.location.reload();
-                    });
-                },
-                onFailure: (error) => {
-                    console.error('Error submitting application approval:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'เกิดข้อผิดพลาดในการบันทึกผลการสมัคร',
-                        text: 'โปรดลองอีกครั้งในภายหลัง หากปัญหายังเกิดขึ้น กรุณาติดต่อเจ้าหน้าที่',
-                        customClass: {
-                            popup: 'rounded-3xl shadow-2xl',
-                            title: 'text-gray-900 font-bold',
+            let pdf_data_url = await generatePDF();
+            Promise.all([
+                new Promise((resolve, reject) => {
+                    callScript({
+                        func: 'uploadApprovalPDF',
+                        params: {
+                            application_id: formData.application_id,
+                            pdf_data_url: pdf_data_url
+                        },
+                        onSuccess: (result) => {
+                            formData.approval_pdf_url = result.pdf_url;
+                            resolve();
+                        },
+                        onFailure: (error) => {
+                            console.error('Error uploading approval PDF:', error);
+                            reject(error);
                         }
                     });
-                }
+                }),
+                new Promise((resolve, reject) => {
+                    callScript({
+                        func: 'approveMemberApplication',
+                        params: formData,
+                        onSuccess: (result) => {
+                            resolve();
+                        },
+                        onFailure: (error) => {
+                            console.error('Error submitting application approval:', error);
+                            reject(error);
+                        }
+                    });
+                })
+            ])
+            .then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกผลการสมัครเรียบร้อย',
+                    customClass: {
+                        popup: 'rounded-3xl shadow-2xl',
+                        title: 'text-gray-900 font-bold',
+                    }
+                }).then(() => {
+                    window.location.reload();
+                });
+            })
+            .catch((error) => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาดในการบันทึกผลการสมัคร',
+                    text: 'โปรดลองอีกครั้งในภายหลัง หากปัญหายังเกิดขึ้น กรุณาติดต่อเจ้าหน้าที่',
+                    customClass: {
+                        popup: 'rounded-3xl shadow-2xl',
+                        title: 'text-gray-900 font-bold',
+                    }
+                });
             });
         };
 
@@ -1264,6 +1296,19 @@
                 officerSignaturePad.fromData(signatures.officer_signature);
             }
 
+            if(isApproved){
+                $('[name="officer_id"]').prop('required', true);
+                $('[name="application_status"]').prop('required', true).on('change', function(){
+                    const status = $(this).val();
+                    if(status === 'rejected'){
+                        $('[name="reviewer_officer"]').prop('required', true).prop('disabled', false);
+                    } else {
+                        $('[name="reviewer_officer"]').prop('required', false).prop('disabled', true).val('');
+                    }
+                });
+
+            }
+
             $('#memberForm').append('<input type="hidden" name="submission_date" value="' + data.submission_date + '" />');
             $('#memberForm').append('<input type="hidden" name="approval_date" value="' + moment().format('YYYY-MM-DD') + '" />');
             // re init officer signature pad
@@ -1274,7 +1319,6 @@
                 $('html, body').animate({
                     scrollTop: $('body').offset().top
                 }, 500);
-                generatePDF()
             }, 300);
 
         }
@@ -1555,6 +1599,18 @@
         var StandardFonts = PDFLib.StandardFonts;
         var form_pdf_bytes, font_bytes, applicant_signature_bytes, officer_signature_bytes, portrait_photo_bytes;
         async function generatePDF() {
+            return new Promise(async (resolve, reject) => {
+                try {
+                    const pdfBytes = await fillPDFForm();
+                    const pdfDataUri = await pdfDoc.saveAsBase64({ dataUri: true });
+                    resolve(pdfDataUri);
+                } catch (error) {
+                    console.error('Error generating PDF:', error);
+                    reject(error);
+                }
+            });
+        }
+        async function fillPDFForm() {
             await initPDFGeneration();
             if (!pdfDoc) pdfDoc = await PDFDocument.load(form_pdf_bytes)
             pdfDoc.registerFontkit(fontkit);
@@ -1563,7 +1619,7 @@
             const symbol = await pdfDoc.embedFont(StandardFonts.ZapfDingbats, { subset: true })
 
             // embed images
-            const applicant_signature_image = applicant_signature_bytes?  await embedImage(applicant_signature_bytes, 'png') : null
+            const applicant_signature_image = applicant_signature_bytes ? await embedImage(applicant_signature_bytes, 'png') : null
             const officer_signature_image = officer_signature_bytes ? await embedImage(officer_signature_bytes, 'png') : null
             const portrait_photo_image = await embedImage(portrait_photo_bytes, $('a[data-for="portrait_photo"]').attr('data-type'))
             const setChecked = (textFieldName) => {
@@ -1651,7 +1707,7 @@
             }
 
             // fill form fields
-            form.getTextField('first_name').setText(($('input[name="prefix"]').val() || '') +  ($('input[name="first_name"]').val() || ''))
+            form.getTextField('first_name').setText(($('input[name="prefix"]').val() || '') + ($('input[name="first_name"]').val() || ''))
             form.getTextField('last_name').setText($('input[name="last_name"]').val() || '')
             form.getTextField('age').setText($('input[name="age"]').val() || '')
             form.getTextField('date_of_birth').setText(convertToThaiDate($('input[name="date_of_birth"]').val() || ''))
@@ -1692,23 +1748,17 @@
             form.getTextField('approve_year').setText(approval_year.toString());
 
             // set signatures
-            if(applicant_signature_image && applicant_signature_image !== null){
+            if (applicant_signature_image && applicant_signature_image !== null) {
                 console.log("🚀 ~ generatePDF ~ applicant_signature_image:", applicant_signature_image)
                 form.getTextField('applicant_signature').setImage(applicant_signature_image)
             }
-            if(officer_signature_image && officer_signature_image !== null){
+            if (officer_signature_image && officer_signature_image !== null) {
                 form.getTextField('officer_signature').setImage(officer_signature_image)
             }
             form.updateFieldAppearances(sarabun);
             form.flatten()
             var pdfBytes = await pdfDoc.save()
-            var pdfdatauri = await pdfDoc.saveAsBase64({ dataUri: true })
-
-            // open PDF in new tab
-            var pdfWindow = window.open("");
-            pdfWindow.document.write("<iframe width='100%' height='100%' src='" + pdfdatauri + "'></iframe>");
             return pdfBytes;
-
         }
 
         async function initPDFGeneration() {
@@ -1720,7 +1770,7 @@
                     fetch('./THSarabun.ttf').then(res => res.arrayBuffer()),
                     getSignatureImageAsArrayBuffer(applicantSignaturePad),
                     getSignatureImageAsArrayBuffer(officerSignaturePad),
-                    fetch($('a[data-for="portrait_photo"]').attr('href')).then(res =>{
+                    fetch($('a[data-for="portrait_photo"]').attr('href')).then(res => {
                         const contentType = res.headers.get('Content-Type');
                         return res.arrayBuffer().then(buffer => {
                             // Store the content type as a data attribute for later use

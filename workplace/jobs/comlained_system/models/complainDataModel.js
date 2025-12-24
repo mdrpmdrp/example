@@ -313,21 +313,25 @@ function sendComplainChatText(date, product, problem, pipeline, responsibleTeam,
                   "textParagraph": {
                     "text": `👤ทีมรับผิดชอบ : ${responsibleTeam}<br>ตัวแทนทีม : ${teamRepresentative}`
                   }
+                },
+                {
+                  "buttonList": {
+                    "buttons": [
+                      {
+                        "text": "เปิดหน้าเว็บดูรายละเอียด",
+                        "type": "FILLED",
+                        "onClick": {
+                          "openLink": {
+                            "url": linkUrl
+                          }
+                        }
+                      }
+                    ]
+                  }
                 }
               ]
             }
-          ],
-          "fixedFooter": {
-            "primaryButton": {
-              "text": "เปิดหน้าเว็บดูรายละเอียด",
-              "type": "FILLED",
-              "onClick": {
-                "openLink": {
-                  "url": linkUrl
-                }
-              }
-            }
-          }
+          ]
         }
       }
     ]

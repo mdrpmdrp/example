@@ -83,7 +83,7 @@ function getApplicationDataById(appId) {
     return null; // Return null if application not found
 }
 
-function getDownloadToken(e) {
+function getDownloadToken(e, raw=false) {
     let applicationId = e.parameter.applicationId;
     if (!applicationId) {
         return ContentService.createTextOutput(JSON.stringify({ success: false, message: 'Missing applicationId' })).setMimeType(ContentService.MimeType.JSON);
@@ -94,6 +94,9 @@ function getDownloadToken(e) {
         applicationFolder = folder.createFolder(applicationId);
     } else {
         applicationFolder = applicationFolder.next();
+    }
+    if(raw){
+        return applicationFolder;
     }
     return ContentService.createTextOutput(JSON.stringify({ success: true, token: ScriptApp.getOAuthToken(), folderId: applicationFolder.getId() })).setMimeType(ContentService.MimeType.JSON);
 }
@@ -147,5 +150,42 @@ function submitMemberApplication(e) {
     let sheet = ss.getSheetByName('Member Applications');
     sheet.appendRow(applicationData);
 
+    return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function approveMemberApplication(e) {
+    let applicationId = e.parameter.application_id;
+    let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('Member Applications');
+    let data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
+         if (data[i][1] == applicationId) { // Assuming application_id is in the second column
+              sheet.getRange(i + 1, 31).setValue(e.parameter.application_status); // is_approved
+              sheet.getRange(i + 1, 36,1,4).setValues([[e.parameter.officer_id, e.parameter.application_status, e.parameter.reviewer_officer, new Date()]]); // officer_id, application_status, reviewer_officer, approval_date
+              break;
+         }
+    }
+    return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function uploadApprovalPDF(e){
+    let applicationId = e.parameter.application_id;
+    let pdfDataUrl = e.parameter.pdf_data_url;
+
+    let folder = DriveApp.getFolderById('1CEWlvFURW0X6uRa_uAAPDjyczE5cr329');
+    let applicationFolder = getDownloadToken({parameter: {applicationId: applicationId}}, true);
+
+    let base64Data = pdfDataUrl.split(',')[1];
+    let blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'application/pdf', `${applicationId}_application.pdf`);
+    let pdf = applicationFolder.createFile(blob);
+    let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('Member Applications');
+    let data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
+         if (data[i][1] == applicationId) { // Assuming application_id is in the second column
+              sheet.getRange(i + 1, 40).setValue(pdf.getUrl()); // Assuming PDF URL is stored in the 40th column
+              break;
+         }
+    }
     return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
 }
