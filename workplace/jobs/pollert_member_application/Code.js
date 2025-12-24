@@ -243,7 +243,6 @@ function sendSubmissionEmail(applicationData) {
     </div>
 </div>`;
 
-    const pdf_blob = getBlobFromDataUrl(pdf_data_url, `application${applicationData[2]}${applicationData[3]} ${applicationData[4]}.pdf`); // Assuming PDF URL is stored in the 40th column
     MailApp.sendEmail(emailAddress, subject, bodyText, {
         htmlBody: bodyHtml
     });
@@ -255,7 +254,7 @@ function sendApprovalEmail(applicationData, pdfBlob, pdfName) {
         return;
     }
     const subject = 'แจ้งผลการสมัครสมาชิก สมาคมช่างกุญแจไทยแห่งประเทศไทย';
-    let bodyText,bodyHtml;
+    let bodyText, bodyHtml;
     if (applicationData[30] === true) { // is_approved
         bodyText = `เรียน คุณ${applicationData[2]}${applicationData[3]} ${applicationData[4]}
 
@@ -327,17 +326,18 @@ function sendApprovalEmail(applicationData, pdfBlob, pdfName) {
 
 function sendAdminLine(applicationData) {
     const messaging_api_endpoint = 'https://api.line.me/v2/bot/message/push';
-    const lineToken = 'YOUR_LINE_NOTIFY_TOKEN'; // Replace with your actual LINE Notify token
-    let groupid = 'YOUR_LINE_GROUP_ID'; // Replace with your actual LINE Group ID
+    const lineToken = '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU='; // Replace with your actual LINE Notify token
+    let groupid = 'C41f5d16b48f536d03688c7dd641c8b09'; // Replace with your actual LINE Group ID
     const approvalLink = `https://your-approval-link.com?approved=${applicationData[1]}`; // Replace with your actual approval link
-    const message = `{everyone}🔔 มีการสมัครสมาชิกใหม่:\n\n👉 หมายเลขคำขอสมัคร: ${applicationData[1]}\n\n👤 ชื่อ-นามสกุล: ${applicationData[2]}${applicationData[3]} ${applicationData[4]}\n\n 📅 วันที่สมัคร: ${Utilities.formatDate(new Date(applicationData[0]), Session.getScriptTimeZone(), "yyyy-MM-dd")}\n\n\n✅ Approve: ${approvalLink}`;
+    const message = `{everyone}\n🔔 มีการสมัครสมาชิกใหม่:\n\n- หมายเลขคำขอสมัคร: ${applicationData[1]}\n\n- ชื่อ-นามสกุล: ${applicationData[2]}${applicationData[3]} ${applicationData[4]}\n\n- วันที่สมัคร: ${Utilities.formatDate(new Date(applicationData[0]), Session.getScriptTimeZone(), "dd/MM/yyyy")}\n\n\n✅ Approve:\n${approvalLink}`;
 
     const options = {
         'method': 'post',
         'headers': {
-            'Authorization': 'Bearer ' + lineToken
+            'Authorization': 'Bearer ' + lineToken,
+            'Content-Type': 'application/json; charset=UTF-8'
         },
-        'payload': {
+        'payload': JSON.stringify({
             to: groupid,
             messages: [
                 {
@@ -348,8 +348,53 @@ function sendAdminLine(applicationData) {
                     }
                 }
             ]
-        }
+        })
     };
 
     UrlFetchApp.fetch(messaging_api_endpoint, options);
+}
+
+function testSendAdminLine() {
+    let applicationData = [
+        new Date(),
+        'APP123456',
+        'นาย',
+        'สมชาย',
+        'ใจดี',
+        '1234567890123',
+        '1990-01-01',
+        34,
+        'ไทย',
+        'พุทธ',
+        '0812345678',
+        '',
+        '123 หมู่ 4 ตำบลตัวอย่าง อำเภอเมือง จังหวัดตัวอย่าง 10100',
+        '456 หมู่ 5 ตำบลตัวอย่าง อำเภอเมือง จังหวัดตัวอย่าง 10100',
+        'ช่างกุญแจ',
+        'ร้านสมชายกุญแจ',
+        '789 ถนนตัวอย่าง แขวงตัวอย่าง เขตตัวอย่าง กรุงเทพมหานคร 10200',
+        'ใกล้กับห้างสรรพสินค้าตัวอย่าง',
+        '021234567',
+        5,
+        'ช่างกุญแจทั่วไป, ช่างกุญแจรถยนต์',
+        'ที่อยู่ตามทะเบียนบ้าน',
+        'ปกติ',
+        '',
+        '',
+        'นางสาวสมหญิง ใจดี',
+        'ภรรยา',
+        '3210987654321',
+        '0898765432',
+        '123 หมู่ 4 ตำบลตัวอย่าง อำเภอเมือง จังหวัดตัวอย่าง 10100',
+        false,
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        ''
+    ];
+    sendAdminLine(applicationData);
 }
