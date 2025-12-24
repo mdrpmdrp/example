@@ -323,7 +323,7 @@ function sendAdminLine(applicationData) {
     const messaging_api_endpoint = 'https://api.line.me/v2/bot/message/push';
     const lineToken = '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU='; // Replace with your actual LINE Notify token
     let groupid = 'C41f5d16b48f536d03688c7dd641c8b09'; // Replace with your actual LINE Group ID
-    const approvalLink = `https://mdrpmdrp.github.io/example/workplace/jobs/pollert_member_application.html?approved=${applicationData[1]}`; // Replace with your actual approval link
+    const approvalLink = `https://mdrpmdrp.github.io/example/workplace/jobs/pollert_member_application/?approved=${applicationData[1]}`; // Replace with your actual approval link
     const message = `{everyone}\n🔔 มีการสมัครสมาชิกใหม่:\n\n- หมายเลขคำขอสมัคร: ${applicationData[1]}\n\n- ชื่อ-นามสกุล: ${applicationData[2]}${applicationData[3]} ${applicationData[4]}\n\n- วันที่สมัคร: ${Utilities.formatDate(new Date(applicationData[0]), Session.getScriptTimeZone(), "dd/MM/yyyy")}\n\n\n✅ Approve:\n${approvalLink}`;
 
     const options = {
