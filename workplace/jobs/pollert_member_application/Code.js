@@ -207,7 +207,9 @@ function uploadApprovalPDF(e) {
             let blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'application/pdf', pdfName);
             let pdf = applicationFolder.createFile(blob);
             sheet.getRange(i + 1, 40).setValue(pdf.getUrl()); // Assuming PDF URL is stored in the 40th column
-            sendApprovalEmail(data[i], blob, pdfName);
+            if(data[i][30] === true){ // is_approved
+                sendApprovalEmail(data[i], blob, pdfName);
+            }
             break;
         }
     }

@@ -227,7 +227,7 @@
                                 <i class="fa-solid fa-cake-candles form-icon"></i>
                                 อายุ (ปี)</label>
                             <input name="age" type="number" min="0"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" inputmode="decimal" />
                         </div>
                         <div>
                             <label>
@@ -235,6 +235,7 @@
                                 หมายเลขบัตรประชาชน</label>
                             <div class="relative mt-1">
                                 <input type="text" name="id_card_number" inputmode="numeric" pattern="[0-9]*"
+                                    minlength="13" maxlength="13"
                                     class="pl-10 block w-full rounded-md border-gray-300 shadow-sm" />
                             </div>
                         </div>
@@ -312,7 +313,7 @@
                             <div class="relative mt-1">
                                 <input name="mobile_phone" type="tel"
                                     class="pl-10 block w-full rounded-md border-gray-300 shadow-sm" inputmode="tel"
-                                    pattern="[0-9]*" />
+                                    pattern="[0-9]*" minlength="10" maxlength="10" />
                             </div>
                         </div>
                         <div>
@@ -354,8 +355,8 @@
                             <label>
                                 <i class="fa-solid fa-phone form-icon"></i>
                                 เบอร์โทรร้าน (ถ้ามี)</label>
-                            <input name="business_phone" type="tel"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                            <input name="business_phone" type="tel" inputmode="tel" pattern="[0-9]*" minlength="10"
+                                maxlength="10" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                         </div>
                     </div>
                 </section>
@@ -540,7 +541,7 @@
                             <div class="relative mt-1">
                                 <input name="beneficiary_phone" type="tel"
                                     class="pl-10 mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                                    inputmode="numeric" pattern="[0-9]*" />
+                                    inputmode="numeric" pattern="[0-9]*" minlength="10" maxlength="10" />
                             </div>
                         </div>
                         <div>
@@ -555,7 +556,8 @@
                                 <i class="fa-solid fa-id-card form-icon"></i>
                                 หมายเลขบัตรประชาชน</label>
                             <input name="beneficiary_id_card" type="text"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" inputmode="numeric"
+                                pattern="[0-9]*" minlength="13" maxlength="13" />
                         </div>
                         <div class="md:col-span-2">
                             <label>
@@ -961,6 +963,25 @@
                 }
             }
 
+            let files = $('input[type="file"]').not('#temp-imgs').toArray().map(input => {
+                if(input.name === 'copy_id_card') return 'กรุณาแนบสำเนาบัตรประชาชน';
+                if(input.name === 'copy_house_reg') return 'กรุณาแนบสำเนาทะเบียนบ้าน';
+                if(input.name === 'portrait_photo') return 'กรุณาแนบรูปถ่ายหน้าตรง';
+                return null;
+            }).filter(f => f)
+            if (files.length > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ยังไม่ได้แนบไฟล์เอกสาร',
+                    html: files.map(f => `<div class="text-left text-red-700">- ${f}</div>`).join(''),
+                    customClass: {
+                        popup: 'rounded-3xl shadow-2xl',
+                        title: 'text-gray-900 font-bold',
+                    }
+                })
+                return;
+            }
+
             if (!isApproved) {
                 Swal.fire({
                     icon: 'question',
@@ -1055,7 +1076,6 @@
             });
             let applicationId = generateUniqueId()
             let uploadFiles = await uploadToGoogleDrive(applicationId, $('#temp-imgs'));
-            formData.push({ name: 'folder_id', value: uploadFiles['folderId'] || '' });
             if (uploadFiles) {
                 uploadFiles = uploadFiles.files.map(f => {
                     let inputName = files.find(file => file.file.name === f.name).inputName;
@@ -1066,6 +1086,7 @@
                 }, {});
             }
             console.log("🚀 ~ uploadFiles:", uploadFiles)
+            formData.push({ name: 'folder_id', value: uploadFiles['folderId'] || '' });
             formData.push({ name: 'application_id', value: applicationId });
             formData.push({ name: 'is_approved', value: isApproved });
             formData.push({ name: 'uploaded_files', value: JSON.stringify(uploadFiles) });
@@ -1170,9 +1191,26 @@
                 }
             });
             console.log("🚀 ~ formData:", formData)
-            let pdf_data_url = await generatePDF();
-            Promise.all([
+
+            let promises = [
                 new Promise((resolve, reject) => {
+                    callScript({
+                        func: 'approveMemberApplication',
+                        params: formData,
+                        onSuccess: (result) => {
+                            resolve();
+                        },
+                        onFailure: (error) => {
+                            console.error('Error submitting application approval:', error);
+                            reject(error);
+                        }
+                    });
+                })
+            ]
+
+            if (formData.application_status === 'approved') {
+                let pdf_data_url = await generatePDF();
+                promises.push(new Promise((resolve, reject) => {
                     callScript({
                         func: 'uploadApprovalPDF',
                         params: {
@@ -1188,21 +1226,9 @@
                             reject(error);
                         }
                     });
-                }),
-                new Promise((resolve, reject) => {
-                    callScript({
-                        func: 'approveMemberApplication',
-                        params: formData,
-                        onSuccess: (result) => {
-                            resolve();
-                        },
-                        onFailure: (error) => {
-                            console.error('Error submitting application approval:', error);
-                            reject(error);
-                        }
-                    });
-                })
-            ])
+                }))
+            }
+            Promise.all(promises)
                 .then(() => {
                     Swal.fire({
                         icon: 'success',
@@ -1307,11 +1333,8 @@
                 } else {
                     $('button[type="reset"]').parent().html(`
                     <p class="text-xl text-gray-600">
-                        <i class="fa fa-check-circle text-green-600 mr-2"></i>
+                        <i class="fa fa-times-circle text-red-600 mr-2"></i>
                         ใบสมัครนี้ได้รับการปฏิเสธแล้ว</p>
-                    <a href="https://drive.google.com/uc?export=view&id=${data.approval_pdf_url.split('/')[5]}" id="download_pdf" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-                        ดาวน์โหลดไฟล์ PDF
-                    </a>
                 `);
                 }
                 $('#clear_officer_signature').addClass('hidden');
