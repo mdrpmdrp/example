@@ -712,7 +712,7 @@
         // =================================================================
         // --- GLOBAL STATE & CONFIGURATION ---
         // =================================================================
-        const STATE = { allProducts: [], allTransactions: [], allProjects: [], allSuppliers: [], allUsers: [], productCategories: [], currentUser: {}, charts: {}, dashboardStats: {}, pagination: { currentPage: 1, itemsPerPage: 10, totalPages: 1, currentSearch: '', currentCategory: '', currentStockStatus: '' } };
+        const STATE = { allProducts: [], allTransactions: [], allProjects: [], allSuppliers: [], allUsers: [], productCategories: [], productSubcategories: [], currentUser: {}, charts: {}, dashboardStats: {}, pagination: { currentPage: 1, itemsPerPage: 10, totalPages: 1, currentSearch: '', currentCategory: '', currentStockStatus: '' } };
         let filterTimeout;
 
 
@@ -734,8 +734,18 @@
             google.script.run.withSuccessHandler(jsonString => {
                 const data = JSON.parse(jsonString || "{}");
                 if (!data || Object.keys(data).length === 0) { handleError({ message: "ไม่ได้รับข้อมูลเริ่มต้นจากเซิร์ฟเวอร์" }); return; }
-                STATE.allProducts = data.allProducts || []; STATE.allTransactions = data.allTransactions || []; STATE.allProjects = data.allProjects || []; STATE.allSuppliers = data.allSuppliers || []; STATE.productCategories = data.categories || []; STATE.dashboardStats = data.dashboardStats || {};
-                updateNotifications(); showSection('dashboard'); hideLoader();
+                STATE.allProducts = data.allProducts || [];
+                STATE.allTransactions = data.allTransactions || [];
+                STATE.allProjects = data.allProjects || [];
+                STATE.allSuppliers = data.allSuppliers || [];
+                STATE.productCategories = data.categories || [];
+                STATE.productSubcategories = data.subcategories || [];
+                STATE.dashboardStats = data.dashboardStats || {};
+
+                updateNotifications();
+                showSection('dashboard');
+                hideLoader();
+
             }).withFailureHandler(handleError).getDashboardData();
         }
 
@@ -1595,9 +1605,11 @@
                         const printWindow = window.open('', '_blank');
                         printWindow.document.write(response.htmlContent);
                         printWindow.document.close();
+                        printWindow.focus();
                         setTimeout(() => {
-                            printWindow.focus();
-                        }, 1000);
+                            printWindow.print();
+                            printWindow.close();
+                        }, 500);
                     } else {
                         handleError({ message: response.message });
                     }
@@ -1699,19 +1711,15 @@
                         <label class="form-label">หมวดหมู่สินค้า</label>
                         <select id="inventoryCategoryFilter" class="form-input">
                              <option value="" selected>-- เลือกหมวดหมู่ --</option>
-                            <option value="วัตถุดิบ">วัตถุดิบ</option>
-                            <option value="วัตถุดิบสิ้นเปลือง">วัตถุดิบสิ้นเปลือง</option>
-                            <option value="อุปกรณ์ช่าง">อุปกรณ์ช่าง</option>
+                            ${STATE.productCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
                         </select>
                     </div>
                     <div>
                         <label class="form-label">ประเภทสินค้า</label>
                         <select id="inventorySubcategoryFilter" class="form-input">
                             <option value="" selected>-- เลือกประเภท --</option>
-                        <option value="สแตนเลส">สแตนเลส</option>
-                        <option value="น็อต">น็อต</option>
-                        <option value="เหล็ก">เหล็ก</option>
-                        <option value="อื่นๆ">อื่นๆ</option></select>
+                        ${STATE.productSubcategories.map(subcat => `<option value="${subcat}">${subcat}</option>`).join('')}
+                        </select>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -1727,6 +1735,15 @@
                 <div class="flex flex-wrap gap-4">
                     <button onclick="generateReport('inventory_pdf')" class="business-gradient text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:shadow-lg">
                         <i class='bx bxs-file-pdf'></i><span>สร้าง PDF</span>
+                    </button>
+                    <button onclick="generateReport('inventory_print')" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:bg-gray-300">
+                        <i class='bx bxs-printer'></i><span>สำหรับพิมพ์</span>
+                    </button>
+                     <button onclick="generateReport('inventory_sheet')" class="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:bg-green-700">
+                        <i class='bx bxs-file-spreadsheet'></i><span>ส่งออกเป็น Google Sheet</span>
+                    </button>
+                    <button onclick="generateReport('inventory_csv')" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:bg-blue-700">
+                        <i class='bx bxs-file-doc'></i><span>ดาวน์โหลดเป็น CSV (สำหรับ Excel)</span>
                     </button>
                 </div>
             </div>
@@ -1753,6 +1770,14 @@
                         <option value="เหล็ก">เหล็ก</option>
                         <option value="อื่นๆ">อื่นๆ</option></select>
                     </div>
+                       <div>
+                        <label class="form-label">ประเภทธุรกรรม</label>
+                        <select id="withdrawalTransactionTypeFilter" class="form-input">
+                            <option value="" selected>-- เลือกประเภท --</option>
+                            <option value="in">รับเข้า</option>
+                            <option value="out">เบิกออก</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
@@ -1770,6 +1795,12 @@
                     </button>
                     <button onclick="generateReport('withdrawal_print')" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:bg-gray-300">
                         <i class='bx bxs-printer'></i><span>สำหรับพิมพ์</span>
+                    </button>
+                     <button onclick="generateReport('withdrawal_sheet')" class="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:bg-green-700">
+                        <i class='bx bxs-file-spreadsheet'></i><span>ส่งออกเป็น Google Sheet</span>
+                    </button>
+                    <button onclick="generateReport('withdrawal_csv')" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:bg-blue-700">
+                        <i class='bx bxs-file-doc'></i><span>ดาวน์โหลดเป็น CSV (สำหรับ Excel)</span>
                     </button>
                 </div>
             </div>
@@ -1802,7 +1833,7 @@
         function generateReport(reportType) {
             showLoader();
             let reportData = {};
-            if (reportType === 'inventory_pdf') {
+            if (reportType.startsWith('inventory')) {
                 reportData.category = document.getElementById('inventoryCategoryFilter').value;
                 reportData.subcategory = document.getElementById('inventorySubcategoryFilter').value;
                 reportData.startDate = document.getElementById('inventoryStartDate').value;
@@ -1810,6 +1841,7 @@
             } else if (reportType.startsWith('withdrawal')) {
                 reportData.category = document.getElementById('withdrawalCategoryFilter').value;
                 reportData.subcategory = document.getElementById('withdrawalSubcategoryFilter').value
+                reportData.transactionType = document.getElementById('withdrawalTransactionTypeFilter').value;
                 reportData.startDate = document.getElementById('withdrawalStartDate').value;
                 reportData.endDate = document.getElementById('withdrawalEndDate').value;
             } else if (reportType.startsWith('transactions')) {
@@ -1823,13 +1855,19 @@
             }
             let functionToCall = '';
             if (reportType === 'inventory_pdf') functionToCall = 'generateInventoryReportPDF';
+            if (reportType === 'inventory_print') functionToCall = 'generateInventoryReportPrint';
+            if (reportType === 'inventory_sheet') functionToCall = 'exportInventoryToSheet';
+            if (reportType === 'inventory_csv') functionToCall = 'exportInventoryToCSV';
             if (reportType === 'withdrawal_pdf') functionToCall = 'generateWithdrawalReportPDF';
             if (reportType === 'withdrawal_print') functionToCall = 'generateWithdrawalReportPrint';
+            if (reportType === 'withdrawal_sheet') functionToCall = 'exportWithdrawalToSheet';
+            if (reportType === 'withdrawal_csv') functionToCall = 'exportWithdrawalToCSV';
             if (reportType === 'transactions_sheet') functionToCall = 'exportTransactionsToSheet';
             if (reportType === 'transactions_csv') functionToCall = 'exportTransactionsToCSV';
 
             google.script.run
                 .withSuccessHandler(response => {
+                    console.log(response);
                     hideLoader();
                     if (response.success) {
                         if (response.url) {
@@ -1846,12 +1884,16 @@
                             const printWindow = window.open('', '_blank');
                             printWindow.document.write(response.htmlContent);
                             printWindow.document.close();
-                            printWindow.print();
+                            printWindow.focus();
+                            setTimeout(() => {
+                                printWindow.print();
+                                printWindow.close();
+                            }, 500);
                         } else if (response.csvContent) {
                             const encodedUri = encodeURI("data:text/csv;charset=utf-8," + response.csvContent);
                             const link = document.createElement("a");
                             link.setAttribute("href", encodedUri);
-                            link.setAttribute("download", `export_${new Date().getTime()}.csv`);
+                            link.setAttribute("download", `export_${new Date().getTime()}_${reportType}.csv`);
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);
@@ -2113,33 +2155,37 @@
                 <div class="form-error-text"></div></div>
                  <div>
                     <label class="form-label">หมวดหมู่</label>
-                    <select name="category" required class="form-input" id="propductCategorySelect">
-                        <option value="">-- เลือกหมวดหมู่ --</option>
-                        <option value="วัตถุดิบ" ${isEditing && product.category === 'วัตถุดิบ' ? 'selected' : ''}>วัตถุดิบ</option>
-                        <option value="วัตถุดิบสิ้นเปลือง" ${isEditing && product.category === 'วัตถุดิบสิ้นเปลือง' ? 'selected' : ''}>วัตถุดิบสิ้นเปลือง</option>
-                        <option value="อุปกรณ์ช่าง" ${isEditing && product.category === 'อุปกรณ์ช่าง' ? 'selected' : ''}>อุปกรณ์ช่าง</option>
-                    </select>
+                    <div class="flex gap-1">
+                        <select name="category" required class="form-input" id="propductCategorySelect">
+                            <option value="">-- เลือกหมวดหมู่ --</option>
+                        ${STATE.productCategories.map(cat => `<option value="${cat}" ${isEditing && product.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+                        </select>
+                        <button type="button" title="เพิ่มหมวดหมู่สินค้าใหม่" onclick="addNewCategory()" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg hover:bg-gray-300 transition-colors"><i class='bx bx-plus'></i></button>
+                    </div>
                     <div class="form-error-text"></div>
                 </div>
                 <div>
                     <label class="form-label">ประเภท</label>
-                    <select name="subcategory" required class="form-input" id="productSubcategorySelect">
-                        <option value="">-- เลือกประเภท --</option>
-                        <option value="สแตนเลส" ${isEditing && product.subcategory === 'สแตนเลส' ? 'selected' : ''}>สแตนเลส</option>
-                        <option value="น็อต" ${isEditing && product.subcategory === 'น็อต' ? 'selected' : ''}>น็อต</option>
-                        <option value="เหล็ก" ${isEditing && product.subcategory === 'เหล็ก' ? 'selected' : ''}>เหล็ก</option>
-                        <option value="อื่นๆ" ${isEditing && product.subcategory === 'อื่นๆ' ? 'selected' : ''}>อื่นๆ</option>
-                    </select>
+                    <div class="flex gap-1">
+                        <select name="subcategory" required class="form-input" id="productSubcategorySelect">
+                            <option value="">-- เลือกประเภท --</option>
+                            ${STATE.productSubcategories.map(subcat => `<option value="${subcat}" ${isEditing && product.subcategory === subcat ? 'selected' : ''}>${subcat}</option>`).join('')}
+                        </select>
+                        <button type="button" title="เพิ่มประเภทสินค้าใหม่" onclick="addNewSubcategory()" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg hover:bg-gray-300 transition-colors"><i class='bx bx-plus'></i></button>
+                    </div>
                     <div class="form-error-text"></div>
                 </div>
                
                 <div><label class="form-label">หน่วยนับ</label><input type="text" name="unit" required class="form-input" value="${isEditing ? product.unit : ''}"><div class="form-error-text"></div></div>
                 <div>
                     <label class="form-label">ชื่อร้าน (ซัพพลายเออร์)</label>
-                    <select name="supplierId" id="productSupplierSelect" class="form-input searchable-select">
-                        <option selected value="">-- ยังไม่มีรายการ Suppliers --</option>
-                        ${supplierOptions}
-                    </select>
+                    <div class="flex gap-1">
+                        <select name="supplierId" id="productSupplierSelect" class="form-input searchable-select">
+                            <option selected value="">-- ยังไม่มีรายการ Suppliers --</option>
+                            ${supplierOptions}
+                        </select>
+                        <button type="button" onclick="openNestedSupplierModal()" title="เพิ่มซัพพลายเออร์ใหม่" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg hover:bg-gray-300 transition-colors"><i class='bx bx-plus'></i></button>
+                    </div>
                     <div class="form-error-text"></div>
                 </div>
                 <div><label class="form-label">ราคา/หน่วย</label><input type="number" name="price" step="0.01" required class="form-input" value="${isEditing ? product.price : ''}"><div class="form-error-text"></div></div>
@@ -2182,6 +2228,82 @@
             }, 30);
 
             openModal('productModal');
+        }
+
+        function addNewCategory() {
+            Swal.fire({
+                title: 'เพิ่มหมวดหมู่สินค้าใหม่',
+                input: 'text',
+                inputLabel: 'ชื่อหมวดหมู่',
+                inputPlaceholder: 'ใส่ชื่อหมวดหมู่สินค้า',
+                showCancelButton: true,
+                confirmButtonText: 'เพิ่ม',
+                cancelButtonText: 'ยกเลิก',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'กรุณาใส่ชื่อหมวดหมู่';
+                    }
+                    if (STATE.productCategories.includes(value)) {
+                        return 'หมวดหมู่นี้มีอยู่แล้ว';
+                    }
+                    return null;
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    STATE.productCategories.push(result.value);
+                    const categorySelect = document.getElementById('propductCategorySelect');
+                    const newOption = document.createElement('option');
+                    newOption.value = result.value;
+                    newOption.textContent = result.value;
+                    newOption.selected = true;
+                    categorySelect.appendChild(newOption);
+                    $(categorySelect).trigger('change');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'เพิ่มหมวดหมู่สำเร็จ!',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                }
+            });
+        }
+
+        function addNewSubcategory() {
+            Swal.fire({
+                title: 'เพิ่มประเภทสินค้าใหม่',
+                input: 'text',
+                inputLabel: 'ชื่อประเภท',
+                inputPlaceholder: 'ใส่ชื่อประเภทสินค้า',
+                showCancelButton: true,
+                confirmButtonText: 'เพิ่ม',
+                cancelButtonText: 'ยกเลิก',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'กรุณาใส่ชื่อประเภท';
+                    }
+                    if (STATE.productSubcategories.includes(value)) {
+                        return 'ประเภทนี้มีอยู่แล้ว';
+                    }
+                    return null;
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    STATE.productSubcategories.push(result.value);
+                    const subcategorySelect = document.getElementById('productSubcategorySelect');
+                    const newOption = document.createElement('option');
+                    newOption.value = result.value;
+                    newOption.textContent = result.value;
+                    newOption.selected = true;
+                    subcategorySelect.appendChild(newOption);
+                    $(subcategorySelect).trigger('change');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'เพิ่มประเภทสำเร็จ!',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                }
+            });
         }
 
         function handleAddProduct(event) {
@@ -2552,9 +2674,13 @@
             showSupplierModal(null, (newSupplier) => {
                 if (newSupplier && newSupplier.id) {
                     const newOption = new Option(newSupplier.name, newSupplier.id, true, true);
-                    $('#transactionSupplierSelect').append(newOption).trigger('change');
                     // Refresh supplier list in STATE
                     STATE.allSuppliers.push(newSupplier);
+                    if ($('#productSupplierSelect').length) {
+                        $('#productSupplierSelect').append(newOption.cloneNode(true)).trigger('change');
+                    } else if ($('#transactionSupplierSelect').length) {
+                        $('#transactionSupplierSelect').append(newOption.cloneNode(true)).trigger('change');
+                    }
                 }
                 // No need to close modal here, handleFormSuccess will do it.
             });
