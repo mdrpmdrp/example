@@ -765,27 +765,28 @@
             resizeCanvas = function () {
                 console.log('resizing canvases');
                 var ratio = Math.max(window.devicePixelRatio || 1, 1);
+                let temp_data = applicantSignaturePad.toData();
                 applicant_canvas.width = applicant_canvas.offsetWidth * ratio;
                 // if (ratio > 2) canvas.height = canvas.offsetHeight * ratio * 1.5;
                 // else 
                 applicant_canvas.height = applicant_canvas.offsetHeight * ratio;
                 applicant_canvas.getContext("2d").scale(ratio, ratio);
-                // applicantSignaturePad.clear(); // otherwise isEmpty() might return incorrect value
+                applicantSignaturePad.clear(); // otherwise isEmpty() might return incorrect value
+                applicantSignaturePad.fromData(temp_data);
+
+                temp_data = officerSignaturePad.toData();
                 officer_canvas.width = officer_canvas.offsetWidth * ratio;
                 // if (ratio > 2) canvas2.height = canvas2.offsetHeight * ratio * 1.5;
                 // else 
                 officer_canvas.height = officer_canvas.offsetHeight * ratio;
                 officer_canvas.getContext("2d").scale(ratio, ratio);
-                // officerSignaturePad.clear(); // otherwise isEmpty() might return incorrect value
+                officerSignaturePad.clear(); // otherwise isEmpty() might return incorrect value
+                officerSignaturePad.fromData(temp_data);
             }
             window.addEventListener("resize", resizeCanvas);
             resizeCanvas();
             const params = new URLSearchParams(window.location.search);
-            if ((params.get('approved') && params.get('approved') !== '') || (params.get('liff.state') && params.get('liff.state') !== '')) {
-                if( params.get('liff.state') && params.get('liff.state') !== ''){
-                    let encodedState = encodeURIComponent(params.get('liff.state'));
-                    params.set('approved', encodedState.split('=')[1]);
-                }
+            if (params.get('approved') && params.get('approved') !== '') {
                 isApproved = true;
                 document.getElementById('for_officer').classList.remove('hidden');
                 Swal.fire({
