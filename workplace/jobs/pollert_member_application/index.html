@@ -783,7 +783,15 @@
                 officerSignaturePad.clear(); // otherwise isEmpty() might return incorrect value
                 officerSignaturePad.fromData(temp_data);
             }
-            window.addEventListener("resize", resizeCanvas);
+            // Debounce function to limit how often resizeCanvas is called
+            function debounce(func, wait) {
+                let timeout;
+                return function (...args) {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func.apply(this, args), wait);
+                };
+            }
+            window.addEventListener("resize", debounce(resizeCanvas, 200));
             resizeCanvas();
             const params = new URLSearchParams(window.location.search);
             if (params.get('approved') && params.get('approved') !== '') {
