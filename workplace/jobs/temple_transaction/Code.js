@@ -1,6 +1,6 @@
 // Global variables
-const SHEET_ID = '1WClE8Nicl8enmodKLWkBENPNz_ABQckqQsQN7UK1oQQ';
-const FOLDER_ID = '1CEWlvFURW0X6uRa_uAAPDjyczE5cr329';
+const SHEET_ID = '1l6apXKyYwLwlsLPRW6vXGnfMfaLeRjPPOGbXVhL1fHc';
+const FOLDER_ID = '1GI-d2gxejw0RHVTwuLOn4FdfA0a6CuDC';
 
 
 function doGet(e) {
