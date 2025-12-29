@@ -3132,7 +3132,7 @@
         <div class="flex justify-between mt-6">
           <!-- Left signature (Accountant) -->
           <div class="w-1/2 text-center">
-            <div class="mb-2">(  <?= settings['ชื่อผู้จัดทำบัญชี'] ?> )</div>
+            <div class="mb-2">(  <?!= settings['ชื่อผู้จัดทำบัญชี'] ?> )</div>
             <div class="mb-2">ตำแหน่ง..........................................................</div>
             <div class="mb-2">ผู้จัดทำบัญชี</div>
             <div>วันที่......./................./............</div>           
@@ -3142,7 +3142,7 @@
 
           <!-- Right signature (Auditor) -->
           <div class="w-1/2 text-center">
-            <div class="mb-2">(  <?= settings['ชื่อเจ้าอาวาส'] ?> )</div>
+            <div class="mb-2">(  <?!= settings['ชื่อเจ้าอาวาส'] ?> )</div>
             <div class="mb-2">ตำแหน่ง.........................................................</div>
             <div class="mb-2">ผู้ตรวจสอบบัญชี</div>
             <div>วันที่......./................../...........</div>
@@ -3226,7 +3226,11 @@
     function printIncomeReport(incomeSummary, startDate, endDate) {
       const printWindow = window.open('', '_blank');
       const printContent = document.getElementById('incomeReportResult').innerHTML;
-      const cleanContent = printContent.replace(/<button[^>]*>.*?<\/button>/g, ''); // ลบปุ่มออก
+      // Remove all buttons from the print content before printing
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = printContent;
+      tempDiv.querySelectorAll('button').forEach(btn => btn.remove());
+      const cleanedContent = tempDiv.innerHTML;
       printWindow.document.write(`
     <!DOCTYPE html>
     <html>
@@ -3255,7 +3259,7 @@
       <h4>สรุปสมุดแยกประเภทรายการรับ</h4>
       <h5>วันที่ ${formatDateForDisplay(startDate)} ถึง ${formatDateForDisplay(endDate)}</h5>
       <div>
-        ${cleanContent}
+        ${cleanedContent}
       </div>
     </body>
     </html>
@@ -3451,7 +3455,7 @@
         <div class="flex justify-between mt-6">
           <!-- Left signature (Accountant) -->
           <div class="w-1/2 text-center">
-            <div class="mb-2">(..................................)</div>
+            <div class="mb-2">(  <?!= settings['ชื่อผู้จัดทำบัญชี'] ?>  )</div>
             <div class="mb-2">ตำแหน่ง..........................................................</div>
             <div class="mb-2">ผู้จัดทำบัญชี</div>
             <div>วันที่....../................./............</div>           
@@ -3461,7 +3465,7 @@
 
           <!-- Right signature (Auditor) -->
           <div class="w-1/2 text-center">
-            <div class="mb-2">(..................................)</div>
+            <div class="mb-2">(  <?!= settings['ชื่อเจ้าอาวาส'] ?>  )</div>
             <div class="mb-2">ตำแหน่ง.........................................................</div>
             <div class="mb-2">ผู้ตรวจสอบบัญชี</div>
             <div>วันที่......./................../........</div>
@@ -3545,7 +3549,11 @@
     function printExpenseReport(expenseSummary, startDate, endDate) {
       const printWindow = window.open('', '_blank');
       const printContent = document.getElementById('expenseReportResult').innerHTML;
-
+      // Remove all buttons from the print content before printing
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = printContent;
+      tempDiv.querySelectorAll('button').forEach(btn => btn.remove());
+      const cleanedContent = tempDiv.innerHTML;
       printWindow.document.write(`
     <!DOCTYPE html>
     <html>
@@ -3561,13 +3569,20 @@
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         .code-detail { margin-bottom: 30px; }
+        .w-full { width: 100%; }
+        .flex { display: flex; }
+        .justify-between { justify-content: space-between; }
+        .mt-8 { margin-top: 2rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .signature { text-align: center; margin-top: 50px; }
+        .text-center { text-align: center; }
       </style>
     </head>
     <body>
       <h4>สรุปสมุดแยกประเภทรายการจ่าย</h4>
       <h5>วันที่ ${formatDateForDisplay(startDate)} ถึง ${formatDateForDisplay(endDate)}</h5>
       <div>
-        ${printContent}
+        ${cleanedContent}
       </div>
     </body>
     </html>
@@ -3617,7 +3632,7 @@
 
       // เพิ่มส่วนรับรองข้อมูล
       excelData.push([], [], ['รับรองข้อมูลตามนี้'], []);
-      excelData.push(['(..................................)', '(..................................)']);
+      excelData.push(['(  <?!= settings['ชื่อผู้จัดทำบัญชี'] ?>  )', '(  <?!= settings['ชื่อเจ้าอาวาส'] ?>  )']);
       excelData.push(['ตำแหน่ง...................................', 'ตำแหน่ง...................................']);
       excelData.push(['ผู้จัดทำบัญชี', 'ผู้ตรวจสอบบัญชี']);
       excelData.push(['วันที่..../................/...........', 'วันที่..../................/............']);
@@ -3885,7 +3900,7 @@
         <div class="flex justify-between mt-6">
           <!-- Left signature (Accountant) -->
           <div class="w-1/2 text-center">
-            <div class="mb-2">(..................................)</div>
+            <div class="mb-2">(  <?!= settings['ชื่อผู้จัดทำบัญชี'] ?>)</div>
             <div class="mb-2">ตำแหน่ง..........................................................</div>
             <div class="mb-2">ผู้จัดทำบัญชี</div>
             <div>วันที่......./.................../..............</div>           
@@ -3895,7 +3910,7 @@
 
           <!-- Right signature (Auditor) -->
           <div class="w-1/2 text-center">
-            <div class="mb-2">(..................................)</div>
+            <div class="mb-2">(  <?!= settings['ชื่อเจ้าอาวาส'] ?>)</div>
             <div class="mb-2">ตำแหน่ง.........................................................</div>
             <div class="mb-2">ผู้ตรวจสอบบัญชี</div>
             <div>วันที่......../................./.............</div>
@@ -3968,6 +3983,11 @@
     function printSummaryReport() {
       const printWindow = window.open('', '_blank');
       const printContent = document.getElementById('summaryReportResult').innerHTML;
+       // Remove all buttons from the print content before printing
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = printContent;
+      tempDiv.querySelectorAll('button').forEach(btn => btn.remove());
+      const cleanedContent = tempDiv.innerHTML;
       const startDate = document.getElementById('startDate').valueAsDate;
       const endDate = document.getElementById('endDate').valueAsDate;
 
@@ -3987,14 +4007,17 @@
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         .note { font-size: 0.9em; color: #666; text-align: center; margin-bottom: 15px; }
+        .w-full { width: 100%; }
+        .flex { display: flex; }
+        .justify-between { justify-content: space-between; }
+        .mt-8 { margin-top: 2rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .signature { text-align: center; margin-top: 50px; }
       </style>
     </head>
     <body>
-      <h4>สรุปงบประมาณ</h4>
-      <h5>วันที่ ${formatDateForDisplay(startDate)} ถึง ${formatDateForDisplay(endDate)}</h5>
-      <div class="note">* ไม่รวมรายการนำเงินสดฝากเข้าบัญชีธนาคาร และรายการถอนเงินจากบัญชีธนาคารมาเป็นเงินสดในมือ</div>
       <div>
-        ${printContent}
+        ${cleanedContent}
       </div>
     </body>
     </html>
@@ -4077,7 +4100,7 @@
 
       // เพิ่มส่วนรับรองข้อมูล
       excelData.push([], [], ['รับรองข้อมูลตามนี้'], []);
-      excelData.push(['(..................................)', '(..................................)']);
+      excelData.push(['(  <?!= settings['ชื่อผู้จัดทำบัญชี'] ?>)', '(  <?!= settings['ชื่อเจ้าอาวาส'] ?>)']);
       excelData.push(['ตำแหน่ง...................................', 'ตำแหน่ง...................................']);
       excelData.push(['ผู้จัดทำบัญชี', 'ผู้ตรวจสอบบัญชี']);
       excelData.push(['วันที่....../............../...........', 'วันที่....../............../............']);
@@ -4308,8 +4331,20 @@
         <td class="px-4 py-2 text-right expense">${formatCurrency(summary.expense)}</td>
         <td class="px-4 py-2 text-right">${formatCurrency(summary.closingBalance)}</td>
       </tr>
-    `;
+        `;
       }
+
+      // เพิ่ม CSS สำหรับการพิมพ์: ขึ้นหน้าใหม่ทุกเดือนในรายละเอียด
+      html += `
+      <style>
+        @media print {
+          .monthly-detail-print-page { page-break-before: always; }
+          .monthly-detail-print-page:first-child { page-break-before: auto; }
+        }
+      </style>
+      `;
+
+      // ฟังก์ชัน generateMonthlyTransactionTables จะถูกเรียกต่อไป
 
       html += `
           </tbody>
@@ -4328,7 +4363,7 @@
         <div class="flex justify-between mt-6 w-full">
           <!-- Left signature (Accountant) -->
           <div class="w-1/2 text-center">
-            <div class="mb-2">(  <?= settings['ชื่อผู้จัดทำบัญชี'] ?>  )</div>
+            <div class="mb-2">(  <?!= settings['ชื่อผู้จัดทำบัญชี'] ?>  )</div>
             <div class="mb-2">ตำแหน่ง..........................................................</div>
             <div class="mb-2">ผู้จัดทำบัญชี</div>
             <div>วันที่......../................../.............</div>           
@@ -4338,7 +4373,7 @@
 
           <!-- Right signature (Auditor) -->
           <div class="w-1/2 text-center">
-            <div class="mb-2">(  <?= settings['ชื่อเจ้าอาวาส'] ?>  )</div>
+            <div class="mb-2">(  <?!= settings['ชื่อเจ้าอาวาส'] ?>  )</div>
             <div class="mb-2">ตำแหน่ง.........................................................</div>
             <div class="mb-2">ผู้ตรวจสอบบัญชี</div>
             <div>วันที่......./...................../.............</div>
@@ -4396,7 +4431,7 @@
         const summary = monthlySummary[month];
 
         html += `
-      <div class="mb-8">
+      <div class="mb-8 monthly-detail-print-page">
         <h5 class="text-md font-semibold mb-2">รายละเอียดเดือน ${summary.name}</h5>
         <div class="overflow-x-auto">
           <table class="min-w-full bg-white rounded-lg overflow-hidden mb-4">
@@ -4845,6 +4880,7 @@
           padding-top: 20px;
           margin-top: 60px;
         }
+
       </style>
     </head>
     <body>
@@ -4909,13 +4945,13 @@
       <div class="signature-section">
         <div class="signature-row">
           <div class="signature-box">
-            <div>(  <?= settings['ชื่อผู้จัดทำบัญชี'] ?>  )</div>
+            <div>(  <?!= settings['ชื่อผู้จัดทำบัญชี'] ?>  )</div>
             <div>ตำแหน่ง..........................................................</div>
             <div>ผู้จัดทำบัญชี</div>
             <div class="signature-line">วันที่......../.................../...........</div>
           </div>
           <div class="signature-box">
-            <div>(  <?= settings['ชื่อเจ้าอาวาส'] ?>  )</div>
+            <div>(  <?!= settings['ชื่อเจ้าอาวาส'] ?>  )</div>
             <div>ตำแหน่ง..........................................................</div>
             <div>ผู้ตรวจสอบบัญชี</div>
             <div class="signature-line">วันที่......../.................../...........</div>
@@ -5423,13 +5459,13 @@
       <div class="signature-section">
         <div class="signature-row">
           <div class="signature-box">
-            <div>(..................................)</div>
+            <div>(  <?!= settings['ชื่อผู้จัดทำบัญชี'] ?>  )</div>
             <div>ตำแหน่ง..........................................................</div>
             <div>ผู้จัดทำบัญชี</div>
             <div class="signature-line">วันที่......../................../...........</div>
           </div>
           <div class="signature-box">
-            <div>(..................................)</div>
+            <div>(  <?!= settings['ชื่อเจ้าอาวาส'] ?>  )</div>
             <div>ตำแหน่ง..........................................................</div>
             <div>ผู้ตรวจสอบบัญชี</div>
             <div class="signature-line">วันที่......./................../............</div>
@@ -5504,7 +5540,7 @@
         ['รับรองข้อมูลตามนี้'],
         [],
         ['ผู้จัดทำบัญชี', '', 'ผู้ตรวจสอบบัญชี', ''],
-        ['(..................................)', '', '(..................................)', ''],
+        ['(  <?!= settings['ชื่อผู้จัดทำบัญชี'] ?>  )', '', '(  <?!= settings['ชื่อเจ้าอาวาส'] ?>  )', ''],
         ['ตำแหน่ง...................................', '', 'ตำแหน่ง...................................', ''],
         ['วันที่......../................./............', '', 'วันที่......../................./...........', '']
       );
