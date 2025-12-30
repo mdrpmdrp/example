@@ -1,13 +1,3 @@
-function processFRFOrder({ fileOrderDataURL, fileDbDataURL }) {
-    const orderData = readExcelData(fileOrderDataURL);
-    const dbData = readExcelData(fileDbDataURL);
-    return JSON.stringify({
-        success: true,
-        orderRows: orderData,
-        dbRows: dbData
-    });
-}
-
 function generateFRFTransactionJSON({ orderRows, dbRows } = {}) {
     // orderRows = temp_orderRows
     // dbRows = temp_dbRows

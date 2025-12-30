@@ -7,10 +7,12 @@ function doGet(e){
     .setFaviconUrl('https://img.icons8.com/color/48/upload-2--v1.png')
 }
 
-function processOrder({storeName, fileOrderData, fileDbData}){
+function processOrder({storeName, fileOrderDataURL, fileDbArray}){
     switch(storeName.toLowerCase()){
         case 'frf':
-            return generateFRFTransactionJSON({orderRows: fileOrderData, dbRows: fileDbData});
+            return null; // No processing needed here for FRF. processing is done at frontend
+        case 'boko':
+            return getBokoOrderRows({fileOrderDataURL, dbRows: fileDbArray});
         default:
             throw new Error('Store not recognized');
     }
@@ -20,6 +22,8 @@ function generateTransactionJSON({storeName, orderRows, dbRows}){
     switch(storeName.toLowerCase()){
         case 'frf':
             return generateFRFTransactionJSON({orderRows, dbRows});
+        case 'boko':
+            return generateBokoTransactionJSON({orderRows, dbRows});
         default:
             throw new Error('Store not recognized');
     }

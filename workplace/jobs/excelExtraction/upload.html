@@ -99,7 +99,7 @@
 
         <!-- Form Card -->
         <div class="bg-white rounded-2xl shadow-xl p-8 max-w-4xl mx-auto">
-            <form id="uploadForm" class="space-y-6"> 
+            <form id="uploadForm" class="space-y-6">
 
                 <!-- Store Dropdown -->
                 <div class="form-group">
@@ -110,6 +110,7 @@
                         class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none appearance-none bg-white cursor-pointer">
                         <option value="" selected disabled>-- เลือกร้านค้า --</option>
                         <option value="FRF">FRF</option>
+                        <option value="BOKO">BOKO</option>
                     </select>
                 </div>
 
@@ -120,10 +121,9 @@
                             <i class="fas fa-cloud-upload-alt text-indigo-600 mr-2"></i>
                             อัพโหลดไฟล์
                         </h3>
-                        <a href="https://docs.google.com/spreadsheets/d/1hadGQxdktpvdV_ROmdt3lKDaijeej7Q2f6D9eMKx_pA/edit" 
-                           target="_blank" 
-                           rel="noopener noreferrer"
-                           class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all">
+                        <a href="https://docs.google.com/spreadsheets/d/1hadGQxdktpvdV_ROmdt3lKDaijeej7Q2f6D9eMKx_pA/edit"
+                            target="_blank" rel="noopener noreferrer"
+                            class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all">
                             <i class="fas fa-table mr-2"></i>
                             <span>เปิด Matcher Database</span>
                             <i class="fas fa-external-link-alt ml-2 text-xs"></i>
@@ -142,9 +142,10 @@
 
                             <!-- Drag and Drop Zone -->
                             <div id="dropZone"
-                                class="relative border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer transition-all duration-300 hover:border-indigo-500 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50 hover:shadow-md group">
+                                class="relative border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer transition-all duration-300 hover:border-indigo-500 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50 hover:shadow-md group"
+                                style="pointer-events: none; opacity: 0.5;" id="dropZone">
 
-                                <input type="file" id="fileInput" name="file" class="hidden">
+                                <input type="file" id="fileInput" name="file" class="hidden" disabled>
 
                                 <div id="uploadPrompt" class="space-y-2">
                                     <!-- Upload Icon -->
@@ -163,8 +164,9 @@
                                     </div>
 
                                     <div class="flex items-center justify-center gap-1 text-xs text-gray-400 mt-2">
-                                        <i class="fas fa-info-circle"></i>
-                                        <span>XLSX, XLS, CSV, PDF, JPEG (สูงสุด 10MB)</span>
+                                        <i class="fas fa-info-circle"></i>เฉพาะ
+                                        <span id="accept-label" class="ml-1">XLSX, XLS, CSV, PDF, JPEG (สูงสุด
+                                            10MB)</span>
                                     </div>
                                 </div>
 
@@ -173,22 +175,15 @@
                                     <div
                                         class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-4">
                                         <div class="flex items-center space-x-3">
-                                            <!-- File Icon -->
-                                            <div class="flex-shrink-0">
-                                                <div
-                                                    class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                                    <i class="fas fa-file-excel text-2xl text-green-600"></i>
-                                                </div>
-                                            </div>
                                             <div class="flex-1 min-w-0 text-left">
-                                                <p id="fileName" class="text-sm font-semibold text-gray-800 truncate">
+                                                <p id="filesNameWrapper"
+                                                    class="text-sm font-semibold text-gray-800 truncate">
                                                 </p>
-                                                <p id="fileSize" class="text-xs text-gray-600 mt-0.5"></p>
                                             </div>
-                                            <button type="button" id="removeFile"
+                                            <!-- <button type="button" id="removeFile"
                                                 class="flex-shrink-0 p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
                                                 <i class="fas fa-times text-lg"></i>
-                                            </button>
+                                            </button> -->
                                         </div>
                                     </div>
                                 </div>
@@ -206,10 +201,11 @@
 
                             <!-- Drag and Drop Zone -->
                             <div id="dropZoneDb"
-                                class="relative border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer transition-all duration-300 hover:border-purple-500 hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50 hover:shadow-md group">
+                                class="relative border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer transition-all duration-300 hover:border-purple-500 hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50 hover:shadow-md group"
+                                style="pointer-events: none; opacity: 0.5;" id="dropZoneDb">
 
                                 <input type="file" id="fileInputDb" name="fileDb" accept=".xlsx,.xls,.csv"
-                                    class="hidden">
+                                    class="hidden" disabled>
 
                                 <div id="uploadPromptDb" class="space-y-2">
                                     <!-- Upload Icon -->
@@ -297,7 +293,8 @@
                         <i class="fas fa-table text-indigo-600 mr-2"></i>
                         ตัวอย่างข้อมูล Transaction
                     </h2>
-                    <button id="downloadBtn" class="px-6 py-3 text-white font-semibold rounded-lg h transform hover:scale-105 transition-all shadow-lg hover:shadow-xl bg-green-700">
+                    <button id="downloadBtn"
+                        class="px-6 py-3 text-white font-semibold rounded-lg h transform hover:scale-105 transition-all shadow-lg hover:shadow-xl bg-green-700">
                         <i class="fas fa-download mr-2"></i>
                         ดาวน์โหลดไฟล์
                     </button>
@@ -305,7 +302,8 @@
 
                 <!-- Tab Navigation -->
                 <div class="mb-6 border-b border-gray-200 overflow-x-auto">
-                    <div id="tabNavigation" class="flex gap-1 -mb-px pb-2" style="overflow-x: auto; scrollbar-width: thin; scrollbar-color: #6366f1 #e5e7eb;">
+                    <div id="tabNavigation" class="flex gap-1 -mb-px pb-2"
+                        style="overflow-x: auto; scrollbar-width: thin; scrollbar-color: #6366f1 #e5e7eb;">
                         <!-- Tabs will be dynamically inserted here -->
                     </div>
                 </div>
@@ -343,15 +341,27 @@
         const acceptedFileTypes = {
             database: ['xlsx', 'xls', 'csv'],
             order: {
-                frf: ['xlsx', 'xls', 'csv']
+                frf: ['xlsx', 'xls', 'csv'],
+                boko: ['pdf']
             }
         }
         const acceptMultipleFiles = {
             database: false,
             order: {
-                frf: false
+                frf: false,
+                boko: true,
             }
         }
+        const fileIcons = {
+            xlsx: '<i class="fas fa-file-excel text-green-600"></i>',
+            xls: '<i class="fas fa-file-excel text-green-600"></i>',
+            csv: '<i class="fas fa-file-csv text-green-600"></i>',
+            pdf: '<i class="fas fa-file-pdf text-red-600"></i>',
+            jpg: '<i class="fas fa-file-image text-blue-600"></i>',
+            jpeg: '<i class="fas fa-file-image text-blue-600"></i>',
+            png: '<i class="fas fa-file-image text-blue-600"></i>'
+        };
+
         let mainTableObject = null
         let mainProductMapErrors = null;
         let mainBranchMapErrors = null;
@@ -360,11 +370,11 @@
         const $storeName = $('#storeName');
         const $dropZone = $('#dropZone');
         const $fileInput = $('#fileInput');
+        const $acceptLabel = $('#accept-label');
         const $uploadPrompt = $('#uploadPrompt');
         const $filePreview = $('#filePreview');
-        const $fileName = $('#fileName');
+        const $filesNameWrapper = $('#filesNameWrapper');
         const $fileSize = $('#fileSize');
-        const $removeFileBtn = $('#removeFile');
         const $uploadForm = $('#uploadForm');
 
         // Database elements
@@ -387,6 +397,23 @@
 
         $(document).ready(function () {
 
+            // Helper to enable/disable upload areas
+            function setUploadEnabled(enabled) {
+                if (enabled) {
+                    $dropZone.css({ 'pointer-events': '', 'opacity': '' });
+                    $fileInput.prop('disabled', false);
+                    $dropZoneDb.css({ 'pointer-events': '', 'opacity': '' });
+                    $fileInputDb.prop('disabled', false);
+                } else {
+                    $dropZone.css({ 'pointer-events': 'none', 'opacity': 0.5 });
+                    $fileInput.prop('disabled', true);
+                    $dropZoneDb.css({ 'pointer-events': 'none', 'opacity': 0.5 });
+                    $fileInputDb.prop('disabled', true);
+                }
+            }
+            // Initial state: disabled
+            setUploadEnabled(false);
+
             // Prevent default drag behaviors
             function preventDefaults(e) {
                 e.preventDefault();
@@ -394,12 +421,16 @@
             }
 
             $storeName.on('change', function () {
+                setUploadEnabled(!!$storeName.val());
                 // Reset file inputs and previews when store changes
-                $fileInput.val('').attr('multiple', acceptMultipleFiles.order[$('#storeName').val().toLowerCase()] ? true : false);
+                $fileInput.val('').attr({
+                    'multiple': acceptMultipleFiles.order[$('#storeName').val().toLowerCase()] ? true : false,
+                    'accept': acceptedFileTypes.order[$('#storeName').val().toLowerCase()].map(ext => '.' + ext.toUpperCase()).join(',')
+                });
+                $acceptLabel.text(acceptedFileTypes.order[$('#storeName').val().toLowerCase()].map(ext => ext.toUpperCase()).join(', ') + ' (สูงสุด 10MB)');
                 $uploadPrompt.removeClass('hidden');
                 $filePreview.addClass('hidden');
 
-                $fileInputDb.val('').attr('multiple', acceptMultipleFiles.database ? true : false);
                 $uploadPromptDb.removeClass('hidden');
                 $filePreviewDb.addClass('hidden');
 
@@ -482,14 +513,47 @@
             function handleFiles(files) {
                 if (files.length === 0) return;
 
-                const file = files[0];
-                const fileExtension = file.name.split('.').pop().toLowerCase();
-
-                if (!acceptedFileTypes.order[$('#storeName').val().toLowerCase()].includes(fileExtension)) {
+                let notAcceptedFiles = [];
+                let oversizedFiles = [];
+                let processingFiles = [];
+                const isMultiple = acceptMultipleFiles.order[$('#storeName').val().toLowerCase()];
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const fileExtension = file.name.split('.').pop().toLowerCase();
+                    if (!acceptedFileTypes.order[$('#storeName').val().toLowerCase()].includes(fileExtension)) {
+                        notAcceptedFiles.push(file.name);
+                    }
+                    else if (file.size > 10 * 1024 * 1024) {
+                        oversizedFiles.push(file.name + ` (${formatFileSize(file.size)})`);
+                    } else {
+                        processingFiles.push(file);
+                    }
+                }
+                console.log(notAcceptedFiles);
+                if (notAcceptedFiles.length > 0) {
                     Swal.fire({
                         iconHtml: '<i class="fas fa-times-circle"></i>',
                         title: 'ไฟล์ไม่ถูกต้อง',
-                        text: 'กรุณาอัพโหลดไฟล์ XLSX, XLS หรือ CSV เท่านั้น',
+                        html: `
+                            <div class="text-left">
+                                <div class="flex items-center mb-3">
+                                    <i class="fas fa-exclamation-triangle text-red-600 text-2xl mr-3"></i>
+                                    <span class="font-semibold text-red-700 text-lg">ไฟล์ไม่ถูกต้อง</span>
+                                </div>
+                                <div class="mb-2 text-gray-700">
+                                    กรุณาอัพโหลดไฟล์ที่มีนามสกุล: 
+                                    <span class="font-semibold text-indigo-600">
+                                        ${acceptedFileTypes.order[$('#storeName').val().toLowerCase()].map(ext => ext.toUpperCase()).join(', ')}
+                                    </span>
+                                </div>
+                                <div class="bg-red-50 border-l-4 border-red-400 p-3 rounded-lg text-sm text-red-700">
+                                    <div class="font-semibold mb-1">ไฟล์ที่ไม่ถูกต้อง:</div>
+                                    <ul class="list-disc list-inside">
+                                        ${notAcceptedFiles.map(f => `<li>${f}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                        `,
                         confirmButtonColor: '#6366f1',
                         customClass: {
                             icon: 'text-xl border-none text-red-600'
@@ -498,13 +562,27 @@
                     $fileInput.val('');
                     return;
                 }
-
-                const maxSize = 10 * 1024 * 1024;
-                if (file.size > maxSize) {
+                if (oversizedFiles.length > 0) {
                     Swal.fire({
                         iconHtml: '<i class="fas fa-times-circle"></i>',
                         title: 'ไฟล์ใหญ่เกินไป',
-                        text: 'กรุณาอัพโหลดไฟล์ที่มีขนาดไม่เกิน 10MB',
+                        html: `
+                            <div class="text-left">
+                                <div class="flex items-center mb-3">
+                                    <i class="fas fa-exclamation-triangle text-red-600 text-2xl mr-3"></i>
+                                    <span class="font-semibold text-red-700 text-lg">ไฟล์ใหญ่เกินไป</span>
+                                </div>
+                                <div class="mb-2 text-gray-700">
+                                    กรุณาอัพโหลดไฟล์ที่มีขนาดไม่เกิน 10MB
+                                </div>
+                                <div class="bg-red-50 border-l-4 border-red-400 p-3 rounded-lg text-sm text-red-700">
+                                    <div class="font-semibold mb-1">ไฟล์ที่มีขนาดเกิน:</div>
+                                    <ul class="list-disc list-inside">
+                                        ${oversizedFiles.map(f => `<li>${f}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                        `,
                         confirmButtonColor: '#6366f1',
                         customClass: {
                             icon: 'text-xl border-none text-red-600'
@@ -515,8 +593,60 @@
                 }
 
                 // Show file preview
-                $fileName.text(file.name);
-                $fileSize.text(formatFileSize(file.size));
+                // Show preview for multiple files
+                let names = [];
+                let sizes = [];
+                for (let i = 0; i < processingFiles.length; i++) {
+                    names.push(processingFiles[i].name);
+                    sizes.push(formatFileSize(processingFiles[i].size));
+                }
+                const truncateName = (name) => {
+                    const maxLength = 30;
+                    if (name.length <= maxLength) return name;
+                    return name.slice(0, 15) + '...' + name.slice(-10);
+                };
+                $filesNameWrapper.html(names.map((name, index) =>
+                    `<div class="flex items-center justify-between mb-1 hover:bg-gray-100 hover:text-red-600 hover:text-xlp-2 rounded-lg cursor-pointer">
+                        ${fileIcons[name.split('.').pop().toLowerCase()] || '<i class="fas fa-file text-gray-600"></i>'}
+                            <div class="">
+                                <span class="truncate text-xs" title="${name}">
+                                    ${truncateName(name)}
+                                </span>
+                                <span class="text-xs text-gray-600">(${sizes[index]})</span>
+                            </div>
+                            <i class="fas fa-times text-lg text-red-600 removeFileBtn hover:text-xl" data-index="${index}" title="ลบไฟล์ ${name}"></i>    
+                        </div>`
+                ).join(''));
+
+                $('.removeFileBtn').on('click', function (e) {
+                    e.stopPropagation();
+                    console.log('remove clicked');
+                    let index = $(this).data('index');
+                    if (index !== undefined) {
+                        console.log('index to remove:', index);
+                        let dt = new DataTransfer();
+                        let files = $fileInput[0].files;
+                        for (let i = 0; i < files.length; i++) {
+                            if (i !== index) {
+                                dt.items.add(files[i]);
+                            }
+                        }
+                        console.log('new files:', dt.files);
+                        $fileInput[0].files = dt.files;
+                        if ($fileInput[0].files.length > 0) {
+                            handleFiles($fileInput[0].files);
+                        } else {
+                            $fileInput.val('');
+                            $uploadPrompt.removeClass('hidden');
+                            $filePreview.addClass('hidden');
+                            $filesNameWrapper.html('');
+                        }
+                    } else {
+                        $fileInput.val('');
+                        $uploadPrompt.removeClass('hidden');
+                        $filePreview.addClass('hidden');
+                    }
+                });
                 $uploadPrompt.addClass('hidden');
                 $filePreview.removeClass('hidden');
 
@@ -564,14 +694,6 @@
                 $uploadPromptDb.addClass('hidden');
                 $filePreviewDb.removeClass('hidden');
             }
-
-            // Remove Order file
-            $removeFileBtn.on('click', function (e) {
-                e.stopPropagation();
-                $fileInput.val('');
-                $uploadPrompt.removeClass('hidden');
-                $filePreview.addClass('hidden');
-            });
 
             // Remove Database file
             $removeFileBtnDb.on('click', function (e) {
@@ -631,30 +753,34 @@
                 }
 
                 // Read order file - check if Excel/CSV or other format
-                const orderFile = $fileInput[0].files[0];
-                const orderFileExt = orderFile.name.split('.').pop().toLowerCase();
-                const isOrderExcel = ['xlsx', 'xls', 'csv'].includes(orderFileExt);
-                
-                let fileOrderData;
-                if (isOrderExcel) {
-                    // Read as Excel/CSV and parse to JSON array
-                    fileOrderData = await readFileAsJson(orderFile, orderFileExt);
-                } else {
-                    // Read as DataURL for other formats (PDF, JPEG, etc.)
-                    fileOrderData = await new Promise((resolve) => {
-                        let fr = new FileReader();
-                        fr.onload = function (e) {
-                            resolve(e.target.result);
-                        };
-                        fr.readAsDataURL(orderFile);
-                    });
+                let filesOrderData = [];
+                for (let i = 0; i < $fileInput[0].files.length; i++) {
+                    const orderFile = $fileInput[0].files[i];
+                    const orderFileExt = orderFile.name.split('.').pop().toLowerCase();
+                    const isOrderExcel = ['xlsx', 'xls', 'csv'].includes(orderFileExt);
+
+                    if (isOrderExcel) {
+                        // Read as Excel/CSV and parse to JSON array
+                        filesOrderData.push({ isExcel: true, data: await readFileAsJson(orderFile, orderFileExt) });
+                    } else {
+                        // Read as DataURL for other formats (PDF, JPEG, etc.)
+                        filesOrderData.push({
+                            isExcel: false, data: await new Promise((resolve) => {
+                                let fr = new FileReader();
+                                fr.onload = function (e) {
+                                    resolve(e.target.result);
+                                };
+                                fr.readAsDataURL(orderFile);
+                            })
+                        });
+                    }
                 }
 
                 // Read database file - check if Excel/CSV
                 const dbFile = $fileInputDb[0].files[0];
                 const dbFileExt = dbFile.name.split('.').pop().toLowerCase();
                 const isDbExcel = ['xlsx', 'xls', 'csv'].includes(dbFileExt);
-                
+
                 let fileDbData;
                 fileDbData = await readFileAsJson(dbFile, dbFileExt, "list");
 
@@ -662,7 +788,13 @@
                 Swal.fire({
                     iconHtml: '<i class="fas fa-spinner fa-pulse"></i>',
                     title: 'กำลังดึงข้อมูล...',
-                    text: 'กรุณารอสักครู่',
+                    html:
+                        `
+                    <div class="w-full bg-gray-200 rounded-full h-4 mb-4 animate-pulse-slow">
+                        <div class="process-progress-bar bg-indigo-500 h-4 rounded-full" style="width: 0%; transition: width 0.5s;"></div>
+                    </div>
+                    <p class="text-gray-700 text-center text-sm mt-2">กำลังประมวลผลไฟล์ กรุณารอสักครู่...</p>
+                    `,
                     allowOutsideClick: false,
                     showConfirmButton: false,
                     customClass: {
@@ -671,12 +803,13 @@
                 });
 
                 // let { orderRows, dbRows } = await getOrderData(storeName, fileOrderData, fileDbData);
-                if(isOrderExcel && isDbExcel){
-                    var orderRows = fileOrderData;
-                    var dbRows = fileDbData;
-                } else {
-                    var { orderRows, dbRows } = await getOrderData(storeName, fileOrderData, fileDbData);
-                }
+                var dbRows = fileDbData;
+                var { orderRows} = await getOrderData(storeName, filesOrderData, dbRows);
+                // if (isOrderExcel && isDbExcel) {
+                //     var orderRows = fileOrderData;
+                //     var dbRows = fileDbData;
+                // } else {
+                // }
                 mainTableObject = null;
                 Swal.fire({
                     iconHtml: '<i class="fas fa-table"></i>',
@@ -694,8 +827,9 @@
                 mainTableObject = tableObjects;
                 mainProductMapErrors = productMapErrors;
                 mainBranchMapErrors = branchMapErrors;
+                console.log(tableObjects)
                 showTablePreview();
-               
+
             });
         });
 
@@ -703,8 +837,8 @@
         function readFileAsJson(file, fileExtension, tabName) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                
-                reader.onload = function(e) {
+
+                reader.onload = function (e) {
                     try {
                         if (fileExtension === 'csv') {
                             // Parse CSV
@@ -724,9 +858,9 @@
                             // Parse Excel (xlsx, xls)
                             const data = new Uint8Array(e.target.result);
                             const workbook = XLSX.read(data, { type: 'array' });
-                            if(tabName){
+                            if (tabName) {
                                 const worksheet = workbook.Sheets[tabName];
-                                if(!worksheet){
+                                if (!worksheet) {
                                     Swal.fire({
                                         iconHtml: '<i class="fas fa-times-circle"></i>',
                                         title: 'เกิดข้อผิดพลาด',
@@ -751,11 +885,11 @@
                         reject(error);
                     }
                 };
-                
-                reader.onerror = function(error) {
+
+                reader.onerror = function (error) {
                     reject(error);
                 };
-                
+
                 if (fileExtension === 'csv') {
                     reader.readAsText(file);
                 } else {
@@ -764,43 +898,97 @@
             });
         }
 
-        function getOrderData(storeName, fileOrderDataURL, fileDbDataURL) {
-            return new Promise((resolve, reject) => {
-                google.script.run.withSuccessHandler(function (response) {
-                    response = JSON.parse(response);
-                    Swal.close();
-                    Swal.fire({
-                        iconHtml: '<i class="fas fa-check-circle"></i>',
-                        title: 'อัพโหลดสำเร็จ',
-                        text: response,
-                        confirmButtonColor: '#6366f1',
-                        customClass: {
-                            icon: 'text-xl border-none text-green-600'
-                        }
+        function getOrderData(storeName, filesOrderData, fileDbArray) {
+            // return new Promise((resolve, reject) => {
+            //     google.script.run.withSuccessHandler(function (response) {
+            //         response = JSON.parse(response);
+            //         Swal.close();
+            //         Swal.fire({
+            //             iconHtml: '<i class="fas fa-check-circle"></i>',
+            //             title: 'อัพโหลดสำเร็จ',
+            //             text: response,
+            //             confirmButtonColor: '#6366f1',
+            //             customClass: {
+            //                 icon: 'text-xl border-none text-green-600'
+            //             }
+            //         });
+            //         resolve(response);
+            //         // Reset form
+            //         // $uploadForm[0].reset();
+            //         // $fileInput.val('');
+            //         // $uploadPrompt.removeClass('hidden');
+            //         // $filePreview.addClass('hidden');
+            //         // $fileInputDb.val('');
+            //         // $uploadPromptDb.removeClass('hidden');
+            //         // $filePreviewDb.addClass('hidden');
+            //     }).withFailureHandler(function (error) {
+            //         Swal.close();
+            //         Swal.fire({
+            //             iconHtml: '<i class="fas fa-times-circle"></i>',
+            //             title: 'เกิดข้อผิดพลาด',
+            //             text: error.message,
+            //             confirmButtonColor: '#6366f1',
+            //             customClass: {
+            //                 icon: 'text-xl border-none text-red-600'
+            //             }
+            //         });
+            //         reject(error);
+            //     }).processOrder({ storeName, fileOrderDataURL, fileDbDataURL });
+            // });
+            let files_length = filesOrderData.length;
+            let success_count = 0;
+            let percent_complete = 0;
+            const updateProgress = (completed, total) => {
+                percent_complete = (completed / total) * 100;
+                // Update progress bar width
+                document.querySelector('.process-progress-bar').style.width = percent_complete + '%';
+            };
+            // Helper to process chunks sequentially
+            const processChunksSequentially = async (chunks) => {
+                let combinedOrderRows = [];
+                for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+                    const chunk = chunks[chunkIndex];
+                    const results = await Promise.all(
+                        chunk.map(fileOrderData => {
+                            if (fileOrderData.isExcel) {
+                                updateProgress(++success_count, files_length);
+                                return Promise.resolve({ orderRows: fileOrderData.data, dbRows: fileDbArray });
+                            }
+                            return new Promise((resolve, reject) => {
+                                google.script.run.withSuccessHandler(function (response) {
+                                    response = JSON.parse(response);
+                                    updateProgress(++success_count, files_length);
+                                    resolve(response);
+                                }).withFailureHandler(function (error) {
+                                    Swal.close();
+                                    Swal.fire({
+                                        iconHtml: '<i class="fas fa-times-circle"></i>',
+                                        title: 'เกิดข้อผิดพลาด',
+                                        text: error.message,
+                                        confirmButtonColor: '#6366f1',
+                                        customClass: {
+                                            icon: 'text-xl border-none text-red-600'
+                                        }
+                                    });
+                                    reject(error);
+                                }).processOrder({ storeName, fileOrderDataURL: fileOrderData.data, fileDbArray });
+                            });
+                        })
+                    );
+                    results.forEach(result => {
+                        combinedOrderRows = combinedOrderRows.concat(result.orderRows);
                     });
-                    resolve(response);
-                    // Reset form
-                    // $uploadForm[0].reset();
-                    // $fileInput.val('');
-                    // $uploadPrompt.removeClass('hidden');
-                    // $filePreview.addClass('hidden');
-                    // $fileInputDb.val('');
-                    // $uploadPromptDb.removeClass('hidden');
-                    // $filePreviewDb.addClass('hidden');
-                }).withFailureHandler(function (error) {
-                    Swal.close();
-                    Swal.fire({
-                        iconHtml: '<i class="fas fa-times-circle"></i>',
-                        title: 'เกิดข้อผิดพลาด',
-                        text: error.message,
-                        confirmButtonColor: '#6366f1',
-                        customClass: {
-                            icon: 'text-xl border-none text-red-600'
-                        }
-                    });
-                    reject(error);
-                }).processOrder({ storeName, fileOrderDataURL, fileDbDataURL });
-            });
+                }
+                return { orderRows: combinedOrderRows };
+            }
+
+            // Chunk filesOrderData if needed
+            const chunkSize = 15;
+            let chunks = [];
+            while (filesOrderData.length > 0) {
+                chunks.push(filesOrderData.splice(0, chunkSize));
+            }
+            return processChunksSequentially(chunks);
         }
 
         function generateTransactionJSON(storeName, orderRows, dbRows) {
@@ -855,10 +1043,10 @@
         }
 
         function showTablePreview() {
-            if((mainProductMapErrors && mainProductMapErrors.length > 0) || (mainBranchMapErrors && mainBranchMapErrors.length > 0)){
+            if ((mainProductMapErrors && mainProductMapErrors.length > 0) || (mainBranchMapErrors && mainBranchMapErrors.length > 0)) {
                 let errorHtml = '<div class="text-left space-y-4">';
-                
-                if(mainProductMapErrors && mainProductMapErrors.length > 0){
+
+                if (mainProductMapErrors && mainProductMapErrors.length > 0) {
                     errorHtml += `
                         <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
                             <div class="flex items-start">
@@ -875,8 +1063,8 @@
                         </div>
                     `;
                 }
-                
-                if(mainBranchMapErrors && mainBranchMapErrors.length > 0){
+
+                if (mainBranchMapErrors && mainBranchMapErrors.length > 0) {
                     errorHtml += `
                         <div class="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
                             <div class="flex items-start">
@@ -893,9 +1081,9 @@
                         </div>
                     `;
                 }
-                
+
                 errorHtml += '</div>';
-                
+
                 Swal.hideLoading()
                 Swal.fire({
                     iconHtml: '<i class="fas fa-exclamation-triangle"></i>',
@@ -919,11 +1107,11 @@
                         confirmButton: 'rounded-lg px-6 py-3 font-semibold'
                     },
                     didOpen: () => {
-                       Swal.hideLoading()
+                        Swal.hideLoading()
                     }
-                });
-            }else {
-              Swal.close()
+                })
+            } else {
+                Swal.close()
             }
             // Clear previous content
             $tablePreview.empty();
@@ -949,10 +1137,10 @@
                 return 0;
             })
             // Create tabs
-            mainTableObject.tabs.filter(tab => tab.rows.length > 0).forEach((tab, index) => {
+            mainTableObject.tabs.forEach((tab, index) => {
                 const itemCount = tab.rows.length;
                 const tabBtn = $(`
-                    <button class="tab-btn px-4 py-2 font-semibold rounded-t-lg transition-all whitespace-nowrap flex-shrink-0 ${index === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" 
+                    <button class="tab-btn px-4 py-2 font-semibold rounded-t-lg transition-all whitespace-nowrap flex-shrink-0 ${index === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} ${itemCount === 0 ? 'hidden' : ''}" 
                             data-tab-index="${index}">
                         ${tab.tabName}
                         <span class="ml-2 px-2 py-0.5 text-xs rounded-full ${index === 0 ? 'bg-white text-indigo-600' : 'bg-gray-300 text-gray-700'}">
@@ -960,12 +1148,12 @@
                         </span>
                     </button>
                 `);
-                
-                tabBtn.on('click', function() {
+
+                tabBtn.on('click', function () {
                     const tabIndex = $(this).data('tab-index');
                     switchTab(tabIndex);
                 });
-                
+
                 $tabNavigation.append(tabBtn);
             });
 
@@ -976,20 +1164,22 @@
             $tablePreviewSection.removeClass('hidden');
 
             // Scroll to table preview
-            $tablePreviewSection[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(() => {
+                $tablePreviewSection[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 200);
         }
 
         function switchTab(tabIndex) {
             if (!mainTableObject || !mainTableObject.tabs[tabIndex]) return;
 
             const currentTab = mainTableObject.tabs[tabIndex];
-            
+
             // Update active tab styling
-            $('.tab-btn').each(function() {
+            $('.tab-btn').each(function () {
                 const $btn = $(this);
                 const btnIndex = $btn.data('tab-index');
                 const itemCount = mainTableObject.tabs[btnIndex].rows.length;
-                
+
                 if (btnIndex === tabIndex) {
                     $btn.removeClass('bg-gray-100 text-gray-600 hover:bg-gray-200')
                         .addClass('bg-indigo-600 text-white');
@@ -1065,10 +1255,10 @@
                 tableObject.tabs.filter(tab => tab.rows.length > 0).forEach(tab => {
                     // Skip empty tabs if desired, or include them
                     const worksheetData = [];
-                    
+
                     // Add header row
                     worksheetData.push(tableObject.header);
-                    
+
                     // Add data rows
                     tab.rows.forEach(row => {
                         console.log("🚀 ~ file: upload.html:2493 ~ tab.rows.forEach ~ row:", row)
@@ -1101,11 +1291,11 @@
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                
+
                 // Generate filename with timestamp
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
                 link.download = `Transaction_${timestamp}.xlsx`;
-                
+
                 // Trigger download
                 document.body.appendChild(link);
                 link.click();
