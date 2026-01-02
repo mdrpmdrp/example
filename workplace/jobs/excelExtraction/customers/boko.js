@@ -132,13 +132,13 @@ function generateBokoTransactionJSON({orderRows, dbRows } = {}) {
             const quantity = Number(String(row.quantity).replace(/\./g, '').replace(/,/g, '.'));
             if (!quantity || quantity <= 0 || row.articleNo.trim() === 'TOTAL') continue;
 
-            const productName = String(row.description).toLowerCase().trim();
-            if (!productMap.has(productName) && !productMapErrors.has(row.description.trim())) {
-                productMapErrors.add(row.description.trim());
-                Logger.log(`Product mapping not found for product name: "${productName}"`);
+            const articleNo = String(row.articleNo).toLowerCase().trim().replace(/^0+/, '');
+            if (!productMap.has(articleNo) && !productMapErrors.has(row.articleNo.trim())) {
+                productMapErrors.add(row.articleNo.trim());
+                Logger.log(`Product mapping not found for product name: "${articleNo}"`);
             }
 
-            const productCode = productMap.get(productName) || 'UNKNOWN';
+            const productCode = productMap.get(articleNo) || 'UNKNOWN';
             const dbData = dbMap.get(productCode.toLowerCase());
 
             branchOrders.push([
