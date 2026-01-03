@@ -761,11 +761,13 @@
 
                     if (isOrderExcel) {
                         // Read as Excel/CSV and parse to JSON array
-                        filesOrderData.push({ isExcel: true, data: await readFileAsJson(orderFile, orderFileExt) });
+                        filesOrderData.push({ isExcel: true, name: orderFile.name, data: await readFileAsJson(orderFile, orderFileExt) });
                     } else {
                         // Read as DataURL for other formats (PDF, JPEG, etc.)
                         filesOrderData.push({
-                            isExcel: false, data: await new Promise((resolve) => {
+                            isExcel: false,
+                            name: orderFile.name,
+                            data: await new Promise((resolve) => {
                                 let fr = new FileReader();
                                 fr.onload = function (e) {
                                     resolve(e.target.result);
@@ -804,7 +806,7 @@
 
                 // let { orderRows, dbRows } = await getOrderData(storeName, fileOrderData, fileDbData);
                 var dbRows = fileDbData;
-                var { orderRows} = await getOrderData(storeName, filesOrderData, dbRows);
+                var { orderRows } = await getOrderData(storeName, filesOrderData, dbRows);
                 // if (isOrderExcel && isDbExcel) {
                 //     var orderRows = fileOrderData;
                 //     var dbRows = fileDbData;
@@ -971,7 +973,7 @@
                                         }
                                     });
                                     reject(error);
-                                }).processOrder({ storeName, fileOrderDataURL: fileOrderData.data, fileDbArray });
+                                }).processOrder({ storeName, fileOrderDataURL: fileOrderData.data, fileDbArray, fileOrderName: fileOrderData.name });
                             });
                         })
                     );

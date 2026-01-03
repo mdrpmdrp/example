@@ -1,4 +1,4 @@
-function getBokoOrderRows({ fileOrderDataURL, dbRows }) {
+function getBokoOrderRows({ fileOrderDataURL, fileOrderName, dbRows }) {
     try {
         // fileOrderDataURL is dataurl of pdf file, convert pdf to text and parse order rows
         const blob = Utilities.newBlob(Utilities.base64Decode(fileOrderDataURL.split(',')[1]));
@@ -14,11 +14,12 @@ function getBokoOrderRows({ fileOrderDataURL, dbRows }) {
 
         const ocrDoc = DocumentApp.openById(ocrFile.id);
         const ocrText = ocrDoc.getBody().getText();
+        Logger.log(ocrText);
         Drive.Files.remove(ocrFile.id);
-        const orderRows = extractBokoOrderRows(ocrText, dbRows);
+        const orderRows = extractBokoOrderRows(ocrText, dbRows, fileOrderName);
 
         // remove the temporary OCR document
-
+        Logger.log(JSON.stringify(orderRows));
         return JSON.stringify({orderRows})
     } catch (e) {
         Logger.log('Error in generating Boko transaction JSON: ' + e.message);
@@ -26,26 +27,20 @@ function getBokoOrderRows({ fileOrderDataURL, dbRows }) {
     }
 }
 
-function extractBokoOrderRows(ocrText, dbRows) {
-    const branchRegex = /Code\s*:\s*(\w+)/;
-    if (!branchRegex.test(ocrText)) {
-        throw new Error('Branch code not found in OCR text');
-    }
-    const branchCode = ocrText.match(branchRegex)[1].trim();
-
-    const itemRegex = /^\s*(\d+)\s+(\d+)\s+(.+?)\s+(\d+%)\s+([\d,.]+)\s+(\w+)/gm;
+function extractBokoOrderRows(ocrText, dbRows, fileOrderName) {
+    const itemRegex = /^\s*(\d+)\s+(\S+)\s+([\s\S]+?)\s+(\d+%)\s+([\d,.]+)\s+(\w+)/gm;
     const orderRows = [];
     let match;
 
     while ((match = itemRegex.exec(ocrText)) !== null) {
         orderRows.push({
-            branchCode: branchCode,
-            position: match[1],
-            articleNo: match[2],
+            branchCode: fileOrderName.toUpperCase().split('.PDF')[0],
+            position: match[1].trim(),
+            articleNo: match[2].trim(),
             description: match[3].trim(),
-            vat: match[4],
-            quantity: match[5],
-            unit: match[6]
+            vat: match[4].trim(),
+            quantity: match[5].trim(),
+            unit: match[6].trim()
         });
     }
     return orderRows;
@@ -158,3 +153,21 @@ function generateBokoTransactionJSON({orderRows, dbRows } = {}) {
     return JSON.stringify({ tableObjects, productMapErrors, branchMapErrors });
 }
 
+function test(){
+    const getFileDataURL = (fileId) => {
+        const file = DriveApp.getFileById(fileId);
+        const blob = file.getBlob();
+        const contentType = blob.getContentType();
+        const base64Data = Utilities.base64Encode(blob.getBytes());
+        return `data:${contentType};base64,${base64Data}`;
+    }
+    let fileOderId = 'https://drive.google.com/file/d/18JFcXAek303mqQCxRAapzF3vHcLDU9yn/view?usp=drive_link'.split('/d/')[1].split('/view')[0];
+    let dataURL = getFileDataURL(fileOderId);
+    let dbArray = [
+        ['123','Apple Juice','น้ำแอปเปิ้ล','Bottle','50'],
+        ['456','Orange Juice','น้ำส้ม','Bottle','60'],
+        ['789','Grape Juice','น้ำองุ่น','Bottle','70']
+    ]
+    let result = getBokoOrderRows({fileOrderDataURL: dataURL, fileOrderName: 'BOKO01.PDF', dbRows: dbArray});
+    Logger.log(result);
+}

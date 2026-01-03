@@ -7,12 +7,12 @@ function doGet(e){
     .setFaviconUrl('https://img.icons8.com/color/48/upload-2--v1.png')
 }
 
-function processOrder({storeName, fileOrderDataURL, fileDbArray}){
+function processOrder({storeName, fileOrderDataURL, fileDbArray, fileOrderName}){
     switch(storeName.toLowerCase()){
         case 'frf':
             return null; // No processing needed here for FRF. processing is done at frontend
         case 'boko':
-            return getBokoOrderRows({fileOrderDataURL, dbRows: fileDbArray});
+            return getBokoOrderRows({fileOrderDataURL, fileOrderName, dbRows: fileDbArray});
         default:
             throw new Error('Store not recognized');
     }
