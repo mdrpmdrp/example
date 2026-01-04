@@ -80,3 +80,15 @@ function getNotionProjectData() {
     
     return fetchNotionData(databaseId, lastEditedTime);
 }
+
+/**
+ * Fetches OKR KPI data from Notion
+ * @returns {Array} - Array of Notion OKR KPI pages
+ */
+function getNotionOkrKpiData() {
+    const config = getConfig();
+    const databaseId = config.notion.okrKpiDatabaseId;
+    let lastEditedTime = config.sync.lastEditedTime.okr_kpis || new Date(1).toISOString();
+    lastEditedTime = new Date(1).toISOString(); // for test - remove this line in production
+    return fetchNotionData(databaseId, lastEditedTime);
+}
