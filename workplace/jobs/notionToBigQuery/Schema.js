@@ -136,3 +136,83 @@ const okrKpiSchema = [
     { "name": "topics", "type": "STRING" },
     { "name": "heading", "type": "STRING"}
 ]
+
+const salesCrmSchema = [
+    // Core identifiers
+    { "name": "id", "type": "STRING" },
+    { "name": "url", "type": "STRING" },
+
+    // Contact information
+    { "name": "contact_name", "type": "STRING" },
+    { "name": "name", "type": "STRING" },
+    { "name": "phone_number", "type": "STRING" },
+    { "name": "email", "type": "STRING" },
+
+    // Company information
+    { "name": "registered_company_name", "type": "STRING" },
+    { "name": "category", "type": "STRING" },
+
+    // Opportunity & sales data
+    { "name": "opportunity", "type": "STRING" },
+    { "name": "forecast_income", "type": "FLOAT" },
+    { "name": "average_monthly_income", "type": "FLOAT" },
+    { "name": "focus", "type": "STRING" },
+
+    // People & relationships
+    { "name": "caretaker", "type": "STRING", "mode": "REPEATED" },
+    { "name": "interesting", "type": "STRING", "mode": "REPEATED" },
+
+    // Dates
+    { "name": "contact_date", "type": "STRING" },
+    { "name": "first_contact_date", "type": "DATE" },
+    { "name": "last_contact_date", "type": "DATE" },
+    { "name": "next_contact_date", "type": "DATE" },
+
+    // Communication channels
+    { "name": "contact_channels", "type": "STRING", "mode": "REPEATED" },
+
+    // Details & notes
+    { "name": "summary_data", "type": "STRING" },
+    { "name": "gg_map", "type": "STRING" },
+    { "name": "required_field", "type": "STRING" },
+
+    // Relations
+    { "name": "crm_records", "type": "STRING", "mode": "REPEATED" }
+]
+
+const salesRecordSchema = [
+    // Core identifiers
+    { "name": "id", "type": "STRING" },
+    { "name": "url", "type": "STRING" },
+
+    // Status & dates
+    { "name": "status", "type": "STRING" },
+    { "name": "last_edited_time", "type": "TIMESTAMP" },
+    { "name": "first_contact_date", "type": "DATE" },
+    { "name": "expected_closure_date", "type": "DATE" },
+    { "name": "next_contact_date", "type": "DATE" },
+
+    // Contact information
+    { "name": "key_contact", "type": "STRING" },
+    { "name": "phone_number", "type": "STRING" },
+    { "name": "position", "type": "STRING" },
+
+    // Financial data
+    { "name": "amount", "type": "FLOAT" },
+    { "name": "lt_ticket", "type": "FLOAT" },
+    { "name": "lt_14_days_test", "type": "FLOAT" },
+
+    // Service & focus
+    { "name": "service", "type": "STRING" },
+    { "name": "focus", "type": "STRING" },
+    { "name": "delivery_target", "type": "STRING" },
+
+    // People & relations
+    { "name": "responsible_persons", "type": "STRING", "mode": "REPEATED" },
+    { "name": "sales_crm", "type": "STRING", "mode": "REPEATED" },
+    { "name": "tasks", "type": "STRING" },
+
+    // Details & attachments
+    { "name": "presentation_details", "type": "STRING" },
+    { "name": "files_and_media", "type": "STRING", "mode": "REPEATED" }
+]

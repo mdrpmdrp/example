@@ -5,6 +5,8 @@ function syncNotionToBigQuery() {
     syncNotionTasks();
     syncNotionProjects();
     syncNotionOkrKpis();
+    syncNotionSalesCrm();
+    syncNotionSalesRecords();
 }
 
 /**
@@ -66,6 +68,42 @@ function syncNotionOkrKpis() {
 }
 
 /**
+ * Syncs Notion Sales CRM data to BigQuery
+ */
+function syncNotionSalesCrm() {
+    const config = getConfig();
+    const notionSalesCrmData = getNotionSalesCrmData();
+    const transformedData = transformNotionData(notionSalesCrmData, 'salesCrm');
+    mergeDataToBigQuery(
+        transformedData,
+        salesCrmSchema,
+        config.bigQuery.projectId,
+        config.bigQuery.datasetId,
+        config.bigQuery.salesCrmTableId
+    );
+    config.sync.lastEditedTime = new Date().toISOString();
+    setLastEditedTime(config.sync.lastEditedTime, config.bigQuery.salesCrmTableId);
+}
+
+/**
+ * Syncs Notion sales records to BigQuery
+ */
+function syncNotionSalesRecords() {
+    const config = getConfig();
+    const notionSalesRecordData = getNotionSalesRecordData();
+    const transformedData = transformNotionData(notionSalesRecordData, 'salesRecord');
+    mergeDataToBigQuery(
+        transformedData,
+        salesRecordSchema,
+        config.bigQuery.projectId,
+        config.bigQuery.datasetId,
+        config.bigQuery.salesRecordTableId
+    );
+    config.sync.lastEditedTime = new Date().toISOString();
+    setLastEditedTime(config.sync.lastEditedTime, config.bigQuery.salesRecordTableId);
+}
+
+/**
  * Inserts new Notion tasks into BigQuery
  * Only run once in a while to avoid duplicates
  */
@@ -96,5 +134,41 @@ function insertNewNotionProjects() {
         config.bigQuery.projectId,
         config.bigQuery.datasetId,
         config.bigQuery.projectTableId
+    );
+}
+
+function insertNewNotionOkrKpis() {
+    const config = getConfig();
+    const notionOkrKpiData = getNotionOkrKpiData();
+    const transformedData = transformNotionData(notionOkrKpiData, 'okrKpi');
+    insertDataToBigQuery(
+        transformedData,
+        config.bigQuery.projectId,
+        config.bigQuery.datasetId,
+        config.bigQuery.okrKpiTableId
+    );
+}
+
+function insertNewNotionSalesCrm() {
+    const config = getConfig();
+    const notionSalesCrmData = getNotionSalesCrmData();
+    const transformedData = transformNotionData(notionSalesCrmData, 'salesCrm');
+    insertDataToBigQuery(
+        transformedData,
+        config.bigQuery.projectId,
+        config.bigQuery.datasetId,
+        config.bigQuery.salesCrmTableId
+    );
+}
+
+function insertNewNotionSalesRecords() {
+    const config = getConfig();
+    const notionSalesRecordData = getNotionSalesRecordData();
+    const transformedData = transformNotionData(notionSalesRecordData, 'salesRecord');
+    insertDataToBigQuery(
+        transformedData,
+        config.bigQuery.projectId,
+        config.bigQuery.datasetId,
+        config.bigQuery.salesRecordTableId
     );
 }

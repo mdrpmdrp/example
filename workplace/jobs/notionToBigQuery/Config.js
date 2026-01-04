@@ -16,21 +16,20 @@ function getConfig() {
             projectId: scriptProps.getProperty('BIGQUERY_PROJECT_ID'),
             datasetId: scriptProps.getProperty('BIGQUERY_DATASET_ID'),
             taskTableId: scriptProps.getProperty('BIGQUERY_TASK_TABLE_ID'),
-            projectTableId: scriptProps.getProperty('BIGQUERY_PROJECT_TABLE_ID')
-
-            // for testing
-            // projectId: 'door-to-anywhere',
-            // datasetId: 'test_dataset',
-            // taskTableId: 'notion_test',
-            // projectTableId: 'notion_projects'
+            projectTableId: scriptProps.getProperty('BIGQUERY_PROJECT_TABLE_ID'),
+            okrKpiTableId: scriptProps.getProperty('BIGQUERY_OKR_KPI_TABLE_ID'),
+            salesCrmTableId: scriptProps.getProperty('BIGQUERY_SALES_CRM_TABLE_ID'),
+            salesRecordTableId: scriptProps.getProperty('BIGQUERY_SALES_RECORD_TABLE_ID'),
         },
         
         // Notion Configuration
         notion: {
-            apiKey: scriptProps.getProperty('NOTION_API_KEY'),
+            // apiKey: scriptProps.getProperty('NOTION_API_KEY'),
             taskDatabaseId: scriptProps.getProperty('NOTION_TASK_DATABASE_ID'),
             projectDatabaseId: scriptProps.getProperty('NOTION_PROJECT_DATABASE_ID'),
-            apiVersion: '2025-09-03'
+            okrKpiDatabaseId: scriptProps.getProperty('NOTION_OKR_KPI_DATABASE_ID'),
+            salesCrmDatabaseId: scriptProps.getProperty('NOTION_SALES_CRM_DATABASE_ID'),
+            salesRecordDatabaseId: scriptProps.getProperty('NOTION_SALES_RECORD_DATABASE_ID'),
         },
         
         // Sync Configuration
