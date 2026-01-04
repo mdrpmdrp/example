@@ -14,7 +14,7 @@ function convertSchemaToStructTypes(schema) {
             : { type: field.type }
     }));
 }
-//gfgfhtgfhth
+
 /**
  * Builds merge query for BigQuery
  */

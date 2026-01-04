@@ -83,3 +83,56 @@ const projectSchema = [
 
     { "name": "status", "type": "STRING" }
 ]
+
+
+
+
+const okrKpiSchema = [
+    // Core identifiers
+    { "name": "id", "type": "STRING" },
+    { "name": "url", "type": "STRING" },
+
+    // Key metrics
+    { "name": "average_score", "type": "FLOAT" },
+    { "name": "weighted_score_for_graph", "type": "FLOAT" },
+    { "name": "status", "type": "STRING" },
+
+    // Ownership & responsibility
+    { "name": "owner", "type": "STRING" },
+    { "name": "responsible_persons", "type": "STRING", "mode": "REPEATED" },
+    { "name": "last_edited_by", "type": "STRING" },
+
+    // Timestamps
+    { "name": "last_edited_time", "type": "TIMESTAMP" },
+    { "name": "next_update", "type": "DATE" },
+
+    // Configuration
+    { "name": "weight", "type": "FLOAT" },
+    { "name": "calculation_method", "type": "STRING"},
+    { "name": "update_frequency", "type": "STRING", "mode": "REPEATED" },
+
+    // Monthly data
+    { "name": "january", "type": "FLOAT" },
+    { "name": "february", "type": "FLOAT" },
+    { "name": "march", "type": "FLOAT" },
+    { "name": "april", "type": "FLOAT" },
+    { "name": "may", "type": "FLOAT" },
+    { "name": "june", "type": "FLOAT" },
+    { "name": "july", "type": "FLOAT" },
+    { "name": "august", "type": "FLOAT" },
+    { "name": "september", "type": "FLOAT" },
+    { "name": "october", "type": "FLOAT" },
+    { "name": "november", "type": "FLOAT" },
+    { "name": "december", "type": "FLOAT" },
+
+    // Relationships
+    { "name": "kpi_personal", "type": "STRING"},
+    { "name": "kpi_team", "type": "STRING" },
+
+    // Details & notes
+    { "name": "report", "type": "STRING" },
+    { "name": "verification", "type": "STRING" },
+    { "name": "note", "type": "STRING", "mode": "REPEATED" },
+    { "name": "topics", "type": "STRING" },
+    { "name": "heading", "type": "STRING"}
+]
