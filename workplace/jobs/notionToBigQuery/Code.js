@@ -4,6 +4,7 @@
 function syncNotionToBigQuery() {
     syncNotionTasks();
     syncNotionProjects();
+    syncNotionOkrKpis();
 }
 
 /**
@@ -44,6 +45,24 @@ function syncNotionProjects() {
 
     config.sync.lastEditedTime = new Date().toISOString();
     setLastEditedTime(config.sync.lastEditedTime, config.bigQuery.projectTableId);
+}
+
+/**
+ * Syncs Notion OKR KPIs to BigQuery
+ */
+function syncNotionOkrKpis() {
+    const config = getConfig();
+    const notionOkrKpiData = getNotionOkrKpiData();
+    const transformedData = transformNotionData(notionOkrKpiData, 'okrKpi');
+    mergeDataToBigQuery(
+        transformedData,
+        okrKpiSchema,
+        config.bigQuery.projectId,
+        config.bigQuery.datasetId,
+        config.bigQuery.okrKpiTableId
+    );
+    config.sync.lastEditedTime = new Date().toISOString();
+    setLastEditedTime(config.sync.lastEditedTime, config.bigQuery.okrKpiTableId);
 }
 
 /**
