@@ -15,7 +15,16 @@ function formatDate(dateString) {
  * Helper function to extract plain text from rich_text
  */
 function getRichText(richText) {
-    return richText?.[0]?.plain_text || "";
+    if (!richText) return "";
+    return richText?.map(rt => rt.plain_text).join(' ') || "";
+}
+
+/** 
+ * Helper function to extract title text
+ */
+function getTitleText(title) {
+    if (!title) return "";
+    return title?.map(t => t.plain_text).join(' ') || "";
 }
 
 /**
@@ -50,7 +59,7 @@ function transformTaskData(page) {
         created_time: formatDate(page.created_time),
         last_edited_time: formatDate(page.last_edited_time),
         url: page.url,
-        task_name: props["Task name"]?.title?.[0]?.plain_text || "",
+       task_name: getTitleText(props["Task name"]?.title),
         status: props["Status"]?.status?.name || "",
         priority: props["*Priority"]?.select?.name || "",
         final_deadline: formatDate(props["*Final Deadline"]?.date?.start),
@@ -93,13 +102,52 @@ function transformProjectData(page) {
         url: props["URL"]?.url || "",
         files_and_media: getFilesInfo(props["Files & media"]?.files),
         budget: props["Budget"]?.number || 0,
-        project_name: props["Project name"]?.title?.[0]?.plain_text || "",
+        project_name: getTitleText( props["Project name"]?.title),
         project_owner: getPeopleNames(props["Project Owner"]?.people),
         status_field: props["Status"]?.status?.name || "",
         overall_progress: props["Overall Progress"]?.rollup?.number || 0,
         priority: props["Priority"]?.select?.name || "",
         deadline: formatDate(props["Deadline"]?.date?.start),
         tasks: getRelationIds(props["Tasks"]?.relation)
+    };
+}
+
+function transformOkrKpiData(page){
+    const props = page.properties;
+    
+    return {
+        id: page.id,
+        url: page.url,
+        average_score: props["AVG คะแนน"]?.formula?.number || 0,
+        weighted_score_for_graph: props["Weighted คะแนน (ทำกราฟ)"]?.formula?.number || 0,
+        status: props["สถานะ"]?.select?.name || "",
+        owner: getPeopleNames(props["Owner"]?.people),
+        responsible_persons: getPeopleNames(props["Responsible"]?.people),
+        last_edited_by: props["Last edited by"]?.last_edited_by?.name || "",
+        last_edited_time: formatDate(page.last_edited_time),
+        next_update: formatDate(props["Next Update"]?.date?.start),
+        weight: props["น้ำหนัก"]?.number || 0,
+        calculation_method: props["การคำนวณ"]?.select?.name || "",
+        update_frequency: props["Update"]?.multi_select?.map(t => t.name) || [],
+        january: props["มกราคม (C-20th) 2026"]?.number || 0,
+        february: props["กุมภาพันธ์"]?.number || 0,
+        march: props["มีนาคม"]?.number || 0,
+        april: props["เมษายน"]?.number || 0,
+        may: props["พฤษภาคม"]?.number || 0,
+        june: props["มิถุนายน"]?.number || 0,
+        july: props["กรกฎาคม"]?.number || 0,
+        august: props["สิงหาคม"]?.number || 0,
+        september: props["กันยายน"]?.number || 0,
+        october: props["ตุลาคม"]?.number || 0,
+        november: props["พฤศจิกายน"]?.number || 0,
+        december: props["ธันวาคม"]?.number || 0,
+        kpi_personal: getRichText(props["KPI - บุคคล"]?.rich_text),
+        kpi_team: props["KPI- ทีม"]?.select?.name || "",
+        report: props['Report']?.url || "",
+        verification:  props["Verification"]?.verification?.state || "",
+        note: getRelationIds(props["Note"]?.relation),
+        topics: props["Topics"]?.select?.name || "",
+        heading: getTitleText(props["หัวข้อ"]?.title)
     };
 }
 
@@ -111,6 +159,8 @@ function transformNotionData(data, type) {
         return data.map(transformTaskData);
     } else if (type === 'projects') {
         return data.map(transformProjectData);
+    }else if( type === 'okrKpi'){
+        return data.map(transformOkrKpiData);
     }
     
     return [];
