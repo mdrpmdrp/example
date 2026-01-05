@@ -56,7 +56,7 @@ function isUserAuthenticated() {
 }
 
 function checkUserAccess() {
-  Logger = BetterLog.useSpreadsheet()
+  Logger = BetterLog.useSpreadsheet(ss.getId());
   if (!usersSheet) {
     Logger.log("Sheet 'Users' not found during login check.");
     return { success: false, message: "Sheet 'Users' not found." };
