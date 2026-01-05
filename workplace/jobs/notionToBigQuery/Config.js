@@ -37,7 +37,10 @@ function getConfig() {
             pageSize: 100,
             lastEditedTime: {
                 tasks: scriptProps.getProperty('last_edited_time_' + scriptProps.getProperty('BIGQUERY_TASK_TABLE_ID')) || null,
-                projects: scriptProps.getProperty('last_edited_time_' + scriptProps.getProperty('BIGQUERY_PROJECT_TABLE_ID')) || null
+                projects: scriptProps.getProperty('last_edited_time_' + scriptProps.getProperty('BIGQUERY_PROJECT_TABLE_ID')) || null,
+                okrKpis: scriptProps.getProperty('last_edited_time_' + scriptProps.getProperty('BIGQUERY_OKR_KPI_TABLE_ID')) || null,
+                salesCrms: scriptProps.getProperty('last_edited_time_' + scriptProps.getProperty('BIGQUERY_SALES_CRM_TABLE_ID')) || null,
+                salesRecords: scriptProps.getProperty('last_edited_time_' + scriptProps.getProperty('BIGQUERY_SALES_RECORD_TABLE_ID')) || null,
             }
         }
     };
