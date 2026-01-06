@@ -24,7 +24,8 @@ function getConfig() {
         
         // Notion Configuration
         notion: {
-            // apiKey: scriptProps.getProperty('NOTION_API_KEY'),
+            apiKey: scriptProps.getProperty('NOTION_API_KEY'),
+            apiVersion: '2025-09-03',
             taskDatabaseId: scriptProps.getProperty('NOTION_TASK_DATABASE_ID'),
             projectDatabaseId: scriptProps.getProperty('NOTION_PROJECT_DATABASE_ID'),
             okrKpiDatabaseId: scriptProps.getProperty('NOTION_OKR_KPI_DATABASE_ID'),
