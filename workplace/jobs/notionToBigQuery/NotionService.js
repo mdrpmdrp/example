@@ -142,7 +142,6 @@ function getNotionProjectData() {
     const databaseId = config.notion.projectDatabaseId;
     let lastEditedTime = config.sync.lastEditedTime.projects || new Date(1).toISOString();
     // lastEditedTime = new Date(1).toISOString(); // for test - remove this line in production
-    
     return fetchNotionData(databaseId, lastEditedTime);
 }
 
