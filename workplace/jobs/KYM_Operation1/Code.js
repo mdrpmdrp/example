@@ -3,37 +3,33 @@
 // Google Apps Script Code
 // ==========================================
 
-const SPREADSHEET_ID = '1YHHHuciHENivmlmaOPNjYXmVEzPKJKmFh-R_BHe4Vtc';
-
-const passwordSalt = 'KYM_SALT_2024';
-
-const passwordHasher = {
-  // ==========================================
-  // Helper Function - Hash Password
-  // ==========================================
-  hash: function (password) {
-    return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password + passwordSalt)
-      .map(function (byte) {
-        return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-      })
-      .join('');
-  },
-
-  // ==========================================
-  // Helper Function - Verify Password
-  // ==========================================
-  verify: function (password, hashedPassword) {
-    return this.hash(password) === hashedPassword;
-  }
-
+// ==========================================
+// Helper Function - Hash Password
+// ==========================================
+function hashPassword(password) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password + 'KYM_SALT_2024')
+  .map(function (byte) {
+    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+  })
+  .join('');
 }
 
+// ==========================================
+// Helper Function - Get Main Spreadsheet
+// ==========================================
+let SS
+function getMainSpreadsheet() {
+  if (!SS) {
+    SS = SpreadsheetApp.getActiveSpreadsheet();
+  }
+  return SS;
+}
 
 // ==========================================
 // Setup Function - Run this first
 // ==========================================
 function setupSheets() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getMainSpreadsheet();
   // Create Users Sheet
   let usersSheet = ss.getSheetByName('Users');
   if (!usersSheet) {
@@ -90,27 +86,26 @@ function setupSheets() {
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('KYM & Call Log System')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 // ==========================================
 // Authentication
 // ==========================================
-function authenticateUser(username, password) {
+function authenticateUser(username, hashedPassword) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getMainSpreadsheet();
     const usersSheet = ss.getSheetByName('Users');
 
     if (!usersSheet) {
-      return JSON.stringify({ success: false, error: 'Users sheet not found. Please run setupSheets() first.' });
+      return { success: false, error: 'Users sheet not found. Please run setupSheets() first.' };
     }
 
     const data = usersSheet.getDataRange().getValues();
 
     for (let i = 1; i < data.length; i++) {
-      if (data[i][1] === username && passwordHasher.verify(password, data[i][2]) && data[i][6] === 'Active') {
-        return JSON.stringify({
+      if (data[i][1] === username && data[i][2] === hashedPassword && data[i][6] === 'Active') {
+        return {
           success: true,
           user: {
             id: data[i][0],
@@ -119,34 +114,27 @@ function authenticateUser(username, password) {
             role: data[i][4],
             email: data[i][5]
           }
-        });
+        };
       }
     }
 
-    return JSON.stringify({ success: false, error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือบัญชีถูกระงับ' });
+    return { success: false, error: 'Invalid credentials or account inactive' };
   } catch (e) {
     Logger.log('Authentication error: ' + e.toString());
-    return JSON.stringify({ success: false, error: 'เกิดข้อผิดพลาดในการตรวจสอบสิทธิ์: ' + e.toString() });
+    return { success: false, error: 'Authentication failed: ' + e.toString() };
   }
 }
-
-// function hashPassword(password) {
-//   return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password + 'KYM_SALT_2024')
-// }
 
 // ==========================================
 // User Management Functions
 // ==========================================
-function getAllUsers(role) {
-  if (role !== 'Admin') {
-    return JSON.stringify({ success: false, error: 'Unauthorized access' });
-  }
+function getAllUsers() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getMainSpreadsheet();
     const usersSheet = ss.getSheetByName('Users');
 
     if (!usersSheet) {
-      return JSON.stringify({ success: false, error: 'Users sheet not found' });
+      return { success: false, error: 'Users sheet not found' };
     }
 
     const data = usersSheet.getDataRange().getValues();
@@ -156,6 +144,7 @@ function getAllUsers(role) {
       users.push({
         id: data[i][0],
         username: data[i][1],
+        password: data[i][2], // Include for local sync
         name: data[i][3],
         role: data[i][4],
         email: data[i][5],
@@ -165,44 +154,38 @@ function getAllUsers(role) {
       });
     }
 
-    return JSON.stringify({ success: true, data: users });
+    return { success: true, data: users };
   } catch (e) {
     Logger.log('Get users error: ' + e.toString());
-    return JSON.stringify({ success: false, error: e.toString() });
-  }
-}
-
-function checkUsernameExists(username) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const usersSheet = ss.getSheetByName('Users');
-
-    if (!usersSheet) {
-      return JSON.stringify({ success: false, error: 'Users sheet not found' });
-    }
-
-    const data = usersSheet.getDataRange().getValues();
-
-    let isExists = data.findIndex(row => row[1] === username) !== -1;
-    return JSON.stringify({ success: true, exists: isExists });
-  } catch (e) {
-    Logger.log('Check username error: ' + e.toString());
-    return JSON.stringify({ success: false, error: 'เกิดข้อผิดพลาด: ' + e.toString() });
+    return { success: false, error: e.toString() };
   }
 }
 
 function addUser(userData) {
-  let lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) {
-    return JSON.stringify({ success: false, error: 'Could not obtain lock' });
-  }
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getMainSpreadsheet();
     const usersSheet = ss.getSheetByName('Users');
 
     if (!usersSheet) {
-      lock.releaseLock();
-      return JSON.stringify({ success: false, error: 'Users sheet not found. Please run setupSheets() first.' });
+      return { success: false, error: 'Users sheet not found. Please run setupSheets() first.' };
+    }
+
+    // Get all data
+    const data = usersSheet.getDataRange().getValues();
+
+    // Check if username already exists (skip header row)
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][1] === userData.username) {
+        return { success: false, error: 'Username already exists' };
+      }
+    }
+
+    // Calculate new ID safely
+    let newId = 1;
+    if (data.length > 1) {
+      // Get the last row's ID and increment
+      const lastId = data[data.length - 1][0];
+      newId = (typeof lastId === 'number' && lastId > 0) ? lastId + 1 : data.length;
     }
 
     // Use provided ID if valid, otherwise use calculated newId
@@ -212,7 +195,7 @@ function addUser(userData) {
     usersSheet.appendRow([
       userId,
       userData.username,
-      passwordHasher.hash(userData.password),
+      userData.password,
       userData.name,
       userData.role,
       userData.email || '',
@@ -220,67 +203,54 @@ function addUser(userData) {
       new Date(userData.createdAt || new Date()),
       userData.createdBy || 'system'
     ]);
-    lock.releaseLock();
+
     Logger.log('User added successfully: ' + userData.username + ' (ID: ' + userId + ')');
-    return JSON.stringify({ success: true, message: 'User added successfully', id: userId });
+    return { success: true, message: 'User added successfully', id: userId };
 
   } catch (e) {
-    lock.releaseLock();
     Logger.log('Add user error: ' + e.toString());
     Logger.log('Error stack: ' + e.stack);
-    return JSON.stringify({ success: false, error: 'Failed to add user: ' + e.toString() });
+    return { success: false, error: 'Failed to add user: ' + e.toString() };
   }
 }
 
 function updateUser(userData) {
-  let lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) {
-    return JSON.stringify({ success: false, error: 'Could not obtain lock' });
-  }
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getMainSpreadsheet();
     const usersSheet = ss.getSheetByName('Users');
 
     if (!usersSheet) {
-      lock.releaseLock();
-      return JSON.stringify({ success: false, error: 'Users sheet not found' });
+      return { success: false, error: 'Users sheet not found' };
     }
 
     const data = usersSheet.getDataRange().getValues();
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] == userData.id) {
-        usersSheet.getRange(i + 1, 4, 1, 4).setValues([[
-          userData.name,
-          userData.role,
-          userData.email || '',
-          userData.status
-        ]]);
-        lock.releaseLock();
-        return JSON.stringify({ success: true, message: 'User updated successfully' });
+        usersSheet.getRange(i + 1, 4).setValue(userData.name);
+        usersSheet.getRange(i + 1, 5).setValue(userData.role);
+        usersSheet.getRange(i + 1, 6).setValue(userData.email || '');
+        usersSheet.getRange(i + 1, 7).setValue(userData.status);
+
+        Logger.log('User updated successfully: ' + userData.id);
+        return { success: true, message: 'User updated successfully' };
       }
     }
-    lock.releaseLock();
-    return JSON.stringify({ success: false, error: 'User not found' });
+
+    return { success: false, error: 'User not found' };
   } catch (e) {
     Logger.log('Update user error: ' + e.toString());
-    lock.releaseLock();
-    return JSON.stringify({ success: false, error: e.toString() });
+    return { success: false, error: e.toString() };
   }
 }
 
 function toggleUserStatus(userId) {
-  let lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) {
-    return JSON.stringify({ success: false, error: 'Could not obtain lock' });
-  }
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getMainSpreadsheet();
     const usersSheet = ss.getSheetByName('Users');
 
     if (!usersSheet) {
-      lock.releaseLock();
-      return JSON.stringify({ success: false, error: 'Users sheet not found' });
+      return { success: false, error: 'Users sheet not found' };
     }
 
     const data = usersSheet.getDataRange().getValues();
@@ -292,31 +262,24 @@ function toggleUserStatus(userId) {
         usersSheet.getRange(i + 1, 7).setValue(newStatus);
 
         Logger.log('User status toggled: ' + userId + ' to ' + newStatus);
-        lock.releaseLock();
-        return JSON.stringify({ success: true, message: 'User status updated', newStatus: newStatus });
+        return { success: true, message: 'User status updated', newStatus: newStatus };
       }
     }
-    lock.releaseLock();
-    return JSON.stringify({ success: false, error: 'User not found' });
+
+    return { success: false, error: 'User not found' };
   } catch (e) {
     Logger.log('Toggle user status error: ' + e.toString());
-    lock.releaseLock();
-    return JSON.stringify({ success: false, error: e.toString() });
+    return { success: false, error: e.toString() };
   }
 }
 
 function deleteUser(userId) {
-  let lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) {
-    return JSON.stringify({ success: false, error: 'Could not obtain lock' });
-  }
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getMainSpreadsheet();
     const usersSheet = ss.getSheetByName('Users');
 
     if (!usersSheet) {
-      lock.releaseLock();
-      return JSON.stringify({ success: false, error: 'Users sheet not found' });
+      return { success: false, error: 'Users sheet not found' };
     }
 
     const data = usersSheet.getDataRange().getValues();
@@ -325,17 +288,14 @@ function deleteUser(userId) {
       if (data[i][0] == userId) {
         usersSheet.deleteRow(i + 1);
         Logger.log('User deleted successfully: ' + userId);
-        lock.releaseLock();
-        return JSON.stringify({ success: true, message: 'User deleted successfully' });
+        return { success: true, message: 'User deleted successfully' };
       }
     }
 
-    lock.releaseLock();
-    return JSON.stringify({ success: false, error: 'User not found' });
+    return { success: false, error: 'User not found' };
   } catch (e) {
     Logger.log('Delete user error: ' + e.toString());
-    lock.releaseLock();
-    return JSON.stringify({ success: false, error: e.toString() });
+    return { success: false, error: e.toString() };
   }
 }
 
@@ -343,21 +303,17 @@ function deleteUser(userId) {
 // KYM Functions - แก้ไขให้ตรงกับ Header ที่มีอยู่จริง
 // ==========================================
 function saveKYMRecord(record) {
-  let lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) {
-    return JSON.stringify({ success: false, error: 'Could not obtain lock' });
-  }
   try {
     // ***** เพิ่ม Debug Logging *****
     Logger.log('=== saveKYMRecord START ===');
     Logger.log('📥 Received record: ' + JSON.stringify(record));
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getMainSpreadsheet();
     const kymSheet = ss.getSheetByName('KYM_Records');
 
     if (!kymSheet) {
       Logger.log('❌ Sheet not found');
-      return JSON.stringify({ success: false, error: 'KYM_Records sheet not found' });
+      return { success: false, error: 'KYM_Records sheet not found' };
     }
 
     // ***** ปรับปรุงการ Validate - แสดง Error ละเอียด *****
@@ -392,8 +348,8 @@ function saveKYMRecord(record) {
       const errorMsg = 'ข้อมูลไม่ครบถ้วน: ' + missingFields.join(', ');
       Logger.log('❌ Validation Failed: ' + errorMsg);
       Logger.log('❌ Full record received: ' + JSON.stringify(record));
-      lock.releaseLock();
-      return JSON.stringify({
+
+      return {
         success: false,
         error: errorMsg,
         details: {
@@ -404,64 +360,63 @@ function saveKYMRecord(record) {
           },
           missingFields: missingFields
         }
-      });
+      };
     }
 
     Logger.log('✅ Validation passed - all required fields present');
 
     const id = record.id || Date.now();
-    const timestamp = new Date();
+    const timestamp = record.timestamp ? new Date(record.timestamp) : new Date();
 
     // Ensure assessment object exists
     const assessment = record.assessment || {};
 
     // คำนวณ Recommendation Status จากการประเมิน
+    let recommendationStatus = 'N/A';
     const prohibitedStore = assessment.prohibitedStore || false;
     const repeatApplication = assessment.repeatApplication || false;
     const storePhoto = assessment.storePhoto || false;
     const productService = assessment.productService || false;
     const storeNameCheck = assessment.storeNameCheck || false;
     const professionalLicense = assessment.professionalLicense || false;
-    const onlineStorePhoto = assessment.onlineStorePhoto || false;  
-    const recommendationStatus = record.recommendedStatus || '';
-    // // ตรวจสอบเงื่อนไข Reject
-    // if (prohibitedStore || repeatApplication) {
-    //   recommendationStatus = 'Rejected';
-    // } else {
-    //   // ตรวจสอบข้อจำเป็น
-    //   const requiredItems = [storePhoto, productService, storeNameCheck];
 
-    //   // เช็คว่าต้องมีใบประกอบวิชาชีพหรือไม่
-    //   const licenseRequired = record.subCategory && (
-    //     record.subCategory.includes('คลินิก') ||
-    //     record.subCategory.includes('ทันตกรรม') ||
-    //     record.subCategory.includes('นวด') ||
-    //     record.subCategory.includes('สถาบันเสริมความงาม') ||
-    //     record.subCategory.includes('ทัศนมาตร') ||
-    //     record.subCategory.includes('ขายยา') ||
-    //     record.subCategory.includes('สัตวแพทย์')
-    //   );
+    // ตรวจสอบเงื่อนไข Reject
+    if (prohibitedStore || repeatApplication) {
+      recommendationStatus = 'Rejected';
+    } else {
+      // ตรวจสอบข้อจำเป็น
+      const requiredItems = [storePhoto, productService, storeNameCheck];
 
-    //   if (licenseRequired) {
-    //     requiredItems.push(professionalLicense);
-    //   }
+      // เช็คว่าต้องมีใบประกอบวิชาชีพหรือไม่
+      const licenseRequired = record.subCategory && (
+        record.subCategory.includes('คลินิก') ||
+        record.subCategory.includes('ทันตกรรม') ||
+        record.subCategory.includes('นวด') ||
+        record.subCategory.includes('สถาบันเสริมความงาม') ||
+        record.subCategory.includes('ทัศนมาตร') ||
+        record.subCategory.includes('ขายยา') ||
+        record.subCategory.includes('สัตวแพทย์')
+      );
 
-    //   const missingRequired = requiredItems.filter(item => !item);
-    //   recommendationStatus = missingRequired.length > 0 ? 'Revised' : 'Approved';
-    // }
+      if (licenseRequired) {
+        requiredItems.push(professionalLicense);
+      }
 
-    // Logger.log('📊 Calculated recommendationStatus: ' + recommendationStatus);
+      const missingRequired = requiredItems.filter(item => !item);
+      recommendationStatus = missingRequired.length > 0 ? 'Revised' : 'Approved';
+    }
+
+    Logger.log('📊 Calculated recommendationStatus: ' + recommendationStatus);
 
     // บันทึกตามลำดับคอลัมน์ที่ถูกต้อง
     kymSheet.appendRow([
       timestamp,                              // A: Timestamp
       id,                                     // B: ID
-      ("'" + record.truemoneyId) || '',              // C: Truemoney_ID
+      record.truemoneyId || '',              // C: Truemoney_ID
       record.storeName || '',                // D: Store_Name
       record.salesChannel || '',             // E: Sales_Channel
       record.category || '',                 // F: Category
       record.subCategory || '',              // G: Sub_Category
-      onlineStorePhoto ? 'Yes' : 'No',      // New Column for Online Store Photo
       storePhoto ? 'Yes' : 'No',            // H: Assessment_Store_Photo
       productService ? 'Yes' : 'No',        // I: Assessment_Product_Service
       storeNameCheck ? 'Yes' : 'No',        // J: Assessment_Store_Name
@@ -481,31 +436,30 @@ function saveKYMRecord(record) {
 
     Logger.log('✅ KYM Record saved successfully with ID: ' + id);
     Logger.log('=== saveKYMRecord END ===');
-    lock.releaseLock();
-    return JSON.stringify({
+
+    return {
       success: true,
       message: 'บันทึกข้อมูล KYM สำเร็จ',
       id: id
-    });
+    };
 
   } catch (e) {
     Logger.log('❌ ERROR in saveKYMRecord: ' + e.toString());
     Logger.log('❌ Error stack: ' + e.stack);
-    lock.releaseLock();
-    return JSON.stringify({
+    return {
       success: false,
       error: 'เกิดข้อผิดพลาดในการบันทึก: ' + e.toString()
-    });
+    };
   }
 }
 
 function getKYMRecords(startDate, endDate) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getMainSpreadsheet();
     const kymSheet = ss.getSheetByName('KYM_Records');
 
     if (!kymSheet) {
-      return JSON.stringify({ success: false, error: 'KYM_Records sheet not found' });
+      return { success: false, error: 'KYM_Records sheet not found' };
     }
 
     const data = kymSheet.getDataRange().getValues();
@@ -530,30 +484,29 @@ function getKYMRecords(startDate, endDate) {
           category: data[i][5],
           subCategory: data[i][6],
           assessment: {
-            onlineStorePhoto: data[i][7] === 'Yes',
-            storePhoto: data[i][8] === 'Yes',
-            productService: data[i][9] === 'Yes',
-            storeNameCheck: data[i][10] === 'Yes',
-            businessReg: data[i][11] === 'Yes',
-            professionalLicense: data[i][12] === 'Yes',
-            prohibitedStore: data[i][13] === 'Yes',
-            repeatApplication: data[i][14] === 'Yes'
+            storePhoto: data[i][7] === 'Yes',
+            productService: data[i][8] === 'Yes',
+            storeNameCheck: data[i][9] === 'Yes',
+            businessReg: data[i][10] === 'Yes',
+            professionalLicense: data[i][11] === 'Yes',
+            prohibitedStore: data[i][12] === 'Yes',
+            repeatApplication: data[i][13] === 'Yes'
           },
-          recommendationStatus: data[i][15],
-          status: data[i][16],
-          reason: data[i][17],
-          notes: data[i][18],
-          operator: data[i][19],
-          operatorName: data[i][20]
+          recommendationStatus: data[i][14],
+          status: data[i][15],
+          reason: data[i][16],
+          notes: data[i][17],
+          operator: data[i][18],
+          operatorName: data[i][19]
         });
       }
     }
 
     Logger.log('Get KYM records success: ' + records.length + ' records');
-    return JSON.stringify({ success: true, data: records });
+    return { success: true, data: records };
   } catch (e) {
     Logger.log('Get KYM records error: ' + e.toString());
-    return JSON.stringify({ success: false, error: e.toString() });
+    return { success: false, error: e.toString() };
   }
 }
 
@@ -561,33 +514,29 @@ function getKYMRecords(startDate, endDate) {
 // Call Log Functions - แก้ไขให้ตรงกับ Header ที่มีอยู่จริง
 // ==========================================
 function saveCallLog(record) {
-  let lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) {
-    return JSON.stringify({ success: false, error: 'Could not obtain lock' });
-  }
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getMainSpreadsheet();
     const callSheet = ss.getSheetByName('Call_Logs');
 
     if (!callSheet) {
-      return JSON.stringify({ success: false, error: 'Call_Logs sheet not found' });
+      return { success: false, error: 'Call_Logs sheet not found' };
     }
 
     // Validate required fields
     if (!record.truemoneyId || !record.callResult || !record.callDetails) {
-      return JSON.stringify({ success: false, error: 'Missing required fields: truemoneyId, callResult, or callDetails' });
+      return { success: false, error: 'Missing required fields: truemoneyId, callResult, or callDetails' };
     }
 
     const id = record.id || Date.now();
-    const timestamp = new Date();
+    const timestamp = record.timestamp ? new Date(record.timestamp) : new Date();
 
     // บันทึกตามลำดับคอลัมน์ที่ถูกต้อง
     callSheet.appendRow([
       timestamp,                              // A: Timestamp
       id,                                     // B: ID
-      ("'" + record.truemoneyId) || '',              // C: Truemoney_ID
+      record.truemoneyId || '',              // C: Truemoney_ID
       record.storeName || '',                // D: Store_Name
-      ("'" + record.contactNumber) || '',            // E: Contact_Number
+      record.contactNumber || '',            // E: Contact_Number
       record.contactName || '',              // F: Contact_Name
       record.callReason || '',               // G: Call_Reason
       record.callResult || '',               // H: Call_Result
@@ -600,36 +549,31 @@ function saveCallLog(record) {
       record.retryTimeSlot || '',            // O: Retry_Time_Slot
       record.retryNotes || '',               // P: Retry_Notes
       JSON.stringify(record.activities || []), // Q: Activities_JSON
-      new Date(),                            // R: Last_Activity
+      record.lastActivity || '',             // R: Last_Activity
       record.lastOperator || '',             // S: Last_Operator
       record.closedAt || '',                 // T: Closed_At
       record.operator || '',                 // U: Operator_Username
       record.operatorName || ''              // V: Operator_Name
     ]);
-    lock.releaseLock();
+
     Logger.log('Call log saved: ' + id);
-    return JSON.stringify({ success: true, message: 'Call log saved successfully', id: id });
+    return { success: true, message: 'Call log saved successfully', id: id };
   } catch (e) {
-    lock.releaseLock();
     Logger.log('Save call log error: ' + e.toString());
-    return JSON.stringify({ success: false, error: 'Failed to save call log: ' + e.toString() });
+    return { success: false, error: 'Failed to save call log: ' + e.toString() };
   }
 }
 
 function updateCallLog(callData) {
-  let lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) {
-    return JSON.stringify({ success: false, error: 'Could not obtain lock' });
-  }
   try {
     Logger.log('=== updateCallLog START ===');
     Logger.log('📥 Received data: ' + JSON.stringify(callData));
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getMainSpreadsheet();
     const callSheet = ss.getSheetByName('Call_Logs');
 
     if (!callSheet) {
-      return JSON.stringify({ success: false, error: 'Call_Logs sheet not found' });
+      return { success: false, error: 'Call_Logs sheet not found' };
     }
 
     const data = callSheet.getDataRange().getValues();
@@ -638,47 +582,42 @@ function updateCallLog(callData) {
       if (data[i][1] == callData.id) { // ID อยู่ใน column B
         Logger.log('✅ Found call log at row: ' + (i + 1));
 
-        let rowData = data[i];
-        rowData[2] = "'" + callData.truemoneyId || rowData[2];           // C: Truemoney_ID
-        rowData[3] = callData.storeName || rowData[3];                     // D: Store_Name
-        rowData[4] = "'" + callData.contactNumber || rowData[4];            // E: Contact_Number
-        rowData[9] = callData.caseStatus || rowData[9];                     // J: Case_Status
-        rowData[10] = callData.rescheduleDateTime ? new Date(callData.rescheduleDateTime) : rowData[10];           // K: Reschedule_DateTime
-        rowData[11] = callData.followUpDate ? new Date(callData.followUpDate) : rowData[11];                 // L: Follow_Up_Date
-        rowData[12] = callData.nextCallTimeSlot || rowData[12];             // M: Next_Call_Time_Slot
-        rowData[15] = callData.retryNotes || rowData[15];                   // P: Retry_Notes
-        rowData[16] = JSON.stringify(callData.activities || []);             // Q: Activities_JSON
-        rowData[17] =  new Date();                                           // R: Last_Activity
-        rowData[18] = callData.lastOperator || rowData[18];                 // S: Last_Operator
-        rowData[19] = callData.closedAt || rowData[19];                     // T: Closed_At
-
-        callSheet.getRange(i + 1, 1, 1, rowData.length).setValues([rowData]);
-
-        lock.releaseLock();
+        // Update all fields ตามลำดับคอลัมน์
+        callSheet.getRange(i + 1, 4).setValue(callData.storeName || data[i][3]);          // D: Store_Name
+        callSheet.getRange(i + 1, 10).setValue(callData.caseStatus || data[i][9]);         // J: Case_Status
+        callSheet.getRange(i + 1, 11).setValue(callData.rescheduleDateTime || data[i][10]); // K: Reschedule_DateTime
+        callSheet.getRange(i + 1, 12).setValue(callData.followUpDate || data[i][11]);       // L: Follow_Up_Date
+        callSheet.getRange(i + 1, 13).setValue(callData.nextCallTimeSlot || data[i][12]);   // M: Next_Call_Time_Slot
+        callSheet.getRange(i + 1, 14).setValue(callData.retryCallDate || data[i][13]);      // N: Retry_Call_Date
+        callSheet.getRange(i + 1, 15).setValue(callData.retryTimeSlot || data[i][14]);      // O: Retry_Time_Slot
+        callSheet.getRange(i + 1, 16).setValue(callData.retryNotes || data[i][15]);         // P: Retry_Notes
+        callSheet.getRange(i + 1, 17).setValue(JSON.stringify(callData.activities || []));  // Q: Activities_JSON
+        callSheet.getRange(i + 1, 18).setValue(callData.lastActivity || data[i][17]);       // R: Last_Activity
+        callSheet.getRange(i + 1, 19).setValue(callData.lastOperator || data[i][18]);       // S: Last_Operator
+        callSheet.getRange(i + 1, 20).setValue(callData.closedAt || data[i][19]);           // T: Closed_At
 
         Logger.log('✅ Call log updated successfully');
         Logger.log('=== updateCallLog END ===');
-        return JSON.stringify({ success: true, message: 'Call log updated successfully' });
+        return { success: true, message: 'Call log updated successfully' };
       }
     }
-    lock.releaseLock();
+
     Logger.log('❌ Call log not found with ID: ' + callData.id);
-    return JSON.stringify({ success: false, error: 'Call log not found with ID: ' + callData.id });
+    return { success: false, error: 'Call log not found with ID: ' + callData.id };
   } catch (e) {
     Logger.log('❌ Update call log error: ' + e.toString());
     Logger.log('❌ Error stack: ' + e.stack);
-    lock.releaseLock();
-    return JSON.stringify({ success: false, error: 'Failed to update call log: ' + e.toString() });
+    return { success: false, error: 'Failed to update call log: ' + e.toString() };
   }
 }
 
 function getCallLogs(startDate, endDate) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getMainSpreadsheet();
     const callSheet = ss.getSheetByName('Call_Logs');
 
     if (!callSheet) {
-      return JSON.stringify({ success: false, error: 'Call_Logs sheet not found' });
+      return { success: false, error: 'Call_Logs sheet not found' };
     }
 
     const data = callSheet.getDataRange().getValues();
@@ -729,10 +668,33 @@ function getCallLogs(startDate, endDate) {
     }
 
     Logger.log('Get call logs success: ' + logs.length + ' logs');
-    return JSON.stringify({ success: true, data: logs });
+    return { success: true, data: logs };
   } catch (e) {
     Logger.log('Get call logs error: ' + e.toString());
-    return JSON.stringify({ success: false, error: e.toString() });
+    return { success: false, error: e.toString() };
+  }
+}
+
+// ==========================================
+// Get All Data - สำหรับ sync
+// ==========================================
+function getAllData() {
+  try {
+    const users = getAllUsers();
+    const kym = getKYMRecords();
+    const calls = getCallLogs();
+
+    return {
+      success: true,
+      data: {
+        users: users.success ? users.data : [],
+        kym: kym.success ? kym.data : [],
+        calls: calls.success ? calls.data : []
+      }
+    };
+  } catch (e) {
+    Logger.log('Get all data error: ' + e.toString());
+    return { success: false, error: e.toString() };
   }
 }
 
@@ -807,7 +769,7 @@ function testSaveCall() {
 // Verify Headers - ตรวจสอบว่า Header ถูกต้อง
 // ==========================================
 function verifySheetHeaders() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getMainSpreadsheet();
   let report = '📋 รายงานการตรวจสอบ Headers\n\n';
   // Check KYM_Records
   const kymSheet = ss.getSheetByName('KYM_Records');
