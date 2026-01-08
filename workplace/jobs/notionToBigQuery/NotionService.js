@@ -13,10 +13,10 @@ function fetchNotionData(databaseId, lastEditedTime) {
     const config = getConfig();
     const apiKey = config.notion.apiKey;
     const apiVersion = config.notion.apiVersion;
-    
+
     let allResults = [];
     let next_cursor = undefined;
-    
+
     do {
         const payload = {
             filter: {
@@ -26,11 +26,11 @@ function fetchNotionData(databaseId, lastEditedTime) {
                 }
             }
         };
-        
+
         if (next_cursor) {
             payload.start_cursor = next_cursor;
         }
-        
+
         const options = {
             method: 'post',
             contentType: 'application/json',
@@ -41,17 +41,20 @@ function fetchNotionData(databaseId, lastEditedTime) {
             payload: JSON.stringify(payload),
             muteHttpExceptions: true
         };
-        
+
         const response = UrlFetchApp.fetch(
             `https://api.notion.com/v1/data_sources/${databaseId}/query`,
             options
         );
         const result = JSON.parse(response.getContentText());
-        
+        if(response.getResponseCode() !== 200) {
+            throw new Error(`Failed to fetch data from Notion: ${response.getContentText()}`);
+        }
+
         allResults = allResults.concat(result.results);
+        console.log(`Fetched ${allResults.length} records from Notion database ${databaseId}`);
         next_cursor = result.next_cursor;
     } while (next_cursor);
-    
     return allResults;
 }
 
@@ -87,7 +90,7 @@ function getNotionListAllUsers() {
     // Cache user names for later use
     let namesCache = {};
     allUsers.forEach(user => {
-        if(!user.name) return;
+        if (!user.name) return;
         namesCache[user.id] = user.name || "";
     });
     CacheService.getScriptCache().put('peopleNames', JSON.stringify(namesCache), 21600); // Cache for 6 hours
@@ -113,7 +116,7 @@ function getNotionPeopleNameById(userId) {
         muteHttpExceptions: true
     };
     const response = UrlFetchApp.fetch(`https://api.notion.com/v1/users/${userId}`, options);
-    if(response.getResponseCode() !== 200){
+    if (response.getResponseCode() !== 200) {
         return null;
     }
     const result = JSON.parse(response.getContentText());
@@ -129,7 +132,7 @@ function getNotionTaskData() {
     const databaseId = config.notion.taskDatabaseId;
     let lastEditedTime = config.sync.lastEditedTime.tasks || new Date(1).toISOString();
     // lastEditedTime = new Date(1).toISOString(); // for test - remove this line in production
-    
+
     return fetchNotionData(databaseId, lastEditedTime);
 }
 
@@ -177,4 +180,21 @@ function getNotionSalesRecordData() {
     let lastEditedTime = config.sync.lastEditedTime.sales_record || new Date(1).toISOString();
     // lastEditedTime = new Date(1).toISOString(); // for test - remove this line in production
     return fetchNotionData(databaseId, lastEditedTime);
+}
+
+function tempFunc() {
+    let notiondataJSON = DriveApp.getFileById('1dq0VkPS0CyGO85bImdJn7-RvRDyPon2g').getBlob().getDataAsString();
+    let notiondata = JSON.parse(notiondataJSON);
+    let transformedData = transformNotionData(notiondata, 'tasks');
+    const config = getConfig();
+    insertDataToBigQuery(transformedData, config.bigQuery.projectId, config.bigQuery.datasetId, config.bigQuery.taskTableId);
+}
+
+function fetchUsersFormCache() {
+    let namesCache = CacheService.getScriptCache().get('peopleNames');
+    if (namesCache) {
+        return Logger.log(Object.keys(JSON.parse(namesCache)).length);
+    } else {
+        return getNotionListAllUsers();
+    }
 }

@@ -44,7 +44,13 @@ const taskSchema = [
     // Relations
     { "name": "sub_tasks", "type": "STRING", "mode": "REPEATED" },
     { "name": "parent_tasks", "type": "STRING", "mode": "REPEATED" },
-    { "name": "issue_tracking", "type": "STRING", "mode": "REPEATED" }
+    { "name": "issue_tracking", "type": "STRING", "mode": "REPEATED" },
+
+    {"name": "timestamp_done", "type": "DATE" },
+    {"name": "lt_timestamp", "type": "STRING" },
+    {"name": "timestamp_in_progress", "type": "DATE" },
+    { "name": "status_2", "type": "STRING" }
+
 ];
 
 const projectSchema = [

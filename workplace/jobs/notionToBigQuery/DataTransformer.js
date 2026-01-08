@@ -38,29 +38,37 @@ function getRelationIds(relation) {
  * Helper function to extract people names
  */
 function getPeopleNames(people) {
+    if (!people || people.length === 0) return [];
+    
     let namesCache = CacheService.getScriptCache().get('peopleNames');
     if (!namesCache) {
-        namesCache = getNotionListAllUsers();
-    } else {
-        namesCache = JSON.parse(namesCache);
+        getNotionListAllUsers(); // This will populate the cache
+        namesCache = CacheService.getScriptCache().get('peopleNames');
     }
-    return people?.map(p => {
-        if(!namesCache[p.id]){
-            try{
-                let name =  getNotionPeopleNameById(p.id);
-                if(name){
-                    namesCache[p.id] = name;
-                    CacheService.getScriptCache().put('peopleNames', JSON.stringify(namesCache), 21600); // Update cache for 6 hours
-                    return name;
-                } else {
-                    return null;
+    
+    namesCache = namesCache ? JSON.parse(namesCache) : {};
+    
+    // Collect all missing user IDs first
+    const missingUserIds = people.filter(p => !namesCache[p.id]).map(p => p.id);
+    
+    // Batch fetch missing users if needed
+    if (missingUserIds.length > 0) {
+        Logger.log(`Fetching ${missingUserIds.length} missing users from cache`);
+        missingUserIds.forEach(userId => {
+            try {
+                let name = getNotionPeopleNameById(userId);
+                if (name) {
+                    namesCache[userId] = name;
                 }
             } catch (e) {
-                return null;
+                Logger.log(`Error fetching user ${userId}: ${e.message}`);
             }
-        };
-        return namesCache[p.id];
-    }).filter(name => name) || [];
+        });
+        // Update cache once after all fetches
+        CacheService.getScriptCache().put('peopleNames', JSON.stringify(namesCache), 21600);
+    }
+    
+    return people.map(p => namesCache[p.id]).filter(name => name);
 }
 
 /**
@@ -75,17 +83,16 @@ function getFilesInfo(files) {
  */
 function transformTaskData(page) {
     const props = page.properties;
-    
+    Logger.log(page.id)
     return {
         id: page.id,
-        created_time: formatDate(page.created_time),
-        last_edited_time: formatDate(page.last_edited_time),
+        created_time: page.created_time,
+        last_edited_time: page.last_edited_time,
         url: page.url,
-       task_name: getTitleText(props["Task name"]?.title),
+        task_name: getTitleText(props["Task name"]?.title),
         status: props["Status"]?.status?.name || "",
         priority: props["*Priority"]?.select?.name || "",
         final_deadline: formatDate(props["*Final Deadline"]?.date?.start),
-        initial_deadline: formatDate(props["Initial Deadline"]?.date?.start),
         reminder: formatDate(props["Reminder"]?.date?.start),
         group: props["Group 🤜🤛"]?.select?.name || "",
         responsible_persons: getPeopleNames(props["*ผู้รับผิดชอบ"]?.people),
@@ -104,7 +111,11 @@ function transformTaskData(page) {
         parent_tasks: getRelationIds(props["Parent-task"]?.relation),
         required_field: props["Required Field"]?.formula?.string || "",
         issue_tracking: getRelationIds(props["Issue Tracking"]?.relation),
-        project: getRelationIds(props["Project"]?.relation)
+        project: getRelationIds(props["Project"]?.relation),
+        timestamp_done: formatDate(props["Time stamp (Done)"]?.date?.start),
+        lt_timestamp: props["LT timestamp"]?.formula?.string || "",
+        timestamp_in_progress: formatDate(props["Time stamp (In progress)"]?.date?.start),
+        status_2: props["สถานะ"]?.formula?.string || ""
     };
 }
 
@@ -113,7 +124,7 @@ function transformTaskData(page) {
  */
 function transformProjectData(page) {
     const props = page.properties;
-    
+
     return {
         id: page.id,
         involved_persons: getPeopleNames(props["Involved Persons"]?.people),
@@ -124,7 +135,7 @@ function transformProjectData(page) {
         url: props["URL"]?.url || "",
         files_and_media: getFilesInfo(props["Files & media"]?.files),
         budget: props["Budget"]?.number || 0,
-        project_name: getTitleText( props["Project name"]?.title),
+        project_name: getTitleText(props["Project name"]?.title),
         project_owner: getPeopleNames(props["Project Owner"]?.people),
         status_field: props["Status"]?.status?.name || "",
         overall_progress: props["Overall Progress"]?.rollup?.number || 0,
@@ -134,9 +145,9 @@ function transformProjectData(page) {
     };
 }
 
-function transformOkrKpiData(page){
+function transformOkrKpiData(page) {
     const props = page.properties;
-    
+
     return {
         id: page.id,
         url: page.url,
@@ -166,16 +177,16 @@ function transformOkrKpiData(page){
         kpi_personal: getRichText(props["KPI - บุคคล"]?.rich_text),
         kpi_team: props["KPI- ทีม"]?.select?.name || "",
         report: props['Report']?.url || "",
-        verification:  props["Verification"]?.verification?.state || "",
+        verification: props["Verification"]?.verification?.state || "",
         note: getRelationIds(props["Note"]?.relation),
         topics: props["Topics"]?.select?.name || "",
         heading: getTitleText(props["หัวข้อ"]?.title)
     };
 }
 
-function transformSalesCrmData(page){
+function transformSalesCrmData(page) {
     const props = page.properties;
-    
+
     return {
         id: page.id,
         url: page.url,
@@ -207,7 +218,7 @@ function transformSalesCrmData(page){
 /**
  * Transforms Notion sales record data to BigQuery format
  */
-function transformSalesRecordData(page){
+function transformSalesRecordData(page) {
     const props = page.properties;
     return {
         id: page.id,
@@ -242,13 +253,13 @@ function transformNotionData(data, type) {
         return data.map(transformTaskData);
     } else if (type === 'projects') {
         return data.map(transformProjectData);
-    }else if( type === 'okrKpi'){
+    } else if (type === 'okrKpi') {
         return data.map(transformOkrKpiData);
-    }else if( type === 'salesCrm'){
+    } else if (type === 'salesCrm') {
         return data.map(transformSalesCrmData);
-    }else if (type === 'salesRecord'){
+    } else if (type === 'salesRecord') {
         return data.map(transformSalesRecordData);
     }
-    
+
     return [];
 }
