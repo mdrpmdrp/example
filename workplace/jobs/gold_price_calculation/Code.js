@@ -157,8 +157,8 @@ function handleTextMessage(event) {
       }
     }
   }else if(type === 'เงิน'){
-    silverPerGram = Math.floor(((price - criteria.meltPrice)/1000) * (percent / 100));
-    estimatedPrice = perGram * weight;
+    silverPerGram = Math.floor(((price - criteria.meltPrice - (percent < 99 ? criteria.less99 : 0))/1000) * (percent / 100));
+    estimatedPrice = silverPerGram * weight;
   }
 
   estimatedPrice = Math.floor(estimatedPrice);
@@ -181,22 +181,27 @@ function getSilverPrice() {
   let endPoint = 'http://27.254.77.78/rest/public/rest/silver';
   let response = UrlFetchApp.fetch(endPoint);
   let data = JSON.parse(response.getContentText());
-  return Number(data.Silver.bid.replace(/,/g, ''));
+  let price = Number(data.Silver.bid.replace(/,/g, ''));
+  return price 
 }
 
-function getCriteria(type, percent) {
+function getCriteria(type="เงิน", percent=90) {
   let ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('Sheet1');
-  let data = sheet.getRange('A2:D').getValues();
+  let data = sheet.getRange('A2:E').getValues();
+  let criteria = null;
   for (let i = 0; i < data.length; i++) {
     if (data[i][0] === "ปกติ" && data[i][1] === type) {
-      return {
+      criteria = {
         meltPrice: Number(data[i][2]),
         percent: Math.abs(Number(data[i][3])),
+        less99: Number(data[i][4] || 0)
       };
+      break;
     }
   }
-  return null;
+  Logger.log(criteria)
+  return criteria;
 }
 
 function getSummaryAssetInBranch(event) {
