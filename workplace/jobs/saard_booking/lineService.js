@@ -7,6 +7,7 @@ function nextDateBriefSummary() {
   const today = new Date();
 
   const tomorrowStr = formatDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1), 'yyyy-MM-dd');
+
   const tomorrowEvents = getTomorrowEvents(tomorrowStr);
   
   if (Object.keys(tomorrowEvents).length === 0) {
@@ -17,7 +18,7 @@ function nextDateBriefSummary() {
       let branchGroupId = BRANCH_DATA[branchName]?.groupId;
       if (branchGroupId) {
         const branchHeader = summary + `\n🏢 สาขา: ${branchName}\n\n📞 รบกวนโทรคอนเฟิร์มลูกค้าก่อน 15.00 ค่ะ`;
-        sendLineOA(branchHeader, tomorrowEvents[branchName]);
+        sendLineOA(branchHeader, tomorrowEvents[branchName], branchGroupId);
       }
     }
   }
@@ -79,7 +80,7 @@ function buildEventSummary(row, header, dateIndex) {
 /**
  * Send message via LINE OA
  */
-function sendLineOA(header, messages) {
+function sendLineOA(header, messages,branchGroupId=null) {
   let messagesToSend = [];
   let message = header;
   
@@ -102,7 +103,7 @@ function sendLineOA(header, messages) {
   }
 
   const payload = {
-    to: GROUP_ID,
+    to: branchGroupId,
     messages: messagesToSend.map(msg => ({ type: 'text', text: msg }))
   };
   

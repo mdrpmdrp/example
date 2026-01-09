@@ -45,6 +45,7 @@ function onEventEdit(e) {
     const staffQuantity = getCellByHeader(sheet, row, header, 'จำนวนทีมงาน (คน)');
     const facebookName = getCellByHeader(sheet, row, header, 'Facebook Name');
     const bookingId = getCellByHeader(sheet, row, header, 'Booking ID');
+    const contact = getCellByHeader(sheet,row,header, 'ช่องทางการติดต่อ')
     
     const location = [
       getCellByHeader(sheet, row, header, 'สถานที่ / ที่อยู่'),
@@ -56,7 +57,7 @@ function onEventEdit(e) {
       namedValues[h] = sheet.getRange(row, i + 1).getValue();
     });
     
-    const title = `${staffQuantity} ${bookingId} ${name} FB:${facebookName}`.trim();
+    const title = `${staffQuantity} ${bookingId} ${name} ${contact}:${facebookName}`.trim();
     const description = formatDescription(namedValues);
     
     updateCalendarEvent(eventId, start, end, title, description, location);

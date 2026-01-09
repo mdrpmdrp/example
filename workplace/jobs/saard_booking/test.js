@@ -11,15 +11,17 @@ function testOnce() {
       'ลิงก์ Google Maps': ['https://maps.app.goo.gl/xxxx'],
       'เบอร์โทร': ['0812345678'],
       'หมายเหตุเพิ่มเติม': ['งานทดสอบระบบ Calendar'],
-      'Facebook Name': ['TestZaa']
+      'Facebook Name': ['TestZaa'],
+      'รหัสไปรษณีย์': ['12345'],
+      'ช่องทางการติดต่อ': ['Line']
     },
-    range: SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange('A13')
+    range: SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange('A271')
   };
   onFormSubmit(mockEvent);
 }
 
 function testEditEvent(){
     onEventEdit({
-      range: SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange('A13')
+      range: SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange('A271')
     });
 }
