@@ -157,7 +157,10 @@ function handleTextMessage(event) {
       }
     }
   }else if(type === 'เงิน'){
-    silverPerGram = Math.floor(((price - criteria.meltPrice - (percent < 99 ? criteria.less99 : 0))/1000) * (percent / 100));
+    silverPerGram = Math.floor(((price - criteria.meltPrice)/1000) * (percent / 100));
+    if(percent < 99){
+      silverPerGram -= 3
+    }
     estimatedPrice = silverPerGram * weight;
   }
 

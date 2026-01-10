@@ -8,11 +8,11 @@ const driveFolder = DriveApp.getFoldersByName("LeaveDocuments").hasNext()
   : DriveApp.createFolder("LeaveDocuments");
 
 // ใช้ Script Properties เพื่อเก็บข้อมูลที่ละเอียดอ่อน
-const BOT_TOKEN = PropertiesService.getScriptProperties().getProperty('BOT_TOKEN') || '7665058062:AAGgVh-hPjrMgEejoIX7oWTAjXrEATI1tUw';
+const BOT_TOKEN = PropertiesService.getScriptProperties().getProperty('BOT_TOKEN') || '7651545202:AAH0UgzYye3coHqE9M0bv4wQ29ayXhrd3T4';
 const CHAT_ID = PropertiesService.getScriptProperties().getProperty('CHAT_ID') || '-4740976422';
 
 // ส่งข้อความแจ้งเตือนไปยัง Telegram
-function sendTelegramMessage(message) {
+function sendTelegramMessage(message = "test") {
   try {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
     const payload = {
@@ -750,4 +750,44 @@ function testDriveAccess() {
     Logger.log("Error in testDriveAccess: " + e.message);
     throw new Error("ไม่สามารถเข้าถึง Google Drive ได้: " + e.message);
   }
+}
+
+function testTelegram() {
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let userSheet = ss.getSheetByName("Users");
+  let leaveSheet = ss.getSheetByName("Leaves");
+  let lastrow = userSheet.getLastRow();
+  let data = leaveSheet.getRange(lastrow, 1, 1, 13).getValues()[0];
+  data = {
+    memberId: data[0],
+    leaveType: data[2],
+    startDateTime: data[3],
+    endDateTime: data[4],
+    status: data[10],
+    reason: data[11],
+    adminReason: data[12]
+  };
+  const users = userSheet.getDataRange().getValues().slice(1);
+  const user = users.find(row => row[3] === data.memberId);
+  const memberName = user ? user[4] : 'ไม่ทราบชื่อ';
+  const reason = data.reason;
+  const start = new Date(data.startDateTime);
+  const end = new Date(data.endDateTime);
+  const diffMs = end - start;
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  const message = `<b>🔄 อัปเดตสถานะการลา</b>\n` +
+    `<b>เลขประจำตัว:</b> ${data.memberId}\n` +
+    `<b>ชื่อ:</b> ${memberName}\n` +
+    `<b>ประเภท:</b> ${data.leaveType}\n` +
+    `<b>เริ่ม:</b> ${Utilities.formatDate(start, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm')}\n` +
+    `<b>สิ้นสุด:</b> ${Utilities.formatDate(end, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm')}\n` +
+    `<b>ระยะเวลา:</b> ${days} วัน ${hours} ชม. ${minutes} นาที\n` +
+    `<b>เหตุผล:</b> ${reason || '-'}\n` +
+    `<b>สถานะใหม่:</b> ${data.status}\n` +
+    `<b>เหตุผล (Admin):</b> ${data.adminReason || '-'}`;
+  sendTelegramMessage(message);
+
 }
