@@ -72,3 +72,13 @@ function getBranchByPostcode(postcode) {
   }
   return null;
 }
+
+/**
+ * showe menu on sheet open
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('Calendar Sync')
+    .addItem('Sync Row to Calendar', 'syncRowToCalendarEvent')
+    .addToUi();
+}

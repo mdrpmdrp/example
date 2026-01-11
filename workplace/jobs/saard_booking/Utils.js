@@ -5,16 +5,32 @@
  */
 function getVal(namedValues, key) {
   const v = namedValues[key];
-  return Array.isArray(v) ? (v[0] || '') : (v || '');
+  let val = Array.isArray(v) ? (v[0] || '') : (v || '');
+  if(val instanceof Date){
+    if(key === 'วันที่ให้บริการ'){
+      val = Utilities.formatDate(val, TIMEZONE, 'dd/MM/yyyy');
+    } else {
+      val = Utilities.formatDate(val, TIMEZONE, 'HH:mm');
+    }
+  }
+  return val;
 }
 
 /**
  * Parse date string (dd/MM/yyyy) and time string (HH:mm) into Date object
  */
-function parseDateTime(dateStr, timeStr='00:00') {
+function parseDateTime(dateStr, timeStr = '00:00') {
   if (!dateStr || !timeStr) return null;
-  const [day, month, year] = dateStr.split('/').map(Number);
-  const [hh, mm] = timeStr.split(':').map(Number);
+  if(dateStr.getTime && timeStr.getTime){ // already a Date object
+    return new Date(dateStr.getFullYear(), dateStr.getMonth(), dateStr.getDate(), timeStr.getHours(), timeStr.getMinutes()); 
+  }
+  if (dateStr.includes('-')) {
+    var [year, month, day] = dateStr.split('-').map(Number);
+    var [hh, mm] = timeStr.split(':').map(Number);
+  } else {
+    var [day, month, year] = dateStr.split('/').map(Number);
+    var [hh, mm] = timeStr.split(':').map(Number);
+  }
 
   if (!day || !month || !year) return null;
 

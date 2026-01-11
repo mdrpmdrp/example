@@ -20,6 +20,21 @@ function testOnce() {
   onFormSubmit(mockEvent);
 }
 
+function testWithLastSubmit(){
+  const form = FormApp.openById('18RkwtVLYVUwQVgREB6psdjvjOIv2kngYhY-HSrtIN_Q');
+  const responses = form.getResponses();
+  const lastResponse = responses[responses.length - 1];
+  const mockEvent = {
+    namedValues: lastResponse.getItemResponses().reduce((acc, itemResponse) => {
+      acc[itemResponse.getItem().getTitle()] = [itemResponse.getResponse()];
+      return acc;
+    }, {}),
+    range: SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange('A' + (responses.length + 1))
+  };
+  onFormSubmit(mockEvent);
+  
+}
+
 function testEditEvent(){
     onEventEdit({
       range: SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getRange('A271')
