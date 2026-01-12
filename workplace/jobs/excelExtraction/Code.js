@@ -13,6 +13,8 @@ function processOrder({storeName, fileOrderDataURL, fileDbArray, fileOrderName})
             return null; // No processing needed here for FRF. processing is done at frontend
         case 'boko':
             return getBokoOrderRows({fileOrderDataURL, fileOrderName, dbRows: fileDbArray});
+        case 'ffv':
+            return null
         default:
             throw new Error('Store not recognized');
     }
@@ -24,6 +26,8 @@ function generateTransactionJSON({storeName, orderRows, dbRows}){
             return generateFRFTransactionJSON({orderRows, dbRows});
         case 'boko':
             return generateBokoTransactionJSON({orderRows, dbRows});
+        case 'ffv':
+            return generateFFVTransactionJSON({orderRows, dbRows});
         default:
             throw new Error('Store not recognized');
     }
