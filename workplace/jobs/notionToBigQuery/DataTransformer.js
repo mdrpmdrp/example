@@ -83,7 +83,6 @@ function getFilesInfo(files) {
  */
 function transformTaskData(page) {
     const props = page.properties;
-    Logger.log(page.id)
     return {
         id: page.id,
         created_time: page.created_time,
@@ -113,7 +112,7 @@ function transformTaskData(page) {
         issue_tracking: getRelationIds(props["Issue Tracking"]?.relation),
         project: getRelationIds(props["Project"]?.relation),
         timestamp_done: formatDate(props["Time stamp (Done)"]?.date?.start),
-        lt_timestamp: props["LT timestamp"]?.formula?.string || "",
+        lt_timestamp: props["LT timestamp"]?.formula?.number || null,
         timestamp_in_progress: formatDate(props["Time stamp (In progress)"]?.date?.start),
         status_2: props["สถานะ"]?.formula?.string || ""
     };

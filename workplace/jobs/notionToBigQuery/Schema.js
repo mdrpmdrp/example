@@ -47,7 +47,7 @@ const taskSchema = [
     { "name": "issue_tracking", "type": "STRING", "mode": "REPEATED" },
 
     {"name": "timestamp_done", "type": "DATE" },
-    {"name": "lt_timestamp", "type": "STRING" },
+    {"name": "lt_timestamp", "type": "NUMERIC" },
     {"name": "timestamp_in_progress", "type": "DATE" },
     { "name": "status_2", "type": "STRING" }
 

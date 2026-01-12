@@ -54,6 +54,7 @@ function fetchNotionData(databaseId, lastEditedTime) {
         allResults = allResults.concat(result.results);
         console.log(`Fetched ${allResults.length} records from Notion database ${databaseId}`);
         next_cursor = result.next_cursor;
+        Utilities.sleep(200); // To avoid hitting rate limits
     } while (next_cursor);
     return allResults;
 }
