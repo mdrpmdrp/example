@@ -496,6 +496,8 @@
 
     <script>
         $(document).ready(function () {
+            // get dashboard data
+            loadDashboardData();
             // Initialize date fields to today
             const today = new Date().toLocaleDateString('en-CA');
             $('#workOrderDate').val(moment().format('DD/MM/YYYY')).data('alt-date', today);
@@ -1071,6 +1073,44 @@
                 }
             });
         });
+
+        function loadDashboardData() {
+            Swal.fire({
+                title: 'Loading Dashboard...',
+                text: 'Fetching dashboard data, please wait...',
+                icon: 'info',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                customClass: {
+                    popup: 'rounded-xl'
+                },
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            const department = $('#departmentSelector').val();
+            google.script.run.withSuccessHandler(function(response) {
+                Swal.close();
+                console.log('Dashboard Data:', response);
+                if (response.success) {
+                    // Future: Populate dashboard with data
+                    console.log('Dashboard data loaded successfully');
+                    updateDashboardUI(response.data);
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: response.message || 'An error occurred while loading dashboard data',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            }).getDashboardData(department);
+        }
+
+        function updateDashboardUI(data) {
+            // Future: Implement UI updates based on dashboard data
+            console.log('Updating dashboard UI with data:', data);
+        }
     </script>
 </body>
 
