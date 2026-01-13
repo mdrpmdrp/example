@@ -513,3 +513,300 @@ function deleteWorkOrder(workOrderId) {
     };
   }
 }
+/**
+ * Get dashboard data
+ */
+function getDashboardData(department) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const workOrderSheet = ss.getSheetByName('Work Orders');
+    const contractorSheet = ss.getSheetByName('Contractors');
+    const sparePartsSheet = ss.getSheetByName('Spare Parts');
+
+    if (!workOrderSheet) {
+      return JSON.stringify({
+        success: true,
+        data: {
+          departments: []
+        }
+      });
+    }
+
+    // Get all data
+    const woData = workOrderSheet.getDataRange().getValues();
+    const ctData = contractorSheet ? contractorSheet.getDataRange().getValues() : [];
+    const spData = sparePartsSheet ? sparePartsSheet.getDataRange().getValues() : [];
+
+    // Skip headers
+    const workOrders = woData.slice(1);
+    const contractors = ctData.slice(1);
+    const spareParts = spData.slice(1);
+
+    // Group by department
+    const departments = {};
+
+    workOrders.forEach((wo, index) => {
+      const workOrderId = wo[0];
+      const workOrderDate = wo[1];
+      const supervisorUserId = wo[2];
+      const supervisorName = wo[3];
+      const supervisorPlanDate = wo[4];
+      const supervisorStartTime = wo[5];
+      const supervisorFinishTime = wo[6];
+      const workOrderDetails = wo[7];
+
+      // Extract department from supervisor user ID (e.g., "ME1001" -> "ME 1")
+      let deptName = 'ME 1'; // Default
+      if (supervisorUserId) {
+        const match = supervisorUserId.match(/([A-Z]+)(\d+)/);
+        if (match) {
+          deptName = match[1] + ' ' + match[2];
+        }
+      }
+
+      // If department filter is specified, only include that department
+      if (department && department.trim() !== '') {
+        if (deptName.toLowerCase() !== department.toLowerCase()) {
+          return;
+        }
+      }
+
+      // Initialize department
+      if (!departments[deptName]) {
+        departments[deptName] = {
+          name: deptName,
+          workOrders: []
+        };
+      }
+
+      // Get contractors for this work order
+      const woContractors = contractors.filter(c => c[0] === workOrderId).map(c => ({
+        type: c[1],
+        name: c[2],
+        quantity: c[3],
+        planDate: c[4],
+        startTime: c[5],
+        finishTime: c[6],
+        capacity: getContractorCapacity(c[2])
+      }));
+
+      // Determine section from work order details
+      const section = extractSection(workOrderDetails) || 'General';
+
+      // Determine status (based on dates and times)
+      const status = determineWorkOrderStatus(supervisorPlanDate, supervisorStartTime, supervisorFinishTime);
+
+      // Add work order
+      departments[deptName].workOrders.push({
+        workOrderId: workOrderId,
+        supervisorName: supervisorName,
+        supervisorUserId: supervisorUserId,
+        supervisorStartTime: supervisorStartTime,
+        supervisorFinishTime: supervisorFinishTime,
+        supervisorPlanDate: supervisorPlanDate,
+        workOrderDate: workOrderDate,
+        description: workOrderDetails,
+        section: section,
+        status: status,
+        contractors: woContractors.length > 0 ? woContractors : [{
+          name: 'Not Assigned',
+          quantity: 0,
+          capacity: 0
+        }]
+      });
+    });
+
+    return JSON.stringify({
+      success: true,
+      data: {
+        departments: Object.values(departments)
+      }
+    });
+
+  } catch (error) {
+    Logger.log('Error in getDashboardData: ' + error);
+    return JSON.stringify({
+      success: false,
+      message: 'Error getting dashboard data: ' + error.toString(),
+      data: {
+        departments: []
+      }
+    });
+  }
+}
+
+/**
+ * Extract section from work order details
+ */
+function extractSection(details) {
+  if (!details) return 'General';
+  
+  const lower = details.toLowerCase();
+  if (lower.includes('crusher') || lower.includes('raw mill') || lower.includes('coal mill')) {
+    return 'Crusher & Raw mill & Coal mill';
+  }
+  if (lower.includes('cement mill')) {
+    return 'Cement mill';
+  }
+  if (lower.includes('kiln')) {
+    return 'Kiln';
+  }
+  
+  return 'General';
+}
+
+/**
+ * Get contractor capacity
+ */
+function getContractorCapacity(contractorName) {
+  const capacities = {
+    'Bank': 16,
+    'External': 0,
+    'Chanchai': 10,
+    'LM': 8
+  };
+  
+  return capacities[contractorName] || 0;
+}
+
+/**
+ * Determine work order status based on dates and times
+ */
+function determineWorkOrderStatus(planDate, startTime, finishTime) {
+  if (!planDate) return 'pending';
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const planned = new Date(planDate);
+  planned.setHours(0, 0, 0, 0);
+  
+  if (planned < today) {
+    return 'completed';
+  } else if (planned.getTime() === today.getTime()) {
+    return 'in progress';
+  } else {
+    return 'pending';
+  }
+}
+/**
+ * Populate sample data for demo (run this once to add test data)
+ */
+function populateSampleData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // Get or create sheets
+  let workOrderSheet = ss.getSheetByName('Work Orders');
+  if (!workOrderSheet) {
+    workOrderSheet = ss.insertSheet('Work Orders');
+    createWorkOrderHeaders(workOrderSheet);
+  }
+
+  let contractorSheet = ss.getSheetByName('Contractors');
+  if (!contractorSheet) {
+    contractorSheet = ss.insertSheet('Contractors');
+    createContractorHeaders(contractorSheet);
+  }
+
+  // Sample data matching the image
+  const sampleWorkOrders = [
+    {
+      id: '10227783',
+      supervisorId: 'ME1001',
+      supervisorName: 'Aphirak S.',
+      details: 'C2J03 เปลี่ยนใบกวาด Crusher & Raw mill & Coal mill',
+      section: 'Crusher & Raw mill & Coal mill',
+      contractors: [
+        { type: 'internal', name: 'Bank', quantity: 4, time: '08:00 - 17:00' }
+      ],
+      status: 'completed'
+    },
+    {
+      id: '10227423',
+      supervisorId: 'ME1002',
+      supervisorName: 'Boonserm P.',
+      details: 'Z4J12 ตรวจเปลี่ยนลูกรกระพือ Crusher & Raw mill & Coal mill',
+      section: 'Crusher & Raw mill & Coal mill',
+      contractors: [
+        { type: 'internal', name: 'Bank', quantity: 6, time: '08:00 - 17:00' }
+      ],
+      status: 'in progress'
+    },
+    {
+      id: '10227424',
+      supervisorId: 'ME1002',
+      supervisorName: 'Boonserm P.',
+      details: 'Z4J19 ตรวจเปลี่ยนลูกรกระพือ Crusher & Raw mill & Coal mill',
+      section: 'Crusher & Raw mill & Coal mill',
+      contractors: [
+        { type: 'internal', name: 'Bank', quantity: 4, time: '08:00 - 17:00' }
+      ],
+      status: 'in progress'
+    },
+    {
+      id: '10228823',
+      supervisorId: 'ME1003',
+      supervisorName: 'Somporn B.',
+      details: '162RR1 PM Reclaimer Crusher & Raw mill & Coal mill',
+      section: 'Crusher & Raw mill & Coal mill',
+      contractors: [
+        { type: 'internal', name: 'Bank', quantity: 4, time: '08:00 - 20:00' }
+      ],
+      status: 'in progress'
+    },
+    {
+      id: '10224854',
+      supervisorId: 'ME1004',
+      supervisorName: 'Suriya M.',
+      details: '461RM1 Recon grinding roller',
+      section: 'Crusher & Raw mill & Coal mill',
+      contractors: [
+        { type: 'external', name: 'Chanchai', quantity: 6, time: '08:00 - 20:00' }
+      ],
+      status: 'in progress'
+    }
+  ];
+
+  const today = new Date().toLocaleDateString('en-CA');
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toLocaleDateString('en-CA');
+
+  // Add sample work orders
+  sampleWorkOrders.forEach((wo, index) => {
+    const planDate = wo.status === 'completed' ? yesterdayStr : today;
+    const workOrderRow = [
+      wo.id,
+      today,
+      wo.supervisorId,
+      wo.supervisorName,
+      planDate,
+      '08:00',
+      '17:00',
+      wo.details,
+      new Date().toLocaleString('en-CA'),
+      Utilities.getUuid()
+    ];
+    workOrderSheet.appendRow(workOrderRow);
+
+    // Add contractors
+    wo.contractors.forEach((contractor, idx) => {
+      const times = contractor.time.split(' - ');
+      const contractorRow = [
+        wo.id,
+        contractor.type,
+        contractor.name,
+        contractor.quantity,
+        planDate,
+        times[0],
+        times[1],
+        idx + 1,
+        new Date().toLocaleString('en-CA')
+      ];
+      contractorSheet.appendRow(contractorRow);
+    });
+  });
+
+  Logger.log('Sample data populated successfully');
+  return { success: true, message: 'Sample data added successfully' };
+}
