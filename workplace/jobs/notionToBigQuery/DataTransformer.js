@@ -40,16 +40,17 @@ function getRelationIds(relation) {
 function getPeopleNames(people) {
     if (!people || people.length === 0) return [];
     
-    let namesCache = CacheService.getScriptCache().get('peopleNames');
-    if (!namesCache) {
+    let namesCache = JSON.parse(PropertiesService.getScriptProperties().getProperty('peopleNames') || '{}');
+    let noNamescache = JSON.parse(PropertiesService.getScriptProperties().getProperty('noPeopleNames') || '{}');
+    
+    if (Object.keys(namesCache).length === 0) {
         getNotionListAllUsers(); // This will populate the cache
-        namesCache = CacheService.getScriptCache().get('peopleNames');
+        namesCache = JSON.parse(PropertiesService.getScriptProperties().getProperty('peopleNames') || '{}');
     }
     
-    namesCache = namesCache ? JSON.parse(namesCache) : {};
-    
     // Collect all missing user IDs first
-    const missingUserIds = people.filter(p => !namesCache[p.id]).map(p => p.id);
+    let missingUserIds = people.filter(p => !namesCache[p.id]).map(p => p.id);
+    missingUserIds = missingUserIds.filter(id => !noNamescache[id]); // Exclude known missing
     
     // Batch fetch missing users if needed
     if (missingUserIds.length > 0) {
@@ -57,15 +58,19 @@ function getPeopleNames(people) {
         missingUserIds.forEach(userId => {
             try {
                 let name = getNotionPeopleNameById(userId);
+                Utilities.sleep(200); // To avoid rate limits
                 if (name) {
                     namesCache[userId] = name;
+                } else {
+                    noNamescache[userId] = true;
                 }
             } catch (e) {
                 Logger.log(`Error fetching user ${userId}: ${e.message}`);
             }
         });
-        // Update cache once after all fetches
-        CacheService.getScriptCache().put('peopleNames', JSON.stringify(namesCache), 21600);
+        // Update cache permanently
+        PropertiesService.getScriptProperties().setProperty('peopleNames', JSON.stringify(namesCache));
+        PropertiesService.getScriptProperties().setProperty('noPeopleNames', JSON.stringify(noNamescache));
     }
     
     return people.map(p => namesCache[p.id]).filter(name => name);
