@@ -16,7 +16,7 @@ function doGet() {
 function getContractorList(ss) {
   let sheet = ss.getSheetByName('Contractors');
   let [header, ...data] = sheet.getDataRange().getValues()
-  data.filter(row => row[0]).map(row => {
+  data = data.filter(row => row[0]).map(row => {
     return {
       type: row[0],
       contractor: row[1],
@@ -30,7 +30,7 @@ function getContractorList(ss) {
 function getSupervisorList(ss) {
   let sheet = ss.getSheetByName('Supervisors');
   let [header, ...data] = sheet.getDataRange().getValues()
-  data.filter(row => row[0]).map(row => {
+  data = data.filter(row => row[0]).map(row => {
     return {
       userId: row[1],
       name: row[2],
