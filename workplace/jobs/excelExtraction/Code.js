@@ -15,6 +15,8 @@ function processOrder({storeName, fileOrderDataURL, fileDbArray, fileOrderName})
             return getBokoOrderRows({fileOrderDataURL, fileOrderName, dbRows: fileDbArray});
         case 'ffv':
             return null
+        case 'ak':
+            return null
         default:
             throw new Error('Store not recognized');
     }
@@ -28,6 +30,8 @@ function generateTransactionJSON({storeName, orderRows, dbRows}){
             return generateBokoTransactionJSON({orderRows, dbRows});
         case 'ffv':
             return generateFFVTransactionJSON({orderRows, dbRows});
+        case 'ak':
+            return generateAKTransactionJSON({orderRows, dbRows});
         default:
             throw new Error('Store not recognized');
     }
