@@ -2,11 +2,43 @@
  * Serve the HTML form
  */
 function doGet() {
-  const html = HtmlService.createTemplateFromFile('index').evaluate()
+  let html = HtmlService.createTemplateFromFile('index')
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  html.contractorList = getContractorList(ss);
+  html.supervisorList = getSupervisorList(ss);
+  html = html.evaluate()
     .setSandboxMode(HtmlService.SandboxMode.IFRAME)
     .setTitle('ACC Maintenance Work List')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   return html;
+}
+
+function getContractorList(ss) {
+  let sheet = ss.getSheetByName('Contractors');
+  let [header, ...data] = sheet.getDataRange().getValues()
+  data.filter(row => row[0]).map(row => {
+    return {
+      type: row[0],
+      contractor: row[1],
+      me: row[2],
+      capacity: row[3]
+    }
+  });
+  return data;
+}
+
+function getSupervisorList(ss) {
+  let sheet = ss.getSheetByName('Supervisors');
+  let [header, ...data] = sheet.getDataRange().getValues()
+  data.filter(row => row[0]).map(row => {
+    return {
+      userId: row[1],
+      name: row[2],
+      me: row[3],
+      contractors: [row[4], row[5], row[6]]
+    }
+  });
+  return data;
 }
 
 /**
@@ -16,7 +48,7 @@ function submitWorkOrder(formData) {
   try {
     // Get the active spreadsheet and sheet
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    
+
     // Get or create the sheets
     let workOrderSheet = ss.getSheetByName('Work Orders');
     if (!workOrderSheet) {
@@ -38,7 +70,7 @@ function submitWorkOrder(formData) {
 
     // Generate Work Order ID if not provided
     const workOrderId = formData.workOrder.workOrderID || generateWorkOrderId();
-    
+
     // Add Work Order record
     const workOrderRow = [
       workOrderId,
@@ -123,13 +155,13 @@ function createWorkOrderHeaders(sheet) {
     'Record ID'
   ];
   sheet.appendRow(headers);
-  
+
   // Format header row
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
   headerRange.setFontWeight('bold');
   headerRange.setBackground('#DC2626');
   headerRange.setFontColor('white');
-  
+
   // Set column widths
   sheet.setColumnWidth(1, 150);
   sheet.setColumnWidth(2, 120);
@@ -159,13 +191,13 @@ function createContractorHeaders(sheet) {
     'Created At'
   ];
   sheet.appendRow(headers);
-  
+
   // Format header row
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
   headerRange.setFontWeight('bold');
   headerRange.setBackground('#DC2626');
   headerRange.setFontColor('white');
-  
+
   // Set column widths
   sheet.setColumnWidth(1, 150);
   sheet.setColumnWidth(2, 120);
@@ -192,13 +224,13 @@ function createSparePartsHeaders(sheet) {
     'Created At'
   ];
   sheet.appendRow(headers);
-  
+
   // Format header row
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
   headerRange.setFontWeight('bold');
   headerRange.setBackground('#6B7280');
   headerRange.setFontColor('white');
-  
+
   // Set column widths
   sheet.setColumnWidth(1, 150);
   sheet.setColumnWidth(2, 150);
@@ -228,7 +260,7 @@ function getWorkOrders(limit = 100) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('Work Orders');
-    
+
     if (!sheet) {
       return { success: false, message: 'Work Orders sheet not found' };
     }
@@ -266,7 +298,7 @@ function getWorkOrders(limit = 100) {
 function getWorkOrderDetails(workOrderId) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    
+
     const workOrderSheet = ss.getSheetByName('Work Orders');
     const contractorSheet = ss.getSheetByName('Contractors');
     const sparePartsSheet = ss.getSheetByName('Spare Parts');
@@ -640,7 +672,7 @@ function getDashboardData(department) {
  */
 function extractSection(details) {
   if (!details) return 'General';
-  
+
   const lower = details.toLowerCase();
   if (lower.includes('crusher') || lower.includes('raw mill') || lower.includes('coal mill')) {
     return 'Crusher & Raw mill & Coal mill';
@@ -651,7 +683,7 @@ function extractSection(details) {
   if (lower.includes('kiln')) {
     return 'Kiln';
   }
-  
+
   return 'General';
 }
 
@@ -665,7 +697,7 @@ function getContractorCapacity(contractorName) {
     'Chanchai': 10,
     'LM': 8
   };
-  
+
   return capacities[contractorName] || 0;
 }
 
@@ -674,13 +706,13 @@ function getContractorCapacity(contractorName) {
  */
 function determineWorkOrderStatus(planDate, startTime, finishTime) {
   if (!planDate) return 'pending';
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const planned = new Date(planDate);
   planned.setHours(0, 0, 0, 0);
-  
+
   if (planned < today) {
     return 'completed';
   } else if (planned.getTime() === today.getTime()) {
@@ -694,7 +726,7 @@ function determineWorkOrderStatus(planDate, startTime, finishTime) {
  */
 function populateSampleData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  
+
   // Get or create sheets
   let workOrderSheet = ss.getSheetByName('Work Orders');
   if (!workOrderSheet) {

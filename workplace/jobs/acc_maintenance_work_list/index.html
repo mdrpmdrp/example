@@ -82,6 +82,7 @@
     <script
         src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js">
         </script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
 
     <!-- Main Container -->
     <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
@@ -644,6 +645,8 @@
     </div>
 
     <script>
+        var contractorList = <?!= JSON.stringify(contractorList) ?>;
+        var supervisorList = <?!= JSON.stringify(supervisorList) ?>;
         // Fullscreen toggle function
         function toggleFullscreen() {
             $('.hide-on-fullscreen').toggleClass('hidden');
@@ -740,20 +743,6 @@
                 }
             });
 
-            // Contractor type and selection options
-            const contractorOptions = {
-                internal: [
-                    { value: 'EME', label: 'EME' },
-                    { value: 'BKS', label: 'BKS' },
-                    { value: 'PC-Plus', label: 'PC-Plus' },
-                    { value: 'LM', label: 'LM' }
-                ],
-                external: [
-                    { value: 'P.Con', label: 'P.Con' },
-                    { value: 'AP Machine', label: 'AP Machine' },
-                    { value: 'other', label: 'อื่นๆ (กรอกเอง)' }
-                ]
-            };
 
             // Handle Contractor Tab Switching
             $('.tab-button').click(function (e) {
@@ -785,7 +774,18 @@
                 $contractorSelect.html('<option value="">-- Select Contractor --</option>');
 
                 if (type) {
-                    const options = contractorOptions[type] || [];
+                    let uniqueContractors = new Set();
+                    let options = contractorList
+                        .filter(c => c.type === type)
+                        .map(c => ({ value: c.contractor, label: c.contractor }))
+                        .filter(c => {
+                            if (uniqueContractors.has(c.value)) {
+                                return false;
+                            } else {
+                                uniqueContractors.add(c.value);
+                                return true;
+                            }
+                        });
                     options.forEach(option => {
                         $contractorSelect.append(`<option value="${option.value}">${option.label}</option>`);
                     });
@@ -794,6 +794,18 @@
                 // Hide custom name div initially
                 $customNameDiv.addClass('hidden');
             });
+
+            $(document).on('keyup', '#supervisorUserId', _.debounce(function () {
+                console.log('Supervisor User ID input changed');
+                const userId = $(this).val().trim();
+                const supervisor = supervisorList.find(s => s.userId == userId);
+                console.log('Found supervisor:', supervisorList);
+                if (supervisor) {
+                    $('#supervisorName').val(supervisor.name);
+                } else {
+                    $('#supervisorName').val('');
+                }
+            }, 300));
 
             // Handle external contractor custom name visibility
             $(document).on('change', '.contractor-select', function () {
