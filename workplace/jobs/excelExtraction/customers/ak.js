@@ -42,12 +42,12 @@ function generateAKTransactionJSON({ orderRows, dbRows } = {}) {
 
     // Pre-normalize branch names for reuse
     const branches = [orderRows[0][3], orderRows[0][5]].map((branchName, index) => {
-        if (!branchMap.has(String(branchName).toLowerCase().trim()) && branchName.toLowerCase().trim() !== 'total') {
-            branchMapErrors.add(branchName.trim());
+        if (!branchMap.has(String(branchName).toLowerCase().trim()) && String(branchName).toLowerCase().trim() !== 'total') {
+            branchMapErrors.add(String(branchName).trim());
             Logger.log(`Branch mapping not found for branch name: "${branchName}"`);
         }
         return {
-            code: branchMap.get(String(branchName).toLowerCase().trim()) || ("ไม่มีชื่อสาขา " + branchName.trim()),
+            code: branchMap.get(String(branchName).toLowerCase().trim()) || ("ไม่มีชื่อสาขา " + String(branchName).trim()),
             index: index === 0 ? 3 : 5
         }
     });
@@ -67,11 +67,11 @@ function generateAKTransactionJSON({ orderRows, dbRows } = {}) {
             const row = orderRows[i];
             const quantity = row[branch.index];
 
-            if (!quantity || quantity <= 0 || row[0].trim() === 'TOTAL') continue;
+            if (!quantity || quantity <= 0 || String(row[0]).trim() === 'TOTAL') continue;
 
             const productName = String(row[0]).toLowerCase().trim();
-            if (!productMap.has(productName) && !productMapErrors.has(row[0].trim())) {
-                productMapErrors.add(row[0].trim());
+            if (!productMap.has(productName) && !productMapErrors.has(String(row[0]).trim())) {
+                productMapErrors.add(String(row[0]).trim());
                 Logger.log(`Product mapping not found for product name: "${productName}"`);
             }
 
@@ -80,7 +80,7 @@ function generateAKTransactionJSON({ orderRows, dbRows } = {}) {
 
             branchOrders.push([
                 productCode,
-                dbData?.nameEN ?? row[0],
+                dbData?.nameEN ?? String(row[0]),
                 dbData?.nameTH ?? "",
                 dbData?.price ?? 0,
                 quantity,
