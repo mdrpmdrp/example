@@ -92,13 +92,14 @@ function showUploadEquipment() {
 }
 
 function importData(data, sheetname, start, length, isLast) {
+  Logger.log(`importData to ${sheetname} at ${start} length ${length} isLast:${isLast}`)
   data = JSON.parse(data)
   let ss = SpreadsheetApp.getActiveSpreadsheet()
   let sheet = ss.getSheetByName(sheetname)
   let range = sheet.getRange(start, 1, length, data[0].length)
   range.clearContent()
   range.setValues(data)
-  if (isLast) {
+  if (isLast && sheet.getLastRow() > (start + length - 1)) {
     sheet.getRange(start + length, 1, (start + length) - sheet.getLastRow() + 1, sheet.getLastColumn()).clearContent()
   }
 

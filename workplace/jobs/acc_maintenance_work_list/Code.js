@@ -46,6 +46,38 @@ function getSupervisorList(ss) {
  * Handle form submission
  */
 function submitWorkOrder(formData) {
+  formData = {
+    "supervisor": {
+        "userId": "10125",
+        "name": "อภิลักษณ์",
+        "planDate": "2026-01-14",
+        "startTime": "08:00",
+        "finishTime": "17:00"
+    },
+    "workOrder": {
+        "date": "14/01/2026",
+        "workOrderID": "",
+        "details": ""
+    },
+    "contractors": [
+        {
+            "type": "internal",
+            "contractor": "EME",
+            "quantity": "4",
+            "planDate": "2026-01-14",
+            "startTime": "08:00",
+            "finishTime": "17:00"
+        }
+    ],
+    "spareParts": [
+        {
+            "id": "sdcsfc",
+            "size": "1000",
+            "unit": "asd",
+            "quantity": "20"
+        }
+    ]
+}
   try {
     // Get the active spreadsheet and sheet
     const ss = SpreadsheetApp.getActiveSpreadsheet();
