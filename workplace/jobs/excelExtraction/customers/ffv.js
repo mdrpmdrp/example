@@ -42,7 +42,7 @@ function generateFFVTransactionJSON({ orderRows, dbRows } = {}) {
 
     const branches = [{code: 'Food Foods Co.-Main'}] // FFV has only one branch
     // Process each branch
-    const quantityIndex = 3; // For FFV, quantity is always at index 3
+    const quantityIndex = 4; // For FFV, quantity is always at index 3
     for (const branch of branches) {
         // const branchSheet = newSpreadsheet.insertSheet(branch.code);
         if (branch.code === 'ไม่มีชื่อสาขา TOTAL') continue;
