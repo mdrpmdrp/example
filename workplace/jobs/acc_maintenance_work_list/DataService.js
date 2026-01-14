@@ -87,6 +87,39 @@ function getSupervisorList(ss) {
   return supervisorList;
 }
 
+function getPredefinedWorkOrderList(ss) {
+  ss = ss || getSpreadsheet();
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'preDefinedWorkOrders';
+  
+  // Try to get from cache first
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch (e) {
+      Logger.log('Cache parse error: ' + e);
+    }
+  }
+  
+  // Fetch from sheet
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.PRE_DEFINED_WORK_ORDERS);
+  if (!sheet) {
+    return [];
+  }
+  const values = sheet.getDataRange().getValues();
+  const [header, ...data] = values;
+  const predefinedList = data
+    .filter(row => row[0])
+    .map(row => ({
+      workOrderID: row[0],
+      description: row[1]
+    }));
+  // Cache for 5 minutes
+  cache.put(cacheKey, JSON.stringify(predefinedList), 300);
+  return predefinedList;
+}
+
 /**
  * Get dashboard data for today and future dates
  */

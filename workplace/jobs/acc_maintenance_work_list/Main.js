@@ -14,6 +14,7 @@ function doGet() {
     // Load data with caching
     html.contractorList = getContractorList(ss);
     html.supervisorList = getSupervisorList(ss);
+    html.preDefinedWorkOrders = getPredefinedWorkOrderList(ss);
     
     return html.evaluate()
       .setSandboxMode(HtmlService.SandboxMode.IFRAME)

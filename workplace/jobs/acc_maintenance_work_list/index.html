@@ -10,6 +10,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ACC maintenance work list</title>
+    
+    <!-- Preconnect to improve loading speed -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    
+    <!-- jQuery must load synchronously as inline scripts depend on it -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
         integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -64,13 +73,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
-    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.css">
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
     <style>
         body {
             font-family: 'Noto Sans Thai', sans-serif;
@@ -78,6 +85,8 @@
 
         .section-card {
             transition: all 0.3s ease;
+            will-change: box-shadow;
+            contain: layout style paint;
         }
 
         .section-card:hover {
@@ -86,6 +95,7 @@
 
         .spare-parts-container {
             animation: slideDown 0.3s ease;
+            contain: layout style;
         }
 
         @keyframes slideDown {
@@ -119,17 +129,6 @@
 </head>
 
 <body class="bg-gray-50">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/plugins/rangePlugin.js"></script>
-    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
-    <script
-        src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js">
-        </script>
-    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
 
     <!-- Main Container -->
     <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
@@ -582,9 +581,46 @@
 
         </div>
     </div>
+    
+    <!-- Load scripts at end for better performance -->
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/plugins/rangePlugin.js"></script>
+    <script defer src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@master/resumableupload_js.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+    
     <script>
         var contractorList = <?!= JSON.stringify(contractorList) ?>;
         var supervisorList = <?!= JSON.stringify(supervisorList) ?>;
+        var preDefinedWorkOrders = <?!= JSON.stringify(preDefinedWorkOrders) ?>;
+        
+        // Cache frequently used DOM elements
+        const DOMCache = {
+            init: function() {
+                this.$body = $('body');
+                this.$currentDate = $('#currentDate');
+                this.$workOrderDate = $('#workOrderDate');
+                this.$supervisorPlanDate = $('#supervisorPlanDate');
+                this.$supervisorUserId = $('#supervisorUserId');
+                this.$supervisorName = $('#supervisorName');
+                this.$supervisorStartTime = $('#supervisorStartTime');
+                this.$supervisorFinishTime = $('#supervisorFinishTime');
+                this.$workOrderID = $('#workOrderID');
+                this.$workOrderDetailsContainer = $('#workOrderDetailsContainer');
+                this.$workOrderDetailsText = $('#workOrderDetailsText');
+                this.$sparePartDetailsContainer = $('#sparePartDetailsContainer');
+                this.$contractorListContainer = $('#contractorListContainer');
+                this.$partsListContainer = $('#partsListContainer');
+                this.$workOrderForm = $('#workOrderForm');
+                this.$reloadIcon = $('#reload-icon');
+                this.$createUpdateTab = $('#createUpdateTab');
+            }
+        };
+        
         // Fullscreen toggle function
         function toggleFullscreen() {
             $('.hide-on-fullscreen').toggleClass('hidden');
@@ -604,14 +640,17 @@
         });
 
         $(document).ready(function () {
+            // Initialize DOM cache
+            DOMCache.init();
+            
             // Initialize current date in dashboard header
-            $('#currentDate').text(moment().format('DD MMM YYYY'));
+            DOMCache.$currentDate.text(moment().format('DD MMM YYYY'));
 
             // get dashboard data
             loadDashboardData();
             // Initialize date fields to today
             const today = new Date().toLocaleDateString('en-CA');
-            $('#workOrderDate').val(moment().format('DD/MM/YYYY')).data('alt-date', today);
+            DOMCache.$workOrderDate.val(moment().format('DD/MM/YYYY')).data('alt-date', today);
 
             // Initialize flatpickr for date selectors (Thai locale)
             flatpickr('#supervisorPlanDate', {
@@ -664,23 +703,37 @@
                 defaultDate: "17:00"
             });
 
-            // Handle Work Order Checkbox - Toggle between work order details and spare parts
-            $('#workOrderID').on('keyup', function () {
-                if ($(this).val().trim() !== '') {
-                    // Show work order details, hide spare parts
-                    $('#workOrderDetailsContainer').removeClass('hidden').find('textarea').attr('required', true);
-                    $('#workOrderDetailsText').val('');
-                    $('#sparePartDetailsContainer').addClass('hidden');
-                    $('.material-item').not(':first').remove();
-                    $('.material-item').find('input').val('').attr('required', false);
+            // Handle Work Order Checkbox - Toggle between work order details and spare parts (optimized)
+            $('#workOrderID').on('keyup', _.debounce(function () {
+                const workOrderId = $(this).val().trim();
+                const $detailsContainer = $('#workOrderDetailsContainer');
+                const $detailsText = $('#workOrderDetailsText');
+                const $spareContainer = $('#sparePartDetailsContainer');
+                const $materialItems = $('.material-item');
+                
+                if (workOrderId !== '') {
+                    // Batch DOM updates for better performance
+                    requestAnimationFrame(() => {
+                        $detailsContainer.removeClass('hidden').find('textarea').attr('required', true);
+                        $detailsText.val('');
+                        $spareContainer.addClass('hidden');
+                        $materialItems.not(':first').remove();
+                        $materialItems.find('input').val('').attr('required', false);
+                        
+                        let wo = preDefinedWorkOrders.find(pre_wo => pre_wo.workOrderID == workOrderId);
+                        if (wo) {
+                            $detailsText.val(wo.description);
+                        }
+                    });
                 } else {
-                    // Hide work order details, show spare parts
-                    $('#workOrderDetailsContainer').addClass('hidden').find('textarea').attr('required', false);
-                    $('#spareParts').removeClass('hidden').addClass('spare-parts-container');
-                    $('#sparePartDetailsContainer').removeClass('hidden');
-                    $('.material-item').find('input').val('').attr('required', true)
+                    // Batch DOM updates
+                    requestAnimationFrame(() => {
+                        $detailsContainer.addClass('hidden').find('textarea').attr('required', false);
+                        $spareContainer.removeClass('hidden');
+                        $materialItems.find('input').val('').attr('required', true);
+                    });
                 }
-            });
+            }, 300));
 
 
             // Handle Contractor Tab Switching
@@ -702,63 +755,64 @@
                 }
             });
 
-            // Update contractor options when type changes
+            // Update contractor options when type changes (optimized with caching)
             $(document).on('change', '.contractor-type', function () {
                 const type = $(this).val();
                 const $contractorItem = $(this).closest('.contractor-item');
                 const $contractorSelect = $contractorItem.find('.contractor-select');
                 const $customNameDiv = $contractorItem.find('.contractor-custom-name-div');
-                const supervisor = supervisorList.find(s => s.userId == $('#supervisorUserId').val().trim());
-                // Clear and update options
-                $contractorSelect.html('<option value="">-- Select Contractor --</option>');
+                const supervisorUserId = $('#supervisorUserId').val().trim();
+                const supervisor = supervisorList.find(s => s.userId == supervisorUserId);
+                
+                // Build options HTML efficiently
+                let optionsHTML = '<option value="">-- Select Contractor --</option>';
 
-                if (type) {
-                    let uniqueContractors = new Set();
-                    let options = contractorList
+                if (type && supervisor) {
+                    const uniqueContractors = new Set();
+                    const options = contractorList
                         .filter(c => c.type === type && (c.me === supervisor.me || c.me === ''))
-                        .map(c => ({ value: c.contractor, label: c.contractor }))
-                        .filter(c => {
-                            if (uniqueContractors.has(c.value)) {
-                                return false;
-                            } else {
-                                uniqueContractors.add(c.value);
-                                return true;
+                        .reduce((acc, c) => {
+                            if (!uniqueContractors.has(c.contractor)) {
+                                uniqueContractors.add(c.contractor);
+                                acc.push(`<option value="${c.contractor}">${c.contractor}</option>`);
                             }
-                        });
-                    options.forEach(option => {
-                        $contractorSelect.append(`<option value="${option.value}">${option.label}</option>`);
-                    });
+                            return acc;
+                        }, []);
+                    
+                    optionsHTML += options.join('');
                     $contractorItem.find('input,select').attr('required', true);
                 } else {
                     $contractorItem.find('input,select').attr('required', false);
                 }
-
-                // Hide custom name div initially
+                
+                // Single DOM update
+                $contractorSelect.html(optionsHTML);
                 $customNameDiv.addClass('hidden');
-                // Handle external contractor custom name visibility
-                $('.contractor-select').off('change').on('change', function () {
-                    const $contractorItem = $(this).closest('.contractor-item');
-                    const type = $contractorItem.find('.contractor-type').val();
-                    const value = $(this).val();
-                    const $customNameDiv = $contractorItem.find('.contractor-custom-name-div');
+            });
+            
+            // Handle external contractor custom name visibility (use event delegation)
+            $(document).on('change', '.contractor-select', function () {
+                const $contractorItem = $(this).closest('.contractor-item');
+                const type = $contractorItem.find('.contractor-type').val();
+                const value = $(this).val();
+                const $customNameDiv = $contractorItem.find('.contractor-custom-name-div');
 
-                    if (type === 'external' && value === 'อื่นๆ (กรอกเอง)') {
-                        $customNameDiv.removeClass('hidden').find('input').val('').prop('required', true);
-                    } else {
-                        $customNameDiv.addClass('hidden').find('input').val('').prop('required', false);
-                    }
-                });
+                if (type === 'external' && value === 'อื่นๆ (กรอกเอง)') {
+                    $customNameDiv.removeClass('hidden').find('input').val('').prop('required', true);
+                } else {
+                    $customNameDiv.addClass('hidden').find('input').val('').prop('required', false);
+                }
             });
 
             $(document).on('keyup', '#supervisorUserId', _.debounce(function () {
-
                 const userId = $(this).val().trim();
+                const $supervisorName = $('#supervisorName');
                 const supervisor = supervisorList.find(s => s.userId == userId);
 
                 if (supervisor) {
-                    $('#supervisorName').val(supervisor.name).prop('readonly', true);
+                    $supervisorName.val(supervisor.name).prop('readonly', true);
                 } else {
-                    $('#supervisorName').val('').prop('readonly', false);
+                    $supervisorName.val('').prop('readonly', false);
                 }
             }, 300));
 
@@ -1181,11 +1235,18 @@
 
         function updateDashboardUI(data) {
             data = data || window.dashboardData;
+            
+            // Use DocumentFragment for better performance with large DOM operations
+            const fragment = document.createDocumentFragment();
+            
+            // Cache supervisor lookups for better performance
+            const supervisorLookup = new Map(supervisorList.map(s => [s.userId, s]));
 
             data = data.map(item => {
-                let sup_id = item.supervisor.userId
-                let me = supervisorList.find(s => s.userId == sup_id)?.me || 'Unknown';
-                let mainDuty = supervisorList.find(s => s.userId == sup_id)?.mainDuty || 'Unknown';
+                let sup_id = item.supervisor.userId;
+                let supervisor = supervisorLookup.get(sup_id);
+                let me = supervisor?.me || 'Unknown';
+                let mainDuty = supervisor?.mainDuty || 'Unknown';
                 let wo_count = data.filter(d => d.supervisor.userId === sup_id).length;
                 let hasWorkOrder = wo_count > 0;
                 item.supervisor = { ...item.supervisor, me: me, mainDuty: mainDuty, hasWorkOrder: hasWorkOrder, wo_count: wo_count };
@@ -1295,24 +1356,25 @@
         }
 
         function populateContractorCapacity($section, stats, me) {
-
             const $tbody = $section.find('.contractor-capacity-table-body');
             const contractorOfDepartment = supervisorList
                 .filter(s => s.me === me)
                 .flatMap(s => s.contractors)
                 .filter((value, index, self) => self.indexOf(value) === index); // Unique contractors
-            $tbody.empty();
+            
             for (const contractorName of contractorOfDepartment) {
                 if (!stats[contractorName]) {
                     stats[contractorName] = { used: 0, capacity: '-' };
                 }
             }
-            // Internal contractor row
-            Object.keys(stats).sort((a, b) => a.localeCompare(b)).forEach(contractorName => {
-                if (contractorName === 'external' || contractorName === '') return; // Skip external here
-                const contractorStats = stats[contractorName];
-                $tbody.append(`
-                    <tr>
+            
+            // Build all rows at once for better performance
+            const internalRows = Object.keys(stats)
+                .filter(contractorName => contractorName !== 'external' && contractorName !== '')
+                .sort((a, b) => a.localeCompare(b))
+                .map(contractorName => {
+                    const contractorStats = stats[contractorName];
+                    return `<tr>
                         <td class="p-1 text-sm font-semibold text-gray-800">
                             <div class="bg-blue-100 rounded-lg px-4 py-2 w-full text-center">
                                 ${contractorName}
@@ -1328,85 +1390,83 @@
                                 ${contractorStats.capacity || '-'}
                             </div>
                         </td>
-                    </tr>
-                `);
-            });
-
+                    </tr>`;
+                }).join('');
 
             // External contractor row
-            $tbody.append(`
-                <tr>
-                    <td class="p-1 text-sm font-semibold text-gray-800">
-                        <div class="bg-green-100 rounded-lg px-4 py-2 w-full text-center">
-                            External
-                        </div>
-                    </td>
-                    <td class="p-1 text-center text-sm font-bold text-gray-900">
-                        <div class="bg-green-100 rounded-lg px-4 py-2 w-full text-center">
-                            ${stats.external.used}
-                        </div>
-                    </td>
-                </tr>
-            `);
+            const externalRow = `<tr>
+                <td class="p-1 text-sm font-semibold text-gray-800">
+                    <div class="bg-green-100 rounded-lg px-4 py-2 w-full text-center">
+                        External
+                    </div>
+                </td>
+                <td class="p-1 text-center text-sm font-bold text-gray-900">
+                    <div class="bg-green-100 rounded-lg px-4 py-2 w-full text-center">
+                        ${stats.external.used}
+                    </div>
+                </td>
+            </tr>`;
+            
+            // Single DOM update
+            $tbody.html(internalRows + externalRow);
         }
 
 
         function populateSectionCards($section, data, me) {
             const $container = $section.find('.section-cards-container');
-            $container.empty();
             const sectionGroups = Object.groupBy(data, (item) => item.supervisor.mainDuty || 'Other');
             const sectionNames = [...new Set(supervisorList.filter(s => s.me === me).map(s => s.mainDuty || 'Other'))];
-            for (section of sectionNames) {
-                const $card = $(`
-                    <div class="section-card bg-white rounded-xl shadow-md p-6 border-2 border-gray-200">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">${section}</h3>
-                        <div class="flex flex-wrap gap-2 section-pills-container">
-                        </div>
-                    </div>
-                `);
-
+            
+            // Build all HTML at once using array join for better performance
+            const cardsHTML = sectionNames.map(section => {
                 const sectionData = sectionGroups[section] || [{ supervisor: {} }];
                 const supervisorsInSection = supervisorList.filter(s => s.me === me && (s.mainDuty || 'Other') === section);
-                const $pillsContainer = $card.find('.section-pills-container');
+                
                 let hasWorkSupervisor = [];
                 let noWorkSupervisor = [];
+                
                 supervisorsInSection.forEach(supervisor => {
                     const supervisorName = supervisor.name;
                     const supervisorInfo = sectionData.find(item => item.supervisor.userId === supervisor.userId)?.supervisor || { hasWorkOrder: false, wo_count: 0 };
                     const hasWorkOrder = supervisorInfo.hasWorkOrder || false;
                     const wo_count = supervisorInfo.wo_count || 0;
+                    
                     if (hasWorkOrder) {
                         hasWorkSupervisor.push({ name: supervisorName, count: wo_count });
                     } else {
                         noWorkSupervisor.push({ name: supervisorName });
                     }
                 });
-                hasWorkSupervisor
-                    .sort((a, b) => b.count - a.count)
-                    .forEach(sup => {
-                        const bgClass = 'bg-gray-300 text-gray-800';
-                        const countBadge = sup.count > 0 ?
-                            `<span class="bg-white bg-opacity-30 px-2 py-0.5 rounded-full text-xs">X ${sup.count}</span>` : '';
-
-                        $pillsContainer.append(`
-                        <div class="${bgClass} px-4 py-2 rounded-full font-semibold flex items-center space-x-2">
-                            <span>${sup.name}</span>
-                            ${countBadge}
-                        </div>
-                    `);
-                    });
-                noWorkSupervisor
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .forEach(sup => {
-                        const bgClass = 'bg-danger-600 text-white';
-                        $pillsContainer.append(`
-                        <div class="${bgClass} px-4 py-2 rounded-full font-semibold flex items-center space-x-2">
-                            <span>${sup.name}</span>
-                        </div>
-                    `);
-                    });
-                $container.append($card);
-            }
+                
+                const pillsHTML = [
+                    ...hasWorkSupervisor
+                        .sort((a, b) => b.count - a.count)
+                        .map(sup => {
+                            const countBadge = sup.count > 0 ?
+                                `<span class="bg-white bg-opacity-30 px-2 py-0.5 rounded-full text-xs">X ${sup.count}</span>` : '';
+                            return `<div class="bg-gray-300 text-gray-800 px-4 py-2 rounded-full font-semibold flex items-center space-x-2">
+                                <span>${sup.name}</span>${countBadge}
+                            </div>`;
+                        }),
+                    ...noWorkSupervisor
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(sup => 
+                            `<div class="bg-danger-600 text-white px-4 py-2 rounded-full font-semibold flex items-center space-x-2">
+                                <span>${sup.name}</span>
+                            </div>`
+                        )
+                ].join('');
+                
+                return `<div class="section-card bg-white rounded-xl shadow-md p-6 border-2 border-gray-200">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">${section}</h3>
+                    <div class="flex flex-wrap gap-2 section-pills-container">
+                        ${pillsHTML}
+                    </div>
+                </div>`;
+            }).join('');
+            
+            // Single DOM update
+            $container.html(cardsHTML);
             // Object.keys(sectionGroups).forEach(sectionName => {
             //     const sectionData = sectionGroups[sectionName];
 
@@ -1439,9 +1499,9 @@
 
         function populateWorkOrdersTable($section, data) {
             const $tbody = $section.find('.work-orders-table-body');
-            $tbody.empty();
+            
             if (data.length === 0) {
-                $tbody.append(`
+                $tbody.html(`
                     <tr>
                         <td colspan="7" class="px-4 py-8 text-center text-gray-500">
                             <i class="fas fa-inbox text-3xl mb-2"></i>
@@ -1451,13 +1511,15 @@
                 `);
                 return;
             }
+            
             const workOrders = data.sort((a, b) => {
                 const dateA = a.workOrder.date ? moment(a.workOrder.date, 'DD/MM/YYYY').toDate() : new Date(0);
                 const dateB = b.workOrder.date ? moment(b.workOrder.date, 'DD/MM/YYYY').toDate() : new Date(0);
                 return dateB - dateA;
             });
 
-            workOrders.forEach(item => {
+            // Build all rows at once for better performance
+            const rowsHTML = workOrders.map(item => {
                 const contractors = item.contractors || [];
                 const contractorNames = contractors.map(c => c.contractor).join(', ');
                 const totalQuantity = contractors.reduce((sum, c) => sum + (parseInt(c.quantity) || 0), 0);
@@ -1472,26 +1534,27 @@
                     statusClass = 'bg-blue-500 hover:bg-blue-700 cursor-pointer';
                 }
 
-                $tbody.append(`
-                    <tr class="border-b border-gray-200 hover:bg-gray-50">
-                        <td class="px-4 py-3 font-bold text-green-800 text-lg">${item.supervisor?.name || '-'}</td>
-                        <td class="px-4 py-3">
-                            <span class="px-3 py-1 rounded-full text-base font-semibold text-nowrap ${item.workOrder?.workOrderID ? 'bg-gray-200 text-gray-800' : 'bg-danger-500 text-white'}">
-                                ${item.workOrder?.workOrderID || '<i class="fas fa-exclamation-triangle mr-1"></i> No ID'}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3">${item.workOrder?.details || '-'}</td>
-                        <td class="px-4 py-3">${contractorNames || '-'}</td>
-                        <td class="px-4 py-3 text-center">${totalQuantity}</td>
-                        <td class="px-4 py-3 text-center">${workingTime}</td>
-                        <td class="px-4 py-3 text-center">
-                            <span class="${statusClass} text-white px-3 py-1 rounded-full text-base font-semibold text-nowrap status-btn" data-recordId="${item.recordId}">
-                                ${status}
-                            </span>
-                        </td>
-                    </tr>
-                `);
-            });
+                return `<tr class="border-b border-gray-200 hover:bg-gray-50">
+                    <td class="px-4 py-3 font-bold text-green-800 text-lg">${item.supervisor?.name || '-'}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-3 py-1 rounded-full text-base font-semibold text-nowrap ${item.workOrder?.workOrderID ? 'bg-gray-200 text-gray-800' : 'bg-danger-500 text-white'}">
+                            ${item.workOrder?.workOrderID || '<i class="fas fa-exclamation-triangle mr-1"></i> No ID'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">${item.workOrder?.details || '-'}</td>
+                    <td class="px-4 py-3">${contractorNames || '-'}</td>
+                    <td class="px-4 py-3 text-center">${totalQuantity}</td>
+                    <td class="px-4 py-3 text-center">${workingTime}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="${statusClass} text-white px-3 py-1 rounded-full text-base font-semibold text-nowrap status-btn" data-recordId="${item.recordId}">
+                            ${status}
+                        </span>
+                    </td>
+                </tr>`;
+            }).join('');
+            
+            // Single DOM update
+            $tbody.html(rowsHTML);
         }
 
         function updateWorkOrder(recordId) {

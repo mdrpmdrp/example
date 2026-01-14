@@ -7,7 +7,8 @@ const CONFIG = {
     WORK_ORDERS: 'Work Orders',
     CONTRACTORS: 'Contractors',
     SUPERVISORS: 'Supervisors',
-    SPARE_PARTS: 'Spare Parts'
+    SPARE_PARTS: 'Spare Parts',
+    PRE_DEFINED_WORK_ORDERS: 'Predefined Work Orders'
   },
   
   WORK_ORDER_COLUMNS: {
@@ -37,12 +38,6 @@ const CONFIG = {
     FINISH: '17:00'
   },
   
-  CONTRACTOR_CAPACITY: {
-    'Bank': 16,
-    'External': 0,
-    'Chanchai': 10,
-    'LM': 8
-  }
 };
 
 /**
