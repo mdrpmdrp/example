@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- no cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!-- no cache -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@200;300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Mitr', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row g-3">
+            <div class="col-12">
+                <label for="sheet">เลือกชีทที่ต้องการอัพเดท</label>
+                <select name="sheet" id="sheet" class="form-select">
+                    <option value="0">เลือกชีท</option>
+                    <? sheets.forEach(sheet => { ?>
+                    <option value="<?= sheet ?>">
+                        <?= sheet ?>
+                    </option>)
+                    <? }) ?>
+                </select>
+            </div>
+            <div class="col-12">
+                <label for="file">เลือกไฟล์ที่ต้องการอัพเดท</label>
+                <input type="file" name="file" id="file" class="form-control">
+            </div>
+        </div>
+    </div>
+    <script>
+        // read excel file in to array
+        $(document).ready(() => {
+            $('#file').change((e) => {
+                $.LoadingOverlay("show");
+                let file = e.target.files[0]
+                let reader = new FileReader()
+                reader.onload = function (e) {
+                    $.LoadingOverlay("hide");
+                    var data = e.target.result
+                    // Changed: use binary type for proper encoding of Thai characters
+                    var workbook = XLSX.read(data, { type: 'binary' });
+                    var sheet = workbook.Sheets['Sheet2'];
+                    
+                    var data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                    data.shift()
+                    data = data.map(row => {
+                        row = [row[3], row[4], row[7], row[8], row[10], row[11], row[12], row[13], row[14]]
+                        return row
+                    })
+                    console.log(data)
+                    Swal.fire({
+                        icon: 'question',
+                        title: 'Confirm Update',
+                        text: 'Do you want to update ' + data.length.toLocaleString() + ' records?',
+                        showCancelButton: true,
+                        confirmButtonText: 'ตกลง',
+                        cancelButtonText: 'ยกเลิก',
+                        backdrop: false,
+                        customClass: {
+                            popup: 'rounded-4'
+                        },
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            updateData(data)
+                        } else {
+                            google.script.host.close()
+                        }
+                    })
+                };
+                // Changed: use readAsBinaryString instead of readAsArrayBuffer
+                reader.readAsBinaryString(file)
+            })
+        })
+
+        function updateData(data) {
+            Swal.fire({
+                title: 'Updating...',
+                html: 'Please wait...',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                showCancelButton: false,
+                showCloseButton: false,
+                backdrop: false,
+                customClass: {
+                    popup: 'rounded-4'
+                },
+                didOpen: () => {
+                    Swal.showLoading()
+                }
+            })
+            console.log(JSON.stringify(data))
+            google.script.run.withFailureHandler(e => console.log(e)).withSuccessHandler(e => {
+                // e = {
+                //     old: 120,
+                //     update: 125
+                // }
+                Swal.close()
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    html: '<div class="container-fluid"><div class="table-responsive"><table style="width: 100%;" class="table table-bordered table-striped"><tbody><tr><th>Old Records</th><td>' + e.old.toLocaleString() + '</td></tr><tr><th>Updated Records</th><td>' + e.update.toLocaleString() + '</td></tr></tbody></table></div></div>',
+                    confirmButtonText: 'Close',
+                    showCloseButton: true,
+                    backdrop: false,
+                    customClass: {
+                        popup: 'rounded-4'
+                    },
+                }).then(() => {
+                    google.script.host.close()
+                })
+            }).updateMonthSheetData(JSON.stringify(data), $('#sheet').val())
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip-sync@3.2.1-sync/lib/index.min.js"></script>
+    <!-- <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js">
+    </script>
+    <script> // VConsole will be exported to `window.VConsole` by default.
+        var vConsole = new window.VConsole();
+    </script> -->
+</body>
+
+</html>
