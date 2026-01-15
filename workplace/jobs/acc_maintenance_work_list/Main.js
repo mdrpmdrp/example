@@ -19,7 +19,8 @@ function doGet() {
     return html.evaluate()
       .setSandboxMode(HtmlService.SandboxMode.IFRAME)
       .setTitle('ACC Maintenance Work List')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
       
   } catch (error) {
     Logger.log('Error in doGet: ' + error);
