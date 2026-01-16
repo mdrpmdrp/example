@@ -26,7 +26,7 @@ function getComplainData() {
       const row = values[i];
 
       // Parse solutions JSON with helper
-      const solutions = parseSolutionsJson(row[12]);
+      const solutions = parseSolutionsJson(row[13]);
 
       data[i] = {
         id: row[0],
