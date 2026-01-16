@@ -29,8 +29,9 @@ const CONFIG = {
   
   STATUS: {
     PENDING: 'pending',
-    IN_PROGRESS: 'in progress',
-    COMPLETED: 'completed'
+    IN_PROGRESS: 'in-progress',
+    COMPLETED: 'completed',
+    CANCELLED: 'cancelled'
   },
   
   DEFAULT_TIMES: {

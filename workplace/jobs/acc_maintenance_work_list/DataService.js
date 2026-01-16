@@ -34,7 +34,7 @@ function getContractorList(ss) {
     .map(row => ({
       type: row[0].toLowerCase(),
       contractor: row[1],
-      me: row[2],
+      me: row[2] || 'All',
       capacity: row[3]
     }));
   
@@ -150,7 +150,7 @@ function getDashboardData() {
       })
       .map(row => ({
         supervisor: {
-          userId: row[CONFIG.WORK_ORDER_COLUMNS.SUPERVISOR_ID],
+          userId: String(row[CONFIG.WORK_ORDER_COLUMNS.SUPERVISOR_ID]),
           name: row[CONFIG.WORK_ORDER_COLUMNS.SUPERVISOR_NAME],
           planDate: row[CONFIG.WORK_ORDER_COLUMNS.PLAN_DATE],
           startTime: row[CONFIG.WORK_ORDER_COLUMNS.START_TIME],

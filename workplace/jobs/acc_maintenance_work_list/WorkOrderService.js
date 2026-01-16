@@ -56,7 +56,7 @@ function submitWorkOrder(formData) {
       formData.workOrder?.date || new Date().toLocaleDateString('en-CA'),
       formData.supervisor.userId,
       formData.supervisor.name,
-      formData.supervisor.planDate,
+      new Date(formData.supervisor.planDate),
       formData.supervisor.startTime || CONFIG.DEFAULT_TIMES.START,
       formData.supervisor.finishTime || CONFIG.DEFAULT_TIMES.FINISH,
       formData.workOrder?.details || '',
@@ -91,7 +91,7 @@ function submitWorkOrder(formData) {
 /**
  * Update existing work order
  */
-function updateWorkOrder(recordId, formData) {
+function updateWorkOrder(formData) {
   try {
     // Validate data
     const errors = validateWorkOrderData(formData);
@@ -118,7 +118,7 @@ function updateWorkOrder(recordId, formData) {
     let rowIndex = -1;
     
     for (let i = 1; i < values.length; i++) {
-      if (values[i][CONFIG.WORK_ORDER_COLUMNS.RECORD_ID] === recordId) {
+      if (values[i][CONFIG.WORK_ORDER_COLUMNS.RECORD_ID] === formData.recordId) {
         rowIndex = i + 1; // Sheet rows are 1-indexed
         break;
       }
@@ -137,15 +137,15 @@ function updateWorkOrder(recordId, formData) {
       formData.workOrder?.date || new Date().toLocaleDateString('en-CA'),
       formData.supervisor.userId,
       formData.supervisor.name,
-      formData.supervisor.planDate,
+      new Date(formData.supervisor.planDate),
       formData.supervisor.startTime || CONFIG.DEFAULT_TIMES.START,
       formData.supervisor.finishTime || CONFIG.DEFAULT_TIMES.FINISH,
       formData.workOrder?.details || '',
       formData.contractors ? JSON.stringify(formData.contractors) : '[]',
       formData.spareParts ? JSON.stringify(formData.spareParts) : '[]',
-      values[rowIndex - 1][CONFIG.WORK_ORDER_COLUMNS.STATUS], // Keep status
+      formData.status || CONFIG.STATUS.IN_PROGRESS,
       new Date(), // Update timestamp
-      recordId // Keep original recordId
+      formData.recordId // Keep original recordId
     ];
     
     workOrderSheet.getRange(rowIndex, 1, 1, updateRow.length)
@@ -157,7 +157,7 @@ function updateWorkOrder(recordId, formData) {
     return JSON.stringify({
       success: true,
       message: 'Work order updated successfully',
-      recordId: recordId,
+      recordId: formData.recordId,
       timestamp: new Date().toLocaleString('en-CA')
     });
     
