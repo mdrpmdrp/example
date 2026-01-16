@@ -177,7 +177,7 @@
             </div>
 
             <!-- Create/Update Tab Content -->
-            <div id="createUpdateTabContent" class="tab-content-section hidden">
+            <div id="createUpdateTabContent" class="tab-content-section">
                 <!-- Form Container -->
                 <form id="workOrderForm" class="space-y-6">
                     <input type="hidden" id="recordId" value="">
@@ -239,6 +239,23 @@
                                 <input type="time" id="supervisorFinishTime"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition"
                                     required>
+                            </div>
+                        </div>
+                        
+                        <!-- Status Field (shown only on update) -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-4 md:gap-6 mt-6 hidden" id="statusFieldContainer">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-flag text-yellow-500 mr-2"></i>Status
+                                </label>
+                                <select id="recordStatus"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition">
+                                    <option value="">-- Select Status --</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="in-progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -339,15 +356,6 @@
                                                 <input type="text"
                                                     class="material-unit w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition"
                                                     placeholder="e.g., pcs, set, box" required>
-                                                <!-- <select
-                                                    class="material-unit w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition">
-                                                    <option value="">-- Select Unit --</option>
-                                                    <option value="pcs">Pieces (pcs)</option>
-                                                    <option value="set">Set</option>
-                                                    <option value="box">Box</option>
-                                                    <option value="meter">Meter</option>
-                                                    <option value="kg">Kilogram (kg)</option>
-                                                </select> -->
                                             </div>
 
                                             <!-- Quantity -->
@@ -436,7 +444,7 @@
                                         </label>
                                         <input type="number"
                                             class="contractor-quantity w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition"
-                                            placeholder="0" min="0">
+                                            placeholder="0" min="1">
                                     </div>
 
                                     <!-- Plan Date -->
@@ -499,7 +507,7 @@
             </div>
 
             <!-- Dashboard Tab Content -->
-            <div id="dashboardTabContent-ME1" class="tab-content-section h-dvh">
+            <div id="dashboardTabContent-ME1" class="tab-content-section h-dvh hidden">
                 <div class="space-y-6">
                     <!-- Top Stats & Capacity Section -->
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
@@ -642,29 +650,6 @@
             </div>
             <div id="dashboardTabContent-ME2" class="tab-content-section h-dvh hidden">
                 <div class="space-y-6">
-                    <!-- Dashboard Header Card -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-                        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-                            <div class="flex items-center space-x-4">
-                                <div class="p-3 bg-red-50 rounded-lg">
-                                    <i class="fas fa-chart-line text-2xl text-red-600"></i>
-                                </div>
-                                <div>
-                                    <h2 class="text-xl md:text-2xl font-bold text-gray-900">ACC Maintenance work list
-                                    </h2>
-                                    <p class="text-sm text-gray-500">Overview of work orders and contractor capacity</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <button id="fullscreenToggleBtn" onclick="toggleFullscreen()"
-                                    class="p-2 text-gray-400 hover:text-gray-900 transition rounded-lg hover:bg-gray-50"
-                                    title="Toggle Fullscreen">
-                                    <i class="fas fa-expand text-xl"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Top Stats & Capacity Section -->
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
                         <!-- Stats Column -->
@@ -675,26 +660,37 @@
                                 <div class="absolute top-0 right-0 -mt-2 -mr-2 opacity-10">
                                     <i class="fas fa-building text-8xl"></i>
                                 </div>
-                                <div class="flex justify-between items-start">
+                                <div class="flex justify-between items-center">
                                     <h3 class="text-sm font-medium opacity-90">Department</h3>
-                                    <button onclick="loadDashboardData()"
-                                        class="text-gray-300 hover:text-green-100 transition p-1 hover:bg-white/10 rounded-full"
-                                        title="Reload Data">
-                                        <i class="fas fa-sync-alt text-lg" id="reload-icon"></i>
-                                    </button>
+                                    <div
+                                        class="flex items-center gap-2 text-white/90 text-base font-medium bg-black/10 px-2 py-1.5 rounded-lg backdrop-blur-md border border-white/10">
+                                        <i class="far fa-calendar-alt"></i>
+                                        <span class="currentDate"></span>
+                                    </div>
+
                                 </div>
                                 <div class="mt-2 mb-4">
-                                    <h2 class="text-5xl font-bold department-name tracking-tight">--</h2>
+                                    <h2
+                                        class="text-3xl md:text-4xl lg:text-6xl font-bold department-name tracking-tight">
+                                        --</h2>
                                 </div>
-                                <div class="flex justify-between items-end">
+                                <div class="flex justify-between items-center">
                                     <div
                                         class="inline-flex items-center px-2.5 py-1 bg-white/20 rounded-full text-xs backdrop-blur-sm">
                                         <i class="fas fa-circle text-[10px] text-green-300 mr-1.5"></i> Active
                                     </div>
-                                    <div
-                                        class="flex items-center gap-2 text-white/90 text-xs font-medium bg-black/10 px-2 py-1.5 rounded-lg backdrop-blur-md border border-white/10">
-                                        <i class="far fa-calendar-alt"></i>
-                                        <span class="currentDate"></span>
+                                    <div class="flex gap-3 items-center">
+
+                                        <button onclick="loadDashboardData()"
+                                            class="text-gray-300 hover:text-green-100 transition p-1 hover:bg-white/10 rounded-full ratio-1x1"
+                                            title="Reload Data">
+                                            <i class="fas fa-sync-alt text-lg reload-icon"></i>
+                                        </button>
+                                        <button id="fullscreenToggleBtn" onclick="toggleFullscreen()"
+                                            class="transition hover:transform-scale-105 text-gray-300 hover:bg-white/50 rounded-full"
+                                            title="Toggle Fullscreen">
+                                            <i class="fas fa-expand text-xl"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -795,29 +791,6 @@
             </div>
             <div id="dashboardTabContent-ME3" class="tab-content-section h-dvh hidden">
                 <div class="space-y-6">
-                    <!-- Dashboard Header Card -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-                        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-                            <div class="flex items-center space-x-4">
-                                <div class="p-3 bg-red-50 rounded-lg">
-                                    <i class="fas fa-chart-line text-2xl text-red-600"></i>
-                                </div>
-                                <div>
-                                    <h2 class="text-xl md:text-2xl font-bold text-gray-900">ACC Maintenance work list
-                                    </h2>
-                                    <p class="text-sm text-gray-500">Overview of work orders and contractor capacity</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <button id="fullscreenToggleBtn" onclick="toggleFullscreen()"
-                                    class="p-2 text-gray-400 hover:text-gray-900 transition rounded-lg hover:bg-gray-50"
-                                    title="Toggle Fullscreen">
-                                    <i class="fas fa-expand text-xl"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Top Stats & Capacity Section -->
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
                         <!-- Stats Column -->
@@ -828,26 +801,37 @@
                                 <div class="absolute top-0 right-0 -mt-2 -mr-2 opacity-10">
                                     <i class="fas fa-building text-8xl"></i>
                                 </div>
-                                <div class="flex justify-between items-start">
+                                <div class="flex justify-between items-center">
                                     <h3 class="text-sm font-medium opacity-90">Department</h3>
-                                    <button onclick="loadDashboardData()"
-                                        class="text-white hover:text-green-100 transition p-1 hover:bg-white/10 rounded-full"
-                                        title="Reload Data">
-                                        <i class="fas fa-sync-alt text-lg" id="reload-icon"></i>
-                                    </button>
+                                    <div
+                                        class="flex items-center gap-2 text-white/90 text-base font-medium bg-black/10 px-2 py-1.5 rounded-lg backdrop-blur-md border border-white/10">
+                                        <i class="far fa-calendar-alt"></i>
+                                        <span class="currentDate"></span>
+                                    </div>
+
                                 </div>
                                 <div class="mt-2 mb-4">
-                                    <h2 class="text-5xl font-bold department-name tracking-tight">--</h2>
+                                    <h2
+                                        class="text-3xl md:text-4xl lg:text-6xl font-bold department-name tracking-tight">
+                                        --</h2>
                                 </div>
-                                <div class="flex justify-between items-end">
+                                <div class="flex justify-between items-center">
                                     <div
                                         class="inline-flex items-center px-2.5 py-1 bg-white/20 rounded-full text-xs backdrop-blur-sm">
                                         <i class="fas fa-circle text-[10px] text-green-300 mr-1.5"></i> Active
                                     </div>
-                                    <div
-                                        class="flex items-center gap-2 text-white/90 text-xs font-medium bg-black/10 px-2 py-1.5 rounded-lg backdrop-blur-md border border-white/10">
-                                        <i class="far fa-calendar-alt"></i>
-                                        <span class="currentDate"></span>
+                                    <div class="flex gap-3 items-center">
+
+                                        <button onclick="loadDashboardData()"
+                                            class="text-gray-300 hover:text-green-100 transition p-1 hover:bg-white/10 rounded-full ratio-1x1"
+                                            title="Reload Data">
+                                            <i class="fas fa-sync-alt text-lg reload-icon"></i>
+                                        </button>
+                                        <button id="fullscreenToggleBtn" onclick="toggleFullscreen()"
+                                            class="transition hover:transform-scale-105 text-gray-300 hover:bg-white/50 rounded-full"
+                                            title="Toggle Fullscreen">
+                                            <i class="fas fa-expand text-xl"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -952,7 +936,7 @@
     <!-- Load scripts at end for better performance -->
     <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+    <!-- <script defer src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script> -->
     <script defer src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/plugins/rangePlugin.js"></script>
@@ -965,9 +949,14 @@
         var contractorList = <?!= JSON.stringify(contractorList) ?>;
         var supervisorList = <?!= JSON.stringify(supervisorList) ?>;
         var preDefinedWorkOrders = <?!= JSON.stringify(preDefinedWorkOrders) ?>;
-        setTimeout(() => {
-            loadDashboardData()
-        }, 60000); // auto reload every 
+
+        setInterval(() => {
+            const activeTab = $('.tab-content-section:not(.hidden)').attr('id');
+            // Only reload if a dashboard tab is active (not the create-update form)
+            if (activeTab && activeTab !== 'createUpdateTabContent') {
+                loadDashboardData();
+            }
+        }, 60000); // auto reload every 60 seconds
 
         // Cache frequently used DOM elements
         const DOMCache = {
@@ -1231,7 +1220,7 @@
                                 <label class="block text-sm font-semibold text-gray-700 mb-2">
                                     <i class="fas fa-sort-numeric-up text-gray-500 mr-2"></i>Quantity
                                 </label>
-                                <input type="number" class="contractor-quantity w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition" placeholder="0" min="0">   
+                                <input type="number" class="contractor-quantity w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition" placeholder="0" min="1">   
                             </div>
                             <!-- Plan Date -->
                             <div>
@@ -1360,7 +1349,25 @@
             // Form Submission
             $('#workOrderForm').submit(function (e) {
                 e.preventDefault();
-
+                Swal.fire({
+                    title: 'Confirm Submission',
+                    text: 'Are you sure you want to ' + ($('#recordId').val() ? 'update' : 'submit') + ' this work order?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Submit',
+                    cancelButtonText: 'Cancel',
+                    customClass: {
+                        popup: 'rounded-xl',
+                        confirmButton: 'bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg',
+                        cancelButton: 'bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-4 py-2 rounded-lg'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        submitWorkOrderForm();
+                    }
+                });
+            });
+            function submitWorkOrderForm() {
                 // Show loading spinner
                 Swal.fire({
                     title: 'Processing...',
@@ -1372,7 +1379,9 @@
                         Swal.showLoading();
                     },
                     customClass: {
-                        popup: 'rounded-xl'
+                        popup: 'rounded-xl',
+                        confirmButton: 'bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg',
+                        cancelButton: 'bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-4 py-2 rounded-lg'
                     }
                 });
 
@@ -1423,29 +1432,37 @@
                     };
                     formData.spareParts.push(part);
                 });
+                console.log('Submitting form data:', formData);
 
-                if(formDaata.recordId){
+                if (formData.recordId) {
                     google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).updateWorkOrder(formData);
                 } else {
                     google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).submitWorkOrder(formData);
                 }
                 // Call backend function
-            });
+            }
 
             $('#workOrderForm').on('reset', function (e) {
                 $('#supervisorName').prop('readonly', false);
+                // Hide status field on reset (create mode)
+                $('#statusFieldContainer').addClass('hidden');
+                $('#recordStatus').val('');
                 setTimeout(() => {
-                    $('#supervisorPlanDate')[0]._flatpickr.setDate(moment().format('YYYY-MM-DD'));
+                    DOMCache.$supervisorPlanDate[0]._flatpickr.setDate(moment().format('YYYY-MM-DD'));
                     $('#supervisorStartTime')[0]._flatpickr.setDate("08:00");
                     $('#supervisorFinishTime')[0]._flatpickr.setDate("17:00");
                     $('#contractorListContainer').find('.contractor-plan-date')[0]._flatpickr.setDate(moment().format('YYYY-MM-DD'));
                     $('#contractorListContainer').find('.contractor-start-time')[0]._flatpickr.setDate("08:00");
                     $('#contractorListContainer').find('.contractor-finish-time')[0]._flatpickr.setDate("17:00");
                     $('#contractorListContainer').find('.contractor-item').not(':first').remove();
-                    $('#workOrderDate').val(moment().format('DD/MM/YYYY'));
+                    DOMCache.$workOrderDate.val(moment().format('DD/MM/YYYY'));
+                    DOMCache.$workOrderDetailsContainer.addClass('hidden').find('textarea').attr('required', false);
+                    DOMCache.$sparePartDetailsContainer.removeClass('hidden').find('textarea').attr('required', true);
                     // scroll to top
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }, 100);
+                    setTimeout(() => {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }, 300);
+                }, 200);
             });
 
             /**
@@ -1463,22 +1480,7 @@
                     }).then(() => {
                         // Reset form
                         $('#workOrderForm')[0].reset();
-                        // Reset date fields
-                        $('#workOrderDate').val(moment().format('DD/MM/YYYY'));
-                        // Reset contractors to show only first item
-                        $('.contractor-item').not(':first').remove();
-                        $('.contractor-type, .contractor-select').val('');
-                        $('.contractor-custom-name-div').addClass('hidden');
-                        $('.contractor-quantity, .contractor-start-time, .contractor-finish-time').val('');
-                        flatpickr('.contractor-plan-date', {
-                            locale: 'th',
-                            dateFormat: 'Y-m-d',
-                            altFormat: 'd/m/Y',
-                            altInput: true
-                        });
-                        // Reset spare parts
-                        $('.material-item').not(':first').remove();
-                        $('.material-id, .material-size, .material-unit, .material-quantity').val('');
+
                     });
                 } else {
                     Swal.fire({
@@ -1544,17 +1546,42 @@
                 $('.tab-content-section').addClass('hidden');
                 console.log('tab clicked:', tabName);
                 // Show selected tab content
-                if (tabName === 'create-update') {
-                    $('#createUpdateTabContent').removeClass('hidden');
-                } else if (tabName === 'dashboard-me1') {
-                    $('#dashboardTabContent-ME1').removeClass('hidden');
-                    $('#workOrderForm')[0].reset();
-                } else if (tabName === 'dashboard-me2') {
-                    $('#dashboardTabContent-ME2').removeClass('hidden');
-                    $('#workOrderForm')[0].reset();
-                } else if (tabName === 'dashboard-me3') {
-                    $('#dashboardTabContent-ME3').removeClass('hidden');
-                    $('#workOrderForm')[0].reset();
+                // if (tabName === 'create-update') {
+                //     $('#createUpdateTabContent').removeClass('hidden');
+                // } else if (tabName === 'dashboard-me1') {
+                //     $('#dashboardTabContent-ME1').removeClass('hidden');
+                //     $('#workOrderForm')[0].reset();
+                // } else if (tabName === 'dashboard-me2') {
+                //     $('#dashboardTabContent-ME2').removeClass('hidden');
+                //     $('#workOrderForm')[0].reset();
+                // } else if (tabName === 'dashboard-me3') {
+                //     $('#dashboardTabContent-ME3').removeClass('hidden');
+                //     $('#workOrderForm')[0].reset();
+                // }
+                switch (tabName) {
+                    case 'create-update':
+                        $('#createUpdateTabContent').removeClass('hidden');
+                        break;
+                    case 'dashboard-me1':
+                        $('#dashboardTabContent-ME1').removeClass('hidden');
+                        $('#workOrderForm')[0].reset();
+                        break;
+                    case 'dashboard-me2':
+                        $('#dashboardTabContent-ME2').removeClass('hidden');
+                        $('#workOrderForm')[0].reset();
+                        break;
+                    case 'dashboard-me3':
+                        $('#dashboardTabContent-ME3').removeClass('hidden');
+                        $('#workOrderForm')[0].reset();
+                        break;
+                    default:
+                        console.warn('Unknown tab:', tabName);
+                }
+
+                if (tabName.startsWith('dashboard-')) {
+                    setTimeout(() => {
+                        loadDashboardData();
+                    }, 500);
                 }
             });
 
@@ -1583,6 +1610,7 @@
         });
 
         function loadDashboardData() {
+            console.log('Loading dashboard data...');
             const $icons = $('.reload-icon');
             $icons.addClass('fa-spin')
             const department = $('#dashboardDepartmentSelector').val();
@@ -1932,28 +1960,33 @@
                     `${moment(item.supervisor.startTime).format('HH:mm')} - ${moment(item.supervisor.finishTime).format('HH:mm')}` : '-';
                 const status = item.status || 'Unknown';
 
-                let statusClass = 'bg-gray-400';
+                let statusElement,
+                    dotStatus;
                 if (status.toLowerCase() === 'completed') {
-                    statusClass = 'bg-green-700 hover:bg-green-900 cursor-pointer';
+                    statusElement = `<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 cursor-pointer status-btn" data-recordId="${item.recordId}"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check w-3 h-3" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>Completed</div>`
+                    dotStatus = `<div class="mt-1.5 w-2 h-2 rounded-full bg-green-500"></div>`
                 } else if (status.toLowerCase().includes('progress')) {
-                    statusClass = 'bg-blue-500 hover:bg-blue-700 cursor-pointer';
+                    statusElement = `<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 cursor-pointer status-btn" data-recordId="${item.recordId}"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock w-3 h-3" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>In Progress</div>`
+                    dotStatus = `<div class="mt-1.5 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>`
                 }
 
+
                 return `<tr class="border-b border-gray-200 hover:bg-gray-50">
-                    <td class="px-4 py-3 font-bold text-green-800 text-lg">${item.supervisor?.name || '-'}</td>
+                    <td class="px-4 py-3 font-bold text-green-800">
+                        <div class="flex items-start gap-3">
+                            ${dotStatus}
+                            <div><p class="font-bold text-slate-900">${item.supervisor?.name || '-'}</p></div>
+                        </div>
+                    </td>
                     <td class="px-4 py-3">
-                        <span class="px-3 py-1 rounded-full text-base font-semibold text-nowrap ${item.workOrder?.workOrderID ? 'bg-gray-200 text-gray-800' : 'bg-danger-500 text-white'}">
-                            ${item.workOrder?.workOrderID || '<i class="fas fa-exclamation-triangle mr-1"></i> No ID'}
-                        </span>
+                        <span class="font-mono font-bold px-2 py-1 rounded ${item.workOrder?.workOrderID ? 'text-slate-600 bg-slate-100 ' : 'text-danger-500 bg-danger-100'}">${item.workOrder?.workOrderID || '<i class="fas fa-exclamation-triangle mr-1"></i> No ID'}</span>
                     </td>
                     <td class="px-4 py-3">${item.workOrder?.details || '-'}</td>
                     <td class="px-4 py-3">${contractorNames || '-'}</td>
                     <td class="px-4 py-3 text-center">${totalQuantity}</td>
                     <td class="px-4 py-3 text-center">${workingTime}</td>
                     <td class="px-4 py-3 text-center">
-                        <span class="${statusClass} text-white px-3 py-1 rounded-full text-base font-semibold text-nowrap status-btn" data-recordId="${item.recordId}">
-                            ${status}
-                        </span>
+                        ${statusElement || `<span class="text-gray-500">Unknown</span>`}
                     </td>
                 </tr>`;
             }).join('');
@@ -1971,7 +2004,9 @@
                     icon: 'error',
                     confirmButtonText: 'OK',
                     customClass: {
-                        popup: 'rounded-xl'
+                        popup: 'rounded-xl',
+                        confirmButton: 'bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg',
+                        cancelButton: 'bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-4 py-2 rounded-lg'
                     }
                 });
                 return;
@@ -1982,6 +2017,13 @@
         function populateFormWithData(wo_data) {
             console.log('Populating form with data:', wo_data);
             $('#recordId').val(wo_data.recordId || '');
+            
+            // Show status field when updating
+            if (wo_data.recordId) {
+                $('#statusFieldContainer').removeClass('hidden');
+                $('#recordStatus').val(wo_data.status || 'pending');
+            }
+            
             // Populate supervisor details
             $('#supervisorUserId').val(wo_data.supervisor.userId || '');
             $('#supervisorName').val(wo_data.supervisor.name || '');
@@ -1991,8 +2033,11 @@
 
             // Populate work order details
             $('#workOrderDate').val(moment(new Date(wo_data.workOrder.date)).format('DD/MM/YYYY') || '');
-            $('#workOrderID').val(wo_data.workOrder.workOrderID || '');
+            $('#workOrderID').val(wo_data.workOrder.workOrderID || '').trigger('change');
             $('#workOrderDetailsText').val(wo_data.workOrder.details || '');
+            if(wo_data.workOrder.workOrderID){
+                $('#workOrderID').trigger('keyup');
+            }
 
             // Clear and repopulate contractors
             $('.contractor-item').not(':first').remove();
@@ -2046,6 +2091,7 @@
                     }
                 });
             }
+
             $('#createUpdateTab').click();
         }
     </script>

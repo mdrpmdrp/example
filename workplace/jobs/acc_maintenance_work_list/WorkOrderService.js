@@ -7,25 +7,25 @@
  */
 function validateWorkOrderData(formData) {
   const errors = [];
-  
+
   if (!formData.supervisor?.userId) {
     errors.push('Supervisor User ID is required');
   }
-  
+
   if (!formData.supervisor?.name) {
     errors.push('Supervisor name is required');
   }
-  
+
   if (!formData.supervisor?.planDate) {
     errors.push('Plan date is required');
   }
-  
+
   if (!formData.contractors || formData.contractors.length === 0) {
     if (!formData.spareParts || formData.spareParts.length === 0) {
       errors.push('Either contractors or spare parts must be provided');
     }
   }
-  
+
   return errors;
 }
 
@@ -43,13 +43,13 @@ function submitWorkOrder(formData) {
         errors: errors
       });
     }
-    
+
     const ss = getSpreadsheet();
     const workOrderSheet = getOrCreateSheet(
       CONFIG.SHEETS.WORK_ORDERS,
       createWorkOrderHeaders
     );
-    
+
     // Prepare row data
     const newRow = [
       formData.workOrder?.workOrderID || '',
@@ -66,18 +66,18 @@ function submitWorkOrder(formData) {
       new Date(),
       Utilities.getUuid()
     ];
-    
+
     workOrderSheet.appendRow(newRow);
-    
+
     // Clear cache to refresh dashboard
     clearDataCache();
-    
+
     return JSON.stringify({
       success: true,
       message: 'Work order saved successfully',
       recordId: newRow[12]
     });
-    
+
   } catch (error) {
     Logger.log('Error in submitWorkOrder: ' + error);
     return JSON.stringify({
@@ -91,7 +91,7 @@ function submitWorkOrder(formData) {
 /**
  * Update existing work order
  */
-function updateWorkOrder(recordId, formData) {
+function updateWorkOrder(formData) {
   try {
     // Validate data
     const errors = validateWorkOrderData(formData);
@@ -102,35 +102,35 @@ function updateWorkOrder(recordId, formData) {
         errors: errors
       });
     }
-    
+
     const ss = getSpreadsheet();
     const workOrderSheet = ss.getSheetByName(CONFIG.SHEETS.WORK_ORDERS);
-    
+
     if (!workOrderSheet) {
-      return JSON.stringify({ 
-        success: false, 
-        message: 'Work Orders sheet not found' 
+      return JSON.stringify({
+        success: false,
+        message: 'Work Orders sheet not found'
       });
     }
-    
+
     // Find work order by recordId
     const values = workOrderSheet.getDataRange().getValues();
     let rowIndex = -1;
-    
+
     for (let i = 1; i < values.length; i++) {
-      if (values[i][CONFIG.WORK_ORDER_COLUMNS.RECORD_ID] === recordId) {
+      if (values[i][CONFIG.WORK_ORDER_COLUMNS.RECORD_ID] === formData.recordId) {
         rowIndex = i + 1; // Sheet rows are 1-indexed
         break;
       }
     }
-    
+
     if (rowIndex === -1) {
-      return JSON.stringify({ 
-        success: false, 
-        message: 'Work order not found' 
+      return JSON.stringify({
+        success: false,
+        message: 'Work order not found'
       });
     }
-    
+
     // Update row data (keep original recordId)
     const updateRow = [
       formData.workOrder?.workOrderID || '',
@@ -143,24 +143,24 @@ function updateWorkOrder(recordId, formData) {
       formData.workOrder?.details || '',
       formData.contractors ? JSON.stringify(formData.contractors) : '[]',
       formData.spareParts ? JSON.stringify(formData.spareParts) : '[]',
-      values[rowIndex - 1][CONFIG.WORK_ORDER_COLUMNS.STATUS], // Keep status
+      formData.status || CONFIG.STATUS.IN_PROGRESS,
       new Date(), // Update timestamp
-      recordId // Keep original recordId
+      formData.recordId // Keep original recordId
     ];
-    
+
     workOrderSheet.getRange(rowIndex, 1, 1, updateRow.length)
       .setValues([updateRow]);
-    
+
     // Clear cache
     clearDataCache();
-    
+
     return JSON.stringify({
       success: true,
       message: 'Work order updated successfully',
-      recordId: recordId,
+      recordId: formData.recordId,
       timestamp: new Date().toLocaleString('en-CA')
     });
-    
+
   } catch (error) {
     Logger.log('Error in updateWorkOrder: ' + error);
     return JSON.stringify({
@@ -177,33 +177,33 @@ function deleteWorkOrder(recordId) {
   try {
     const ss = getSpreadsheet();
     const workOrderSheet = ss.getSheetByName(CONFIG.SHEETS.WORK_ORDERS);
-    
+
     if (!workOrderSheet) {
-      return JSON.stringify({ 
-        success: false, 
-        message: 'Work Orders sheet not found' 
+      return JSON.stringify({
+        success: false,
+        message: 'Work Orders sheet not found'
       });
     }
-    
+
     const values = workOrderSheet.getDataRange().getValues();
-    
+
     for (let i = values.length - 1; i >= 1; i--) {
       if (values[i][CONFIG.WORK_ORDER_COLUMNS.RECORD_ID] === recordId) {
         workOrderSheet.deleteRow(i + 1);
         clearDataCache();
-        
+
         return JSON.stringify({
           success: true,
           message: 'Work order deleted successfully'
         });
       }
     }
-    
-    return JSON.stringify({ 
-      success: false, 
-      message: 'Work order not found' 
+
+    return JSON.stringify({
+      success: false,
+      message: 'Work order not found'
     });
-    
+
   } catch (error) {
     Logger.log('Error in deleteWorkOrder: ' + error);
     return JSON.stringify({
@@ -232,7 +232,7 @@ function createWorkOrderHeaders(sheet) {
     'Timestamp',
     'Record ID'
   ];
-  
+
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
   sheet.setFrozenRows(1);
