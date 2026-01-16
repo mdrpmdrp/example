@@ -38,6 +38,13 @@ const CONFIG = {
     START: '08:00',
     FINISH: '17:00'
   },
+  MESSAGING_API: {
+    ADMIN_GROUP: 'Ua55431b2d9be5d104c316ccb8ef54e81',
+    ACCESS_TOKEN: '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU=',
+    URL: {
+      PUSH_MESSAGE: 'https://api.line.me/v2/bot/message/push'
+    }
+  }
   
 };
 

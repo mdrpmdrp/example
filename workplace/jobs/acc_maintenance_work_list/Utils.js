@@ -71,3 +71,33 @@ function safeJsonParse(jsonString, fallback = null) {
     return fallback;
   }
 }
+
+
+function sendNotification( message) {
+  try {
+    const lineEndpoint = CONFIG.MESSAGING_API.URL.PUSH_MESSAGE;
+    const payload = {
+      to: CONFIG.MESSAGING_API.ADMIN_GROUP,
+      messages: [
+        {
+          type: 'text',
+          text: message
+        }
+      ],
+      notificationDisabled: false
+    };
+    
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MESSAGING_API.ACCESS_TOKEN
+      },
+      payload: JSON.stringify(payload)
+    };
+    
+    UrlFetchApp.fetch(lineEndpoint, options);
+  } catch (error) {
+    Logger.log('Error sending notification: ' + error);
+  }
+}
