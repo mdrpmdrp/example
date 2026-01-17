@@ -14,7 +14,7 @@ function getComplainData() {
     }
 
     // Read all columns including pipeline (column 14) in one batch
-    const range = sheet.getRange(2, 1, lastRow - 1, 16);
+    const range = sheet.getRange(2, 1, lastRow - 1, 17);
     const values = range.getValues();
 
     // Pre-allocate array for better performance
@@ -103,7 +103,7 @@ function addComplainData(formData) {
 
     // Batch all formatting operations together for better performance
     if (newRowNum % 2 === 0) {
-      sheet.getRange(newRowNum, 1, 1, 16).setBackground('#f9fafb');
+      sheet.getRange(newRowNum, 1, 1, 17).setBackground('#f9fafb');
     }
     sheet.getRange(newRowNum, 10).setNumberFormat('#,##0.00');
 
