@@ -72,7 +72,9 @@ function safeJsonParse(jsonString, fallback = null) {
   }
 }
 
-
+/**
+ *  Send notification via messaging API
+ */
 function sendNotification( message) {
   try {
     const lineEndpoint = CONFIG.MESSAGING_API.URL.PUSH_MESSAGE;

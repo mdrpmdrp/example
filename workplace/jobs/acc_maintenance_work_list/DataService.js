@@ -87,6 +87,9 @@ function getSupervisorList(ss) {
   return supervisorList;
 }
 
+/**
+ * Get predefined work order list with caching
+ */
 function getPredefinedWorkOrderList(ss) {
   ss = ss || getSpreadsheet();
   const cache = CacheService.getScriptCache();
@@ -167,6 +170,7 @@ function getDashboardData() {
         spareParts: row[CONFIG.WORK_ORDER_COLUMNS.SPARE_PARTS_JSON] 
           ? JSON.parse(row[CONFIG.WORK_ORDER_COLUMNS.SPARE_PARTS_JSON]) 
           : [],
+        externalCost: row[CONFIG.WORK_ORDER_COLUMNS.EXTERNAL_COST],
         status: row[CONFIG.WORK_ORDER_COLUMNS.STATUS],
         timestamp: row[CONFIG.WORK_ORDER_COLUMNS.TIMESTAMP],
         recordId: row[CONFIG.WORK_ORDER_COLUMNS.RECORD_ID]

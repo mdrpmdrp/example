@@ -22,9 +22,10 @@ const CONFIG = {
     DETAILS: 7,
     CONTRACTORS_JSON: 8,
     SPARE_PARTS_JSON: 9,
-    STATUS: 10,
-    TIMESTAMP: 11,
-    RECORD_ID: 12
+    EXTERNAL_COST: 10,
+    STATUS: 11,
+    TIMESTAMP: 12,
+    RECORD_ID: 13
   },
   
   STATUS: {

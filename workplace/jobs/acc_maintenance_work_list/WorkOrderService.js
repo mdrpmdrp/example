@@ -62,6 +62,7 @@ function submitWorkOrder(formData) {
       formData.workOrder?.details || '',
       formData.contractors ? JSON.stringify(formData.contractors) : '[]',
       formData.spareParts ? JSON.stringify(formData.spareParts) : '[]',
+      formData.externalCost || 0,
       CONFIG.STATUS.IN_PROGRESS,
       new Date(),
       Utilities.getUuid()
@@ -73,11 +74,13 @@ function submitWorkOrder(formData) {
       const message = `New Work Order Submitted:
 Supervisor: ${formData.supervisor.name} (ID: ${formData.supervisor.userId})
 Plan Date: ${formData.supervisor.planDate}
-Work Time:(${formData.supervisor.startTime} - ${formData.supervisor.finishTime})
+Work Time: ${formData.supervisor.startTime} - ${formData.supervisor.finishTime}
 
 Materials: ${formData.spareParts && formData.spareParts.length > 0 ? formData.spareParts.map((part, i) => {
-        return `\n${i + 1}. ${part.id} | Size ${part.size} | Qty: ${part.quantity}`;
+        return `\n${i + 1}. ${part.id} | Size: ${part.size} | Qty: ${part.quantity}`;
       }).join('') : 'No spare parts provided'}
+
+External Cost: ${formData.externalCost || 0}
 
 Contractors: ${formData.contractors && formData.contractors.length > 0 ? formData.contractors.map((contractor, i) => {
         return `\n${i + 1}. ${contractor.contractor === 'อื่นๆ (กรอกเอง)' ? contractor.customName : contractor.contractor} | Qty: ${contractor.quantity}`;
@@ -159,6 +162,7 @@ function updateWorkOrder(formData) {
       formData.workOrder?.details || '',
       formData.contractors ? JSON.stringify(formData.contractors) : '[]',
       formData.spareParts ? JSON.stringify(formData.spareParts) : '[]',
+      formData.externalCost || 0,
       formData.status || CONFIG.STATUS.IN_PROGRESS,
       new Date(), // Update timestamp
       formData.recordId // Keep original recordId
@@ -244,6 +248,7 @@ function createWorkOrderHeaders(sheet) {
     'Details',
     'Contractors (JSON)',
     'Spare Parts (JSON)',
+    'External Cost',
     'Status',
     'Timestamp',
     'Record ID'
