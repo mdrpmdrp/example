@@ -45,11 +45,13 @@ function submitWorkOrder(formData) {
     }
 
     const ss = getSpreadsheet();
-    const workOrderSheet = getOrCreateSheet(
-      CONFIG.SHEETS.WORK_ORDERS,
-      createWorkOrderHeaders
-    );
-
+    const workOrderSheet = getSheet(CONFIG.SHEETS.WORK_ORDERS);
+    if (!workOrderSheet) {
+      return JSON.stringify({
+        success: false,
+        message: 'Work Orders sheet not found'
+      });
+    }
     // Prepare row data
     const newRow = [
       formData.workOrder?.workOrderID || '',
@@ -233,28 +235,3 @@ function deleteWorkOrder(recordId) {
   }
 }
 
-/**
- * Create headers for Work Orders sheet
- */
-function createWorkOrderHeaders(sheet) {
-  const headers = [
-    'Work Order ID',
-    'Date',
-    'Supervisor User ID',
-    'Supervisor Name',
-    'Plan Date',
-    'Start Time',
-    'Finish Time',
-    'Details',
-    'Contractors (JSON)',
-    'Spare Parts (JSON)',
-    'External Cost',
-    'Status',
-    'Timestamp',
-    'Record ID'
-  ];
-
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
-  sheet.setFrozenRows(1);
-}

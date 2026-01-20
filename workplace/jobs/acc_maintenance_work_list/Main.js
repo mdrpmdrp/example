@@ -30,9 +30,3 @@ function doGet() {
   }
 }
 
-/**
- * Include external HTML/JS files
- */
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
-}
