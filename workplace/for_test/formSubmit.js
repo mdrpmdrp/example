@@ -5,7 +5,7 @@ const TEMPLATES = {
 }
 
 const FOLDER_CACHE = {}
-
+Logger = BetterLog.useSpreadsheet()
 function onFormSubmit(e) {
   let lock = LockService.getScriptLock()
   const sheetName = e.range.getSheet().getName()
@@ -35,6 +35,9 @@ function onFormSubmit(e) {
 
 function create_file_for_baxter(e) {
   const obj = e.namedValues
+  Object.keys(obj).forEach(data =>{
+    Logger.log(`${data}: ${obj[data]} type: ${typeof obj[data]}`)
+  })
   const row = e.range.getRow()
   const folder = getCachedFolder('BAXTER')
   const file = createFileInDateFolder(TEMPLATES.BAXTER, folder, obj['ME Code'].toString(), obj['ประทับเวลา'])
