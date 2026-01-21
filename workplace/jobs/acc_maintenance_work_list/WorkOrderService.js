@@ -155,7 +155,7 @@ function updateWorkOrder(formData) {
     // Update row data (keep original recordId)
     const updateRow = [
       formData.workOrder?.workOrderID || '',
-      formData.workOrder?.date || new Date().toLocaleDateString('en-CA'),
+      formData.workOrder?.date.split('T')[0] || new Date().toLocaleDateString('en-CA'),
       formData.supervisor.userId,
       formData.supervisor.name,
       new Date(formData.supervisor.planDate),

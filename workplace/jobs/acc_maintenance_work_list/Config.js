@@ -1,3 +1,5 @@
+// Version: 2026-01-21-16:55
+
 /**
  * Configuration constants and sheet names
  */
