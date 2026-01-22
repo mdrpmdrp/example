@@ -20,11 +20,6 @@ function validateWorkOrderData(formData) {
     errors.push('Plan date is required');
   }
 
-  if (!formData.contractors || formData.contractors.length === 0) {
-    if (!formData.spareParts || formData.spareParts.length === 0) {
-      errors.push('Either contractors or spare parts must be provided');
-    }
-  }
 
   return errors;
 }
