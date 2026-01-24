@@ -55,29 +55,36 @@ function setupSheets() {
   let kymSheet = ss.getSheetByName('KYM_Records');
   if (!kymSheet) {
     kymSheet = ss.insertSheet('KYM_Records');
-    kymSheet.getRange('A1:V1').setValues([[
+    let headers = [
       'Timestamp', 'ID', 'Truemoney_ID', 'Store_Name', 'Sales_Channel', 'Category', 'Sub_Category',
-      'Assessment_Store_Photo', 'Assessment_Product_Service', 'Assessment_Store_Name',
-      'Assessment_Business_Reg', 'Assessment_Professional_License',
-      'Assessment_Prohibited_Store', 'Assessment_Repeat_Application',
-      'Recommendation_Status', 'Final_Status', 'Reason', 'Notes',
+      'Reference_ID', 'Submitted_Date',
+      // Assessment columns - all possible checklist items
+      'Assessment_Store_Photo', 'Assessment_Product_Photo', 'Assessment_Online_Store_Photo', 
+      'Assessment_Online_Store_Management_Photo', 'Assessment_Duplication_Photo', 'Assessment_AI_Photo',
+      'Assessment_Product_Service', 'Assessment_Store_Name_Check', 'Assessment_Business_Reg',
+      'Assessment_Professional_License', 'Assessment_Internet_Photo', 'Assessment_Porn_Photo',
+      'Assessment_Prohibited_Photo', 'Assessment_Prohibited_Photo_Details', 'Assessment_Repeat_Application',
+      // Status and operator info
+      'Recommendation_Status', 'Final_Status', 'Reason', 'Notes', 'Approval_Date',
       'Operator_Username', 'Operator_Name', 'Created_At', 'Updated_At'
-    ]]);
-    kymSheet.getRange('A1:V1').setFontWeight('bold').setBackground('#FF6B35').setFontColor('#FFFFFF');
+    ]
+    kymSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    kymSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#FF6B35').setFontColor('#FFFFFF');
     kymSheet.setFrozenRows(1);
   }
   // Create Call Logs Sheet
   let callSheet = ss.getSheetByName('Call_Logs');
   if (!callSheet) {
     callSheet = ss.insertSheet('Call_Logs');
-    callSheet.getRange('A1:V1').setValues([[
+    let headers = [
       'Timestamp', 'ID', 'Truemoney_ID', 'Store_Name', 'Contact_Number', 'Contact_Name',
       'Call_Reason', 'Call_Result', 'Call_Details', 'Case_Status', 'Reschedule_DateTime',
       'Follow_Up_Date', 'Next_Call_Time_Slot', 'Retry_Call_Date', 'Retry_Time_Slot', 'Retry_Notes',
       'Activities_JSON', 'Last_Activity', 'Last_Operator', 'Closed_At',
       'Operator_Username', 'Operator_Name'
-    ]]);
-    callSheet.getRange('A1:V1').setFontWeight('bold').setBackground('#FF6B35').setFontColor('#FFFFFF');
+    ];
+    callSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    callSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#FF6B35').setFontColor('#FFFFFF');
     callSheet.setFrozenRows(1);
   }
   SpreadsheetApp.getUi().alert('Setup Complete! All sheets created successfully.\n\nDemo Accounts:\n- admin / admin123\n- supervisor / super123\n- employee / emp123');
@@ -414,43 +421,32 @@ function saveKYMRecord(record) {
 
     // Ensure assessment object exists
     const assessment = record.assessment || {};
-
-    // คำนวณ Recommendation Status จากการประเมิน
-    const prohibitedStore = assessment.prohibitedStore || false;
-    const repeatApplication = assessment.repeatApplication || false;
-    const storePhoto = assessment.storePhoto || false;
-    const productService = assessment.productService || false;
-    const storeNameCheck = assessment.storeNameCheck || false;
-    const professionalLicense = assessment.professionalLicense || false;
-    const onlineStorePhoto = assessment.onlineStorePhoto || false;
-    const recommendationStatus = record.recommendedStatus || '';
-    // // ตรวจสอบเงื่อนไข Reject
-    // if (prohibitedStore || repeatApplication) {
-    //   recommendationStatus = 'Rejected';
-    // } else {
-    //   // ตรวจสอบข้อจำเป็น
-    //   const requiredItems = [storePhoto, productService, storeNameCheck];
-
-    //   // เช็คว่าต้องมีใบประกอบวิชาชีพหรือไม่
-    //   const licenseRequired = record.subCategory && (
-    //     record.subCategory.includes('คลินิก') ||
-    //     record.subCategory.includes('ทันตกรรม') ||
-    //     record.subCategory.includes('นวด') ||
-    //     record.subCategory.includes('สถาบันเสริมความงาม') ||
-    //     record.subCategory.includes('ทัศนมาตร') ||
-    //     record.subCategory.includes('ขายยา') ||
-    //     record.subCategory.includes('สัตวแพทย์')
-    //   );
-
-    //   if (licenseRequired) {
-    //     requiredItems.push(professionalLicense);
-    //   }
-
-    //   const missingRequired = requiredItems.filter(item => !item);
-    //   recommendationStatus = missingRequired.length > 0 ? 'Revised' : 'Approved';
-    // }
-
-    // Logger.log('📊 Calculated recommendationStatus: ' + recommendationStatus);
+    
+    // Extract individual assessment values
+    const storePhoto = assessment.storePhoto ? 'Yes' : 'No';
+    const productPhoto = assessment.productPhoto ? 'Yes' : 'No';
+    const onlineStorePhoto = assessment.onlineStorePhoto ? 'Yes' : 'No';
+    const onlineStoreManagementPhoto = assessment.onlineStoreManagementPhoto ? 'Yes' : 'No';
+    const duplicationPhoto = assessment.duplicationPhoto ? 'Yes' : 'No';
+    const AIPhoto = assessment.AIPhoto ? 'Yes' : 'No';
+    const productService = assessment.productService ? 'Yes' : 'No';
+    const storeNameCheck = assessment.storeNameCheck ? 'Yes' : 'No';
+    const businessReg = assessment.businessReg ? 'Yes' : 'No';
+    const professionalLicense = assessment.professionalLicense ? 'Yes' : 'No';
+    const internetPhoto = assessment.internetPhoto ? 'Yes' : 'No';
+    const pornPhoto = assessment.pornPhoto ? 'Yes' : 'No';
+    const prohibitedPhoto = assessment.prohibitedPhoto ? 'Yes' : 'No';
+    const repeatApplication = assessment.repeatApplication ? 'Yes' : 'No';
+    
+    // Handle sub-dropdown details (array of selected values)
+    let prohibitedPhotoDetails = '';
+    if (assessment.prohibitedPhoto_details && Array.isArray(assessment.prohibitedPhoto_details)) {
+      prohibitedPhotoDetails = assessment.prohibitedPhoto_details.join(', ');
+    }
+    
+    Logger.log('📊 Assessment extracted - prohibitedPhoto: ' + prohibitedPhoto);
+    Logger.log('📊 Assessment extracted - prohibitedPhotoDetails: ' + prohibitedPhotoDetails);
+    Logger.log('📊 Recommended Status: ' + record.recommendedStatus);
 
     // บันทึกตามลำดับคอลัมน์ที่ถูกต้อง
     kymSheet.appendRow([
@@ -461,25 +457,32 @@ function saveKYMRecord(record) {
       record.salesChannel || '',             // E: Sales_Channel
       record.category || '',                 // F: Category
       record.subCategory || '',              // G: Sub_Category
-      ("'" + record.referenceId) || '',            // H: Reference_ID
-      record.submittedDate || '',          // I: Submitted_Date
-      onlineStorePhoto ? 'Yes' : 'No',      // J: Assessment_Online_Store_Photo
-      storePhoto ? 'Yes' : 'No',            // K: Assessment_Store_Photo
-      productService ? 'Yes' : 'No',        // L: Assessment_Product_Service
-      storeNameCheck ? 'Yes' : 'No',        // M: Assessment_Store_Name
-      assessment.businessReg ? 'Yes' : 'No', // N: Assessment_Business_Reg
-      professionalLicense ? 'Yes' : 'No',    // O: Assessment_Professional_License
-      prohibitedStore ? 'Yes' : 'No',        // P: Assessment_Prohibited_Store
-      repeatApplication ? 'Yes' : 'No',      // Q: Assessment_Repeat_Application
-      recommendationStatus,                   // R: Recommendation_Status
-      record.status || '',                   // S: Final_Status
-      record.reason || '',                   // T: Reason
-      record.notes || '',                    // U: Notes
-      record.approvalDate || '',          // V: Approval_Date
-      record.operator || '',                 // W: Operator_Username
-      record.operatorName || '',             // X: Operator_Name
-      timestamp,                              // Y: Created_At
-      ''                                     // Z: Updated_At
+      ("'" + record.referenceId) || '',      // H: Reference_ID
+      record.submittedDate || '',            // I: Submitted_Date
+      storePhoto,                            // J: Assessment_Store_Photo
+      productPhoto,                          // K: Assessment_Product_Photo
+      onlineStorePhoto,                      // L: Assessment_Online_Store_Photo
+      onlineStoreManagementPhoto,            // M: Assessment_Online_Store_Management_Photo
+      duplicationPhoto,                      // N: Assessment_Duplication_Photo
+      AIPhoto,                               // O: Assessment_AI_Photo
+      productService,                        // P: Assessment_Product_Service
+      storeNameCheck,                        // Q: Assessment_Store_Name_Check
+      businessReg,                           // R: Assessment_Business_Reg
+      professionalLicense,                   // S: Assessment_Professional_License
+      internetPhoto,                         // T: Assessment_Internet_Photo
+      pornPhoto,                             // U: Assessment_Porn_Photo
+      prohibitedPhoto,                       // V: Assessment_Prohibited_Photo
+      prohibitedPhotoDetails,                // W: Assessment_Prohibited_Photo_Details
+      repeatApplication,                     // X: Assessment_Repeat_Application
+      record.recommendedStatus || '',        // Y: Recommendation_Status
+      record.status || '',                   // Z: Final_Status
+      record.reason || '',                   // AA: Reason
+      record.notes || '',                    // AB: Notes
+      record.approvalDate || '',             // AC: Approval_Date
+      record.operator || '',                 // AD: Operator_Username
+      record.operatorName || '',             // AE: Operator_Name
+      timestamp,                             // AF: Created_At
+      ''                                     // AG: Updated_At
     ]);
 
     Logger.log('✅ KYM Record saved successfully with ID: ' + id);
@@ -524,6 +527,29 @@ function getKYMRecords(startDate, endDate) {
 
       // Filter by date if provided
       if (recordDate >= start && recordDate <= end) {
+        // Build assessment object from individual columns
+        const assessment = {
+          storePhoto: data[i][9] === 'Yes',
+          productPhoto: data[i][10] === 'Yes',
+          onlineStorePhoto: data[i][11] === 'Yes',
+          onlineStoreManagementPhoto: data[i][12] === 'Yes',
+          duplicationPhoto: data[i][13] === 'Yes',
+          AIPhoto: data[i][14] === 'Yes',
+          productService: data[i][15] === 'Yes',
+          storeNameCheck: data[i][16] === 'Yes',
+          businessReg: data[i][17] === 'Yes',
+          professionalLicense: data[i][18] === 'Yes',
+          internetPhoto: data[i][19] === 'Yes',
+          pornPhoto: data[i][20] === 'Yes',
+          prohibitedPhoto: data[i][21] === 'Yes',
+          repeatApplication: data[i][23] === 'Yes'
+        };
+        
+        // Add sub-dropdown details if exists
+        if (data[i][22] && data[i][22].trim() !== '') {
+          assessment.prohibitedPhoto_details = data[i][22].split(', ').map(s => s.trim());
+        }
+        
         records.push({
           timestamp: data[i][0],
           id: data[i][1],
@@ -534,23 +560,14 @@ function getKYMRecords(startDate, endDate) {
           subCategory: data[i][6],
           referenceId: data[i][7] || "",
           submittedDate: data[i][8] || "",
-          assessment: {
-            onlineStorePhoto: data[i][9] === 'Yes',
-            storePhoto: data[i][10] === 'Yes',
-            productService: data[i][11] === 'Yes',
-            storeNameCheck: data[i][12] === 'Yes',
-            businessReg: data[i][13] === 'Yes',
-            professionalLicense: data[i][14] === 'Yes',
-            prohibitedStore: data[i][15] === 'Yes',
-            repeatApplication: data[i][16] === 'Yes'
-          },
-          recommendationStatus: data[i][17],
-          status: data[i][18],
-          reason: data[i][19],
-          notes: data[i][20],
-          approvalDate: data[i][21] || "",
-          operator: data[i][22],
-          operatorName: data[i][23]
+          assessment: assessment,
+          recommendedStatus: data[i][24] || "",
+          status: data[i][25],
+          reason: data[i][26],
+          notes: data[i][27],
+          approvalDate: data[i][28] || "",
+          operator: data[i][29],
+          operatorName: data[i][30]
         });
       }
     }

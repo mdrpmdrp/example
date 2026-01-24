@@ -554,7 +554,8 @@
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Approval Date</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" for="approvalDate">Approval
+                                    Date</label>
                                 <input type="text" id="approvalDate" placeholder="เลือกวันที่"
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
                                     required>
@@ -1644,55 +1645,113 @@
         }
 
         // Checklist definitions
+        const sub_dropdown_options = [
+            'เว็บพนัน',
+            'รับปั่นวิว ปั่นไลค์',
+            'สื่อลามกอนาจาร',
+            'เนื้อหารุนแรง',
+            'ยาเสพติด',
+            'กัญชา',
+            'น้ำกระทอม',
+            'บุหรี่ไฟฟ้า',
+            'อาวุธทุกประเภท',
+            'พระเครื่อง',
+            'ไอเทมเกม',
+            'สินค้าละเมิดลิขสิทธิ์',
+            'ขายทอง / อัญมณี',
+            'สินค้าขายตรง',
+            'อาหารเสริม'
+        ]
         const checklists = {
             'มีหน้าร้าน': [
                 {
                     id: 'storePhoto',
-                    title: 'รูปหน้าร้านค้า',
+                    title: 'มีรูปหน้าร้านค้า (อย่างน้อย 1 รูป)',
                     description: 'เป็นรูปร้านค้าจริง รูปชัดเจน มุมกว้าง และแสดงบรรยากาศภายในร้าน ไม่ใช่รูป AI, ไม่ใช่รูปเซลฟี่',
-                    score: 2,
+                    score: 1,
                     required: true
                 },
                 {
+                    id: 'productPhoto',
+                    title: 'มีรูปสินค้าหรือบริการ (อย่างน้อย 2 รูป)',
+                    description: 'รูปสินค้าหรือบริการที่จำหน่ายในร้านค้า รูปชัดเจน สอดคล้องกับประเภทของสินค้าหรือบริการ',
+                    score: 1,
+                    required: true
+                },
+                {
+                    id: 'duplicationPhoto',
+                    title: 'อัพโหลดรูปซ้ำกัน',
+                    description: 'รูปที่อัพโหลดซ้ำกัน เช่น รูปหน้าร้าน หรือ รูปสินค้าซ้ำกัน',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "revised"
+                },
+                {
+                    id: 'AIPhoto',
+                    title: 'มีรูปที่สร้างโดย AI',
+                    description: 'รูปที่อัพโหลดมีรูปที่สร้างโดย AI',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "revised"
+                },
+                {
                     id: 'productService',
-                    title: 'ประเภทของสินค้าหรือบริการ',
-                    description: 'ประเภทของสินค้าหรือบริการที่นำเสนอในร้านค้า',
+                    title: 'ประเภทธุรกิจตรงกับสินค้าหรือบริการ',
+                    description: 'ประเภทธุรกิจตรงกับสินค้าและบริการที่จำหน่าย',
                     score: 2,
                     required: true
                 },
                 {
                     id: 'storeNameCheck',
-                    title: 'ชื่อร้านค้า',
+                    title: 'ชื่อร้านค้าไม่มีคำหยาบ',
                     description: 'ชื่อร้านค้าไม่มีคำหยาบ ไม่มีคำต้องห้าม',
                     score: 1,
                     required: true
                 },
                 {
                     id: 'businessReg',
-                    title: 'ข้อมูลใบทะเบียนพาณิชย์',
+                    title: 'ข้อมูลใบทะเบียนพาณิชย์ถูกต้อง',
                     description: 'ข้อมูลใบทะเบียนพาณิชย์ ตรงกับประเภทธุรกิจ และ ตรงกับชื่อเจ้าของ และตรงกับชื่อร้าน',
                     score: 2,
                     required: false
                 },
                 {
                     id: 'professionalLicense',
-                    title: 'ใบประกอบวิชาชีพ',
-                    description: 'มีใบประกอบวิชาชีพ ข้อมูลถูกต้อง และตรงกับข้อมูลที่ใช้สมัครร้านค้าทรูมันนี่',
+                    title: 'ใบอนุญาตถูกต้อง (อย่างน้อย 1 รูป)',
+                    description: 'มีใบอนุญาต ข้อมูลถูกต้อง และตรงกับข้อมูลที่ใช้สมัครร้านค้าทรูมันนี่',
                     score: 2,
                     required: true
                 },
                 {
-                    id: 'prohibitedStore',
-                    title: 'ร้านค้าต้องห้าม',
-                    description: 'ร้านค้าประเภทต้องห้าม เช่น บาร์ ผับ หรือธุรกิจผิดกฎหมาย',
+                    id: 'internetPhoto',
+                    title: 'มีรูปที่มาจากอินเทอร์เน็ต',
+                    description: 'รูปที่อัพโหลดมีรูปที่มาจากอินเทอร์เน็ต',
                     score: 0,
                     required: false,
-                    important: true
+                    suggest_if_checked: "rejected"
+                },
+                {
+                    id: 'pornPhoto',
+                    title: 'มีรูปอนาจาร',
+                    description: 'รูปที่อัพโหลดมีรูปอนาจาร หรือ รูปที่ไม่เหมาะสม',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "rejected"
+                },
+                {
+                    id: 'prohibitedPhoto',
+                    title: 'มีรูปสิ่งของต้องห้าม',
+                    description: 'รูปที่อัพโหลดมีรูปสิ่งของต้องห้าม เช่น อาวุธ ยาเสพติด หรือ สินค้าละเมิดลิขสิทธิ์',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "rejected",
+                    important: true,
+                    sub_dropdown: true
                 },
                 {
                     id: 'repeatApplication',
-                    title: 'อนุมัติแล้วลบแล้วสมัครใหม่ซ้ำๆ',
-                    description: 'ร้านค้าที่เคยได้รับการอนุมัติแล้ว แต่ลบบัญชีและสมัครใหม่ซ้ำๆ',
+                    title: 'พฤติกรรมสมัครไม่ปกติ',
+                    description: 'เป็นร้านค้าที่เคยได้รับการอนุมัติแล้ว แต่ลบบัญชีและสมัครใหม่ซ้ำๆ',
                     score: 0,
                     required: false,
                     important: true
@@ -1702,58 +1761,99 @@
             'ขายออนไลน์': [
                 {
                     id: 'onlineStorePhoto',
-                    title: 'รูปเพจหรือรูปหน้าร้านค้าออนไลน์',
+                    title: 'รูปเพจร้านออนไลน์ (อย่างน้อย 1 รูป)',
                     description: 'รูปหน้าเพจร้านค้า หรือรูปหน้าร้านค้าออนไลน์จริง สอดคล้องกับสินค้าและบริการที่จำหน่าย',
                     score: 1,
                     required: true
                 },
                 {
-                    id: 'storePhoto',
+                    id: 'onlineStoreManagementPhoto',
                     title: 'รูปหน้าการจัดการร้านค้า',
-                    description: 'รูปหน้าการจัดการร้านค้าจริง สอดคล้องกับสินค้าและบริการที่จำหน่าย',
+                    description: 'ต้องเห็นหน้าแก้ไขข้อมูลร้านค้า หรือ หน้าเพิ่มสินค้า หรือ หน้ารับคำสั่งซื้อ ที่ระบุว่าเป็นของร้านค้านี้',
                     score: 1,
                     required: true
                 },
                 {
+                    id: 'productPhoto',
+                    title: 'มีรูปสินค้าหรือบริการ (อย่างน้อย 2 รูป)',
+                    description: 'รูปสินค้าหรือบริการที่จำหน่ายในร้านค้า รูปชัดเจน สอดคล้องกับประเภทของสินค้าหรือบริการ',
+                    score: 1,
+                    required: true
+                },
+                {
+                    id: 'duplicationPhoto',
+                    title: 'อัพโหลดรูปซ้ำกัน',
+                    description: 'รูปที่อัพโหลดซ้ำกัน เช่น รูปหน้าร้าน รูปหน้าเพจ หรือ รูปสินค้าซ้ำกัน',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "revised"
+                },
+                {
+                    id: 'AIPhoto',
+                    title: 'มีรูปที่สร้างโดย AI',
+                    description: 'รูปที่อัพโหลดมีรูปที่สร้างโดย AI',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "revised"
+                },
+                {
                     id: 'productService',
-                    title: 'ประเภทของสินค้าหรือบริการ',
+                    title: 'ประเภทธุรกิจตรงกับสินค้าหรือบริการ',
                     description: 'ประเภทของสินค้าหรือบริการตรงกับสินค้าและบริการที่จำหน่าย',
                     score: 2,
                     required: true
                 },
                 {
                     id: 'storeNameCheck',
-                    title: 'ชื่อร้านค้า',
+                    title: 'ชื่อร้านค้าไม่มีคำหยาบ',
                     description: 'ชื่อร้านค้าไม่มีคำหยาบ ไม่มีคำต้องห้าม',
                     score: 1,
                     required: true
                 },
                 {
                     id: 'businessReg',
-                    title: 'ข้อมูลใบทะเบียนพาณิชย์',
+                    title: 'ข้อมูลใบทะเบียนพาณิชย์ถูกต้อง',
                     description: 'ข้อมูลใบทะเบียนพาณิชย์ ตรงกับประเภทธุรกิจ และ ตรงกับชื่อเจ้าของ และตรงกับชื่อร้าน',
                     score: 2,
                     required: false
                 },
                 {
                     id: 'professionalLicense',
-                    title: 'ใบประกอบวิชาชีพ',
-                    description: 'มีใบประกอบวิชาชีพ ข้อมูลถูกต้อง และตรงกับข้อมูลที่ใช้สมัครร้านค้าทรูมันนี่',
+                    title: 'ใบอนุญาตถูกต้อง (อย่างน้อย 1 รูป)',
+                    description: 'มีใบอนุญาต ข้อมูลถูกต้อง และตรงกับข้อมูลที่ใช้สมัครร้านค้าทรูมันนี่',
                     score: 2,
                     required: true
                 },
                 {
-                    id: 'prohibitedStore',
-                    title: 'ร้านค้าต้องห้าม',
-                    description: 'ร้านค้าประเภทต้องห้าม เช่น บาร์ ผับ หรือธุรกิจผิดกฎหมาย',
+                    id: 'internetPhoto',
+                    title: 'มีรูปที่มาจากอินเทอร์เน็ต',
+                    description: 'รูปที่อัพโหลดมีรูปที่มาจากอินเทอร์เน็ต',
                     score: 0,
                     required: false,
-                    important: true
+                    suggest_if_checked: "rejected"
+                },
+                {
+                    id: 'pornPhoto',
+                    title: 'มีรูปอนาจาร',
+                    description: 'รูปที่อัพโหลดมีรูปอนาจาร หรือ รูปที่ไม่เหมาะสม',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "rejected"
+                },
+                {
+                    id: 'prohibitedPhoto',
+                    title: 'มีรูปสิ่งของต้องห้าม',
+                    description: 'รูปที่อัพโหลดมีรูปสิ่งของต้องห้าม เช่น อาวุธ ยาเสพติด หรือ สินค้าละเมิดลิขสิทธิ์',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "rejected",
+                    important: true,
+                    sub_dropdown: true
                 },
                 {
                     id: 'repeatApplication',
-                    title: 'อนุมัติแล้วลบแล้วสมัครใหม่ซ้ำๆ',
-                    description: 'ร้านค้าที่เคยได้รับการอนุมัติแล้ว แต่ลบบัญชีและสมัครใหม่ซ้ำๆ',
+                    title: 'พฤติกรรมสมัครไม่ปกติ',
+                    description: 'เป็นร้านค้าที่เคยได้รับการอนุมัติแล้ว แต่ลบบัญชีและสมัครใหม่ซ้ำๆ',
                     score: 0,
                     required: false,
                     important: true
@@ -1763,53 +1863,101 @@
             'มีหน้าร้านและขายออนไลน์': [
                 {
                     id: 'storePhoto',
-                    title: 'รูปหน้าร้านค้า (Offline)',
+                    title: 'รูปหน้าร้านค้า (อย่างน้อย 1 รูป)',
                     description: 'เป็นรูปร้านค้าจริง รูปชัดเจน มุมกว้าง และแสดงบรรยากาศภายในร้าน ไม่ใช่รูป AI, ไม่ใช่รูปเซลฟี่',
                     score: 1,
                     required: true
                 },
                 {
                     id: 'onlineStorePhoto',
+                    title: 'รูปเพจร้านออนไลน์ (อย่างน้อย 1 รูป)',
+                    description: 'รูปหน้าเพจร้านค้า หรือรูปหน้าร้านค้าออนไลน์จริง สอดคล้องกับสินค้าและบริการที่จำหน่าย',
+                    score: 1,
+                    required: true
+                },
+                {
+                    id: 'onlineStoreManagementPhoto',
                     title: 'รูปหน้าการจัดการร้านค้า (Online)',
                     description: 'ต้องเห็นหน้าแก้ไขข้อมูลร้านค้า หรือ หน้าเพิ่มสินค้า หรือ หน้ารับคำสั่งซื้อ ที่ระบุว่าเป็นของร้านค้านี้',
                     score: 1,
                     required: true
                 },
                 {
+                    id: 'productPhoto',
+                    title: 'มีรูปสินค้าหรือบริการ (อย่างน้อย 2 รูป)',
+                    description: 'รูปสินค้าหรือบริการที่จำหน่ายในร้านค้า รูปชัดเจน สอดคล้องกับประเภทของสินค้าหรือบริการ',
+                    score: 1,
+                    required: true
+                },
+                {
+                    id: 'duplicationPhoto',
+                    title: 'อัพโหลดรูปซ้ำกัน',
+                    description: 'รูปที่อัพโหลดซ้ำกัน เช่น รูปหน้าร้าน รูปหน้าเพจ หรือ รูปสินค้าซ้ำกัน',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "revised"
+                },
+                {
+                    id: 'AIPhoto',
+                    title: 'มีรูปที่สร้างโดย AI',
+                    description: 'รูปที่อัพโหลดมีรูปที่สร้างโดย AI',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "revised"
+                },
+                {
                     id: 'productService',
-                    title: 'ประเภทของสินค้าหรือบริการ',
-                    description: 'ประเภทของสินค้าหรือบริการตรงกับสินค้าและบริการที่จำหน่าย',
+                    title: 'ประเภทธุรกิจตรงกับสินค้าหรือบริการ',
+                    description: 'ประเภทธุรกิจตรงกับสินค้าและบริการที่จำหน่าย',
                     score: 2,
                     required: true
                 },
                 {
                     id: 'storeNameCheck',
-                    title: 'ชื่อร้านค้า',
+                    title: 'ชื่อร้านค้าไม่มีคำหยาบ',
                     description: 'ชื่อร้านค้าไม่มีคำหยาบ ไม่มีคำต้องห้าม',
                     score: 1,
                     required: true
                 },
                 {
                     id: 'businessReg',
-                    title: 'ข้อมูลใบทะเบียนพาณิชย์',
+                    title: 'ข้อมูลใบทะเบียนพาณิชย์ถูกต้อง',
                     description: 'ข้อมูลใบทะเบียนพาณิชย์ ตรงกับประเภทธุรกิจ และ ตรงกับชื่อเจ้าของ และตรงกับชื่อร้าน',
                     score: 2,
                     required: false
                 },
                 {
                     id: 'professionalLicense',
-                    title: 'ใบประกอบวิชาชีพ',
-                    description: 'มีใบประกอบวิชาชีพ ข้อมูลถูกต้อง และตรงกับข้อมูลที่ใช้สมัครร้านค้าทรูมันนี่',
+                    title: 'ใบอนุญาตถูกต้อง (อย่างน้อย 1 รูป)',
+                    description: 'มีใบอนุญาต ข้อมูลถูกต้อง และตรงกับข้อมูลที่ใช้สมัครร้านค้าทรูมันนี่',
                     score: 2,
                     required: true
                 },
                 {
-                    id: 'prohibitedStore',
-                    title: 'ร้านค้าต้องห้าม',
-                    description: 'ร้านค้าประเภทต้องห้าม เช่น บาร์ ผับ หรือธุรกิจผิดกฎหมาย',
+                    id: 'internetPhoto',
+                    title: 'มีรูปที่มาจากอินเทอร์เน็ต',
+                    description: 'รูปที่อัพโหลดมีรูปที่มาจากอินเทอร์เน็ต',
                     score: 0,
                     required: false,
-                    important: true
+                    suggest_if_checked: "rejected"
+                },
+                {
+                    id: 'pornPhoto',
+                    title: 'มีรูปอนาจาร',
+                    description: 'รูปที่อัพโหลดมีรูปอนาจาร หรือ รูปที่ไม่เหมาะสม',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "rejected"
+                },
+                {
+                    id: 'prohibitedPhoto',
+                    title: 'มีรูปสิ่งของต้องห้าม',
+                    description: 'รูปที่อัพโหลดมีรูปสิ่งของต้องห้าม เช่น อาวุธ ยาเสพติด หรือ สินค้าละเมิดลิขสิทธิ์',
+                    score: 0,
+                    required: false,
+                    suggest_if_checked: "rejected",
+                    important: true,
+                    sub_dropdown: true
                 },
                 {
                     id: 'repeatApplication',
@@ -1967,6 +2115,13 @@
             if (dateTimeElement) {
                 dateTimeElement.textContent = now.toLocaleDateString('th-TH', options);
             }
+
+            flatpickr('#submittedDate', {
+                locale: 'th',
+                dateFormat: "Y-m-d",
+                altFormat: "j F Y",
+                altInput: true,
+            });
         }
 
         function initializeApp() {
@@ -2865,13 +3020,13 @@
             activeBtn.classList.remove('text-gray-600');
 
             // Load data for specific tabs
-            if(tabName === 'kym') {
+            if (tabName === 'kym') {
                 let submittedDatePicker = document.getElementById('submittedDate');
                 let approvedDatePicker = document.getElementById('approvalDate');
                 if (submittedDatePicker._flatpickr) {
                     submittedDatePicker._flatpickr.setDate(new Date());
                 } else {
-                    submittedDatePicker.flatpickr({
+                    submittedDatePicker = flatpickr(submittedDatePicker, {
                         locale: 'th',
                         dateFormat: "Y-m-d",
                         altFormat: "j F Y",
@@ -2881,7 +3036,7 @@
                 if (approvedDatePicker._flatpickr) {
                     approvedDatePicker._flatpickr.setDate(null);
                 } else {
-                    approvedDatePicker.flatpickr({
+                    approvedDatePicker = flatpickr(approvedDatePicker, {
                         locale: 'th',
                         dateFormat: "Y-m-d",
                         altFormat: "j F Y",
@@ -4093,37 +4248,8 @@
                                 </thead>
                                 <tbody class="divide-y divide-gray-200">
                                     ${filteredKymData.map(record => {
-                // Calculate recommended status based on assessment
-                let recommendedStatus = 'N/A';
-                if (record.assessment) {
-                    const { prohibitedStore, repeatApplication, storePhoto, productService, storeNameCheck, professionalLicense } = record.assessment;
-
-                    // Check for immediate rejection reasons
-                    if (prohibitedStore || repeatApplication) {
-                        recommendedStatus = 'Rejected';
-                    } else {
-                        // Check required items
-                        const requiredItems = [storePhoto, productService, storeNameCheck];
-
-                        // Check if professional license is required (simplified check)
-                        const licenseRequired = record.subCategory && (
-                            record.subCategory.includes('คลินิก') ||
-                            record.subCategory.includes('ทันตกรรม') ||
-                            record.subCategory.includes('นวด') ||
-                            record.subCategory.includes('สถาบันเสริมความงาม') ||
-                            record.subCategory.includes('ทัศนมาตร') ||
-                            record.subCategory.includes('ขายยา') ||
-                            record.subCategory.includes('สัตวแพทย์')
-                        );
-
-                        if (licenseRequired) {
-                            requiredItems.push(professionalLicense);
-                        }
-
-                        const missingRequired = requiredItems.filter(item => !item);
-                        recommendedStatus = missingRequired.length > 0 ? 'Revised' : 'Approved';
-                    }
-                }
+                // Use the recommended status from the record
+                const recommendedStatus = record.recommendedStatus || 'N/A';
 
                 return `
                                         <tr class="hover:bg-gray-50">
@@ -4656,6 +4782,30 @@
                     div.id = 'licenseSection';
                 }
                 div.className = `bg-white p-4 rounded-lg border border-orange-100 shadow-sm checklist-item ${item.id === 'professionalLicense' ? 'hidden' : ''}`;
+
+                // Build sub-dropdown HTML if item has sub_dropdown
+                let subDropdownHTML = '';
+                if (item.sub_dropdown) {
+                    subDropdownHTML = `
+                        <div id="${item.id}_sub_dropdown" class="mt-3 hidden">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">เลือกประเภทสิ่งของต้องห้าม (เลือกได้มากกว่า 1 รายการ)</label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                                    ${sub_dropdown_options.map(option => `
+                                        <label class="flex items-center space-x-2 p-2 bg-white rounded-lg border border-gray-200 hover:bg-red-50 hover:border-red-300 cursor-pointer transition-all has-[:checked]:bg-red-100 has-[:checked]:border-red-500 has-[:checked]:shadow-sm">
+                                            <input type="checkbox" 
+                                                name="${item.id}_sub_options" 
+                                                value="${option}"
+                                                class="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2">
+                                            <span class="text-sm text-gray-700 has-[:checked]:text-red-900 has-[:checked]:font-medium">${option}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 div.innerHTML = `
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex-1">
@@ -4674,12 +4824,15 @@
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer ml-4">
                             <input type="checkbox" id="${item.id}"
-                                class="sr-only peer assessment-switch">
+                                class="sr-only peer assessment-switch"
+                                data-suggest="${item.suggest_if_checked || ''}"
+                                data-has-subdropdown="${item.sub_dropdown || false}">
                             <div
                                 class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-orange-500">
                             </div>
                         </label>
                     </div>
+                    ${subDropdownHTML}
                 `;
 
                 // Insert between the first child (header) and second child (first existing checklist item)
@@ -4697,7 +4850,34 @@
         function setupAssessmentSystem() {
             const switches = document.querySelectorAll('.assessment-switch');
             switches.forEach(switchEl => {
-                switchEl.addEventListener('change', updateRecommendedStatus);
+                switchEl.addEventListener('change', function () {
+                    // Handle sub-dropdown visibility
+                    const hasSubDropdown = this.dataset.hasSubdropdown === 'true';
+                    if (hasSubDropdown) {
+                        const subDropdownDiv = document.getElementById(`${this.id}_sub_dropdown`);
+                        if (this.checked) {
+                            subDropdownDiv.classList.remove('hidden');
+                        } else {
+                            subDropdownDiv.classList.add('hidden');
+                            // Clear all sub-dropdown selections when unchecked
+                            const checkboxes = subDropdownDiv.querySelectorAll('input[type="checkbox"]');
+                            checkboxes.forEach(cb => cb.checked = false);
+                        }
+                    }
+
+                    // Handle forced suggestions
+                    const suggestStatus = this.dataset.suggest;
+                    if (suggestStatus && this.checked) {
+                        // Auto-set status based on suggest_if_checked value
+                        if (suggestStatus === 'rejected') {
+                            setKymStatus('Rejected');
+                        } else if (suggestStatus === 'revised') {
+                            setKymStatus('Revised');
+                        }
+                    }
+
+                    updateRecommendedStatus();
+                });
             });
 
             // Status buttons
@@ -4707,90 +4887,123 @@
         }
 
         function updateRecommendedStatus() {
-            const onlineStorePhoto = document.getElementById('onlineStorePhoto')?.checked;
-            const storePhoto = document.getElementById('storePhoto')?.checked;
-            const productService = document.getElementById('productService')?.checked;
-            const storeNameCheck = document.getElementById('storeNameCheck')?.checked;
-            const businessReg = document.getElementById('businessReg')?.checked;
-            const professionalLicense = document.getElementById('professionalLicense')?.checked;
-            const prohibitedStore = document.getElementById('prohibitedStore')?.checked;
-            const repeatApplication = document.getElementById('repeatApplication')?.checked;
-            const licenseRequired = !document.getElementById('licenseSection').classList.contains('hidden');
+            const channel = document.getElementById('salesChannel').value;
+            const currentChecklist = checklists[channel];
+            if (!currentChecklist) return;
 
             const statusElement = document.getElementById('recommendedStatus');
             const reasonElement = document.getElementById('statusReason');
+            const licenseRequired = !document.getElementById('licenseSection')?.classList.contains('hidden');
 
-            // ตรวจสอบเงื่อนไขที่ต้อง Reject ทันที
-            if (prohibitedStore || repeatApplication) {
+            // Collect all checked items and their suggest_if_checked values
+            const rejectedItems = [];
+            const revisedItems = [];
+            const checkedRequired = {};
+            let totalScore = 0;
+            let maxScore = 0;
+
+            currentChecklist.forEach(item => {
+                const checkbox = document.getElementById(item.id);
+                const isChecked = checkbox?.checked || false;
+
+                // Calculate scores
+                if (item.required) {
+                    maxScore += item.score;
+                    checkedRequired[item.id] = isChecked;
+                    if (isChecked) totalScore += item.score;
+                } else if (item.id === 'businessReg' && isChecked) {
+                    totalScore += item.score;
+                }
+
+                // Check for items with suggest_if_checked
+                if (isChecked && item.suggest_if_checked) {
+                    if (item.suggest_if_checked === 'rejected') {
+                        let itemLabel = item.title;
+
+                        // For items with sub_dropdown, get selected details
+                        if (item.sub_dropdown) {
+                            const selectedOptions = [];
+                            const subCheckboxes = document.querySelectorAll(`input[name="${item.id}_sub_options"]:checked`);
+                            subCheckboxes.forEach(cb => {
+                                const option = sub_dropdown_options.find(opt => opt.value === cb.value);
+                                if (option) selectedOptions.push(option.label);
+                            });
+                            if (selectedOptions.length > 0) {
+                                itemLabel += ` (${selectedOptions.join(', ')})`;
+                            }
+                        }
+
+                        rejectedItems.push(itemLabel);
+                    } else if (item.suggest_if_checked === 'revised') {
+                        revisedItems.push(item.title);
+                    }
+                }
+
+                // Check important items without suggest_if_checked (like repeatApplication)
+                if (isChecked && item.important && !item.suggest_if_checked) {
+                    rejectedItems.push(item.title);
+                }
+            });
+
+            // Priority 1: Check for rejection reasons
+            if (rejectedItems.length > 0) {
                 statusElement.textContent = 'Rejected';
                 statusElement.className = 'text-2xl font-bold text-red-700 mb-2';
-
-                let rejectReasons = [];
-                if (prohibitedStore) rejectReasons.push('ร้านค้าต้องห้าม');
-                if (repeatApplication) rejectReasons.push('อนุมัติแล้วลบแล้วสมัครใหม่ซ้ำๆ');
-
                 reasonElement.innerHTML = `
                     <div class="space-y-2">
                         <div class="text-red-800 font-semibold">แนะนำปฏิเสธ - พบปัญหาร้ายแรง</div>
-                        <div class="text-sm text-red-600">เหตุผล: ${rejectReasons.join(', ')}</div>
+                        <div class="text-sm text-red-600">เหตุผล: ${rejectedItems.join(', ')}</div>
                         <div class="text-sm text-red-500">⚠️ กรณีนี้ไม่ควรอนุมัติ</div>
                     </div>
                 `;
                 return;
             }
 
-            // ตรวจสอบข้อจำเป็น (ข้อ 1-3 สำหรับร้านค้าธรรมดา)
-            const requiredItems = [storePhoto, productService, storeNameCheck];
+            // Priority 2: Check for revision reasons or missing required items
             const missingRequired = [];
+            currentChecklist.forEach(item => {
+                if (item.required && !checkedRequired[item.id]) {
+                    // Skip license requirement if not needed
+                    if (item.id === 'professionalLicense' && !licenseRequired) {
+                        return;
+                    }
+                    missingRequired.push(`${item.title} (${item.score} คะแนน)`);
+                }
+            });
 
-            if (!storePhoto) missingRequired.push('รูปร้านค้าจริง (2 คะแนน)');
-            if (!productService) missingRequired.push('ประเภทสินค้า/บริการ (2 คะแนน)');
-            if (!storeNameCheck) missingRequired.push('ชื่อร้านค้า (1 คะแนน)');
-
-            // ตรวจสอบใบประกอบวิชาชีพ (จำเป็นสำหรับบางประเภท)
-            if (licenseRequired && !professionalLicense) {
-                missingRequired.push('ใบประกอบวิชาชีพ (2 คะแนน)');
-            }
-
-            // คำนวณคะแนน
-            let totalScore = 0;
-            let maxScore = 7; // ข้อ 1(2) + ข้อ 2(2) + ข้อ 3(1) + ข้อ 4(2) = 7 คะแนน
-
-            if (storePhoto) totalScore += 2;
-            if (productService) totalScore += 2;
-            if (storeNameCheck) totalScore += 1;
-            if (businessReg) totalScore += 2;
-
-            // เพิ่มคะแนนใบประกอบวิชาชีพถ้าจำเป็น
-            if (licenseRequired) {
-                maxScore = 9; // เพิ่มข้อ 5(2) = 9 คะแนน
-                if (professionalLicense) totalScore += 2;
-            }
-
-            // กำหนดสถานะตามเกณฑ์ใหม่
-            if (missingRequired.length > 0) {
-                // หากขาดข้อจำเป็นข้อใดข้อหนึ่ง = Revised
+            if (revisedItems.length > 0 || missingRequired.length > 0) {
                 statusElement.textContent = 'Revised';
                 statusElement.className = 'text-2xl font-bold text-yellow-700 mb-2';
+
+                let reasons = [];
+                if (missingRequired.length > 0) {
+                    reasons.push(`ขาดข้อจำเป็น: ${missingRequired.join(', ')}`);
+                }
+                if (revisedItems.length > 0) {
+                    reasons.push(`พบปัญหาที่ต้องแก้ไข: ${revisedItems.join(', ')}`);
+                }
+
                 reasonElement.innerHTML = `
                     <div class="space-y-2">
-                        <div>ขาดข้อจำเป็น - แนะนำให้แก้ไข</div>
+                        <div>แนะนำให้แก้ไข</div>
                         <div class="text-sm">คะแนนรวม: ${totalScore}/${maxScore}</div>
-                        <div class="text-sm text-red-600">ข้อที่ยังไม่ผ่าน: ${missingRequired.join(', ')}</div>
+                        <div class="text-sm text-red-600">${reasons.join(' | ')}</div>
                     </div>
                 `;
-            } else {
-                // ผ่านข้อจำเป็นทั้งหมด = Approved
-                statusElement.textContent = 'Approved';
-                statusElement.className = 'text-2xl font-bold text-green-700 mb-2';
-                reasonElement.innerHTML = `
-                    <div class="space-y-2">
-                        <div>ผ่านเกณฑ์การประเมินทุกข้อจำเป็น - แนะนำอนุมัติ</div>
-                        <div class="text-sm text-green-600">คะแนนรวม: ${totalScore}/${maxScore}</div>
-                        ${!businessReg ? '<div class="text-sm text-amber-600">หมายเหตุ: ไม่มีใบทะเบียนพาณิชย์ (ไม่จำเป็น)</div>' : ''}
-                    </div>
-                `;
+                return;
             }
+
+            // Priority 3: All requirements met - Approved
+            statusElement.textContent = 'Approved';
+            statusElement.className = 'text-2xl font-bold text-green-700 mb-2';
+            const businessReg = document.getElementById('businessReg')?.checked;
+            reasonElement.innerHTML = `
+                <div class="space-y-2">
+                    <div>ผ่านเกณฑ์การประเมินทุกข้อจำเป็น - แนะนำอนุมัติ</div>
+                    <div class="text-sm text-green-600">คะแนนรวม: ${totalScore}/${maxScore}</div>
+                    ${!businessReg ? '<div class="text-sm text-amber-600">หมายเหตุ: ไม่มีใบทะเบียนพาณิชย์ (ไม่จำเป็น)</div>' : ''}
+                </div>
+            `;
         }
 
         function setKymStatus(status) {
@@ -4830,17 +5043,36 @@
 
             // Show/hide reason section
             const reasonSection = document.getElementById('reasonSection');
+            const approveDateLabel = document.querySelector('label[for="approvalDate"]');
             if (status === 'Revised' || status === 'Rejected') {
                 reasonSection.classList.remove('hidden');
-                document.getElementById('reason').required = true;
+                document.getElementById('reason').setAttribute('required', 'required');
+                approveDateLabel.textContent = status + ' Date';
             } else {
                 reasonSection.classList.add('hidden');
-                document.getElementById('reason').required = false;
+                document.getElementById('reason').value = '';
+                document.getElementById('reason').removeAttribute('required');
+                approveDateLabel.textContent = 'Approval Date';
             }
         }
 
         function handleKymSubmit(e) {
             e.preventDefault();
+
+            // Gather all checklist assessments dynamically
+            const assessment = {};
+            const switches = document.querySelectorAll('.assessment-switch');
+            switches.forEach(switchEl => {
+                assessment[switchEl.id] = switchEl.checked;
+
+                // If item has sub-dropdown, collect selected options
+                if (switchEl.dataset.hasSubdropdown === 'true' && switchEl.checked) {
+                    const selectedOptions = [];
+                    const checkboxes = document.querySelectorAll(`input[name="${switchEl.id}_sub_options"]:checked`);
+                    checkboxes.forEach(cb => selectedOptions.push(cb.value));
+                    assessment[`${switchEl.id}_details`] = selectedOptions;
+                }
+            });
 
             const kymRecord = {
                 id: Date.now(),
@@ -4856,16 +5088,7 @@
                 reason: document.getElementById('reason').value,
                 notes: document.getElementById('notes').value,
                 approvalDate: document.getElementById('approvalDate').value,
-                assessment: {
-                    onlineStorePhoto: document.getElementById('onlineStorePhoto')?.checked,
-                    storePhoto: document.getElementById('storePhoto')?.checked,
-                    productService: document.getElementById('productService')?.checked,
-                    storeNameCheck: document.getElementById('storeNameCheck')?.checked,
-                    businessReg: document.getElementById('businessReg')?.checked,
-                    professionalLicense: document.getElementById('professionalLicense')?.checked,
-                    prohibitedStore: document.getElementById('prohibitedStore')?.checked,
-                    repeatApplication: document.getElementById('repeatApplication')?.checked
-                },
+                assessment: assessment,
                 operator: currentUser.username,
                 operatorName: currentUser.name,
                 timestamp: new Date().toISOString()
@@ -4918,7 +5141,7 @@
                             btn.classList.remove('ring-4', 'ring-opacity-50');
                             btn.style.boxShadow = '';
                         });
-                        document.getElementById('submittedDate')._flatpickr.setDate(null);
+                        document.getElementById('submittedDate')._flatpickr.setDate(new Date());
                         document.getElementById('approvalDate')._flatpickr.setDate(null);
                     } else {
                         Swal.fire({
@@ -5392,88 +5615,98 @@ ${generateOperatorCallStats(filteredCallData)}
                     break;
             }
 
-            // Create CSV content
+            // Create CSV content matching Google Sheets columns exactly (A-AF, 32 columns)
             const headers = [
-                'วันที่',
-                'เวลา',
-                'หมายเลขทรูมันนี่',
-                'ชื่อร้านค้า',
-                'ช่องทางการขาย',
-                'หมวดหมู่หลัก',
-                'หมวดหมู่ย่อย',
-                'รูปร้านค้าออนไลน์',
-                'รูปร้านค้าจริง',
-                'ประเภทสินค้า/บริการ',
-                'ชื่อร้านค้า',
-                'ใบทะเบียนพาณิชย์',
-                'ใบประกอบวิชาชีพ',
-                'ร้านค้าต้องห้าม',
-                'สมัครซ้ำ',
-                'ระบบแนะนำ',
-                'สถานะ',
-                'เหตุผล',
-                'หมายเหตุ',
-                'ผู้ดำเนินการ'
+                'Timestamp',
+                'ID',
+                'Truemoney_ID',
+                'Store_Name',
+                'Sales_Channel',
+                'Category',
+                'Sub_Category',
+                'Reference_ID',
+                'Submitted_Date',
+                'Assessment_Store_Photo',
+                'Assessment_Product_Photo',
+                'Assessment_Online_Store_Photo',
+                'Assessment_Online_Store_Management_Photo',
+                'Assessment_Duplication_Photo',
+                'Assessment_AI_Photo',
+                'Assessment_Product_Service',
+                'Assessment_Store_Name_Check',
+                'Assessment_Business_Reg',
+                'Assessment_Professional_License',
+                'Assessment_Internet_Photo',
+                'Assessment_Porn_Photo',
+                'Assessment_Prohibited_Photo',
+                'Assessment_Prohibited_Photo_Details',
+                'Assessment_Repeat_Application',
+                'Recommendation_Status',
+                'Final_Status',
+                'Reason',
+                'Notes',
+                'Approval_Date',
+                'Operator_Username',
+                'Operator_Name',
+                'Created_At',
+                'Updated_At'
             ];
 
             const csvContent = [
                 headers.join(','),
                 ...filteredKymData.map(record => {
-                    const date = new Date(record.timestamp);
-
-                    // Calculate recommended status
-                    let recommendedStatus = 'N/A';
-                    if (record.assessment) {
-                        const { prohibitedStore, repeatApplication, storePhoto, productService, storeNameCheck, professionalLicense, onlineStorePhoto } = record.assessment;
-
-                        if (prohibitedStore || repeatApplication) {
-                            recommendedStatus = 'Rejected';
-                        } else {
-                            const requiredItems = [storePhoto, productService, storeNameCheck];
-                            const licenseRequired = record.subCategory && (
-                                record.subCategory.includes('คลินิก') ||
-                                record.subCategory.includes('ทันตกรรม') ||
-                                record.subCategory.includes('นวด') ||
-                                record.subCategory.includes('สถาบันเสริมความงาม') ||
-                                record.subCategory.includes('ทัศนมาตร') ||
-                                record.subCategory.includes('ขายยา') ||
-                                record.subCategory.includes('สัตวแพทย์')
-                            );
-
-                            if (record.salesChannel === 'ขายออนไลน์' || record.salesChannel === 'มีหน้าร้านและขายออนไลน์') {
-                                requiredItems.push(onlineStorePhoto);
-                            }
-
-                            if (licenseRequired) {
-                                requiredItems.push(professionalLicense);
-                            }
-
-                            const missingRequired = requiredItems.filter(item => !item);
-                            recommendedStatus = missingRequired.length > 0 ? 'Revised' : 'Approved';
+                    const timestamp = new Date(record.timestamp);
+                    const assessment = record.assessment || {};
+                    
+                    // Helper function to convert boolean to Yes/No
+                    const boolToYesNo = (val) => {
+                        if (val === true) return 'Yes';
+                        if (val === false) return 'No';
+                        return '';
+                    };
+                    
+                    // Helper function to convert array to comma-separated string
+                    const arrayToString = (arr) => {
+                        if (Array.isArray(arr) && arr.length > 0) {
+                            return arr.join(', ');
                         }
-                    }
+                        return '';
+                    };
 
                     return [
-                        `"${date.toLocaleDateString('th-TH')}"`,
-                        `"${date.toLocaleTimeString('th-TH')}"`,
-                        `"${record.truemoneyId}"`,
-                        `"${record.storeName}"`,
-                        `"${record.salesChannel}"`,
-                        `"${record.category}"`,
-                        `"${record.subCategory}"`,
-                        `"${record.assessment?.onlineStorePhoto ? 'ผ่าน' : 'ไม่ผ่าน'}"`,
-                        `"${record.assessment?.storePhoto ? 'ผ่าน' : 'ไม่ผ่าน'}"`,
-                        `"${record.assessment?.productService ? 'ผ่าน' : 'ไม่ผ่าน'}"`,
-                        `"${record.assessment?.storeNameCheck ? 'ผ่าน' : 'ไม่ผ่าน'}"`,
-                        `"${record.assessment?.businessReg ? 'มี' : 'ไม่มี'}"`,
-                        `"${record.assessment?.professionalLicense ? 'มี' : 'ไม่มี'}"`,
-                        `"${record.assessment?.prohibitedStore ? 'ใช่' : 'ไม่ใช่'}"`,
-                        `"${record.assessment?.repeatApplication ? 'ใช่' : 'ไม่ใช่'}"`,
-                        `"${recommendedStatus}"`,
-                        `"${record.status}"`,
-                        `"${record.reason || 'ไม่มี'}"`,
-                        `"${record.notes || 'ไม่มี'}"`,
-                        `"${record.operatorName}"`
+                        `"${timestamp.toISOString()}"`,
+                        `"${record.id || ''}"`,
+                        `"${record.truemoneyId || ''}"`,
+                        `"${record.storeName || ''}"`,
+                        `"${record.salesChannel || ''}"`,
+                        `"${record.category || ''}"`,
+                        `"${record.subCategory || ''}"`,
+                        `"${record.referenceId || ''}"`,
+                        `"${record.submittedDate || ''}"`,
+                        `"${boolToYesNo(assessment.storePhoto)}"`,
+                        `"${boolToYesNo(assessment.productPhoto)}"`,
+                        `"${boolToYesNo(assessment.onlineStorePhoto)}"`,
+                        `"${boolToYesNo(assessment.onlineStoreManagementPhoto)}"`,
+                        `"${boolToYesNo(assessment.duplicationPhoto)}"`,
+                        `"${boolToYesNo(assessment.AIPhoto)}"`,
+                        `"${boolToYesNo(assessment.productService)}"`,
+                        `"${boolToYesNo(assessment.storeNameCheck)}"`,
+                        `"${boolToYesNo(assessment.businessReg)}"`,
+                        `"${boolToYesNo(assessment.professionalLicense)}"`,
+                        `"${boolToYesNo(assessment.internetPhoto)}"`,
+                        `"${boolToYesNo(assessment.pornPhoto)}"`,
+                        `"${boolToYesNo(assessment.prohibitedPhoto)}"`,
+                        `"${arrayToString(assessment.prohibitedPhoto_details)}"`,
+                        `"${boolToYesNo(assessment.repeatApplication)}"`,
+                        `"${record.recommendedStatus || ''}"`,
+                        `"${record.status || ''}"`,
+                        `"${(record.reason || '').replace(/"/g, '""')}"`,
+                        `"${(record.notes || '').replace(/"/g, '""')}"`,
+                        `"${record.approvalDate || ''}"`,
+                        `"${record.operator || ''}"`,
+                        `"${record.operatorName || ''}"`,
+                        `"${record.createdAt || timestamp.toISOString()}"`,
+                        `"${record.updatedAt || timestamp.toISOString()}"`
                     ].join(',');
                 })
             ].join('\n');
