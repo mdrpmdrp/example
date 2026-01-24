@@ -124,6 +124,11 @@
             border-radius: 0.75rem;
             overflow: hidden;
         }
+        
+        .calendar-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
 
         .calendar-day-header {
             background: #a80c8a;
@@ -143,9 +148,13 @@
 
         .calendar-day {
             background: white;
-            min-height: 100px;
+            min-height: 70px;
+            height: 100%;
+            /* aspect-ratio: 1; */
             padding: 8px;
             position: relative;
+            display: flex;
+            flex-direction: column;
         }
 
         .calendar-day.other-month {
@@ -188,17 +197,30 @@
         }
         
         .job-count-badge {
-            color: #a80c8a;
-            font-size: 13px;
+            background: linear-gradient(135deg, #C7911B 0%, #D4A129 100%);
+            color: white;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(199, 145, 27, 0.2);
             text-decoration: none;
+            gap: 4px;
+            width: 100%;
         }
         
         .job-count-badge:hover {
-            text-decoration: underline;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(199, 145, 27, 0.3);
+        }
+        
+        .job-count-badge i {
+            font-size: 12px;
         }
         
         .calendar-day.has-jobs {
@@ -211,8 +233,43 @@
 
         .week-day-column {
             background: white;
-            min-height: 60px;
-            padding: 8px;
+            min-height: 120px;
+            padding: 12px;
+            border-right: 1px solid #E5E7EB;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .week-day-column:last-child {
+            border-right: none;
+        }
+        
+        .week-job-item {
+            background: linear-gradient(135deg, #C7911B 0%, #D4A129 100%);
+            color: white;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(199, 145, 27, 0.2);
+        }
+        
+        .week-job-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(199, 145, 27, 0.3);
+        }
+        
+        .week-job-count {
+            text-align: center;
+            color: #C7911B;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px;
+            background: #F3F4F7;
+            border-radius: 6px;
+            margin-top: auto;
         }
 
         .day-view-header {
@@ -235,6 +292,94 @@
             width: 100%;
             border-radius: 8px;
             margin: 12px 0;
+        }
+
+        #calendarContainer {
+            background: #F3F4F7 !important;
+            overflow-x: auto;   
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            .week-view-mobile .calendar-grid {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                grid-template-rows: auto !important;
+                gap: 0;
+                min-width: auto !important;
+            }
+            
+            .week-view-mobile .calendar-day-header {
+                border-radius: 8px 8px 0 0 !important;
+                padding: 12px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .week-view-mobile .calendar-day-header:nth-child(n+8) {
+                display: none;
+            }
+            
+            .week-view-mobile .week-day-column {
+                border-right: none;
+                border-bottom: 2px solid #E5E7EB;
+                border-radius: 0 0 8px 8px;
+                min-height: auto;
+                margin-bottom: 12px;
+            }
+            
+            .week-view-mobile .week-day-column:nth-child(8) {
+                order: 2;
+            }
+            .week-view-mobile .week-day-column:nth-child(9) {
+                order: 4;
+            }
+            .week-view-mobile .week-day-column:nth-child(10) {
+                order: 6;
+            }
+            .week-view-mobile .week-day-column:nth-child(11) {
+                order: 8;
+            }
+            .week-view-mobile .week-day-column:nth-child(12) {
+                order: 10;
+            }
+            .week-view-mobile .week-day-column:nth-child(13) {
+                order: 12;
+            }
+            .week-view-mobile .week-day-column:nth-child(14) {
+                order: 14;
+            }
+            
+            .week-view-mobile .calendar-day-header:nth-child(1) {
+                order: 1;
+            }
+            .week-view-mobile .calendar-day-header:nth-child(2) {
+                order: 3;
+            }
+            .week-view-mobile .calendar-day-header:nth-child(3) {
+                order: 5;
+            }
+            .week-view-mobile .calendar-day-header:nth-child(4) {
+                order: 7;
+            }
+            .week-view-mobile .calendar-day-header:nth-child(5) {
+                order: 9;
+            }
+            .week-view-mobile .calendar-day-header:nth-child(6) {
+                order: 11;
+            }
+            .week-view-mobile .calendar-day-header:nth-child(7) {
+                order: 13;
+            }
+            
+            .week-view-mobile .week-day-column:last-child {
+                border-bottom: none;
+            }
+            
+            .calendar-wrapper {
+                overflow-x: visible;
+            }
         }
     </style>
 </head>
@@ -267,14 +412,14 @@
         <!-- Staff Selection -->
         <div class="card p-4 md:p-6 mb-6">
             <div class="flex flex-col md:flex-row gap-4 items-end">
-                <div class="flex-1">
+                <div class="w-full md:flex-1">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">เลือกผู้รับผิดชอบ</label>
                     <select id="staffSelect" class="input-field">
                         <option value="">-- เลือกชื่อ --</option>
                     </select>
                 </div>
-                <div>
-                    <button id="loadJobsBtn" onclick="loadStaffJobs()" class="btn-primary">
+                <div class="w-full md:w-auto">
+                    <button id="loadJobsBtn" onclick="loadStaffJobs()" class="btn-primary w-full md:w-auto">
                         <i class="fas fa-sync-alt mr-2"></i>
                         โหลดข้อมูล
                     </button>
@@ -289,15 +434,15 @@
                     <div class="flex gap-2">
                         <button onclick="changeView('day')" id="viewDay" class="btn-primary">
                             <i class="fas fa-calendar-day mr-2"></i>
-                            รายวัน
+                            วัน
                         </button>
                         <button onclick="changeView('week')" id="viewWeek" class="btn-primary">
                             <i class="fas fa-calendar-week mr-2"></i>
-                            รายสัปดาห์
+                            สัปดาห์
                         </button>
                         <button onclick="changeView('month')" id="viewMonth" class="btn-primary active">
                             <i class="fas fa-calendar mr-2"></i>
-                            รายเดือน
+                            เดือน
                         </button>
                     </div>
                     <div class="flex items-center gap-3">
@@ -319,9 +464,7 @@
             </div>
 
             <!-- Calendar Container -->
-            <div class="card p-4 md:p-6">
-                <div id="calendarContainer"></div>
-            </div>
+            <div id="calendarContainer" class="card"></div>
         </div>
     </main>
 
@@ -500,12 +643,12 @@
             const startDate = startOfMonth.clone().startOf('week');
             const endDate = endOfMonth.clone().endOf('week');
 
-            let html = '<div class="calendar-grid" style="grid-template-columns: repeat(7, 1fr);">';
+            let html = '<div class="calendar-wrapper"><div class="calendar-grid" style="grid-template-columns: repeat(7, 1fr); min-width: 700px;">';
 
             // Headers
             const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
             days.forEach(function (day) {
-                html += '<div class="calendar-day-header">' + day + '</div>';
+                html += '<div class="calendar-day-header text-bold">' + day + '</div>';
             });
 
             // Days
@@ -522,7 +665,7 @@
 
                 if (hasJobs) {
                     html += '<div class="text-center mt-2">';
-                    html += '<span class="job-count-badge">' + dayJobs.length + ' งาน</span>';
+                    html += '<span class="job-count-badge text-base"><i class="fa-solid fa-calendar-check"></i>' + dayJobs.length + '</span>';
                     html += '</div>';
                 }
 
@@ -530,7 +673,7 @@
                 day.add(1, 'day');
             }
 
-            html += '</div>';
+            html += '</div></div>';
             $('#calendarContainer').html(html);
         }
 
@@ -541,38 +684,45 @@
             const buddhistYear = endOfWeek.year() + 543;
             $('#calendarTitle').text(startOfWeek.format('DD MMM') + ' - ' + endOfWeek.format('DD MMM ') + buddhistYear);
 
-            let html = '<div class="calendar-grid" style="grid-template-columns: repeat(8, 1fr);">';
+            let html = '<div class="calendar-wrapper week-view-mobile"><div class="calendar-grid" style="grid-template-columns: repeat(7, 1fr); min-width: 700px;">';
 
-            // Headers
-            html += '<div class="calendar-day-header"></div>';
-            const day = startOfWeek.clone();
+            // Headers row
+            const headerDay = startOfWeek.clone();
             for (let i = 0; i < 7; i++) {
-                const isToday = day.isSame(moment(), 'day');
-                html += '<div class="calendar-day-header' + (isToday ? ' bg-gold-primary' : '') + '">';
-                html += day.format('ddd DD/MM');
+                const isToday = headerDay.isSame(moment(), 'day');
+                html += '<div class="calendar-day-header' + (isToday ? ' today' : '') + '">';
+                html += '<div>' + headerDay.format('ddd') + '</div>';
+                html += '<div class="text-lg">' + headerDay.format('DD/MM') + '</div>';
                 html += '</div>';
-                day.add(1, 'day');
+                headerDay.add(1, 'day');
             }
 
-            // Time slots
-            for (let hour = 8; hour < 18; hour++) {
-                html += '<div class="week-time">' + hour + ':00</div>';
+            // Day columns with jobs
+            const dayCol = startOfWeek.clone();
+            for (let i = 0; i < 7; i++) {
+                const dayJobs = getJobsForDate(dayCol);
+                const isToday = dayCol.isSame(moment(), 'day');
+                html += '<div class="week-day-column' + (isToday ? ' bg-purple-50' : '') + '">';
 
-                const dayCol = startOfWeek.clone();
-                for (let i = 0; i < 7; i++) {
-                    const dayJobs = getJobsForDate(dayCol);
-                    html += '<div class="week-day-column">';
-
-                    dayJobs.forEach(function (job) {
-                        html += '<div class="job-item" onclick="showJobDetail(\'' + job.trackingId + '\')">' + job.jobName + '</div>';
+                if (dayJobs.length > 0) {
+                    // Show first 3 jobs
+                    const displayJobs = dayJobs.slice(0, 3);
+                    displayJobs.forEach(function (job) {
+                        html += '<div class="week-job-item" onclick="showJobDetail(\'' + job.trackingId + '\')"><i class="fas fa-briefcase mr-2"></i>' + job.jobName + '</div>';
                     });
-
-                    html += '</div>';
-                    dayCol.add(1, 'day');
+                    
+                    if (dayJobs.length > 1) {
+                        html += '<div class="week-job-count"><i class="fas fa-check-circle mr-1"></i>ทั้งหมด ' + dayJobs.length + ' งาน</div>';
+                    }
+                } else {
+                    html += '<div class="text-center text-gray-400 py-8"><i class="fas fa-calendar-check text-2xl mb-2"></i><div class="text-xs">ไม่มีงาน</div></div>';
                 }
+
+                html += '</div>';
+                dayCol.add(1, 'day');
             }
 
-            html += '</div>';
+            html += '</div></div>';
             $('#calendarContainer').html(html);
         }
 
@@ -637,11 +787,11 @@
             let tableHtml = '<div class="overflow-x-auto">';
             tableHtml += '<table class="w-full text-sm">';
             tableHtml += '<thead>';
-            tableHtml += '<tr class="bg-gray-100">';
-            tableHtml += '<th class="py-2 px-3 text-left font-semibold">#</th>';
-            tableHtml += '<th class="py-2 px-3 text-left font-semibold">เลขคำร้อง</th>';
-            tableHtml += '<th class="py-2 px-3 text-left font-semibold">ชื่องาน</th>';
-            tableHtml += '<th class="py-2 px-3 text-left font-semibold">ประเภทงาน</th>';
+            tableHtml += '<tr class="bg-gray-100 ">';
+            tableHtml += '<th class="py-2 px-3 text-center font-semibold">#</th>';
+            tableHtml += '<th class="py-2 px-3 text-center font-semibold">เลขคำร้อง</th>';
+            tableHtml += '<th class="py-2 px-3 text-center font-semibold">ชื่องาน</th>';
+            tableHtml += '<th class="py-2 px-3 text-center font-semibold">ประเภทงาน</th>';
             tableHtml += '</tr>';
             tableHtml += '</thead>';
             tableHtml += '<tbody>';
@@ -687,19 +837,11 @@
 
             if (!job) return;
 
-            let stepDatesHtml = '';
-            const stepLabels = ['รับคำร้อง', 'นัดสำรวจ', 'แจ้งค่าใช้จ่าย ผชฟ.', 'ผชฟ. ชำระเงิน'];
-            for (let i = 0; i < 4; i++) {
-                if (job.stepDates[i]) {
-                    stepDatesHtml += '<tr><td class="py-1">' + stepLabels[i] + ':</td><td class="py-1 font-semibold">' + moment(job.stepDates[i]).format('DD/MM/YYYY') + '</td></tr>';
-                }
-            }
-
             // Check if location has coordinates
             let mapHtml = '';
             let lat, lon;
-            if (job.location && job.location.includes(',')) {
-                const coords = job.location.split(',');
+            if (job.customerCoords && job.customerCoords.includes(',')) {
+                const coords = job.customerCoords.split(',');
                 lat = parseFloat(coords[0].trim());
                 lon = parseFloat(coords[1].trim());
                 if (!isNaN(lat) && !isNaN(lon)) {
@@ -710,6 +852,8 @@
                     mapHtml += '</a>';
                     mapHtml += '</td></tr>';
                 }
+            }else{
+                mapHtml += '<tr><td colspan="2" class="py-2 text-gray-500 italic">ไม่มีข้อมูลพิกัดสถานที่</td></tr>';
             }
 
             Swal.fire({
@@ -722,15 +866,17 @@
                     '<tr><td class="py-1">ชื่อผู้ใช้ไฟ:</td><td class="py-1 font-semibold">' + (job.customerName || '-') + '</td></tr>' +
                     '<tr><td class="py-1">เบอร์โทร:</td><td class="py-1 font-semibold">' + (job.customerPhone ? '<a href="tel:' + job.customerPhone + '" class="text-purple-primary hover:underline"><i class="fas fa-phone mr-1"></i>' + job.customerPhone + '</a>' : '-') + '</td></tr>' +
                     mapHtml +
-                    '<tr><td colspan="2" class="pt-3 pb-1 font-semibold text-purple-primary">ความคืบหน้า (Step ' + job.currentStep + '/4)</td></tr>' +
-                    stepDatesHtml +
                     (job.notes ? '<tr><td colspan="2" class="pt-3 pb-1 font-semibold">หมายเหตุ:</td></tr><tr><td colspan="2" class="text-gray-600">' + job.notes + '</td></tr>' : '') +
                     '</table>' +
                     '</div>',
-                icon: 'info',
                 confirmButtonText: returnToDayStr ? 'กลับไปที่ตาราง' : 'ปิด',
                 confirmButtonColor: '#a80c8a',
                 width: '600px',
+                customClass: {
+                    popup: 'rounded-xl',
+                    confirmButton: 'btn-primary px-6 py-2 rounded-lg',
+                    title: 'text-lg'
+                },
                 didOpen: function() {
                     if (mapHtml && !isNaN(lat) && !isNaN(lon)) {
                         const map = L.map('jobMap').setView([lat, lon], 15);

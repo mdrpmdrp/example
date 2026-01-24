@@ -6,6 +6,9 @@ function getBuddhistYear() {
 
 // Validate date format (returns date string or null)
 function validateDate(date, convertToBuddhist = true) {
+  if(date === null || date === undefined || date === '') {
+    return null;
+  }
   if (date instanceof Date && !isNaN(date)) {
     let year = date.getFullYear();
     if (convertToBuddhist && year < 2200) {
@@ -17,7 +20,7 @@ function validateDate(date, convertToBuddhist = true) {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }else if(typeof date === 'string' && date.trim() !== '') {
-    let [date,month,year] = date.split('/');
+    let [day,month,year] = date.split('/');
     year = parseInt(year, 10);
     if (convertToBuddhist && year < 2200) {
         year += 543; // Convert Gregorian year to Buddhist year
