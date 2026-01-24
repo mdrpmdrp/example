@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <!-- no cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!-- no cache -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บริการลูกค้าและสัมพันธ์ กฟจ.สงขลา</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap"
+        rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    
+    <style>
+        * {
+            font-family: 'Sarabun', sans-serif;
+        }
+        
+        body {
+            background: #F3F4F7;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        main {
+            flex: 1;
+        }
+        
+        .pea-gradient {
+            background: linear-gradient(135deg, #a80c8a 0%, #961681 100%);
+        }
+        
+        .progress-step {
+            position: relative;
+            flex: 1;
+            text-align: center;
+        }
+        
+        .progress-step::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background-color: #E5E7EB;
+            z-index: 0;
+        }
+        
+        .progress-step:first-child::before {
+            left: 50%;
+        }
+        
+        .progress-step:last-child::before {
+            right: 50%;
+        }
+        
+        .progress-step.completed::before {
+            background: linear-gradient(90deg, #a80c8a 0%, #961681 100%);
+        }
+        
+        .progress-step.active::before {
+            background: linear-gradient(90deg, #C7911B 0%, #D4A129 100%);
+        }
+        
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #E5E7EB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s ease;
+        }
+        
+        .progress-step.completed .step-circle {
+            background: linear-gradient(135deg, #a80c8a 0%, #961681 100%);
+            border-color: #a80c8a;
+            color: white;
+        }
+        
+        .progress-step.active .step-circle {
+            background: linear-gradient(135deg, #C7911B 0%, #D4A129 100%);
+            border-color: #C7911B;
+            color: white;
+            box-shadow: 0 0 0 4px rgba(199, 145, 27, 0.2);
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(168, 12, 138, 0.15), 0 2px 4px -1px rgba(168, 12, 138, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 20px 25px -5px rgba(168, 12, 138, 0.2), 0 10px 10px -5px rgba(168, 12, 138, 0.15);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #a80c8a 0%, #961681 100%);
+            color: white;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(168, 12, 138, 0.3);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #a80c8a;
+            box-shadow: 0 0 0 3px rgba(168, 12, 138, 0.1);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Color Classes */
+        .text-purple-primary {
+            color: #a80c8a;
+        }
+        
+        .text-gray-secondary {
+            color: #666;
+        }
+        
+        .text-gold-primary {
+            color: #C7911B;
+        }
+        
+        .text-gold-dark {
+            color: #8B6914;
+        }
+        
+        .text-gold-darker {
+            color: #6B5210;
+        }
+        
+        .bg-gold-light {
+            background-color: #FEF9E7;
+        }
+        
+        .bg-footer {
+            background-color: #222222;
+        }
+        
+        .border-gold {
+            border-color: #C7911B;
+        }
+        
+        /* NProgress Customization */
+        #nprogress .bar {
+            background: linear-gradient(90deg, #a80c8a 0%, #961681 100%) !important;
+            height: 4px !important;
+        }
+        
+        #nprogress .peg {
+            box-shadow: 0 0 10px #a80c8a, 0 0 5px #a80c8a !important;
+        }
+        
+        #nprogress .spinner-icon {
+            border-top-color: #a80c8a !important;
+            border-left-color: #a80c8a !important;
+        }
+        
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        /* Hidden utility class */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Leaflet Map */
+        #map {
+            height: 300px;
+            width: 100%;
+            border-radius: 12px;
+            z-index: 1;
+        }
+        
+        .leaflet-popup-content-wrapper {
+            background: linear-gradient(135deg, #a80c8a 0%, #961681 100%);
+            color: white;
+            border-radius: 8px;
+        }
+        
+        .leaflet-popup-tip {
+            background: #a80c8a;
+        }
+        
+        .leaflet-popup-content {
+            color: white;
+            font-weight: 500;
+        }
+        
+        /* Custom Marker Pin */
+        .custom-marker-pin {
+            background: linear-gradient(135deg, #a80c8a 0%, #961681 100%);
+            width: 32px;
+            height: 32px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 3px solid white;
+            box-shadow: 0 3px 10px rgba(168, 12, 138, 0.4);
+            position: relative;
+        }
+        
+        .custom-marker-icon {
+            position: absolute;
+            top: 6px;
+            left: 8px;
+            color: white;
+            font-size: 14px;
+            transform: rotate(45deg);
+        }
+    </style>
+</head>
+
+<body class="bg-purple-50">
+    <!-- Header -->
+    <header class="bg-white shadow-md fixed top-0 left-0 right-0 z-50">
+        <div class="container mx-auto px-3 py-3 md:px-4 md:py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <img src="https://www.pea.co.th/sites/default/files/PEA-Logo.png" alt="PEA Logo" class="h-12 md:h-16">
+                    <div class="text-purple-primary">
+                        <h1 class="text-xl md:text-2xl font-bold">บริการลูกค้าและสัมพันธ์</h1>
+                        <p class="text-sm md:text-base text-gray-secondary">การไฟฟ้าจังหวัดสงขลา</p>
+                    </div>
+                </div>
+                <div class="text-right hidden md:block text-purple-primary">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-phone-alt"></i>
+                        <span class="font-semibold">1129</span>
+                    </div>
+                    <p class="text-sm text-gray-secondary">PEA Contact Center</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-3 py-4 md:px-4 md:py-12 pt-24 md:pt-28">
+        <!-- Search Section -->
+        <div id="searchSection" class="max-w-2xl mx-auto mb-4 md:mb-8">
+            <div class="card p-4 md:p-8">
+                <div class="text-center mb-6">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
+                        <i class="fas fa-search text-3xl text-purple-primary"></i>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">ติดตามสถานะคำร้อง</h2>
+                    <p class="text-gray-600">กรุณากรอกหมายเลขติดตาม (Tracking ID) เพื่อตรวจสอบสถานะ</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <input 
+                            type="text" 
+                            id="trackingId" 
+                            class="input-field text-center text-lg text-purple-primary "
+                            placeholder="ตัวอย่าง: PEA2026012400001"
+                            autocomplete="off"
+                        />
+                    </div>
+                    
+                    <button id="searchBtn" onclick="searchJob()" class="btn-primary w-full text-lg">
+                        <i class="fas fa-search mr-2"></i>
+                        ค้นหา
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Section -->
+        <div id="resultSection" class="max-w-4xl mx-auto hidden">
+            <!-- Job Details Card -->
+            <div class="card p-4 md:p-8 mb-4 md:mb-6 fade-in">
+                <div class="flex items-start justify-between mb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">รายละเอียดคำร้อง</h3>
+                        <p class="text-gray-600">Tracking ID: <span id="displayTrackingId" class="font-semibold text-purple-primary"></span></p>
+                    </div>
+                    <button onclick="resetSearch()" class="text-gray-600 hover:text-gray-800 transition">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
+                    <div class="p-3 md:p-4 bg-purple-100 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">หมายเลขผัง</p>
+                        <p id="patternNumber" class="font-semibold text-gray-800"></p>
+                    </div>
+                    <div class="p-3 md:p-4 bg-purple-100 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">ชื่องาน</p>
+                        <p id="jobName" class="font-semibold text-gray-800"></p>
+                    </div>
+                    <div class="p-3 md:p-4 bg-purple-100 rounded-lg md:col-span-2">
+                        <p class="text-sm text-gray-600 mb-1">วันที่ยื่นคำร้อง</p>
+                        <p id="requestDate" class="font-semibold text-gray-800"></p>
+                    </div>
+                      <div class="p-3 md:p-4 bg-gray-50 rounded-lg md:col-span-2 gap-3">
+                        <p class="text-sm text-gray-600 mb-3">สถานที่/พิกัด</p>
+                        <div id="map" class="mb-2"></div>
+                        <a id="mapLink" href="#" target="_blank" class="text-sm text-purple-primary hover:underline mt-1 inline-flex items-center w-full md:justify-end">
+                            <i class="fas fa-external-link-alt mr-1"></i>
+                            เปิดใน Google Maps
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Progress Status -->
+                <div class="border-t pt-6">
+                    <h4 class="text-xl font-bold text-gray-800 mb-6">สถานะความคืบหน้า</h4>
+                    
+                    <div class="flex items-start mb-8">
+                        <div class="progress-step" id="step1">
+                            <div class="step-circle">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <p class="text-xs md:text-sm font-semibold text-gray-700">รับคำร้องแล้ว</p>
+                            <p id="date1" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+                        
+                        <div class="progress-step" id="step2">
+                            <div class="step-circle">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <p class="text-xs md:text-sm font-semibold text-gray-700">นัดสำรวจแล้ว</p>
+                            <p id="date2" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+                        
+                        <div class="progress-step" id="step3">
+                            <div class="step-circle">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                            <p class="text-xs md:text-sm font-semibold text-gray-700">แจ้งค่าใช้จ่าย<br>ผชฟ.แล้ว</p>
+                            <p id="date3" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+                        
+                        <div class="progress-step" id="step4">
+                            <div class="step-circle">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <p class="text-xs md:text-sm font-semibold text-gray-700">ผชฟ.<br>ชำระเงินแล้ว</p>
+                            <p id="date4" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Status Info -->
+                    <div class="border-l-4 p-3 md:p-4 rounded bg-gold-light border-gold">
+                        <div class="flex items-start">
+                            <i class="fas fa-info-circle mt-1 mr-3 text-gold-primary"></i>
+                            <div>
+                                <p class="font-semibold mb-1 text-gold-dark">สถานะปัจจุบัน</p>
+                                <p id="currentStatusText" class="text-gold-darker"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Notes -->
+                <div id="notesSection" class="border-t pt-6 mt-6 hidden">
+                    <h4 class="text-lg font-bold text-gray-800 mb-3">หมายเหตุ</h4>
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 md:p-4 rounded">
+                        <p id="notes" class="text-gray-700"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Card -->
+            <div class="card p-4 md:p-6 fade-in">
+                <div class="text-center">
+                    <i class="fas fa-headset text-4xl mb-3 text-purple-primary"></i>
+                    <h4 class="text-lg font-bold text-gray-800 mb-2">ต้องการความช่วยเหลือเพิ่มเติม?</h4>
+                    <p class="text-gray-600 mb-4">ติดต่อ PEA Contact Center</p>
+                    <div class="flex items-center justify-center space-x-4">
+                        <a href="tel:1129" class="inline-flex items-center bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition">
+                            <i class="fas fa-phone-alt mr-2"></i>
+                            โทร 1129
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-6 py-6 md:mt-12 md:py-8 bg-footer">
+        <div class="container mx-auto px-3 md:px-4 text-center text-white">
+            <div class="mb-4">
+                <p class="text-lg font-semibold">การไฟฟ้าส่วนภูมิภาค</p>
+                <p class="text-sm opacity-90">Smart Energy for Better Life and Sustainability</p>
+            </div>
+            <div class="text-sm opacity-75">
+                <p>© Copyright 2026 - PEA | 1129 PEA Contact Center</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script>
+        moment.locale('th');
+        
+        // Document ready
+        $(function() {
+            // Auto-focus on load
+            $('#trackingId').focus();
+            
+            // Handle Enter key press
+            $('#trackingId').on('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchJob();
+                }
+            });
+        });
+        
+        function searchJob() {
+            const trackingId = $('#trackingId').val().trim();
+            const $searchBtn = $('#searchBtn');
+            
+            if (!trackingId) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'กรุณากรอกหมายเลขติดตาม',
+                    text: 'โปรดระบุหมายเลขติดตามเพื่อค้นหาข้อมูล',
+                    confirmButtonColor: '#a80c8a'
+                });
+                return;
+            }
+            
+            // Disable button and show loading
+            $searchBtn.prop('disabled', true);
+            $searchBtn.html('<span class="spinner mr-2"></span>กำลังค้นหา...');
+            
+            NProgress.start();
+            NProgress.inc()
+            // Call Google Apps Script function for real data
+            console.log('Fetching job status for Tracking ID:', trackingId);
+            google.script.run
+                .withSuccessHandler(displayResult)
+                .withFailureHandler(handleError)
+                .getJobStatus(trackingId.toUpperCase());
+        }
+        
+        function displayResult(data) {
+            data = JSON.parse(data);
+            console.log('Received data:', data);
+            NProgress.done();
+            
+            // Reset button state
+            $('#searchBtn').prop('disabled', false);
+            $('#searchBtn').html('<i class="fas fa-search mr-2"></i>ค้นหา');
+            
+            if (!data || data.error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่พบข้อมูล',
+                    text: data?.error || 'ไม่พบหมายเลขติดตามในระบบ กรุณาตรวจสอบและลองใหม่อีกครั้ง',
+                    confirmButtonText: 'ตกลง',
+                    customClass: {
+                        popup: 'rounded-xl',
+                        confirmButton: 'btn-primary px-6 py-2 rounded-lg'
+                    }
+                });
+                return;
+            }
+            
+            // Display job details
+            $('#displayTrackingId').text(data.trackingId);
+            $('#patternNumber').text(data.patternNumber || '-');
+            $('#jobName').text(data.jobName || '-');
+            $('#requestDate').text(moment(data.requestDate).format('LL'));
+            $('#jobType').text(data.jobType || '-');
+            
+            // Display coordinates with Google Maps link
+            if (data.customerCoords) {
+                const coords = data.customerCoords.split(',');
+                const lat = parseFloat(coords[0].trim());
+                const lon = parseFloat(coords[1].trim());
+                const mapUrl = 'https://www.google.com/maps?q=' + lat + ',' + lon;
+                $('#mapLink').attr('href', mapUrl).removeClass('hidden');
+                
+                // Initialize Leaflet map
+                setTimeout(() => {
+                    // Remove existing map if any
+                    $('#map').empty();
+                    
+                    const map = L.map('map').setView([lat, lon], 15);
+                    
+                    // Add OpenStreetMap tiles
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors',
+                        maxZoom: 19
+                    }).addTo(map);
+                    
+                    // Create custom purple icon
+                    const purpleIcon = L.divIcon({
+                        className: 'custom-marker',
+                        html: '<div class="custom-marker-pin">' +
+                              '<i class="fas fa-bolt custom-marker-icon"></i>' +
+                              '</div>',
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 32],
+                        popupAnchor: [0, -32]
+                    });
+                    
+                    // Add marker
+                    const marker = L.marker([lat, lon], { icon: purpleIcon }).addTo(map);
+                    marker.bindPopup('<b>' + (data.jobName || 'สถานที่ติดตั้ง') + '</b><br>' + data.customerCoords);
+                    
+                    // Add circle around marker
+                    L.circle([lat, lon], {
+                        color: '#a80c8a',
+                        fillColor: '#a80c8a',
+                        fillOpacity: 0.2,
+                        radius: 100
+                    }).addTo(map);
+                }, 100);
+            } else {
+                $('#mapLink').addClass('hidden');
+                $('#map').addClass('hidden');
+            }
+            
+            // Update progress steps
+            updateProgressSteps(data.currentStep, data.stepDates);
+            
+            // Update current status text
+            const statusTexts = [
+                'ทีมงานได้รับคำร้องของท่านแล้ว กำลังดำเนินการตรวจสอบข้อมูล',
+                'ได้นัดหมายเจ้าหน้าที่สำรวจหน้างานแล้ว กรุณารอการติดต่อกลับ',
+                'ได้แจ้งค่าใช้จ่ายให้ ผชฟ. ทราบแล้ว รอการชำระเงิน',
+                'ผชฟ. ชำระเงินเรียบร้อยแล้ว'
+            ];
+            $('#currentStatusText').text(statusTexts[data.currentStep - 1]);
+            
+            // Show result section
+            $('#searchSection').addClass('hidden');
+            $('#resultSection').removeClass('hidden').hide().fadeIn(300);
+            
+            // Scroll to top smoothly
+            $('html, body').animate({ scrollTop: 0 }, 600);
+        }
+        
+        function updateProgressSteps(currentStep, stepDates) {
+            // Reset all steps
+            for (let i = 1; i <= 4; i++) {
+                const $step = $('#step' + i);
+                $step.removeClass('completed active');
+                
+                const $dateElement = $('#date' + i);
+                if (stepDates[i - 1]) {
+                    $dateElement.text(moment(stepDates[i - 1]).format('DD/MM/YYYY'));
+                } else {
+                    $dateElement.text('');
+                }
+            }
+            
+            // Update completed steps
+            for (let i = 1; i < currentStep; i++) {
+                $('#step' + i).addClass('completed');
+            }
+            
+            // Update current step
+            if (currentStep <= 4) {
+                $('#step' + currentStep).addClass('active');
+            }
+        }
+        
+        function handleError(error) {
+            NProgress.done();
+            
+            // Reset button state
+            $('#searchBtn').prop('disabled', false);
+            $('#searchBtn').html('<i class="fas fa-search mr-2"></i>ค้นหา');
+            
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: 'ไม่สามารถเชื่อมต่อกับระบบได้ กรุณาลองใหม่อีกครั้ง',
+                confirmButtonColor: '#a80c8a'
+            });
+        }
+        
+        function resetSearch() {
+            $('#searchSection').removeClass('hidden').hide().fadeIn(300);
+            $('#resultSection').addClass('hidden');
+            $('#trackingId').val('').focus();
+        }
+    </script>
+</body>
+
+</html>

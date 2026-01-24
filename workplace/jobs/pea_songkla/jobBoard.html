@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <!-- no cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <!-- no cache -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Board - กฟจ.สงขลา</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap"
+        rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <style>
+        * {
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        body {
+            background: #F3F4F7;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        main {
+            flex: 1;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(168, 12, 138, 0.15), 0 2px 4px -1px rgba(168, 12, 138, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 20px 25px -5px rgba(168, 12, 138, 0.2), 0 10px 10px -5px rgba(168, 12, 138, 0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #a80c8a 0%, #961681 100%);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(168, 12, 138, 0.3);
+        }
+
+        .btn-primary.active {
+            background: linear-gradient(135deg, #C7911B 0%, #D4A129 100%);
+        }
+
+        .text-purple-primary {
+            color: #a80c8a;
+        }
+
+        .text-gray-secondary {
+            color: #666;
+        }
+
+        .bg-footer {
+            background-color: #222222;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #nprogress .bar {
+            background: linear-gradient(90deg, #a80c8a 0%, #961681 100%) !important;
+            height: 4px !important;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #a80c8a;
+            box-shadow: 0 0 0 3px rgba(168, 12, 138, 0.1);
+        }
+
+        /* Calendar Styles */
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            gap: 1px;
+            background: #E5E7EB;
+            border: 1px solid #E5E7EB;
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+
+        .calendar-day-header {
+            background: #a80c8a;
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .calendar-day-header:first-child {
+            border-top-left-radius: 0.75rem;
+        }
+
+        .calendar-day-header:nth-child(8) {
+            border-top-right-radius: 0.75rem;
+        }
+
+        .calendar-day {
+            background: white;
+            min-height: 100px;
+            padding: 8px;
+            position: relative;
+        }
+
+        .calendar-day.other-month {
+            background: #F9FAFB;
+            opacity: 0.5;
+        }
+
+        .calendar-day-number {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .calendar-day.today .calendar-day-number {
+            background: #a80c8a;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .job-item {
+            background: linear-gradient(135deg, #a80c8a 0%, #961681 100%);
+            color: white;
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 2px;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .job-item:hover {
+            opacity: 0.9;
+        }
+        
+        .job-count-badge {
+            color: #a80c8a;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-decoration: none;
+        }
+        
+        .job-count-badge:hover {
+            text-decoration: underline;
+        }
+        
+        .calendar-day.has-jobs {
+            cursor: pointer;
+        }
+        
+        .calendar-day.has-jobs:hover {
+            background: #F9FAFB;
+        }
+
+        .week-day-column {
+            background: white;
+            min-height: 60px;
+            padding: 8px;
+        }
+
+        .day-view-header {
+            background: #a80c8a;
+            color: white;
+            padding: 16px;
+            border-radius: 0.75rem 0.75rem 0 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .day-view-content {
+            background: white;
+            border-radius: 0 0 0.75rem 0.75rem;
+            border: 1px solid #E5E7EB;
+        }
+
+        #jobMap {
+            height: 250px;
+            width: 100%;
+            border-radius: 8px;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="bg-white shadow-md fixed top-0 left-0 right-0 z-50">
+        <div class="container mx-auto px-3 py-3 md:px-4 md:py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <img src="https://www.pea.co.th/sites/default/files/PEA-Logo.png" alt="PEA Logo"
+                        class="h-12 md:h-16">
+                    <div class="text-purple-primary">
+                        <h1 class="text-xl md:text-2xl font-bold">Job Board</h1>
+                        <p class="text-sm md:text-base text-gray-secondary">การไฟฟ้าจังหวัดสงขลา</p>
+                    </div>
+                </div>
+                <div class="text-right hidden md:block text-purple-primary">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span class="font-semibold" id="currentDate"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-3 py-4 md:px-4 md:py-12 pt-24 md:pt-28">
+        <!-- Staff Selection -->
+        <div class="card p-4 md:p-6 mb-6">
+            <div class="flex flex-col md:flex-row gap-4 items-end">
+                <div class="flex-1">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">เลือกผู้รับผิดชอบ</label>
+                    <select id="staffSelect" class="input-field">
+                        <option value="">-- เลือกชื่อ --</option>
+                    </select>
+                </div>
+                <div>
+                    <button id="loadJobsBtn" onclick="loadStaffJobs()" class="btn-primary">
+                        <i class="fas fa-sync-alt mr-2"></i>
+                        โหลดข้อมูล
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar Controls -->
+        <div id="calendarSection" class="hidden">
+            <div class="card p-4 md:p-6 mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div class="flex gap-2">
+                        <button onclick="changeView('day')" id="viewDay" class="btn-primary">
+                            <i class="fas fa-calendar-day mr-2"></i>
+                            รายวัน
+                        </button>
+                        <button onclick="changeView('week')" id="viewWeek" class="btn-primary">
+                            <i class="fas fa-calendar-week mr-2"></i>
+                            รายสัปดาห์
+                        </button>
+                        <button onclick="changeView('month')" id="viewMonth" class="btn-primary active">
+                            <i class="fas fa-calendar mr-2"></i>
+                            รายเดือน
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="navigateCalendar(-1)" class="btn-primary px-3">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button onclick="navigateToday()" class="btn-primary">
+                            <i class="fas fa-calendar-check mr-2"></i>
+                            วันนี้
+                        </button>
+                        <button onclick="navigateCalendar(1)" class="btn-primary px-3">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="text-center mt-4">
+                    <h2 id="calendarTitle" class="text-2xl font-bold text-purple-primary"></h2>
+                </div>
+            </div>
+
+            <!-- Calendar Container -->
+            <div class="card p-4 md:p-6">
+                <div id="calendarContainer"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-6 py-6 md:mt-12 md:py-8 bg-footer">
+        <div class="container mx-auto px-3 md:px-4 text-center text-white">
+            <div class="mb-4">
+                <p class="text-lg font-semibold">การไฟฟ้าส่วนภูมิภาค</p>
+                <p class="text-sm opacity-90">Smart Energy for Better Life and Sustainability</p>
+            </div>
+            <div class="text-sm opacity-75">
+                <p>© Copyright 2026 - PEA | 1129 PEA Contact Center</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/locale/th.js"></script>
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        moment.locale('th');
+
+        let currentView = 'month';
+        let currentDate = moment();
+        let staffJobs = [];
+        let selectedStaff
+
+        // Initialize
+        $(document).ready(function () {
+            updateCurrentDate();
+            loadStaffList();
+            setupListeners();
+        });
+
+        function updateCurrentDate() {
+            $('#currentDate').text(moment().format('DD MMMM YYYY'));
+        }
+
+        function setupListeners() {
+            $('#staffSelect').on('change', function () {
+                loadStaffJobs();
+            });
+        }
+
+        // Load staff list
+        function loadStaffList() {
+            NProgress.start();
+            google.script.run
+                .withSuccessHandler(function (data) {
+                    NProgress.done();
+                    data = JSON.parse(data);
+                    if (data && data.length > 0) {
+                        $('#staffSelect').empty().append('<option value="">-- เลือกชื่อ --</option>');
+                        data.forEach(function (staff) {
+                            $('#staffSelect').append('<option value="' + staff + '">' + staff + '</option>');
+                        });
+                        // Load last selected staff from localStorage
+                        const lastSelectedStaff = localStorage.getItem('lastSelectedStaff');
+                        if (lastSelectedStaff) {
+                            $('#staffSelect').val(lastSelectedStaff);
+                            loadStaffJobs();
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'ไม่มีข้อมูลผู้รับผิดชอบ',
+                            text: 'ไม่พบรายชื่อผู้รับผิดชอบในระบบ',
+                            confirmButtonColor: '#a80c8a',
+                            confirmButtonText: 'ตกลง',
+                            customClass: {
+                                popup: 'rounded-xl',
+                                confirmButton: 'btn-primary px-6 py-2 rounded-lg'
+                            }
+                        });
+                    }
+                })
+                .withFailureHandler(function (error) {
+                    NProgress.done();
+                    console.error('Error loading staff:', error);
+                })
+                .getStaffList();
+        }
+
+        // Load jobs for selected staff
+        function loadStaffJobs() {
+
+            selectedStaff = $('#staffSelect').val();
+
+            if (!selectedStaff) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'กรุณาเลือกผู้รับผิดชอบ',
+                    text: 'โปรดเลือกชื่อผู้รับผิดชอบจากรายการ',
+                    confirmButtonText: 'ตกลง',
+                    customClass: {
+                        popup: 'rounded-xl',
+                        confirmButton: 'btn-primary px-6 py-2 rounded-lg'
+                    }
+                });
+                return;
+            }
+            localStorage.setItem('lastSelectedStaff', selectedStaff);
+
+            NProgress.start();
+            google.script.run
+                .withSuccessHandler(function (data) {
+                    NProgress.done();
+                    data = JSON.parse(data);
+                    staffJobs = data || [];
+                    $('#calendarSection').removeClass('hidden');
+                    renderCalendar();
+                })
+                .withFailureHandler(function (error) {
+                    NProgress.done();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: 'ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
+                        confirmButtonText: 'ตกลง',
+                        customClass: {
+                            popup: 'rounded-xl',
+                            confirmButton: 'btn-primary px-6 py-2 rounded-lg'
+                        }
+                    });
+                })
+                .getJobsByStaff(selectedStaff);
+        }
+
+        // Change view
+        function changeView(view) {
+            currentView = view;
+            $('#viewDay, #viewWeek, #viewMonth').removeClass('active');
+            $('#view' + view.charAt(0).toUpperCase() + view.slice(1)).addClass('active');
+            renderCalendar();
+        }
+
+        // Navigate calendar
+        function navigateCalendar(direction) {
+            if (currentView === 'day') {
+                currentDate.add(direction, 'days');
+            } else if (currentView === 'week') {
+                currentDate.add(direction, 'weeks');
+            } else {
+                currentDate.add(direction, 'months');
+            }
+            renderCalendar();
+        }
+
+        function navigateToday() {
+            currentDate = moment();
+            renderCalendar();
+        }
+
+        // Render calendar based on view
+        function renderCalendar() {
+            if (currentView === 'month') {
+                renderMonthView();
+            } else if (currentView === 'week') {
+                renderWeekView();
+            } else {
+                renderDayView();
+            }
+        }
+
+        // Render month view
+        function renderMonthView() {
+            let buddhistYear = currentDate.year() + 543;
+            $('#calendarTitle').text(currentDate.format('MMMM') + ' ' + buddhistYear);
+
+            const startOfMonth = currentDate.clone().startOf('month');
+            const endOfMonth = currentDate.clone().endOf('month');
+            const startDate = startOfMonth.clone().startOf('week');
+            const endDate = endOfMonth.clone().endOf('week');
+
+            let html = '<div class="calendar-grid" style="grid-template-columns: repeat(7, 1fr);">';
+
+            // Headers
+            const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+            days.forEach(function (day) {
+                html += '<div class="calendar-day-header">' + day + '</div>';
+            });
+
+            // Days
+            const day = startDate.clone();
+            while (day.isSameOrBefore(endDate)) {
+                const isToday = day.isSame(moment(), 'day');
+                const isOtherMonth = !day.isSame(currentDate, 'month');
+                const dayJobs = getJobsForDate(day);
+                const hasJobs = dayJobs.length > 0;
+                const dayStr = day.format('YYYY-MM-DD');
+
+                html += '<div class="calendar-day' + (isOtherMonth ? ' other-month' : '') + (isToday ? ' today' : '') + (hasJobs ? ' has-jobs' : '') + '" onclick="' + (hasJobs ? 'showDayJobs(\'' + dayStr + '\')' : '') + '">';
+                html += '<div class="calendar-day-number">' + day.format('D') + '</div>';
+
+                if (hasJobs) {
+                    html += '<div class="text-center mt-2">';
+                    html += '<span class="job-count-badge">' + dayJobs.length + ' งาน</span>';
+                    html += '</div>';
+                }
+
+                html += '</div>';
+                day.add(1, 'day');
+            }
+
+            html += '</div>';
+            $('#calendarContainer').html(html);
+        }
+
+        // Render week view
+        function renderWeekView() {
+            const startOfWeek = currentDate.clone().startOf('week');
+            const endOfWeek = currentDate.clone().endOf('week');
+            const buddhistYear = endOfWeek.year() + 543;
+            $('#calendarTitle').text(startOfWeek.format('DD MMM') + ' - ' + endOfWeek.format('DD MMM ') + buddhistYear);
+
+            let html = '<div class="calendar-grid" style="grid-template-columns: repeat(8, 1fr);">';
+
+            // Headers
+            html += '<div class="calendar-day-header"></div>';
+            const day = startOfWeek.clone();
+            for (let i = 0; i < 7; i++) {
+                const isToday = day.isSame(moment(), 'day');
+                html += '<div class="calendar-day-header' + (isToday ? ' bg-gold-primary' : '') + '">';
+                html += day.format('ddd DD/MM');
+                html += '</div>';
+                day.add(1, 'day');
+            }
+
+            // Time slots
+            for (let hour = 8; hour < 18; hour++) {
+                html += '<div class="week-time">' + hour + ':00</div>';
+
+                const dayCol = startOfWeek.clone();
+                for (let i = 0; i < 7; i++) {
+                    const dayJobs = getJobsForDate(dayCol);
+                    html += '<div class="week-day-column">';
+
+                    dayJobs.forEach(function (job) {
+                        html += '<div class="job-item" onclick="showJobDetail(\'' + job.trackingId + '\')">' + job.jobName + '</div>';
+                    });
+
+                    html += '</div>';
+                    dayCol.add(1, 'day');
+                }
+            }
+
+            html += '</div>';
+            $('#calendarContainer').html(html);
+        }
+
+        // Render day view
+        function renderDayView() {
+            const buddhistYear = currentDate.year() + 543;
+            $('#calendarTitle').text(currentDate.format('dddd, DD MMMM ') + buddhistYear);
+
+            const dayJobs = getJobsForDate(currentDate);
+
+            let html = '<div class="day-view-header">';
+            html += '<i class="fas fa-calendar-day mr-2"></i>';
+            html += 'งานทั้งหมด ' + dayJobs.length + ' รายการ';
+            html += '</div>';
+            html += '<div class="day-view-content p-4">';
+
+            if (dayJobs.length === 0) {
+                html += '<div class="text-center py-8 text-gray-500">';
+                html += '<i class="fas fa-calendar-times text-4xl mb-3"></i>';
+                html += '<p>ไม่มีงานในวันนี้</p>';
+                html += '</div>';
+            } else {
+                dayJobs.forEach(function (job) {
+                    html += '<div class="border-l-4 border-purple-primary bg-gray-50 p-4 mb-3 rounded cursor-pointer hover:shadow-md transition" onclick="showJobDetail(\'' + job.trackingId + '\')">';
+                    html += '<div class="font-semibold text-purple-primary">' + job.jobName + '</div>';
+                    html += '<div class="text-sm text-gray-600 mt-1">';
+                    html += '<i class="fas fa-map-marker-alt mr-1"></i> ' + (job.patternNumber || '-');
+                    html += '<span class="ml-3"><i class="fas fa-clipboard-list mr-1"></i> ' + (job.jobType || '-') + '</span>';
+                    html += '</div>';
+                    html += '<div class="text-sm text-gray-500 mt-2">';
+                    html += '<i class="fas fa-clock mr-1"></i> วันรับคำร้อง: ' + moment(job.requestDate).format('DD/MM/YYYY');
+                    html += '</div>';
+                    html += '</div>';
+                });
+                html += '<div class="text-center text-sm text-purple-primary font-semibold mt-4">';
+                html += dayJobs.length + ' งาน';
+                html += '</div>';
+            }
+
+            html += '</div>';
+            $('#calendarContainer').html(html);
+        }
+
+        // Get jobs for specific date
+        function getJobsForDate(date) {
+            return staffJobs.filter(function (job) {
+                const appointmentDate = moment(job.appointmentDate);
+                return appointmentDate.isSame(date, 'day');
+            });
+        }
+        
+        // Show jobs for a specific day in a table
+        function showDayJobs(dayStr) {
+            const date = moment(dayStr);
+            const dayJobs = getJobsForDate(date);
+            
+            if (dayJobs.length === 0) return;
+            
+            const buddhistYear = date.year() + 543;
+            const dateTitle = date.format('dddd, DD MMMM ') + buddhistYear;
+            
+            let tableHtml = '<div class="overflow-x-auto">';
+            tableHtml += '<table class="w-full text-sm">';
+            tableHtml += '<thead>';
+            tableHtml += '<tr class="bg-gray-100">';
+            tableHtml += '<th class="py-2 px-3 text-left font-semibold">#</th>';
+            tableHtml += '<th class="py-2 px-3 text-left font-semibold">เลขคำร้อง</th>';
+            tableHtml += '<th class="py-2 px-3 text-left font-semibold">ชื่องาน</th>';
+            tableHtml += '<th class="py-2 px-3 text-left font-semibold">ประเภทงาน</th>';
+            tableHtml += '</tr>';
+            tableHtml += '</thead>';
+            tableHtml += '<tbody>';
+            
+            dayJobs.forEach(function(job, index) {
+                tableHtml += '<tr class="border-t hover:bg-purple-50 cursor-pointer transition" onclick="showJobDetail(\'' + job.trackingId + '\', \'' + dayStr + '\')">';
+                tableHtml += '<td class="py-3 px-3">' + (index + 1) + '</td>';
+                tableHtml += '<td class="py-3 px-3 text-purple-primary font-semibold">' + job.trackingId + '</td>';
+                tableHtml += '<td class="py-3 px-3">' + (job.jobName || '-') + '</td>';
+                tableHtml += '<td class="py-3 px-3">' + (job.jobType || '-') + '</td>';
+                tableHtml += '</tr>';
+            });
+            
+            tableHtml += '</tbody>';
+            tableHtml += '</table>';
+            tableHtml += '</div>';
+            
+            Swal.fire({
+                title: '<strong>' + dateTitle + '</strong>',
+                html: '<p class="text-gray-600 mb-4">งานทั้งหมด ' + dayJobs.length + ' รายการ</p>' + tableHtml,
+                width: '800px',
+                showConfirmButton: true,
+                confirmButtonText: 'ปิด',
+                confirmButtonColor: '#a80c8a',
+                customClass: {
+                    popup: 'rounded-xl',
+                    confirmButton: 'btn-primary px-6 py-2 rounded-lg'
+                }
+            });
+        }
+        
+        // Get step badge class
+        function getStepBadgeClass(step) {
+            if (step === 4) return 'bg-green-100 text-green-800';
+            if (step === 3) return 'bg-yellow-100 text-yellow-800';
+            if (step === 2) return 'bg-blue-100 text-blue-800';
+            return 'bg-gray-100 text-gray-800';
+        }
+
+        // Show job detail
+        function showJobDetail(trackingId, returnToDayStr) {
+            const job = staffJobs.find(function (j) { return j.trackingId === trackingId; });
+
+            if (!job) return;
+
+            let stepDatesHtml = '';
+            const stepLabels = ['รับคำร้อง', 'นัดสำรวจ', 'แจ้งค่าใช้จ่าย ผชฟ.', 'ผชฟ. ชำระเงิน'];
+            for (let i = 0; i < 4; i++) {
+                if (job.stepDates[i]) {
+                    stepDatesHtml += '<tr><td class="py-1">' + stepLabels[i] + ':</td><td class="py-1 font-semibold">' + moment(job.stepDates[i]).format('DD/MM/YYYY') + '</td></tr>';
+                }
+            }
+
+            // Check if location has coordinates
+            let mapHtml = '';
+            let lat, lon;
+            if (job.location && job.location.includes(',')) {
+                const coords = job.location.split(',');
+                lat = parseFloat(coords[0].trim());
+                lon = parseFloat(coords[1].trim());
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    mapHtml += '<tr><td colspan="2" class="pt-3"><div id="jobMap"></div></td></tr>';
+                    mapHtml += '<tr><td colspan="2" class="pb-2">';
+                    mapHtml += '<a href="https://www.google.com/maps?q=' + lat + ',' + lon + '" target="_blank" class="inline-block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition">';
+                    mapHtml += '<i class="fas fa-map-marked-alt mr-2"></i>เปิดใน Google Maps';
+                    mapHtml += '</a>';
+                    mapHtml += '</td></tr>';
+                }
+            }
+
+            Swal.fire({
+                title: '<strong>' + job.jobName + '</strong>',
+                html: '<div class="text-left">' +
+                    '<table class="w-full text-sm">' +
+                    '<tr><td class="py-1">เลขคำร้อง:</td><td class="py-1 font-semibold text-purple-primary">' + job.trackingId + '</td></tr>' +
+                    '<tr><td class="py-1">หมายเลขผัง:</td><td class="py-1 font-semibold">' + (job.patternNumber || '-') + '</td></tr>' +
+                    '<tr><td class="py-1">ประเภทงาน:</td><td class="py-1 font-semibold">' + (job.jobType || '-') + '</td></tr>' +
+                    '<tr><td class="py-1">ชื่อผู้ใช้ไฟ:</td><td class="py-1 font-semibold">' + (job.customerName || '-') + '</td></tr>' +
+                    '<tr><td class="py-1">เบอร์โทร:</td><td class="py-1 font-semibold">' + (job.customerPhone ? '<a href="tel:' + job.customerPhone + '" class="text-purple-primary hover:underline"><i class="fas fa-phone mr-1"></i>' + job.customerPhone + '</a>' : '-') + '</td></tr>' +
+                    mapHtml +
+                    '<tr><td colspan="2" class="pt-3 pb-1 font-semibold text-purple-primary">ความคืบหน้า (Step ' + job.currentStep + '/4)</td></tr>' +
+                    stepDatesHtml +
+                    (job.notes ? '<tr><td colspan="2" class="pt-3 pb-1 font-semibold">หมายเหตุ:</td></tr><tr><td colspan="2" class="text-gray-600">' + job.notes + '</td></tr>' : '') +
+                    '</table>' +
+                    '</div>',
+                icon: 'info',
+                confirmButtonText: returnToDayStr ? 'กลับไปที่ตาราง' : 'ปิด',
+                confirmButtonColor: '#a80c8a',
+                width: '600px',
+                didOpen: function() {
+                    if (mapHtml && !isNaN(lat) && !isNaN(lon)) {
+                        const map = L.map('jobMap').setView([lat, lon], 15);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; OpenStreetMap contributors'
+                        }).addTo(map);
+                        
+                        const purpleIcon = L.icon({
+                            iconUrl: 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32"><path fill="%23a80c8a" d="M12 0C7.802 0 4 3.403 4 7.602C4 11.8 7.469 16.812 12 24C16.531 16.812 20 11.8 20 7.602C20 3.403 16.199 0 12 0zM12 11C10.343 11 9 9.657 9 8C9 6.343 10.343 5 12 5C13.657 5 15 6.343 15 8C15 9.657 13.657 11 12 11z"/></svg>'),
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32],
+                            popupAnchor: [0, -32]
+                        });
+                        
+                        L.marker([lat, lon], {icon: purpleIcon})
+                            .addTo(map)
+                            .bindPopup('<b>' + (job.jobName || 'สถานที่') + '</b><br>' + (job.patternNumber || ''))
+                            .openPopup();
+                    }
+                },
+                didClose: function() {
+                    if (returnToDayStr) {
+                        showDayJobs(returnToDayStr);
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
