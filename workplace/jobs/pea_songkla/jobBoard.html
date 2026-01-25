@@ -515,41 +515,66 @@
 
         // Load staff list
         function loadStaffList() {
-            NProgress.start();
-            google.script.run
-                .withSuccessHandler(function (data) {
-                    NProgress.done();
-                    data = JSON.parse(data);
-                    if (data && data.length > 0) {
-                        $('#staffSelect').empty().append('<option value="">-- เลือกชื่อ --</option>');
-                        data.forEach(function (staff) {
-                            $('#staffSelect').append('<option value="' + staff + '">' + staff + '</option>');
-                        });
-                        // Load last selected staff from localStorage
-                        const lastSelectedStaff = localStorage.getItem('lastSelectedStaff');
-                        if (lastSelectedStaff) {
-                            $('#staffSelect').val(lastSelectedStaff);
-                            loadStaffJobs();
-                        }
-                    } else {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'ไม่มีข้อมูลผู้รับผิดชอบ',
-                            text: 'ไม่พบรายชื่อผู้รับผิดชอบในระบบ',
-                            confirmButtonColor: '#a80c8a',
-                            confirmButtonText: 'ตกลง',
-                            customClass: {
-                                popup: 'rounded-xl',
-                                confirmButton: 'btn-primary px-6 py-2 rounded-lg'
-                            }
-                        });
+            // NProgress.start();
+            // google.script.run
+            //     .withSuccessHandler(function (data) {
+            //         NProgress.done();
+            //         data = JSON.parse(data);
+            //         if (data && data.length > 0) {
+            //             $('#staffSelect').empty().append('<option value="">-- เลือกชื่อ --</option>');
+            //             data.forEach(function (staff) {
+            //                 $('#staffSelect').append('<option value="' + staff + '">' + staff + '</option>');
+            //             });
+            //             // Load last selected staff from localStorage
+            //             const lastSelectedStaff = localStorage.getItem('lastSelectedStaff');
+            //             if (lastSelectedStaff) {
+            //                 $('#staffSelect').val(lastSelectedStaff);
+            //                 loadStaffJobs();
+            //             }
+            //         } else {
+            //             Swal.fire({
+            //                 icon: 'warning',
+            //                 title: 'ไม่มีข้อมูลผู้รับผิดชอบ',
+            //                 text: 'ไม่พบรายชื่อผู้รับผิดชอบในระบบ',
+            //                 confirmButtonColor: '#a80c8a',
+            //                 confirmButtonText: 'ตกลง',
+            //                 customClass: {
+            //                     popup: 'rounded-xl',
+            //                     confirmButton: 'btn-primary px-6 py-2 rounded-lg'
+            //                 }
+            //             });
+            //         }
+            //     })
+            //     .withFailureHandler(function (error) {
+            //         NProgress.done();
+            //         console.error('Error loading staff:', error);
+            //     })
+            //     .getStaffList();
+            const staffList = <?!= staffList ?>;
+            if (staffList && staffList.length > 0) {
+                $('#staffSelect').empty().append('<option value="">-- เลือกชื่อ --</option>');
+                staffList.forEach(function (staff) {
+                    $('#staffSelect').append('<option value="' + staff + '">' + staff + '</option>');
+                });
+                // Load last selected staff from localStorage
+                const lastSelectedStaff = localStorage.getItem('lastSelectedStaff');
+                if (lastSelectedStaff) {
+                    $('#staffSelect').val(lastSelectedStaff);
+                    loadStaffJobs();
+                }
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ไม่มีข้อมูลผู้รับผิดชอบ',
+                    text: 'ไม่พบรายชื่อผู้รับผิดชอบในระบบ',
+                    confirmButtonColor: '#a80c8a',
+                    confirmButtonText: 'ตกลง',
+                    customClass: {
+                        popup: 'rounded-xl',
+                        confirmButton: 'btn-primary px-6 py-2 rounded-lg'
                     }
-                })
-                .withFailureHandler(function (error) {
-                    NProgress.done();
-                    console.error('Error loading staff:', error);
-                })
-                .getStaffList();
+                });
+            }
         }
 
         // Load jobs for selected staff

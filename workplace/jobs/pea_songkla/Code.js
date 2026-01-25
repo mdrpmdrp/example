@@ -34,6 +34,19 @@ function validateDate(date, convertToBuddhist = true) {
   return null;
 }
 
+// Validate phone number format
+function validatePhoneNumber(phoneNumber){
+  if(!phoneNumber) return null;
+  const cleaned = phoneNumber.toString().replace(/\D/g, '');
+  if(cleaned.length === 10){
+    return cleaned;
+  }
+  if(cleaned.length === 9){
+    return '0' + cleaned;
+  }
+  return null;
+}
+
 // Get current sheet name based on Buddhist year
 function getCurrentSheetName() {
   return `งานขยายเขตฯ ${getBuddhistYear()}`;
@@ -69,7 +82,12 @@ function doGet(e) {
     const templateFile = isJobboard ? 'jobBoard' : 'index';
     const title = isJobboard ? 'กระดานงานบริการลูกค้า กฟจ.สงขลา' : 'บริการลูกค้าและสัมพันธ์ กฟจ.สงขลา';
     
-    return HtmlService.createTemplateFromFile(templateFile).evaluate()
+    let html = HtmlService.createTemplateFromFile(templateFile)
+    if(isJobboard){
+      html.staffList = getStaffList();
+    }
+    
+    return html.evaluate()
         .setTitle(title)
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME)
@@ -143,12 +161,18 @@ function getStaffList() {
       return JSON.stringify([]);
     }
     
-    const data = sheet.getDataRange().getValues();
+    const staffColumn = COLUMNS['ผู้รับผิดชอบแฟ้มงาน'] + 1;
+    const lastRow = sheet.getLastRow();
+    
+    if (lastRow <= 1) {
+      return JSON.stringify([]);
+    }
+    
+    const staffData = sheet.getRange(2, staffColumn, lastRow - 1, 1).getValues();
     const staffSet = new Set();
     
-    // Skip header row, collect unique staff names
-    for (let i = 1; i < data.length; i++) {
-      const staffName = data[i][COLUMNS['ผู้รับผิดชอบแฟ้มงาน']];
+    for (let i = 0; i < staffData.length; i++) {
+      const staffName = staffData[i][0];
       if (staffName && staffName.toString().trim() !== '') {
         staffSet.add(staffName.toString().trim());
       }
@@ -191,7 +215,7 @@ function getJobsByStaff(staffName) {
           jobName: data[i][COLUMNS['ชื่องาน']] || null,
           customerCoords: data[i][COLUMNS['สถานที่/พิกัด']] || null,
           customerName: data[i][COLUMNS['ชื่อผู้ใช้ไฟ']] || null,
-          customerPhone: data[i][COLUMNS['เบอร์โทร']] || null,
+          customerPhone: validatePhoneNumber(data[i][COLUMNS['เบอร์โทร']]) || null,
           requestDate: validateDate(data[i][COLUMNS['วันรับคำร้อง']], false) || null,
           appointmentDate: validateDate(data[i][COLUMNS['วันที่นัดสำรวจ (Survey Date)']], false) || null,
           jobType: data[i][COLUMNS['ประเภทงาน']] || 'ไม่ระบุ',
