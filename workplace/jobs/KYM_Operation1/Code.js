@@ -786,20 +786,6 @@ function saveKYM2Record(record) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let kym2Sheet = ss.getSheetByName('KYM2_Records');
 
-    // Create sheet if it doesn't exist
-    if (!kym2Sheet) {
-      Logger.log('⚠️ KYM2_Records sheet not found. Creating new sheet...');
-      kym2Sheet = ss.insertSheet('KYM2_Records');
-      let headers = [
-        'Timestamp', 'ID', 'Ref_ID', 'Submitted_Date', 'Approval_Status', 'Latest_Status',
-        'Approval_Date', 'Reason', 'Operator_Username', 'Operator_Name', 'Created_At', 'Updated_At'
-      ];
-      kym2Sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      kym2Sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#FF6B35').setFontColor('#FFFFFF');
-      kym2Sheet.setFrozenRows(1);
-      Logger.log('✅ KYM2_Records sheet created successfully');
-    }
-
     // Validate required fields
     const missingFields = [];
 
@@ -809,15 +795,15 @@ function saveKYM2Record(record) {
     if (!record.submittedDate || record.submittedDate.trim() === '') {
       missingFields.push('Submitted Date');
     }
-    if (!record.approvalStatus || record.approvalStatus.trim() === '') {
-      missingFields.push('Approval Status');
-    }
+    // if (!record.approvalStatus || record.approvalStatus.trim() === '') {
+    //   missingFields.push('Approval Status');
+    // }
     if (!record.latestStatus || record.latestStatus.trim() === '') {
       missingFields.push('Latest Status');
     }
-    if (!record.approvalDate || record.approvalDate.trim() === '') {
-      missingFields.push('Approval Date');
-    }
+    // if (!record.approvalDate || record.approvalDate.trim() === '') {
+    //   missingFields.push('Approval Date');
+    // }
 
     if (missingFields.length > 0) {
       lock.releaseLock();
