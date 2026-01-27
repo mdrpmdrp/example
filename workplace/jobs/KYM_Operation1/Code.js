@@ -87,6 +87,18 @@ function setupSheets() {
     callSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#FF6B35').setFontColor('#FFFFFF');
     callSheet.setFrozenRows(1);
   }
+  // Create KYM2 Records Sheet
+  let kym2Sheet = ss.getSheetByName('KYM2_Records');
+  if (!kym2Sheet) {
+    kym2Sheet = ss.insertSheet('KYM2_Records');
+    let headers = [
+      'Timestamp', 'ID', 'Ref_ID', 'Submitted_Date', 'Approval_Status', 'Latest_Status',
+      'Approval_Date', 'Reason', 'Operator_Username', 'Operator_Name', 'Created_At', 'Updated_At'
+    ];
+    kym2Sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    kym2Sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#FF6B35').setFontColor('#FFFFFF');
+    kym2Sheet.setFrozenRows(1);
+  }
   SpreadsheetApp.getUi().alert('Setup Complete! All sheets created successfully.\n\nDemo Accounts:\n- admin / admin123\n- supervisor / super123\n- employee / emp123');
   return { success: true, message: 'Setup complete' };
 }
@@ -755,6 +767,162 @@ function getCallLogs(startDate, endDate) {
     return JSON.stringify({ success: true, data: logs });
   } catch (e) {
     Logger.log('Get call logs error: ' + e.toString());
+    return JSON.stringify({ success: false, error: e.toString() });
+  }
+}
+
+// ==========================================
+// KYM2 Functions
+// ==========================================
+function saveKYM2Record(record) {
+  let lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    return JSON.stringify({ success: false, error: 'Could not obtain lock' });
+  }
+  try {
+    Logger.log('=== saveKYM2Record START ===');
+    Logger.log('📥 Received record: ' + JSON.stringify(record));
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let kym2Sheet = ss.getSheetByName('KYM2_Records');
+
+    // Create sheet if it doesn't exist
+    if (!kym2Sheet) {
+      Logger.log('⚠️ KYM2_Records sheet not found. Creating new sheet...');
+      kym2Sheet = ss.insertSheet('KYM2_Records');
+      let headers = [
+        'Timestamp', 'ID', 'Ref_ID', 'Submitted_Date', 'Approval_Status', 'Latest_Status',
+        'Approval_Date', 'Reason', 'Operator_Username', 'Operator_Name', 'Created_At', 'Updated_At'
+      ];
+      kym2Sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      kym2Sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#FF6B35').setFontColor('#FFFFFF');
+      kym2Sheet.setFrozenRows(1);
+      Logger.log('✅ KYM2_Records sheet created successfully');
+    }
+
+    // Validate required fields
+    const missingFields = [];
+
+    if (!record.refId || record.refId.trim() === '') {
+      missingFields.push('Ref ID');
+    }
+    if (!record.submittedDate || record.submittedDate.trim() === '') {
+      missingFields.push('Submitted Date');
+    }
+    if (!record.approvalStatus || record.approvalStatus.trim() === '') {
+      missingFields.push('Approval Status');
+    }
+    if (!record.latestStatus || record.latestStatus.trim() === '') {
+      missingFields.push('Latest Status');
+    }
+    if (!record.approvalDate || record.approvalDate.trim() === '') {
+      missingFields.push('Approval Date');
+    }
+
+    if (missingFields.length > 0) {
+      lock.releaseLock();
+      Logger.log('❌ Validation failed - missing fields: ' + missingFields.join(', '));
+      return JSON.stringify({
+        success: false,
+        error: 'กรุณากรอกข้อมูลให้ครบถ้วน: ' + missingFields.join(', ')
+      });
+    }
+
+    Logger.log('✅ Validation passed - all required fields present');
+
+    const id = record.id || Date.now();
+    const timestamp = new Date();
+
+    // Save to sheet
+    kym2Sheet.appendRow([
+      timestamp,                      // Timestamp
+      id,                             // ID
+      ("'" + record.refId) || '',     // Ref_ID (with leading apostrophe to preserve format)
+      record.submittedDate || '',     // Submitted_Date
+      record.approvalStatus || '',    // Approval_Status
+      record.latestStatus || '',      // Latest_Status
+      record.approvalDate || '',      // Approval_Date
+      record.reason || '',            // Reason
+      record.operator || '',          // Operator_Username
+      record.operatorName || '',      // Operator_Name
+      timestamp,                      // Created_At
+      ''                              // Updated_At
+    ]);
+
+    Logger.log('✅ KYM2 Record saved successfully with ID: ' + id);
+    Logger.log('=== saveKYM2Record END ===');
+    lock.releaseLock();
+    return JSON.stringify({
+      success: true,
+      message: 'บันทึกข้อมูล KYM 2 สำเร็จ',
+      id: id
+    });
+
+  } catch (e) {
+    Logger.log('❌ ERROR in saveKYM2Record: ' + e.toString());
+    Logger.log('❌ Error stack: ' + e.stack);
+    lock.releaseLock();
+    return JSON.stringify({
+      success: false,
+      error: 'เกิดข้อผิดพลาดในการบันทึก: ' + e.toString()
+    });
+  }
+}
+
+function getKYM2Records(startDate, endDate) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let kym2Sheet = ss.getSheetByName('KYM2_Records');
+
+    // Create sheet if it doesn't exist
+    if (!kym2Sheet) {
+      Logger.log('⚠️ KYM2_Records sheet not found. Creating new sheet...');
+      kym2Sheet = ss.insertSheet('KYM2_Records');
+      let headers = [
+        'Timestamp', 'ID', 'Ref_ID', 'Submitted_Date', 'Approval_Status', 'Latest_Status',
+        'Approval_Date', 'Reason', 'Operator_Username', 'Operator_Name', 'Created_At', 'Updated_At'
+      ];
+      kym2Sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      kym2Sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#FF6B35').setFontColor('#FFFFFF');
+      kym2Sheet.setFrozenRows(1);
+      Logger.log('✅ KYM2_Records sheet created successfully');
+      return JSON.stringify({ success: true, data: [] });
+    }
+
+    const data = kym2Sheet.getDataRange().getValues();
+    const records = [];
+
+    // Define date range - if not provided, get all records
+    const start = startDate ? new Date(startDate) : new Date(0);
+    const end = endDate ? new Date(endDate) : new Date(2100, 0, 1);
+
+    // Skip header row (row 0)
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const recordDate = new Date(row[0]); // Timestamp column
+
+      if (recordDate >= start && recordDate <= end) {
+        records.push({
+          timestamp: row[0],
+          id: row[1],
+          refId: row[2],
+          submittedDate: row[3],
+          approvalStatus: row[4],
+          latestStatus: row[5],
+          approvalDate: row[6],
+          reason: row[7],
+          operator: row[8],
+          operatorName: row[9],
+          createdAt: row[10],
+          updatedAt: row[11]
+        });
+      }
+    }
+
+    Logger.log('Get KYM2 records success: ' + records.length + ' records');
+    return JSON.stringify({ success: true, data: records });
+  } catch (e) {
+    Logger.log('Get KYM2 records error: ' + e.toString());
     return JSON.stringify({ success: false, error: e.toString() });
   }
 }
