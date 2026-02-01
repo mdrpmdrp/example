@@ -1,290 +1,437 @@
-const LINE_ACCESS_TOKEN = "19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU="
-const GEMINI_API_KEY = "AIzaSyD6fNo8sHy7-3mPwXp0DWFR8sdwJezKGBw";
-const SHEET_ID = "1fqrI-XEOflI76NqolzuagMCJPxazn-EhaUC3hZgk7TA";
-const SHEET_NAME = "AIread";
-function doPost(e) {
-    Logger = BetterLog.useSpreadsheet()
-    LineBotWebhook.init(e, LINE_ACCESS_TOKEN, true).forEach(function (webhook) {
-        try {
-            if (webhook.eventType !== "message" || webhook.messageType !== "text" || !webhook.message || webhook.message.toString().trim() === "") {
-                return webhook.ok
-            }
+/**
+ * Main entry point and menu functions
+ * Depends on: constants.js, utils.js, fileOperations.js, sheetOperations.js,
+ *             dailyRecordUtils.js, summaryBuilder.js, sheetFormatter.js
+ */
 
-            let rawText = webhook.message.toString().trim();
-            let chatTime = formatBangkokTime_(webhook.timestamp);
-            let parsed = callGeminiToParse_(chatTime, rawText);
-            let row = normalizeToRow_(parsed, chatTime, rawText);
-            appendRow_(row);
-
-            return webhook.replyToline(["Save to sheet completed. Thank you!"],true);
-        }
-        catch (e) { //with stack tracing if your exceptions bubble up to here
-            e = (typeof e === 'string') ? new Error(e) : e;
-            Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s" .', e.name || '',
-                e.message || '', e.lineNumber || '', e.fileName || '', e.stack || '');
-            throw e;
-        }
-    })
+function onOpen() {
+    let ui = SpreadsheetApp.getUi();
+    ui.createMenu('จัดการใบส่งของ')
+        .addItem('ย้ายไฟล์ที่เปลี่ยนชื่อแล้ว', 'moveAlreadyRenamedFiles')
+        .addItem('ย้ายไฟล์ที่จ่ายเงินแล้ว', 'saveAlreadyPaidFileToPaidSheet')
+        .addSeparator()
+        .addItem('ย้ายใบค้างส่วนลด', 'moveDiscountBillFiles')
+        .addItem('ลบใบค้างส่วนลดที่จ่ายเงินแล้ว', 'deletePaidDiscountBillFiles')
+        .addSeparator()
+        .addItem('อัปเดต Daily Records', 'updateDailyRecordSummary')
+        .addSeparator()
+        .addItem('อัปเดตสรุปรายปี', 'updateYearSummary')
+        .addToUi();
+    ui.createMenu('จัดการใบรับของ')
+        .addItem('ย้ายไฟล์ที่เปลี่ยนชื่อแล้ว', 'moveAlreadyRenamedCreditorFiles')
+        .addItem('ย้ายไฟล์ที่จ่ายเงินแล้ว', 'saveAlreadyPaidCreditorFileToPaidSheet')
+        .addSeparator()
+        .addItem('อัปเดตสรุปรายปี', 'updateCreditorYearSummary')
+        .addToUi();
 }
 
-// ====== TIME ======
-function formatBangkokTime_(unixMs) {
-    return Utilities.formatDate(new Date(unixMs), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
+function moveAlreadyRenamedFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let masterSheet = ss.getSheetByName(SHEET_MASTER);
+        let move_files = [];
+
+        let processFile = (file) => {
+            let file_name = file.getName();
+            let parsedData = parseFileName(file_name);
+
+            if (!parsedData) {
+                Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
+                return null;
+            }
+
+            let fileId = file.getId();
+            let row_data = createRowData(parsedData, fileId);
+            masterSheet.appendRow(row_data);
+
+            let yearFolder = getFolder(parsedData.year, UPLOAD_FOLDER_ID);
+            let monthFolder = getFolder(parsedData.month, yearFolder.getId());
+
+            return {
+                id: fileId,
+                parent: ACHIVE_FOLDER_ID,
+                target: monthFolder.getId()
+            };
+        };
+
+        move_files = processFilesFromFolder(ACHIVE_FOLDER_ID, processFile);
+
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
+
+        sortSheet(masterSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
+
+        updateYearSummary();
+    });
 }
 
-// ====== GEMINI ======
-function callGeminiToParse_(chatTime, rawText) {
-    const apiKey = GEMINI_API_KEY;
-    const url =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" +
-        encodeURIComponent(apiKey);
+function moveAlreadyRenamedCreditorFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let creditorMasterSheet = ss.getSheetByName(SHEET_CREDITOR_MASTER);
+        let move_files = [];
 
-    const branchList = getBranchListText_();
+        let processFile = (file) => {
+            let file_name = file.getName();
+            let parsedData = parseFileName(file_name);
 
-    const instruction =
-        `Return JSON only. No markdown. No explanation.
-Keys exactly:
-chat_time, appointment_date, owner_branch, appointment_branch, program, channel, customer_type, phone_text, notes
-
-Rules:
-- appointment_date must be M/D/2026 only. Use year 2026 only.
-- If date uses BE year like 69 or 2569, treat it as 2026.
-- Remove appointment time from appointment_date.
-- appointment_branch must be full branch name using the branch list.
-- owner_branch: if owner contains an L# code, map to full branch name using the branch list.
-- phone_text: digits only (remove '-') OR email/HN if no phone; always prefix with a single quote (').
-- notes: include other instructions such as reschedule/change time/change branch/add program; else empty string.
-
-Branch list:
-${branchList}
-`;
-
-    const prompt =
-        `chat_time: ${chatTime}
-text:
-${rawText}`;
-
-    const req = {
-        contents: [
-            {
-                role: "user",
-                parts: [{ text: instruction + "\n\n" + prompt }]
+            if (!parsedData) {
+                Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
+                return null;
             }
-        ],
-        generationConfig: {
-            temperature: 0
-        }
-    };
 
-    const res = UrlFetchApp.fetch(url, {
-        method: "post",
-        contentType: "application/json",
-        payload: JSON.stringify(req),
-        muteHttpExceptions: true
+            let fileId = file.getId();
+            let row_data = createRowData(parsedData, fileId);
+            creditorMasterSheet.appendRow(row_data);
+
+            let yearFolder = getFolder(parsedData.year, UPLOAD_FOLDER_ID);
+            let monthFolder = getFolder(parsedData.month, yearFolder.getId());
+
+            return {
+                id: fileId,
+                parent: ACHIVE_FOLDER_ID,
+                target: monthFolder.getId()
+            };
+        };
+
+        move_files = processFilesFromFolder(ACHIVE_CREDITOR_FOLDER_ID, processFile);
+
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
+
+        sortSheet(creditorMasterSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
+
+        updateCreditorYearSummary();
+    });
+}
+
+function moveDiscountBillFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let masterSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
+        let move_files = [];
+
+        let processFile = (file) => {
+            let file_name = file.getName();
+            let parsedData = parseFileName(file_name);
+
+            if (!parsedData) {
+                Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
+                return null;
+            }
+
+            let fileId = file.getId();
+            let row_data = createRowData(parsedData, fileId);
+            masterSheet.appendRow(row_data);
+
+            let yearFolder = getFolder(parsedData.year, DISCOUNT_BILL_WAITING_PAY_FOLDER_ID);
+            let monthFolder = getFolder(parsedData.month, yearFolder.getId());
+
+            return {
+                id: fileId,
+                parent: ACHIVE_DISCOUNT_BILL_FOLDER_ID,
+                target: monthFolder.getId()
+            };
+        };
+
+        move_files = processFilesFromFolder(ACHIVE_DISCOUNT_BILL_FOLDER_ID, processFile);
+
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
+
+        sortSheet(masterSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
+
+        updateYearSummary();
+    });
+}
+
+function saveAlreadyPaidFileToPaidSheet() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let masterSheet = ss.getSheetByName(SHEET_MASTER);
+        let paidSheet = ss.getSheetByName(SHEET_PAID);
+
+        let move_files = movePaidRecords(masterSheet, paidSheet);
+
+        sortSheet(paidSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
+
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
+
+        updateYearSummary();
+    });
+}
+
+function deletePaidDiscountBillFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
+        let discountAlreadyPaidSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL_ALREADY_PAID);
+        let discountData = discountBillSheet.getDataRange().getValues();
+        let delete_fileIds = [];
+
+        for (let i = discountData.length - 1; i >= 1; i--) {
+            let row = discountData[i];
+            if (row[COL_PAIDFLAG - 1] === 'Y') {
+                let fileId = row[COL_FILEID - 1];
+                delete_fileIds.push(fileId);
+                discountBillSheet.getRange(i + 1, 1, 1, discountData[0].length -1).copyTo(discountAlreadyPaidSheet.getRange(discountAlreadyPaidSheet.getLastRow() + 1, 1));
+                discountBillSheet.deleteRow(i + 1);
+            }
+        }
+
+        if (delete_fileIds.length > 0) {
+            deleteFiles(delete_fileIds);
+        }
+        updateYearSummary();
+    });
+}
+
+function updateYearSummary() {
+    let ss = getSpreadsheet();
+    let masterSheet = ss.getSheetByName(SHEET_MASTER);
+    let paidSheet = ss.getSheetByName(SHEET_PAID);
+    let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
+    let discountAlreadyPaidSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL_ALREADY_PAID);
+    let yearSheet = ss.getSheetByName(SHEET_YEAR);
+    let paidSummaryYearlySheet = ss.getSheetByName(SHEET_PAID_SUMMARY_YEARLY);
+
+    // Get all data at once
+    let masterData = masterSheet.getDataRange().getValues().slice(1);
+    let paidData = paidSheet.getDataRange().getValues().slice(1);
+    let discountData = [...discountBillSheet.getDataRange().getValues().slice(1), ...discountAlreadyPaidSheet.getDataRange().getValues().slice(1)];
+
+    // Calculate summary
+    let summary = calculateYearSummary(masterData, paidData, discountData);
+
+    // Prepare data for paid summary yearly sheet
+    let data_to_calculate = masterData.concat(paidData).filter(row => row[COL_YEAR - 1] !== '');
+    let groupByYear = groupBy(data_to_calculate, row => row[COL_YEAR - 1]);
+
+    // Clear and setup headers
+    paidSummaryYearlySheet.getDataRange().clearContent();
+    let COL_YEAR_MAP = {};
+
+    Object.keys(groupByYear).sort().forEach((year, i) => {
+        const colIndex = 2 + (i * 4);
+        paidSummaryYearlySheet.getRange(1, colIndex, 3, 4).setValues([
+            [year, "", "", ""],
+            ["ใบส่งของ", "", "ใบจ่ายเงิน", ""],
+            ["จำนวน", "ยอดเงิน", "จำนวน", "ยอดเงิน"]
+        ]).setFontWeight("bold");
+
+        paidSummaryYearlySheet.getRange(1, colIndex, 1, 4).merge().setHorizontalAlignment("center");
+        paidSummaryYearlySheet.getRange(2, colIndex, 1, 2).merge().setHorizontalAlignment("center");
+        paidSummaryYearlySheet.getRange(2, colIndex + 2, 1, 2).merge().setHorizontalAlignment("center");
+
+        COL_YEAR_MAP[year] = colIndex;
     });
 
-    const code = res.getResponseCode();
-    const txt = res.getContentText();
-    if (code < 200 || code >= 300) throw new Error("Gemini API error " + code + ": " + txt);
+    // Generate and format monthly summary
+    let summaryData = generateMonthlySummary(data_to_calculate, COL_YEAR_MAP);
+    formatPaidSummarySheet(paidSummaryYearlySheet, summaryData, COL_YEAR_MAP);
 
-    const data = JSON.parse(txt);
-    const out = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!out) throw new Error("Gemini returned empty content: " + txt);
-
-    // Strip markdown code blocks if present
-    let jsonText = out.trim();
-    if (jsonText.startsWith("```")) {
-        jsonText = jsonText.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "");
+    // Write summary to year sheet
+    yearSheet.getRange(2, 1, yearSheet.getLastRow(), yearSheet.getLastColumn()).clearContent();
+    if (summary.length > 0) {
+        yearSheet.getRange(2, 1, summary.length, summary[0].length).setValues(summary);
     }
 
-    // Must be JSON
-    return JSON.parse(jsonText);
+    sortSheet(yearSheet, [
+        { column: 1, ascending: true },
+        { column: 3, ascending: true }
+    ]);
 }
 
-// ====== NORMALIZE TO YOUR RULES ======
-function normalizeToRow_(obj, chatTime, rawText) {
-    const safe = (v) => (v === null || v === undefined) ? "" : String(v).trim();
+function updateDailyRecordSummary() {
+    const ss = getSpreadsheet();
+    
+    // Load data from sheets
+    const listSheet = ss.getSheetByName(SHEET_LISTS);
+    const [header, ...data] = listSheet.getDataRange().getValues();
+    const lists = buildListsFromSheet(header, data);
+    
+    const dailyRecordSheet = ss.getSheetByName(SHEET_DAILY_RECORD);
+    const dailyRecordData = dailyRecordSheet.getDataRange().getValues().filter(row => row[0]);
+    const dailyHeader = dailyRecordData.shift();
+    
+    // Generate year and month columns
+    const yearColumns = generateYearColumns(dailyRecordData);
+    const monthColumn = generateMonthColumns();
+    const monthColumnLength = monthColumn.length;
+    const totalCols = yearColumns.length * monthColumnLength;
+    
+    // Build header rows
+    const [yearRow, monthRow] = buildSummaryHeaders(yearColumns, monthColumn);
+    
+    // Initialize summary structure
+    const {
+        summary_array,
+        formatListNameRow,
+        formatSumRow,
+        sumIncomeRowIndex,
+        sumExpenseRowIndex
+    } = initializeSummaryStructure(lists, totalCols);
+    
+    // Add calculated rows (net income, carried forward, total)
+    const { netAmountRow, grandNetRow } = addCalculatedRows(
+        summary_array,
+        sumIncomeRowIndex,
+        sumExpenseRowIndex,
+        totalCols,
+        formatSumRow
+    );
+    
+    // Transform and populate data
+    const headerIndexMap = createHeaderIndexMap(dailyHeader);
+    const transformedData = transformDailyRecords(dailyRecordData, headerIndexMap);
+    const monthIndexMap = createMonthIndexMap(yearColumns, monthColumn);
+    
+    populateSummaryData(
+        summary_array,
+        transformedData,
+        monthIndexMap,
+        monthColumn,
+        summary_array[grandNetRow-2],
+        lists
+    );
+    
+    // Prepend header rows
+    summary_array.unshift(yearRow, monthRow);
+    
+    // Build yearly and bank summaries
+    const year_summary_array = buildYearlySummary(summary_array, yearColumns, monthColumnLength);
+    const bank_summary_array = buildBankSummary(yearColumns, lists, dailyRecordData, headerIndexMap);
+    
+    // Get sheets
+    const dailyRecordSummarySheet = ss.getSheetByName(SHEET_DAILY_RECORD_SUMMARY);
+    const yearlySummarySheet = ss.getSheetByName(SHEET_YEARLY_SUMMARY);
+    const bankSummarySheet = ss.getSheetByName(SHEET_BANK_SUMMARY);
+    
+    // Clear and write data (batch operations)
+    batchClearAndWrite(
+        dailyRecordSummarySheet,
+        yearlySummarySheet,
+        bankSummarySheet,
+        summary_array,
+        year_summary_array,
+        bank_summary_array
+    );
+    
+    // Apply all formatting
+    formatAllSummarySheets(
+        dailyRecordSummarySheet,
+        yearlySummarySheet,
+        bankSummarySheet,
+        {
+            formatListNameRow,
+            formatSumRow,
+            netAmountRow: netAmountRow ? netAmountRow + 2 : null, // +2 for header rows
+            summary_array_length: summary_array.length,
+            year_summary_array_length: year_summary_array.length
+        },
+        yearColumns
+    );
+}
 
-    // Date -> enforce M/D/2026 from either obj or rawText
-    let appointmentDate = safe(obj.appointment_date);
-    appointmentDate = normalizeDateTo2026_(appointmentDate, rawText);
-
-    // Branch mapping
-    let ownerBranch = normalizeBranch_(safe(obj.owner_branch));
-    let apptBranch = normalizeBranch_(safe(obj.appointment_branch));
-
-    let program = safe(obj.program);
-    let channel = safe(obj.channel);
-    let ctype = safe(obj.customer_type);
-
-    // Phone text
-    let phone = normalizePhoneText_(safe(obj.phone_text));
-
-    // Notes
-    let notes = safe(obj.notes);
-    if (!notes) {
-        // If raw contains change keywords, keep full raw as notes
-        const keywords = ["เลื่อน", "ขยับ", "เพิ่มโปรแกรม", "เปลี่ยนสาขา", "ย้ายสาขา", "เลื่อนเวลา", "เลื่อนวัน", "เลื่อนวันและเวลา"];
-        if (keywords.some(k => rawText.includes(k))) notes = rawText;
+/**
+ * Batch clear and write operations for better performance
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} dailySheet - Daily summary sheet
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} yearlySheet - Yearly summary sheet
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} bankSheet - Bank summary sheet
+ * @param {Array} dailyData - Daily summary data
+ * @param {Array} yearlyData - Yearly summary data
+ * @param {Array} bankData - Bank summary data
+ */
+function batchClearAndWrite(dailySheet, yearlySheet, bankSheet, dailyData, yearlyData, bankData) {
+    // keep existing Data
+    const bankExistingData = bankSheet.getDataRange().getValues();
+    
+    // Clear all sheets at once
+    dailySheet.getRange(1, 1, dailySheet.getMaxRows(), dailySheet.getMaxColumns()).clear();
+    yearlySheet.getRange(1, 1, yearlySheet.getMaxRows(), yearlySheet.getMaxColumns()).clear();
+    bankSheet.getRange(1, 1, bankSheet.getMaxRows(), bankSheet.getMaxColumns()).clear();
+    
+    // Write all data at once
+    if (dailyData.length > 0 && dailyData[0].length > 0) {
+        dailySheet.getRange(1, 1, dailyData.length, dailyData[0].length).setValues(dailyData);
     }
+    
+    if (yearlyData.length > 0 && yearlyData[0].length > 0) {
+        yearlySheet.getRange(1, 1, yearlyData.length, yearlyData[0].length).setValues(yearlyData);
+    }
+    
+    if (bankData.length > 0 && bankData[0].length > 0) {
+        bankData = bankData.map((row, rowIndex) => {
+            if(rowIndex < 2) return row; // Keep header rows
+            let findIndex = bankExistingData.findIndex(existingRow => existingRow[0] === row[0]);
+            if(findIndex === -1) return row; // New bank, keep as is
+            // Existing bank, keep current balance
+            let existingBalance = bankExistingData[findIndex][1];
+            let newRow = [...row];
+            newRow[1] = existingBalance;
+            return newRow;
+        })
+        bankSheet.getRange(1, 1, bankData.length, bankData[0].length).setValues(bankData);
 
-    // Output row order:
-    // Chat Time | วันที่นัด | ผู้ดูแล | นัดสาขา | โปรแกรม | ช่องทาง | ประเภท | เบอร์โทร | หมายเหตุ
+    }
+}
+
+function generateYearColumns(dailyRecordData) {
+    let years = new Set();
+    dailyRecordData.forEach(row => {
+        let year = new Date(row[0]).getFullYear();
+        years.add(year);
+    });
+    return Array.from(years).sort();
+}
+
+function generateMonthColumns() {
     return [
-        chatTime,
-        appointmentDate,
-        ownerBranch,
-        apptBranch,
-        program,
-        channel,
-        ctype,
-        phone,
-        notes
-    ];
+        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+    ]
 }
 
-function normalizeDateTo2026_(dateText, rawText) {
-    // If already M/D/2026
-    if (/^\d{1,2}\/\d{1,2}\/2026$/.test(dateText)) return dateText;
+function createSummaryFormula(startRow, endRow, colIndex) {
+    return `=SUM(${getColumnLetter(colIndex)}${startRow}:${getColumnLetter(colIndex)}${endRow})`;
+}
 
-    // Try find in raw: DD/MM/YY or DD/MM/YYYY (BE)
-    const m = rawText.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
-    if (m) {
-        const dd = parseInt(m[1], 10);
-        const mm = parseInt(m[2], 10);
-        return `${mm}/${dd}/2026`;
+function getColumnLetter(colIndex) {
+    // Cache common column letters for performance
+    if (colIndex <= 26) {
+        return String.fromCharCode(64 + colIndex);
     }
-
-    // If Gemini gave DD/MM/.., convert
-    const m2 = dateText.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-    if (m2) {
-        const dd = parseInt(m2[1], 10);
-        const mm = parseInt(m2[2], 10);
-        return `${mm}/${dd}/2026`;
+    
+    let letter = '';
+    while (colIndex > 0) {
+        const mod = (colIndex - 1) % 26;
+        letter = String.fromCharCode(65 + mod) + letter;
+        colIndex = Math.floor((colIndex - mod) / 26);
     }
-
-    return dateText || "";
-}
-
-function normalizePhoneText_(v) {
-    if (!v) return "";
-
-    let s = String(v).trim();
-
-    //   if email or HN, keep as-is (after normalizing apostrophe and removing hyphens/spaces)
-    const isEmail = s.includes("@");
-    const isHN = /HN/i.test(s);
-
-    if (isEmail || isHN) {
-        return s
-    }
-    // else digits only
-    else {
-        // Normalize curly apostrophe to plain
-        s = s.replace(/\D/g, "");
-        return "'" + s;
-    }
-}
-
-function normalizeBranch_(text) {
-    if (!text) return "";
-
-    const map = getBranchMap_();
-
-    // If contains L#
-    const m = text.match(/(L\d{1,2})/i);
-    if (m) {
-        const code = m[1].toUpperCase();
-        return map[code] || text;
-    }
-
-    // Match by Thai name substring
-    const keys = Object.keys(map);
-    for (const k of keys) {
-        const full = map[k];
-        const thai = full.replace(/^L\d{1,2}\s+/, "");
-        if (thai && text.includes(thai)) return full;
-    }
-
-    return text;
-}
-
-// ====== APPEND TO SHEET ======
-function appendRow_(row) {
-
-    const ss = SpreadsheetApp.getActiveSpreadsheet()
-    const sh = ss.getSheetByName(SHEET_NAME);
-    if (!sh) throw new Error("Sheet not found: " + SHEET_NAME);
-
-    sh.appendRow(row);
-}
-
-// ====== BRANCH LIST ======
-function getBranchMap_() {
-    return {
-        "L1": "L1 สยามสแควร์วัน",
-        "L2": "L2 เซ็นทรัลพระราม 9",
-        "L3": "L3 เซ็นทรัลเวสเกต",
-        "L4": "L4 สีลมคอมเพล็กซ์",
-        "L5": "L5 เซ็นทรัลปิ่นเกล้า",
-        "L6": "L6 เซ็นทรัลลาดพร้าว",
-        "L7": "L7 มาร์เช่ ทองหล่อ",
-        "L8": "L8 ฟิวเจอร์พาร์ค รังสิต",
-        "L9": "L9 เซ็นทรัลพระราม 2",
-        "L10": "L10 เซ็นทรัลพัทยาบีช",
-        "L12": "L12 เดอะมอลล์ บางกะปิ",
-        "L13": "L13 เดอะมอลล์ บางแค",
-        "L14": "L14 เซ็นทรัลเวสต์วิลล์",
-        "L15": "L15 พรอมานาด",
-        "L16": "L16 เอสพลานาด รัชดา",
-        "L17": "L17 ซีคอนสแควร์ ศรีนครินทร์",
-        "L20": "L20 ซีคอนบางแค",
-        "L21": "L21 เมกาบางนา",
-        "L22": "L22 แจ้งวัฒนะ",
-        "L23": "L23 One Bangkok",
-        "L24": "L24 เทอมินอล อโศก",
-        "L25": "L25 เดอะมอลล์งามวงศ์วาน",
-        "L26": "L26 เซ็นทรัลขอนแก่น",
-        "L27": "L27 เซ็นทรัลเวิลด์",
-        "L28": "L28 เอ็มควอเทียร์",
-        "L29": "L29 ชิดลม",
-        "L30": "L30 เซ็นทรัลอีสวิลล์"
-    };
-}
-
-function getBranchListText_() {
-    const map = getBranchMap_();
-    return Object.keys(map)
-        .sort((a, b) => parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10))
-        .map(k => map[k])
-        .join("\n");
-}
-
-// ====== PROPERTIES ======
-function getProp_(key) {
-    const v = PropertiesService.getScriptProperties().getProperty(key);
-    if (!v) throw new Error("Missing Script Property: " + key);
-    return v;
-}
-
-// ====== LINE SIGNATURE (optional) ======
-function verifyLineSignature_(body, signature) {
-    const secret = PropertiesService.getScriptProperties().getProperty("LINE_CHANNEL_SECRET");
-    if (!secret || !signature) return false;
-
-    const mac = Utilities.computeHmacSha256Signature(body, secret);
-    const computed = Utilities.base64Encode(mac);
-    return computed === signature;
-}
-
-function getHeader_(e, name) {
-    try {
-        if (e && e.headers && e.headers[name]) return e.headers[name];
-        if (e && e.headers) {
-            // try case-insensitive
-            const key = Object.keys(e.headers).find(k => k.toLowerCase() === name.toLowerCase());
-            if (key) return e.headers[key];
-        }
-    } catch (_) { }
-    return null;
+    return letter;
 }
