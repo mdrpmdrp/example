@@ -47,8 +47,8 @@ const CONFIG = {
 
   /* Messaging API Configuration */
   MESSAGING_API: {
-    ADMIN_GROUP: 'Ua55431b2d9be5d104c316ccb8ef54e81',
-    ACCESS_TOKEN: '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU=',
+    ADMIN_GROUP: 'C9e1485ee3418fc1635cea3cf09b4ae11',
+    ACCESS_TOKEN: 'kQueHBV7KljhTVLTH1QuxXQXwdLvo5pBCdDlPqP5/dtAaNEEBeChSLaVlzXGdzCW5pjRkPRIB/dnC3FzRiNq18bSgv/7HCjWANOoGH/4S5ELafVuMYYWGDLzXymzeGYmqxUrrlw8Aamz6f+JLBqcugdB04t89/1O/w1cDnyilFU=',
     URL: {
       PUSH_MESSAGE: 'https://api.line.me/v2/bot/message/push'
     }
