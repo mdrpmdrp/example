@@ -73,8 +73,6 @@ Supervisor: ${formData.supervisor.name} (ID: ${formData.supervisor.userId})
 Plan Date: ${formData.supervisor.planDate}
 Work Time: ${formData.supervisor.startTime} - ${formData.supervisor.finishTime}
 
-Work Details: ${formData.workOrder?.details || 'N/A'}
-
 Materials: ${formData.spareParts && formData.spareParts.length > 0 ? formData.spareParts.map((part, i) => {
         return `\n${i + 1}. ${part.id} | Size: ${part.size} | Qty: ${part.quantity}`;
       }).join('') : 'No spare parts provided'}
