@@ -113,6 +113,7 @@
                         <option value="BOKO">BOKO</option>
                         <option value="FFV">FFV</option>
                         <option value="FRF">FRF</option>
+                        <option value="MGT">MGT</option>
                     </select>
                 </div>
 
@@ -346,7 +347,8 @@
                 frf: ['xlsx', 'xls', 'csv'],
                 boko: ['pdf'],
                 ffv: ['xlsx', 'xls', 'csv'],
-                ak: ['xlsx', 'xls', 'csv']
+                ak: ['xlsx', 'xls', 'csv'],
+                mgt: ['xlsx', 'xls', 'csv']
             }
         }
         const acceptMultipleFiles = {
@@ -355,7 +357,8 @@
                 frf: false,
                 boko: true,
                 ffv: false,
-                ak: false
+                ak: false,
+                mgt: false
             }
         }
         const fileIcons = {
@@ -757,12 +760,23 @@
                     });
                     return;
                 }
-
+                Swal.fire({
+                    iconHtml: '<i class="fas fa-spinner fa-pulse"></i>',
+                    title: 'กำลังตรวจสอบไฟล์...',
+                    html: '<p class="text-gray-700 text-center text-sm mt-2">กรุณารอสักครู่...</p>',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    customClass: {
+                        icon: 'text-xl border-none text-indigo-600'
+                    }
+                });
                 // Read order file - check if Excel/CSV or other format
                 let filesOrderData = [];
                 for (let i = 0; i < $fileInput[0].files.length; i++) {
                     const orderFile = $fileInput[0].files[i];
                     const orderFileExt = orderFile.name.split('.').pop().toLowerCase();
+                    console.log("🚀 ~ orderFileExt:", orderFileExt)
+                    
                     const isOrderExcel = ['xlsx', 'xls', 'csv'].includes(orderFileExt);
 
                     if (isOrderExcel) {
@@ -783,7 +797,7 @@
                         });
                     }
                 }
-
+                console.log(filesOrderData);
                 // Read database file - check if Excel/CSV
                 const dbFile = $fileInputDb[0].files[0];
                 const dbFileExt = dbFile.name.split('.').pop().toLowerCase();
@@ -881,6 +895,7 @@
                                     throw new Error(`ไม่พบแผ่นงานชื่อ "${tabName}" ในไฟล์ฐานข้อมูล`);
                                 }
                                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                                console.log("🚀 ~ readFileAsJson ~ jsonData:", jsonData)
                                 resolve(jsonData);
                             } else {
                                 const firstSheetName = workbook.SheetNames[0];

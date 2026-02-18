@@ -17,6 +17,8 @@ function processOrder({storeName, fileOrderDataURL, fileDbArray, fileOrderName})
             return null
         case 'ak':
             return null
+        case 'mgt':
+            return null
         default:
             throw new Error('Store not recognized');
     }
@@ -32,6 +34,8 @@ function generateTransactionJSON({storeName, orderRows, dbRows}){
             return generateFFVTransactionJSON({orderRows, dbRows});
         case 'ak':
             return generateAKTransactionJSON({orderRows, dbRows});
+        case 'mgt':
+            return generateMGTTransactionJSON({orderRows, dbRows});
         default:
             throw new Error('Store not recognized');
     }

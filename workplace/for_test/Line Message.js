@@ -1,12 +1,6 @@
 function sendCopperFlexMessages() {
-  const now = new Date();
-  const hour = now.getHours();
-  if (hour < 8 || hour >= 20) {
-    Logger.log("Outside of 8:00-20:00 window. Exiting.");
-    return;
-  }
-  const LINE_TOKEN = "YKUIIHHaLWIHdlU2BJlDoxDkXUpj3zc5ViycqzJ40NEZnrox1x3C7OrgwbQgIYWHCxiiBnJ2mt1Jjl8wBBXrbEcFpS4LAE93UflycSghBpPPhCj7xDvkuizdsKgSO7rAeJxhJefQ6QFhorah8DpIRgdB04t89/1O/w1cDnyilFU=";
-  const TARGET_ID = "C353199019c05500ef07b7bd7d8787058";
+  const LINE_TOKEN = "19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU=";
+  const TARGET_ID = "Ua55431b2d9be5d104c316ccb8ef54e81";
   
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("LME Cal");
   const data = sheet.getRange("A1:F30").getValues();
