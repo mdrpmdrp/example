@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mobile Price Checker</title>
+
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              950: '#030712',
+              900: '#0a0f1e',
+              850: '#0d1528',
+              800: '#111827',
+              700: '#1a2540',
+              600: '#1e3a5f',
+              500: '#1d4ed8',
+            }
+          },
+          fontFamily: {
+            sans: ['Noto Sans Thai', 'Sarabun', 'sans-serif'],
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.4s ease forwards',
+            'slide-up': 'slideUp 0.4s ease forwards',
+          },
+          keyframes: {
+            fadeIn: { from: { opacity: 0 }, to: { opacity: 1 } },
+            slideUp: { from: { opacity: 0, transform: 'translateY(24px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <style>
+    * { font-family: 'Noto Sans Thai', sans-serif; }
+
+    body { background-color: #020617; color: #f8fafc; }
+
+    /* Glass card - Dark Theme */
+    .glass {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Input styling - Dark Theme */
+    .inp {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f1f5f9;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+      width: 100%;
+      transition: all 0.2s;
+      outline: none;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    }
+    .inp:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+      background: #0f172a;
+    }
+    .inp:disabled {
+      background: #0f172a;
+      cursor: not-allowed;
+      color: #64748b;
+      border-color: #1e293b;
+    }
+    .inp option { background: #1e293b; color: #f1f5f9; }
+
+    /* Button */
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: #fff;
+      font-weight: 600;
+      border-radius: 0.75rem;
+      padding: 0.875rem 1.5rem;
+      width: 100%;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+    }
+    .btn-primary:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.5); 
+    }
+    .btn-primary:active { transform: translateY(0px); }
+    .btn-primary:disabled { 
+      opacity: 0.6; 
+      cursor: not-allowed; 
+      transform: none; 
+      background: #334155;
+      box-shadow: none;
+      color: #94a3b8;
+    }
+
+    /* Tab active */
+    .tab-active {
+      border-bottom: 3px solid #3b82f6;
+      color: #3b82f6 !important;
+    }
+
+    /* Loader */
+    .spinner {
+      width: 22px; height: 22px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Section transition */
+    .section { display: none; }
+    .section.active { display: block; animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    /* Fix for flex containers that are also sections */
+    .section.active.flex { display: flex; }
+
+    /* Result card */
+    .result-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Step badge */
+    .step-badge {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      color: #60a5fa;
+      width: 2.25rem; height: 2.25rem;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.9rem;
+      flex-shrink: 0;
+      border: 1px solid #334155;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      z-index: 9999; pointer-events: none; transition: all 0.3s;
+    }
+    .toast-msg {
+      padding: 0.875rem 1.75rem; border-radius: 1rem;
+      font-size: 0.95rem; font-weight: 500;
+      animation: slideUp 0.3s ease;
+      display: flex; align-items: center; gap: 0.6rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    }
+    .toast-success { background: #064e3b; color: #a7f3d0; border: 1px solid #059669; }
+    .toast-error { background: #7f1d1d; color: #fecaca; border: 1px solid #dc2626; }
+
+    /* Badge vn */
+    .badge-vn {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white; padding: 0.35rem 1rem; border-radius: 2rem;
+      font-size: 0.8rem; font-weight: 600; display: inline-block;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+    }
+    .badge-sc {
+      background: linear-gradient(135deg, #334155, #1e293b);
+      color: #e2e8f0; padding: 0.35rem 1rem; border-radius: 2rem;
+      font-size: 0.8rem; font-weight: 600; display: inline-block;
+      border: 1px solid #475569;
+    }
+
+    /* Select2-like none arrow fix for dark bg -> light arrow */
+    select.inp { 
+      appearance: none; 
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); 
+      background-repeat: no-repeat; 
+      background-position: right 1rem center; 
+      padding-right: 2.5rem; 
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-slate-950 relative text-slate-200 selection:bg-blue-500 selection:text-white">
+
+  <!-- Ambient blobs - Dark theme -->
+  <div class="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div class="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-3xl mix-blend-screen filter"></div>
+    <div class="absolute top-[20%] -right-[10%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-3xl mix-blend-screen filter"></div>
+    <div class="absolute -bottom-[20%] left-[20%] w-[40%] h-[40%] rounded-full bg-purple-600/20 blur-3xl mix-blend-screen filter"></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- ============================================================
+       SECTION 1 : AUTH (Login / Register)
+  ============================================================ -->
+  <div id="sec-auth" class="section active min-h-screen flex items-center justify-center px-4 py-10">
+    <div class="w-full max-w-md">
+
+      <!-- Logo -->
+      <div class="text-center mb-10">
+        <img src="https://img2.pic.in.th/LOGO-VN-PHONE--edit_1.png" alt="VN Phone Logo" class="h-28 mx-auto mb-6 drop-shadow-2xl hover:scale-105 transition-transform duration-300 rounded-lg" />
+        <h1 class="text-3xl font-bold text-white tracking-tight">Mobile Price Checker</h1>
+        <p class="text-slate-400 text-sm mt-2 font-medium">ตรวจสอบง่าย รู้ผลไว ในไม่กี่วินาที</p>
+      </div>
+
+      <!-- Card -->
+      <div class="glass rounded-3xl p-8">
+
+        <!-- Tabs -->
+        <div class="flex border-b border-slate-700 mb-6">
+          <button id="tab-login" class="tab-active flex-1 pb-3 text-sm font-semibold text-blue-400 transition-all"
+                  onclick="switchTab('login')">เข้าสู่ระบบ</button>
+          <button id="tab-register" class="flex-1 pb-3 text-sm font-semibold text-slate-400 transition-all"
+                  onclick="switchTab('register')">สมัครสมาชิก</button>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <div id="form-login">
+          <div class="space-y-6">
+            <div>
+              <label class="block text-sm font-semibold text-slate-400 mb-2 tracking-wide">อีเมล</label>
+              <input id="login-email" type="email" class="inp" placeholder="hello@example.com" />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-400 mb-2 tracking-wide">เบอร์โทรศัพท์</label>
+              <input id="login-phone" type="tel" class="inp" placeholder="08xxxxxxxx" />
+            </div>
+            <button class="btn-primary mt-4 py-3.5 text-base shadow-lg shadow-blue-900/40 hover:shadow-blue-800/50" onclick="doLogin()">
+              <span id="login-btn-text">เข้าสู่ระบบ</span>
+            </button>
+            <p class="text-center text-sm text-slate-500 mt-4">
+              ยังไม่มีบัญชี?
+              <span class="text-blue-400 font-semibold cursor-pointer hover:underline" onclick="switchTab('register')">สมัครสมาชิกฟรี</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- REGISTER FORM -->
+        <div id="form-register" class="hidden">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">บริษัท / ร้านค้า</label>
+              <select id="reg-company" class="inp">
+                <option value="">-- เลือกบริษัท --</option>
+                <option value="VN Phone">VN Phone</option>
+                <option value="สยามชัย">สยามชัย</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">ชื่อ</label>
+                <input id="reg-firstname" type="text" class="inp" placeholder="ชื่อจริง" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">นามสกุล</label>
+                <input id="reg-lastname" type="text" class="inp" placeholder="นามสกุล" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">ชื่อเล่น</label>
+              <input id="reg-nickname" type="text" class="inp" placeholder="เช่น พี่เอ" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">อีเมล</label>
+              <input id="reg-email" type="email" class="inp" placeholder="hello@example.com" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">เบอร์โทรศัพท์</label>
+              <input id="reg-phone" type="tel" class="inp" placeholder="08xxxxxxxx" />
+            </div>
+            <button class="btn-primary mt-4 py-3 text-base shadow-lg shadow-blue-900/40" onclick="doRegister()">
+              <span id="reg-btn-text">สมัครสมาชิก</span>
+            </button>
+            <p class="text-center text-sm text-slate-500 mt-4">
+              มีบัญชีแล้ว?
+              <span class="text-blue-400 font-semibold cursor-pointer hover:underline" onclick="switchTab('login')">เข้าสู่ระบบ</span>
+            </p>
+          </div>
+        </div>
+
+      </div><!-- /card -->
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 2 : VN PHONE (ราคาผ่อน)
+  ============================================================ -->
+  <div id="sec-vn" class="section min-h-screen px-4 py-8">
+    <div class="max-w-lg mx-auto">
+
+      <!-- Header -->
+      <div class="glass rounded-2xl p-6 mb-8 flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-blue-600 shadow-lg shadow-blue-900/20 text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01" stroke-width="2.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide">ยินดีต้อนรับ</div>
+            <div class="font-bold text-slate-100 text-lg" id="vn-welcome">—</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="badge-vn">VN Phone</span>
+          <button onclick="doLogout()" title="ออกจากระบบ"
+                  class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition shadow-sm border border-slate-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="mb-6 px-1">
+        <h2 class="text-2xl font-bold text-slate-100 mb-2">ค้นหาราคาผ่อนชำระ</h2>
+        <p class="text-slate-400 text-sm">เลือกรุ่นมือถือและจำนวนงวดที่ต้องการเพื่อคำนวณราคา</p>
+      </div>
+
+      <!-- Steps Card -->
+      <div class="glass rounded-3xl p-8 space-y-6 shadow-xl shadow-black/40">
+
+        <!-- Step 1: Brand -->
+        <div class="flex gap-4 items-start group">
+          <div class="step-badge shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">1</div>
+          <div class="flex-1">
+            <label class="block text-sm font-bold text-slate-300 mb-2">ยี่ห้อโทรศัพท์</label>
+            <select id="vn-brand" class="inp py-3" onchange="vnLoadModels()">
+              <option value="">-- เลือกยี่ห้อ --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Step 2: Model -->
+        <div class="flex gap-4 items-start group">
+          <div class="step-badge shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">2</div>
+          <div class="flex-1">
+            <label class="block text-sm font-bold text-slate-300 mb-2">รุ่น</label>
+            <select id="vn-model" class="inp py-3" onchange="vnLoadStorages()" disabled>
+              <option value="">-- เลือกรุ่น --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Step 3: Storage -->
+        <div class="flex gap-4 items-start group">
+          <div class="step-badge shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">3</div>
+          <div class="flex-1">
+            <label class="block text-sm font-bold text-slate-300 mb-2">รอม / ความจุ</label>
+            <select id="vn-storage" class="inp py-3" onchange="vnLoadDownPayments()" disabled>
+              <option value="">-- เลือกความจุ --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Step 4: Down payment -->
+        <div class="flex gap-4 items-start group">
+          <div class="step-badge shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">4</div>
+          <div class="flex-1">
+            <label class="block text-sm font-bold text-slate-300 mb-2">เงินดาวน์</label>
+            <select id="vn-down" class="inp py-3" disabled>
+              <option value="">-- เลือกราคาดาวน์ --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Step 5: Months -->
+        <div class="flex gap-4 items-start group">
+          <div class="step-badge shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">5</div>
+          <div class="flex-1">
+            <label class="block text-sm font-bold text-slate-300 mb-2">จำนวนงวดผ่อนชำระ</label>
+            <div class="grid grid-cols-4 gap-3" id="vn-months-group">
+              <button class="month-btn inp text-center py-3 cursor-pointer hover:border-blue-500 hover:bg-blue-900/20 transition shadow-sm font-medium text-slate-400" data-months="6">6 เดือน</button>
+              <button class="month-btn inp text-center py-3 cursor-pointer hover:border-blue-500 hover:bg-blue-900/20 transition shadow-sm font-medium text-slate-400" data-months="8">8 เดือน</button>
+              <button class="month-btn inp text-center py-3 cursor-pointer hover:border-blue-500 hover:bg-blue-900/20 transition shadow-sm font-medium text-slate-400" data-months="10">10 เดือน</button>
+              <button class="month-btn inp text-center py-3 cursor-pointer hover:border-blue-500 hover:bg-blue-900/20 transition shadow-sm font-medium text-slate-400" data-months="12">12 เดือน</button>
+            </div>
+            <input type="hidden" id="vn-months" value="" />
+          </div>
+        </div>
+
+        <button class="btn-primary py-4 text-lg shadow-lg shadow-blue-500/30 font-bold tracking-wide mt-4" onclick="vnSearch()">
+          <span id="vn-search-text">🔍 &nbsp; คำนวณราคาค่างวด</span>
+        </button>
+
+      </div>
+
+      <!-- VN Result -->
+      <div id="vn-result" class="mt-8 hidden animate-fade-in mb-12">
+        <div class="result-card ring-1 ring-blue-900/50">
+          <div class="flex items-center gap-2 mb-5 pb-4 border-b border-slate-700">
+            <div class="w-8 h-8 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="font-bold text-slate-200 text-lg">สรุปรายการผ่อนชำระ</span>
+          </div>
+          <div class="space-y-2" id="vn-result-body"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 3 : สยามชัย (ราคาซื้อสด)
+  ============================================================ -->
+  <div id="sec-sc" class="section min-h-screen px-4 py-8">
+    <div class="max-w-lg mx-auto">
+
+      <!-- Header -->
+      <div class="glass rounded-2xl p-6 mb-8 flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-slate-700 shadow-lg shadow-black/40 text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01" stroke-width="2.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide">ยินดีต้อนรับ</div>
+            <div class="font-bold text-slate-100 text-lg" id="sc-welcome">—</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="badge-sc">สยามชัย</span>
+          <button onclick="doLogout()" title="ออกจากระบบ"
+                  class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition shadow-sm border border-slate-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="mb-6 px-1">
+        <h2 class="text-2xl font-bold text-slate-100 mb-2">ค้นหาราคาซื้อสด</h2>
+        <p class="text-slate-400 text-sm mb-6">เลือกรุ่นมือถือเพื่อเช็คราคาโปรโมชั่น</p>
+      </div>
+
+      <!-- Steps Card -->
+      <div class="glass rounded-3xl p-8 space-y-6 shadow-xl shadow-black/40">
+
+        <!-- Step 1: Brand -->
+        <div class="flex gap-4 items-start group">
+          <div class="step-badge shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">1</div>
+          <div class="flex-1">
+            <label class="block text-sm font-bold text-slate-300 mb-2">ยี่ห้อโทรศัพท์</label>
+            <select id="sc-brand" class="inp py-3" onchange="scLoadModels()">
+              <option value="">-- เลือกยี่ห้อ --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Step 2: Model -->
+        <div class="flex gap-4 items-start group">
+          <div class="step-badge shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">2</div>
+          <div class="flex-1">
+            <label class="block text-sm font-bold text-slate-300 mb-2">รุ่น</label>
+            <select id="sc-model" class="inp py-3" onchange="scLoadModels()" disabled>
+              <option value="">-- เลือกรุ่น --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Step 3: Storage -->
+        <div class="flex gap-4 items-start group">
+          <div class="step-badge shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">3</div>
+          <div class="flex-1">
+            <label class="block text-sm font-bold text-slate-300 mb-2">รอม / ความจุ</label>
+            <select id="sc-storage" class="inp py-3" disabled>
+              <option value="">-- เลือกความจุ --</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn-primary py-4 text-lg shadow-lg shadow-blue-500/30 font-bold tracking-wide mt-4" onclick="scSearch()">
+          <span id="sc-search-text">🔍 &nbsp; เช็คราคาเครื่องเปล่า</span>
+        </button>
+
+      </div>
+
+      <!-- SC Result -->
+      <div id="sc-result" class="mt-8 hidden animate-fade-in mb-12">
+        <div class="result-card ring-1 ring-blue-900/50">
+          <div class="flex items-center gap-2 mb-5 pb-4 border-b border-slate-700">
+            <div class="w-8 h-8 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <span class="font-bold text-slate-200 text-lg">สรุปราคาเครื่องเปล่า</span>
+          </div>
+          <div id="sc-result-body" class="space-y-2"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<!-- ============================================================
+     JAVASCRIPT
+============================================================ -->
+<script>
+// ── Utility ──────────────────────────────────────────────────
+var currentUser = null;
+
+function fmt(n) {
+  return Number(n).toLocaleString('th-TH', { minimumFractionDigits: 0 });
+}
+
+function showToast(msg, type) {
+  type = type || 'success';
+  var icon = type === 'success'
+    ? '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>'
+    : '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>';
+  var cls = type === 'success' ? 'toast-success' : 'toast-error';
+  $('#toast').html('<div class="toast-msg ' + cls + '">' + icon + msg + '</div>');
+  setTimeout(function() { $('#toast').html(''); }, 3000);
+}
+
+function gasCall(func, payload, cb) {
+  if (typeof google === 'undefined') {
+    // Dev preview – return mock empty
+    console.warn('GAS not available. Mock response.');
+    cb({ status: 'error', message: 'ทดสอบในเบราว์เซอร์ไม่ได้ กรุณา Deploy บน Google Apps Script' });
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(function(raw) {
+      try { cb(JSON.parse(raw)); }
+      catch(e) { cb({ status: 'error', message: 'Parse error' }); }
+    })
+    .withFailureHandler(function(e) {
+      cb({ status: 'error', message: e.message });
+    })
+    [func](payload);
+}
+
+function setLoading(btnTextId, loading) {
+  if (loading) {
+    $('#' + btnTextId).html('<span class="spinner"></span>');
+  } else {
+    var defaults = {
+      'login-btn-text': 'เข้าสู่ระบบ',
+      'reg-btn-text': 'สมัครสมาชิก',
+      'vn-search-text': 'ค้นหาราคา',
+      'sc-search-text': 'ค้นหาราคา'
+    };
+    $('#' + btnTextId).text(defaults[btnTextId] || 'ดำเนินการ');
+  }
+}
+
+function showSection(id) {
+  $('.section').removeClass('active');
+  $('#' + id).addClass('active');
+  window.scrollTo(0, 0);
+}
+
+// ── Tabs ─────────────────────────────────────────────────────
+function switchTab(tab) {
+  if (tab === 'login') {
+    $('#form-login').show();
+    $('#form-register').hide();
+    $('#tab-login').addClass('tab-active').removeClass('text-slate-500');
+    $('#tab-register').removeClass('tab-active').addClass('text-slate-500');
+  } else {
+    $('#form-register').show();
+    $('#form-login').hide();
+    $('#tab-register').addClass('tab-active').removeClass('text-slate-500');
+    $('#tab-login').removeClass('tab-active').addClass('text-slate-500');
+  }
+}
+
+// ── Auth ──────────────────────────────────────────────────────
+function doLogin() {
+  var email = $('#login-email').val().trim();
+  var phone = $('#login-phone').val().trim();
+  if (!email || !phone) { showToast('กรุณากรอกอีเมลและเบอร์โทร', 'error'); return; }
+  setLoading('login-btn-text', true);
+  gasCall('loginUser', JSON.stringify({ email: email, phone: phone }), function(res) {
+    setLoading('login-btn-text', false);
+    if (res.status === 'ok') {
+      currentUser = res.data;
+      showToast('ยินดีต้อนรับ คุณ' + currentUser.nickname + ' 👋');
+      afterLogin();
+    } else {
+      showToast(res.message, 'error');
+    }
+  });
+}
+
+function doRegister() {
+  var payload = {
+    company:   $('#reg-company').val(),
+    firstName: $('#reg-firstname').val().trim(),
+    lastName:  $('#reg-lastname').val().trim(),
+    nickname:  $('#reg-nickname').val().trim(),
+    email:     $('#reg-email').val().trim(),
+    phone:     $('#reg-phone').val().trim()
+  };
+  if (!payload.company || !payload.firstName || !payload.lastName ||
+      !payload.nickname || !payload.email || !payload.phone) {
+    showToast('กรุณากรอกข้อมูลให้ครบทุกช่อง', 'error'); return;
+  }
+  setLoading('reg-btn-text', true);
+  gasCall('registerUser', JSON.stringify(payload), function(res) {
+    setLoading('reg-btn-text', false);
+    if (res.status === 'ok') {
+      showToast('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
+      switchTab('login');
+      $('#login-email').val(payload.email);
+      $('#login-phone').val(payload.phone);
+    } else {
+      showToast(res.message, 'error');
+    }
+  });
+}
+
+function afterLogin() {
+  if (currentUser.company === 'VN Phone') {
+    $('#vn-welcome').text('คุณ' + currentUser.nickname + ' (' + currentUser.firstName + ')');
+    showSection('sec-vn');
+    vnInit();
+  } else {
+    $('#sc-welcome').text('คุณ' + currentUser.nickname + ' (' + currentUser.firstName + ')');
+    showSection('sec-sc');
+    scInit();
+  }
+}
+
+function doLogout() {
+  currentUser = null;
+  showSection('sec-auth');
+  showToast('ออกจากระบบแล้ว');
+  // reset
+  $('#vn-brand, #vn-model, #vn-storage, #vn-down').val('');
+  $('#vn-months').val(''); 
+  $('.month-btn').removeClass('border-blue-500 ring-2 ring-blue-500/50 bg-blue-600 text-white font-bold');
+  $('#vn-result').addClass('hidden');
+  $('#sc-brand, #sc-model, #sc-storage').val('');
+  $('#sc-result').addClass('hidden');
+}
+
+// ── VN Phone ─────────────────────────────────────────────────
+function vnInit() {
+  gasCall('getBrands', 'ผ่อน', function(res) {
+    if (res.status === 'ok') {
+      var opts = '<option value="">-- เลือกยี่ห้อ --</option>';
+      res.data.forEach(function(b) { opts += '<option value="' + b + '">' + b + '</option>'; });
+      $('#vn-brand').html(opts);
+    }
+  });
+}
+
+function vnLoadModels() {
+  var brand = $('#vn-brand').val();
+  $('#vn-model').html('<option value="">-- เลือกรุ่น --</option>').prop('disabled', true);
+  $('#vn-storage').html('<option value="">-- เลือกความจุ --</option>').prop('disabled', true);
+  $('#vn-down').html('<option value="">-- เลือกราคาดาวน์ --</option>').prop('disabled', true);
+  $('#vn-result').addClass('hidden');
+  if (!brand) return;
+  gasCall('getModels', JSON.stringify({ sheet: 'ผ่อน', brand: brand }), function(res) {
+    if (res.status === 'ok') {
+      var opts = '<option value="">-- เลือกรุ่น --</option>';
+      res.data.forEach(function(m) { opts += '<option value="' + m + '">' + m + '</option>'; });
+      $('#vn-model').html(opts).prop('disabled', false);
+    }
+  });
+}
+
+function vnLoadStorages() {
+  var brand = $('#vn-brand').val(), model = $('#vn-model').val();
+  $('#vn-storage').html('<option value="">-- เลือกความจุ --</option>').prop('disabled', true);
+  $('#vn-down').html('<option value="">-- เลือกราคาดาวน์ --</option>').prop('disabled', true);
+  $('#vn-result').addClass('hidden');
+  if (!brand || !model) return;
+  gasCall('getStorages', JSON.stringify({ sheet: 'ผ่อน', brand: brand, model: model }), function(res) {
+    if (res.status === 'ok') {
+      var opts = '<option value="">-- เลือกความจุ --</option>';
+      res.data.forEach(function(s) { opts += '<option value="' + s + '">' + s + '</option>'; });
+      $('#vn-storage').html(opts).prop('disabled', false);
+    }
+  });
+}
+
+function vnLoadDownPayments() {
+  var brand = $('#vn-brand').val(), model = $('#vn-model').val(), storage = $('#vn-storage').val();
+  $('#vn-down').html('<option value="">-- เลือกราคาดาวน์ --</option>').prop('disabled', true);
+  $('#vn-result').addClass('hidden');
+  if (!brand || !model || !storage) return;
+  gasCall('getDownPayments', JSON.stringify({ brand: brand, model: model, storage: storage }), function(res) {
+    if (res.status === 'ok') {
+      var opts = '<option value="">-- เลือกราคาดาวน์ --</option>';
+      res.data.forEach(function(d) {
+        opts += '<option value="' + d + '">' + fmt(d) + ' บาท</option>';
+      });
+      $('#vn-down').html(opts).prop('disabled', false);
+    }
+  });
+}
+
+// Month picker
+$(document).on('click', '.month-btn', function() {
+  $('.month-btn').removeClass('border-blue-500 ring-2 ring-blue-500/50 bg-blue-600 text-white font-bold');
+  $(this).addClass('border-blue-500 ring-2 ring-blue-500/50 bg-blue-600 text-white font-bold');
+  $('#vn-months').val($(this).data('months'));
+});
+
+
+function vnSearch() {
+  var brand = $('#vn-brand').val(), model = $('#vn-model').val(),
+      storage = $('#vn-storage').val(), down = $('#vn-down').val(),
+      months = $('#vn-months').val();
+  if (!brand || !model || !storage || !down || !months) {
+    showToast('กรุณาเลือกข้อมูลให้ครบทุกขั้นตอน', 'error'); return;
+  }
+  setLoading('vn-search-text', true);
+  gasCall('getInstallmentPrice', JSON.stringify({
+    brand: brand, model: model, storage: storage,
+    downPayment: down, months: months
+  }), function(res) {
+    setLoading('vn-search-text', false);
+    if (res.status === 'ok') {
+      var d = res.data;
+      var html = [
+        row('📱 ยี่ห้อ / รุ่น', d.brand + ' ' + d.model),
+        row('💾 ความจุ', d.storage),
+        row('💰 เงินดาวน์', fmt(d.downPayment) + ' บาท'),
+        row('📅 จำนวนงวด', d.months + ' เดือน'),
+        '<div class="border-t border-slate-600 my-3"></div>',
+        rowHighlight('💳 ค่างวดต่อเดือน', fmt(d.installment) + ' บาท/เดือน'),
+        rowHighlight('🏷️ ราคารวมทั้งหมด', fmt(d.total) + ' บาท'),
+      ].join('');
+      $('#vn-result-body').html(html);
+      $('#vn-result').removeClass('hidden');
+      $('#vn-result')[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      showToast(res.message, 'error');
+    }
+  });
+}
+
+// ── สยามชัย ──────────────────────────────────────────────────
+function scInit() {
+  gasCall('getBrands', 'ซื้อสด', function(res) {
+    if (res.status === 'ok') {
+      var opts = '<option value="">-- เลือกยี่ห้อ --</option>';
+      res.data.forEach(function(b) { opts += '<option value="' + b + '">' + b + '</option>'; });
+      $('#sc-brand').html(opts);
+    }
+  });
+}
+
+function scLoadModels() {
+  var brand = $('#sc-brand').val();
+  $('#sc-model').html('<option value="">-- เลือกรุ่น --</option>').prop('disabled', true);
+  $('#sc-storage').html('<option value="">-- เลือกความจุ --</option>').prop('disabled', true);
+  $('#sc-result').addClass('hidden');
+  if (!brand) return;
+  gasCall('getModels', JSON.stringify({ sheet: 'ซื้อสด', brand: brand }), function(res) {
+    if (res.status === 'ok') {
+      var opts = '<option value="">-- เลือกรุ่น --</option>';
+      res.data.forEach(function(m) { opts += '<option value="' + m + '">' + m + '</option>'; });
+      $('#sc-model').html(opts).prop('disabled', false);
+    }
+  });
+}
+
+function scLoadStorages() {
+  var brand = $('#sc-brand').val(), model = $('#sc-model').val();
+  $('#sc-storage').html('<option value="">-- เลือกความจุ --</option>').prop('disabled', true);
+  $('#sc-result').addClass('hidden');
+  if (!brand || !model) return;
+  gasCall('getStorages', JSON.stringify({ sheet: 'ซื้อสด', brand: brand, model: model }), function(res) {
+    if (res.status === 'ok') {
+      var opts = '<option value="">-- เลือกความจุ --</option>';
+      res.data.forEach(function(s) { opts += '<option value="' + s + '">' + s + '</option>'; });
+      $('#sc-storage').html(opts).prop('disabled', false);
+    }
+  });
+}
+
+function scSearch() {
+  var brand = $('#sc-brand').val(), model = $('#sc-model').val(), storage = $('#sc-storage').val();
+  if (!brand || !model || !storage) {
+    showToast('กรุณาเลือกยี่ห้อ รุ่น และความจุ', 'error'); return;
+  }
+  setLoading('sc-search-text', true);
+  gasCall('getCashPrice', JSON.stringify({ brand: brand, model: model, storage: storage }), function(res) {
+    setLoading('sc-search-text', false);
+    if (res.status === 'ok') {
+      var d = res.data;
+      var html = [
+        row('📱 ยี่ห้อ / รุ่น', d.brand + ' ' + d.model),
+        row('💾 ความจุ', d.storage),
+        '<div class="border-t border-slate-600 my-3"></div>',
+        rowHighlight('🏷️ ราคาซื้อสด', fmt(d.price) + ' บาท'),
+      ].join('');
+      $('#sc-result-body').html(html);
+      $('#sc-result').removeClass('hidden');
+      $('#sc-result')[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      showToast(res.message, 'error');
+    }
+  });
+}
+
+// ── Row helpers ───────────────────────────────────────────────
+function row(label, value) {
+  return '<div class="flex justify-between items-center py-2 border-b border-slate-700 last:border-0">'
+    + '<span class="text-slate-400 text-sm font-medium">' + label + '</span>'
+    + '<span class="text-slate-200 text-sm font-semibold">' + value + '</span>'
+    + '</div>';
+}
+function rowHighlight(label, value) {
+  return '<div class="flex justify-between items-center py-3 px-4 rounded-xl bg-blue-900/30 mt-2">'
+    + '<span class="text-blue-400 text-sm font-bold">' + label + '</span>'
+    + '<span class="text-blue-100 font-extrabold text-base">' + value + '</span>'
+    + '</div>';
+}
+</script>
+</body>
+</html>
