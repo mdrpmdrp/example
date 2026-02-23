@@ -46,21 +46,59 @@ function jsonError(msg) {
   return JSON.stringify({ status: 'error', message: msg });
 }
 
+// ---------- Log Helper ----------
+function logEvent(event, user) {
+  try {
+    var sheet = SS.getSheetByName('Log Event');
+    if (!sheet) {
+      sheet = SS.insertSheet('Log Event');
+      sheet.appendRow(['Timestamp', 'Event', 'User', 'Email']);
+    }
+    var timestamp = new Date();
+    sheet.appendRow([timestamp, event, user.nickname + ' (' + user.firstName + ')', user.email]);
+  } catch (e) {
+    console.error('Log error: ' + e.message);
+  }
+}
+
 // ---------- Auth ----------
 function registerUser(payload) {
+  var p = JSON.parse(payload);
   try {
-    var p = JSON.parse(payload);
     var sheet = SS.getSheetByName('Users');
-    if (!sheet) sheet = SS.insertSheet('Users');
-    // Check duplicate email
-    var rows = sheetData('Users');
-    for (var i = 0; i < rows.length; i++) {
-      if (String(rows[i][4]).toLowerCase() === String(p.email).toLowerCase()) {
+    if (!sheet) {
+      sheet = SS.insertSheet('Users');
+      sheet.appendRow(['Company', 'First Name', 'Last Name', 'Nickname', 'Email', 'Phone']);
+    }
+    
+    // Check duplicate email - Read all data including header to match correctly
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) { // Skip header
+      if (String(data[i][4]).toLowerCase() === String(p.email).toLowerCase()) {
         return jsonError('อีเมลนี้ถูกใช้งานแล้ว');
       }
     }
-    sheet.appendRow([p.company, p.firstName, p.lastName, p.nickname, p.email, p.phone]);
-    return jsonSuccess({ company: p.company, nickname: p.nickname });
+    
+    sheet.appendRow([
+      p.company, 
+      p.firstName, 
+      p.lastName, 
+      p.nickname, 
+      p.email, 
+      "'" + p.phone
+    ]);
+    
+    // Log the event
+    logEvent('Register', p);
+    
+    return jsonSuccess({ 
+      company: p.company, 
+      firstName: p.firstName,
+      lastName: p.lastName,
+      nickname: p.nickname,
+      email: p.email,
+      phone: p.phone
+    });
   } catch (e) {
     return jsonError(e.message);
   }
@@ -69,23 +107,43 @@ function registerUser(payload) {
 function loginUser(payload) {
   try {
     var p = JSON.parse(payload);
-    var rows = sheetData('Users');
-    for (var i = 0; i < rows.length; i++) {
-      var row = rows[i];
+    var sheet = SS.getSheetByName('Users');
+    if (!sheet) return jsonError('ไม่พบฐานข้อมูลผู้ใช้');
+    
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      // Check email (col 4) and phone (col 5)
       if (String(row[4]).toLowerCase() === String(p.email).toLowerCase() &&
           String(row[5]) === String(p.phone)) {
-        return jsonSuccess({
+            
+        var user = {
           company:   String(row[0]),
           firstName: String(row[1]),
           lastName:  String(row[2]),
           nickname:  String(row[3]),
           email:     String(row[4]),
           phone:     String(row[5])
-        });
+        };
+        
+        // Log the event
+        logEvent('Login', user);
+        
+        return jsonSuccess(user);
       }
     }
     return jsonError('ไม่พบบัญชีผู้ใช้ กรุณาตรวจสอบอีเมลและเบอร์โทร');
   } catch (e) {
+    return jsonError(e.message);
+  }
+}
+
+function logLogout(payload) {
+  try {
+    var user = JSON.parse(payload);
+    logEvent('Logout', user);
+    return jsonSuccess('Logged out');
+  } catch(e) {
     return jsonError(e.message);
   }
 }

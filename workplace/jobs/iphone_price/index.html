@@ -570,8 +570,14 @@ function setLoading(btnTextId, loading) {
 }
 
 function showSection(id) {
-  $('.section').removeClass('active');
-  $('#' + id).addClass('active');
+  $('.section').removeClass('active').hide();
+  var target = $('#' + id);
+  target.addClass('active');
+  if (id === 'sec-auth') {
+    target.css('display', 'flex');
+  } else {
+    target.css('display', 'block');
+  }
   window.scrollTo(0, 0);
 }
 
@@ -648,6 +654,11 @@ function afterLogin() {
 }
 
 function doLogout() {
+  if (currentUser) {
+    gasCall('logLogout', JSON.stringify(currentUser), function(res) {
+      console.log('Logout logged', res);
+    });
+  }
   currentUser = null;
   showSection('sec-auth');
   showToast('ออกจากระบบแล้ว');
