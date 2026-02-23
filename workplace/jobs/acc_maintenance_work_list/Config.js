@@ -1,4 +1,4 @@
-// Version: 2026-02-01-16:12
+// Version: 2026-02-23-14:37
 
 /**
  * Configuration constants and sheet names
@@ -10,7 +10,8 @@ const CONFIG = {
     WORK_ORDERS: 'Work Orders',
     CONTRACTORS: 'Contractors',
     SUPERVISORS: 'Supervisors',
-    PRE_DEFINED_WORK_ORDERS: 'Predefined Work Orders'
+    PRE_DEFINED_WORK_ORDERS: 'Predefined Work Orders',
+    EMAILS: 'Emails'
   },
   
   /* Column Indices for Work Orders Sheet */

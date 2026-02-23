@@ -103,3 +103,64 @@ function sendNotification( message) {
     Logger.log('Error sending notification: ' + error);
   }
 }
+
+function sendEmailDailySummary() {
+  let today = new Date();
+  let yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  
+  const ss = getSpreadsheet();
+  const workOrderSheet = ss.getSheetByName(CONFIG.SHEETS.WORK_ORDERS);
+  
+  if (!workOrderSheet) {
+    Logger.log('Work Orders sheet not found for daily summary');
+    return;
+  }
+  
+  const values = workOrderSheet.getDataRange().getValues();
+  const headers = values[0];
+  
+  let summary = 'Daily Work Order Summary for ' + formatDateThai(yesterday) + '\n\n';
+  let hasEntries = false;
+  let bodyHtml = '<h2>Daily Work Order Summary for ' + formatDateThai(yesterday) + '</h2><table border="1" cellpadding="5" cellspacing="0"><tr><th>Supervisor ID</th><th>Supervisor Name</th><th>Work Order ID</th><th>Start Time</th><th>Finish Time</th><th>Work Hours</th><th>Details</th><th>Contractors</th><th>Q\'ty Contractor</th></tr>';
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const dateCell = row[CONFIG.WORK_ORDER_COLUMNS.DATE];
+    
+    if (dateCell instanceof Date && dateCell.toDateString() === yesterday.toDateString()) {
+      hasEntries = true;
+      const supervisorID = row[CONFIG.WORK_ORDER_COLUMNS.SUPERVISOR_ID];
+      const supervisorName = row[CONFIG.WORK_ORDER_COLUMNS.SUPERVISOR_NAME];
+      const workOrderID = row[CONFIG.WORK_ORDER_COLUMNS.ID];
+      const supervisorPlanDate = row[CONFIG.WORK_ORDER_COLUMNS.PLAN_DATE];
+      const supervisorStartTime = row[CONFIG.WORK_ORDER_COLUMNS.START_TIME];
+      const supervisorFinishTime = row[CONFIG.WORK_ORDER_COLUMNS.FINISH_TIME];
+      const workHours = supervisorFinishTime && supervisorStartTime ? Math.floor((supervisorFinishTime - supervisorStartTime) / (1000 * 60 * 60)) : 'N/A';
+      const details = row[CONFIG.WORK_ORDER_COLUMNS.DETAILS];
+      const contractors = safeJsonParse(row[CONFIG.WORK_ORDER_COLUMNS.CONTRACTORS_JSON], [])
+      const contractorNames = contractors.map(c => (c.customName || c.contractor)).join(', ') || 'No contractors';
+      const contractorQuantities = contractors.reduce((sum, c) => sum + (Number(c.quantity) || 0), 0);
+      const rowColor = i % 2 === 0 ? '#ffffff' : '#f5f5f5';
+      bodyHtml += `<tr style="background-color: ${rowColor}"><td>${supervisorID}</td><td>${supervisorName}</td><td>${workOrderID}</td><td>${Utilities.formatDate(supervisorStartTime, Session.getScriptTimeZone(), 'HH:mm')}</td><td>${Utilities.formatDate(supervisorFinishTime, Session.getScriptTimeZone(), 'HH:mm')}</td><td>${workHours}</td><td>${details}</td><td>${contractorNames}</td><td>${contractorQuantities}</td></tr>`;
+    }
+  }
+  
+  if (!hasEntries) {
+    summary += 'No work orders created or updated yesterday.';
+  }
+  
+  bodyHtml += '</table>';
+  
+  // Send email
+  const subject = 'Daily Work Order Summary - ' + formatDateThai(yesterday);
+  const emails = ss.getSheetByName(CONFIG.SHEETS.EMAILS).getDataRange().getValues().slice(1).map(row => row[1]).filter(email => email);
+  if (emails.length > 0) {
+    MailApp.sendEmail({
+      to: emails.join(','),
+      subject: subject,
+      htmlBody: bodyHtml
+    });
+  } else {
+    Logger.log('No email recipients found in Emails sheet');
+  }
+}
