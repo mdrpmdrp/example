@@ -8,10 +8,12 @@ function generateMGTTransactionJSON({ orderRows, dbRows } = {}) {
     const productMap = new Map();
     const branchMap = new Map();
     orderRows[0].slice(3).map((branchName, index) => {
+        if(branchName.toLowerCase().trim() === 'total') return;
        branchMap.set(String(branchName).toLowerCase().trim(), String(branchName).trim());
     });
     orderRows.slice(1).forEach(row => {
         const productName = String(row[0]).toLowerCase().trim();
+        if(productName.toLowerCase().trim() === 'total') return;
         if (productName) {
             productMap.set(productName, String(row[0]).trim());
         }
@@ -39,14 +41,14 @@ function generateMGTTransactionJSON({ orderRows, dbRows } = {}) {
     let productMapErrors = new Set();
 
     // Pre-normalize branch names for reuse
-    const branches = orderRows[0].slice(4).map((branchName, index) => {
+    const branches = orderRows[0].slice(3).map((branchName, index) => {
         if(!branchMap.has(String(branchName).toLowerCase().trim()) && branchName.toLowerCase().trim() !== 'total'){
             branchMapErrors.add(branchName.trim());
             Logger.log(`Branch mapping not found for branch name: "${branchName}"`);
         }
         return {
             code: branchMap.get(String(branchName).toLowerCase().trim()) || ("ไม่มีชื่อสาขา " + branchName.trim()),
-            index: index + 4
+            index: index + 3
         }
     });
 
@@ -63,7 +65,7 @@ function generateMGTTransactionJSON({ orderRows, dbRows } = {}) {
             const row = orderRows[i];
             const quantity = row[branch.index];
 
-            if (!quantity || quantity <= 0 || row[0]?.trim() === 'TOTAL') continue;
+            if (!quantity || quantity <= 0 || row[0]?.trim().toLowerCase() === 'total' || row[1]?.trim().toLowerCase() === 'total') continue;
 
             const productName = String(row[0]).toLowerCase().trim();
             if (!productMap.has(productName) && !productMapErrors.has(row[0].trim())) {
