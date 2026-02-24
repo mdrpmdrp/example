@@ -35,10 +35,10 @@ function sheetData(sheetName) {
   if (last < 2) return [];
   var all = sheet.getRange(2, 1, last - 1, sheet.getLastColumn()).getValues();
   var result;
-  if (sheetName === 'ผ่อน' || sheetName === 'ซื้อสด') {
+  if (sheetName === 'ผ่อน' || sheetName === 'ซื้อสด' || sheetName === 'มือสอง') {
     result = all.filter(function (r) {
       var col3 = Number(r[3]);
-      return String(r[0]).trim() !== '' && !isNaN(col3) && col3 > 0;
+      return String(r[0]).trim() !== '' && !isNaN(col3) && [4,5,6,7].some(function (i) { return r[i] !== '' && !isNaN(Number(r[i])); });
     });
   } else {
     result = all;
@@ -99,8 +99,8 @@ function logSearch(payload) {
   var p = JSON.parse(payload);
   try {
     var eventStr;
-    if (p.type === 'ผ่อน') {
-      eventStr = 'Search ผ่อน: ' + p.brand + ' ' + p.model + ' ' + p.storage
+    if (p.type === 'ผ่อน' || p.type === 'ผ่อนมือสอง') {
+      eventStr = 'Search ' + p.type + ': ' + p.brand + ' ' + p.model + ' ' + p.storage
         + ' | ดาวน์ ' + p.down + ' | ' + p.months + ' งวด'
         + ' | ค่างวด ' + p.installment + ' | รวม ' + p.total;
     } else if (p.type && p.type.indexOf('ดาวน์โหลด') === 0) {
@@ -281,7 +281,7 @@ function logLogout(payload) {
 
 function getPriceData() {
   try {
-    var result = { ผ่อน: {}, ซื้อสด: {} };
+    var result = { ผ่อน: {}, มือสอง: {}, ซื้อสด: {} };
 
     // ผ่อน: brand | model | storage | downPayment | 6mo | 8mo | 10mo | 12mo
     sheetData('ผ่อน').forEach(function (r) {
@@ -290,6 +290,21 @@ function getPriceData() {
       if (!result['ผ่อน'][b][m]) result['ผ่อน'][b][m] = {};
       if (!result['ผ่อน'][b][m][s]) result['ผ่อน'][b][m][s] = [];
       result['ผ่อน'][b][m][s].push({
+        down: Number(r[3]),
+        m6: Number(r[4]),
+        m8: Number(r[5]),
+        m10: Number(r[6]),
+        m12: Number(r[7])
+      });
+    });
+
+    // มือสอง: brand | model | storage | downPayment | 6mo | 8mo | 10mo | 12mo
+    sheetData('มือสอง').forEach(function (r) {
+      var b = String(r[0]), m = String(r[1]), s = String(r[2]);
+      if (!result['มือสอง'][b]) result['มือสอง'][b] = {};
+      if (!result['มือสอง'][b][m]) result['มือสอง'][b][m] = {};
+      if (!result['มือสอง'][b][m][s]) result['มือสอง'][b][m][s] = [];
+      result['มือสอง'][b][m][s].push({
         down: Number(r[3]),
         m6: Number(r[4]),
         m8: Number(r[5]),
