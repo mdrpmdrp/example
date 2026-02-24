@@ -164,6 +164,8 @@ function registerUser(payload) {
 }
 
 function sendApprovalEmail(payload) {
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbzlNU1AFctojMr6XAqXG2b7dghQXgWg5iRkKYDyngbd5E8zqAgVXDB2_41es9-E5lxz/exec";
+    const logoUrl = getLogoBase64();
   try {
     if (payload.status === 'Approved') {
       var subject = '✅ บัญชีผู้ใช้ของคุณได้รับการอนุมัติแล้ว';
