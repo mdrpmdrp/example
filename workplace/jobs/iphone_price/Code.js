@@ -1,22 +1,23 @@
 var SS = SpreadsheetApp.getActiveSpreadsheet();
 
+// Column counts for known price sheets — avoids reading unused columns
+var _SHEET_COLS    = { 'ผ่อน': 8, 'มือสอง': 8, 'Freedown': 8, 'ซื้อสด': 4 };
+var _INSTALLMENT   = { 'ผ่อน': true, 'มือสอง': true, 'Freedown': true };
+
 // ---------- Serve Web App ----------
 function getLogoBase64() {
   try {
-    var response = UrlFetchApp.fetch('https://img2.pic.in.th/LOGO-VN-PHONE--edit_1.png');
-    var blob = response.getBlob();
-    var base64 = Utilities.base64Encode(blob.getBytes());
-    var mime = blob.getContentType() || 'image/png';
-    return 'data:' + mime + ';base64,' + base64;
+    var blob = UrlFetchApp.fetch('https://img2.pic.in.th/LOGO-VN-PHONE--edit_1.png').getBlob();
+    return 'data:' + (blob.getContentType() || 'image/png') + ';base64,' + Utilities.base64Encode(blob.getBytes());
   } catch (e) {
     return 'https://img2.pic.in.th/LOGO-VN-PHONE--edit_1.png';
   }
 }
 
 function doGet() {
-  let html = HtmlService.createTemplateFromFile('index')
+  var html = HtmlService.createTemplateFromFile('index');
   html.priceData = getPriceData();
-  html.logoB64 = getLogoBase64();
+  html.logoB64    = getLogoBase64();
   return html.evaluate()
     .setTitle('Mobile Price Checker')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -33,12 +34,19 @@ function sheetData(sheetName) {
   if (!sheet) return [];
   var last = sheet.getLastRow();
   if (last < 2) return [];
-  var all = sheet.getRange(2, 1, last - 1, sheet.getLastColumn()).getValues();
+  // Read only the columns we actually need
+  var cols = _SHEET_COLS[sheetName] || sheet.getLastColumn();
+  var all  = sheet.getRange(2, 1, last - 1, cols).getValues();
   var result;
-  if (sheetName === 'ผ่อน' || sheetName === 'ซื้อสด') {
+  if (_INSTALLMENT[sheetName]) {
+    // Avoid .some() + array literal on every row; use explicit OR checks
     result = all.filter(function (r) {
-      var col3 = Number(r[3]);
-      return String(r[0]).trim() !== '' && !isNaN(col3) && col3 > 0;
+      return String(r[0]).trim() !== '' && !isNaN(Number(r[3])) &&
+        (r[4] !== '' || r[5] !== '' || r[6] !== '' || r[7] !== '');
+    });
+  } else if (sheetName === 'ซื้อสด') {
+    result = all.filter(function (r) {
+      return String(r[0]).trim() !== '' && r[3] !== '' && !isNaN(Number(r[3]));
     });
   } else {
     result = all;
@@ -47,36 +55,31 @@ function sheetData(sheetName) {
   return result;
 }
 
-function jsonSuccess(data) {
-  return JSON.stringify({ status: 'ok', data: data });
-}
-function jsonError(msg) {
-  return JSON.stringify({ status: 'error', message: msg });
-}
+function jsonSuccess(data) { return JSON.stringify({ status: 'ok',    data: data }); }
+function jsonError(msg)    { return JSON.stringify({ status: 'error', message: msg }); }
 
+// ---------- Trigger ----------
 function onStatusEdit(e) {
   var sheet = e.source.getActiveSheet();
-  if (sheet.getName() === 'Users') {
-    var range = e.range;
-    var col = range.getColumn();
-    var row = range.getRow();
-    if (col === 7 && row > 1) { // Status column
-      var status = String(range.getValue()).trim();
-      if (status === 'Approved' || status === 'Blocked') {
-        var user = {
-          company: String(sheet.getRange(row, 1).getValue()),
-          firstName: String(sheet.getRange(row, 2).getValue()),
-          lastName: String(sheet.getRange(row, 3).getValue()),
-          nickname: String(sheet.getRange(row, 4).getValue()),
-          email: String(sheet.getRange(row, 5).getValue()),
-          phone: String(sheet.getRange(row, 6).getValue()),
-          status: status
-        };
-        sendApprovalEmail(user);
-        logEvent('Status Change to ' + status, user);
-      }
-    }
-  }
+  if (sheet.getName() !== 'Users') return;
+  var range = e.range;
+  // Early exits before any getValue() call
+  if (range.getColumn() !== 7 || range.getRow() <= 1) return;
+  var status = String(range.getValue()).trim();
+  if (status !== 'Approved' && status !== 'Blocked') return;
+  // One batch read instead of 6 individual getValue() round-trips
+  var vals = sheet.getRange(range.getRow(), 1, 1, 7).getValues()[0];
+  var user = {
+    company:   String(vals[0]),
+    firstName: String(vals[1]),
+    lastName:  String(vals[2]),
+    nickname:  String(vals[3]),
+    email:     String(vals[4]),
+    phone:     String(vals[5]),
+    status:    status
+  };
+  sendApprovalEmail(user);
+  logEvent('Status Change to ' + status, user);
 }
 
 // ---------- Log Helper ----------
@@ -87,8 +90,7 @@ function logEvent(event, user) {
       sheet = SS.insertSheet('Log Event');
       sheet.appendRow(['Timestamp', 'Event', 'User', 'Email']);
     }
-    var timestamp = new Date();
-    sheet.appendRow([timestamp, event, user.nickname + ' (' + user.firstName + ')', user.email]);
+    sheet.appendRow([new Date(), event, user.nickname + ' (' + user.firstName + ')', user.email]);
   } catch (e) {
     console.error('Log error: ' + e.message);
   }
@@ -99,8 +101,8 @@ function logSearch(payload) {
   var p = JSON.parse(payload);
   try {
     var eventStr;
-    if (p.type === 'ผ่อน') {
-      eventStr = 'Search ผ่อน: ' + p.brand + ' ' + p.model + ' ' + p.storage
+    if (p.type === 'ผ่อน' || p.type === 'ผ่อนมือสอง' || p.type === 'Freedown') {
+      eventStr = 'Search ' + p.type + ': ' + p.brand + ' ' + p.model + ' ' + p.storage
         + ' | ดาวน์ ' + p.down + ' | ' + p.months + ' งวด'
         + ' | ค่างวด ' + p.installment + ' | รวม ' + p.total;
     } else if (p.type && p.type.indexOf('ดาวน์โหลด') === 0) {
@@ -126,12 +128,10 @@ function registerUser(payload) {
       sheet.appendRow(['Company', 'First Name', 'Last Name', 'Nickname', 'Email', 'Phone', 'Status', 'Created At']);
     }
 
-    // Check duplicate email - Read all data including header to match correctly
     var data = sheet.getDataRange().getValues();
-    for (var i = 1; i < data.length; i++) { // Skip header
-      if (String(data[i][4]).toLowerCase() === String(p.email).toLowerCase()) {
-        return jsonError('อีเมลนี้ถูกใช้งานแล้ว');
-      }
+    var emailLower = String(p.email).toLowerCase();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][4]).toLowerCase() === emailLower) return jsonError('อีเมลนี้ถูกใช้งานแล้ว');
     }
 
     sheet.appendRow([
@@ -235,33 +235,38 @@ function loginUser(payload) {
     var sheet = SS.getSheetByName('Users');
     if (!sheet) return jsonError('ไม่พบฐานข้อมูลผู้ใช้');
 
-    var data = sheet.getDataRange().getValues();
-    for (var i = 1; i < data.length; i++) {
+    var emailLower = String(p.email).toLowerCase();
+    var phonStr = String(p.phone);
+    
+    // Read only needed columns (0-6) instead of entire range
+    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+    
+    for (var i = 0; i < data.length; i++) {
       var row = data[i];
-      // Check email (col 4) and phone (col 5)
-      if (String(row[4]).toLowerCase() === String(p.email).toLowerCase() &&
-        String(row[5]) === String(p.phone)) {
-        if (String(row[6]) === 'Pending') {
-          return jsonError('บัญชีผู้ใช้อยู่ระหว่างการตรวจสอบ กรุณาติดต่อเจ้าหน้าที่');
-        }
-        if (String(row[6]) === 'Blocked') {
-          return jsonError('บัญชีผู้ใช้ถูกระงับ กรุณาติดต่อเจ้าหน้าที่');
-        }
-        var user = {
-          company: String(row[0]),
-          firstName: String(row[1]),
-          lastName: String(row[2]),
-          nickname: String(row[3]),
-          email: String(row[4]),
-          phone: String(row[5]),
-          status: String(row[6])
-        };
-
-        // Log the event
-        logEvent('Login', user);
-
-        return jsonSuccess(user);
+      // Early exit if email doesn't match
+      if (String(row[4]).toLowerCase() !== emailLower) continue;
+      // Check phone after email match
+      if (String(row[5]) !== phonStr) continue;
+      
+      var status = String(row[6]);
+      if (status === 'Pending') {
+        return jsonError('บัญชีผู้ใช้อยู่ระหว่างการตรวจสอบ กรุณาติดต่อเจ้าหน้าที่');
       }
+      if (status === 'Blocked') {
+        return jsonError('บัญชีผู้ใช้ถูกระงับ กรุณาติดต่อเจ้าหน้าที่');
+      }
+      
+      var user = {
+        company: String(row[0]),
+        firstName: String(row[1]),
+        lastName: String(row[2]),
+        nickname: String(row[3]),
+        email: String(row[4]),
+        phone: String(row[5]),
+        status: status
+      };
+      logEvent('Login', user);
+      return jsonSuccess(user);
     }
     return jsonError('ไม่พบบัญชีผู้ใช้ กรุณาตรวจสอบอีเมลและเบอร์โทร');
   } catch (e) {
@@ -281,29 +286,33 @@ function logLogout(payload) {
 
 function getPriceData() {
   try {
-    var result = { ผ่อน: {}, ซื้อสด: {} };
+    var result = { 'ผ่อน': {}, 'มือสอง': {}, 'Freedown': {}, 'ซื้อสด': {} };
 
-    // ผ่อน: brand | model | storage | downPayment | 6mo | 8mo | 10mo | 12mo
-    sheetData('ผ่อน').forEach(function (r) {
-      var b = String(r[0]), m = String(r[1]), s = String(r[2]);
-      if (!result['ผ่อน'][b]) result['ผ่อน'][b] = {};
-      if (!result['ผ่อน'][b][m]) result['ผ่อน'][b][m] = {};
-      if (!result['ผ่อน'][b][m][s]) result['ผ่อน'][b][m][s] = [];
-      result['ผ่อน'][b][m][s].push({
-        down: Number(r[3]),
-        m6: Number(r[4]),
-        m8: Number(r[5]),
-        m10: Number(r[6]),
-        m12: Number(r[7])
+    // Installment sheets: brand | model | storage | down | 6mo | 8mo | 10mo | 12mo
+    ['ผ่อน', 'มือสอง', 'Freedown'].forEach(function (sn) {
+      var bucket = result[sn];
+      sheetData(sn).forEach(function (r) {
+        var b = String(r[0]), m = String(r[1]), s = String(r[2]);
+        if (!bucket[b])       bucket[b]    = {};
+        if (!bucket[b][m])    bucket[b][m] = {};
+        if (!bucket[b][m][s]) bucket[b][m][s] = [];
+        bucket[b][m][s].push({ down: Number(r[3]), m6: Number(r[4]), m8: Number(r[5]), m10: Number(r[6]), m12: Number(r[7]) });
       });
     });
 
     // ซื้อสด: brand | model | storage | price
+    // Read H1 (MDM+service fee) and H2 (delivery fee) in one batch call
+    var scSheet = SS.getSheetByName('ซื้อสด');
+    var scFees = scSheet ? scSheet.getRange(1, 8, 2, 1).getValues() : [[0],[0]];
+    result.scMdmFee      = Number(scFees[0][0]) || 0;
+    result.scDeliveryFee = Number(scFees[1][0]) || 0;
+    var sc = result['ซื้อสด'];
     sheetData('ซื้อสด').forEach(function (r) {
-      var b = String(r[0]), m = String(r[1]), s = String(r[2]);
-      if (!result['ซื้อสด'][b]) result['ซื้อสด'][b] = {};
-      if (!result['ซื้อสด'][b][m]) result['ซื้อสด'][b][m] = {};
-      result['ซื้อสด'][b][m][s] = Number(r[3]);
+      var b = String(r[0]), m = String(r[1]), s = String(r[2]), price = Number(r[3]);
+      if (!price || isNaN(price)) return;
+      if (!sc[b])    sc[b]    = {};
+      if (!sc[b][m]) sc[b][m] = {};
+      sc[b][m][s] = price;
     });
 
     return jsonSuccess(result);
