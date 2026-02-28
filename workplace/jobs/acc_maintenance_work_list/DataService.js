@@ -148,7 +148,7 @@ function getDashboardData() {
     const woData = rows
       .filter(row => {
         const planDate = new Date(row[CONFIG.WORK_ORDER_COLUMNS.PLAN_DATE]);
-        planDate.setHours(0, 0, 0, 0);
+        planDate.setHours(0, 0, 0, 1);
         return planDate >= today;
       })
       .map(row => ({

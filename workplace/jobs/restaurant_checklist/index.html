@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vella Beach Bar &amp; Bistro — Daily Checklist</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <!-- jsPDF + html2canvas (frontend PDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Google Fonts (Noto Sans Thai, Inter, Playfair Display) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+
+    <script>
+        // ── SweetAlert2 Theme Overrides ────────────────────────
+        const swalTheme = Swal.mixin({
+            customClass: {
+                popup: 'rounded-3xl border border-sand-100 shadow-2xl font-sans',
+                title: 'text-vella font-sans font-bold text-2xl',
+                htmlContainer: 'text-vella/80 text-sm font-medium',
+                confirmButton: 'bg-vella text-white px-6 py-2.5 rounded-xl font-bold hover:bg-vella-hover shadow-md border-none outline-none',
+                cancelButton: 'bg-sand-100 text-vella px-6 py-2.5 rounded-xl font-bold hover:bg-sand-200 border-none outline-none',
+                actions: 'gap-3',
+                loader: 'border-vella-bg border-t-vella'
+            },
+            buttonsStyling: false,
+            background: '#fff',
+            color: '#7b5f4a',
+            confirmButtonText: 'ตกลง',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Noto Sans Thai', 'Inter', 'sans-serif'], display: ['Playfair Display', 'serif'] },
+                    colors: {
+                        ocean: {
+                            50: '#eefbfc', 100: '#d4f4f8', 200: '#ade8f0',
+                            300: '#75d6e4', 400: '#37bece', 500: '#1da6ba',
+                            600: '#1a879d', 700: '#1b6d81', 800: '#1e5a6a',
+                            900: '#1e4d5b', DEFAULT: '#1a879d'
+                        },
+                        teal: {
+                            50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4',
+                            300: '#5eead4', 400: '#2dd4bf', 500: '#14b8a6',
+                            600: '#0d9488', 700: '#0f766e', 800: '#115e59',
+                            900: '#134e4a', DEFAULT: '#0d9488'
+                        },
+                        sand: {
+                            50: '#fdfaf5', 100: '#f8f2e6', 200: '#eee1d1',
+                            300: '#e0c9b0', 400: '#cdaa84', 500: '#bc8f60',
+                            600: '#ac784b', 700: '#905f3e', 800: '#7b5f4a',
+                            900: '#4a382c', DEFAULT: '#7b5f4a'
+                        },
+                        vella: { DEFAULT: '#7b5f4a', bg: '#eee1d1', hover: '#8b6e58' },
+                        coral: { DEFAULT: '#e5603b', light: '#fde8e1' },
+                        success: { DEFAULT: '#2e7d32', light: '#e8f5e9' }
+                    },
+                    boxShadow: {
+                        card: '0 2px 12px 0 rgba(123,95,74,.08)',
+                        cardmd: '0 4px 24px 0 rgba(123,95,74,.12)',
+                        inner: 'inset 0 2px 6px rgba(0,0,0,.04)'
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn .35s ease forwards',
+                        'slide-up': 'slideUp .4s cubic-bezier(.22,1,.36,1) forwards',
+                        'pulse-once': 'pulseOnce .4s ease'
+                    },
+                    keyframes: {
+                        fadeIn: { from: { opacity: 0 }, to: { opacity: 1 } },
+                        slideUp: { from: { opacity: 0, transform: 'translateY(18px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+                        pulseOnce: { '0%,100%': { transform: 'scale(1)' }, '50%': { transform: 'scale(1.04)' } }
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans Thai', 'Inter', sans-serif;
+            background: #fdfaf5;
+            color: #4a382c;
+        }
+
+        /* ── Loading Skeleton ── */
+        .skeleton {
+            background: linear-gradient(90deg, #f8f2e6 25%, #eee1d1 50%, #f8f2e6 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0
+            }
+
+            100% {
+                background-position: -200% 0
+            }
+        }
+
+        /* ── YES / NO toggle (Bigger targets) ── */
+        .yn-wrap {
+            display: flex;
+            gap: 8px;
+        }
+
+        .yn-btn {
+            flex: 1;
+            padding: 12px 0;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            border: 2px solid;
+            cursor: pointer;
+            transition: all .18s ease;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        /* Default unselected state */
+        .yn-btn.yes {
+            border-color: #e8f5e9;
+            color: #4caf50;
+            background: #f1f8e9;
+        }
+
+        .yn-btn.no {
+            border-color: #ffebee;
+            color: #f44336;
+            background: #fff3e0;
+        }
+
+        /* Hover effects for desktop */
+        .yn-btn.yes:hover:not(.active) {
+            background: #e8f5e9;
+            border-color: #c8e6c9;
+            transform: translateY(-1px);
+        }
+
+        .yn-btn.no:hover:not(.active) {
+            background: #ffebee;
+            border-color: #ffcdd2;
+            transform: translateY(-1px);
+        }
+
+        /* Active states */
+        .yn-btn.yes.active {
+            background: #4caf50;
+            border-color: #4caf50;
+            color: #fff !important;
+            box-shadow: 0 3px 12px rgba(76, 175, 80, .35);
+            transform: scale(1.02);
+        }
+
+        .yn-btn.no.active {
+            background: #f44336;
+            border-color: #f44336;
+            color: #fff !important;
+            box-shadow: 0 3px 12px rgba(244, 67, 54, .35);
+            transform: scale(1.02);
+        }
+
+        /* ── Progress bar ── */
+        #progress-bar {
+            transition: width .45s cubic-bezier(.22, 1, .36, 1);
+        }
+
+        /* ── Category Header ── */
+        .cat-header {
+            background: #eee1d1;
+            color: #7b5f4a;
+            padding: 12px 16px;
+            border-bottom: 2px solid #e0c9b0;
+        }
+
+        /* ── Checklist Item ── */
+        .checklist-item {
+            transition: all .2s ease;
+            border-bottom: 1px solid #f8f2e6;
+            padding: 16px 20px;
+            border-left: 5px solid transparent;
+        }
+
+        .checklist-item:last-child {
+            border-bottom: none;
+        }
+
+        .checklist-item.answered {
+            border-left-color: #4caf50;
+            background: linear-gradient(90deg, #f1f8e9 0%, #fff 5%);
+        }
+
+        .checklist-item.answered-no {
+            border-left-color: #f44336;
+            background: linear-gradient(90deg, #fff3e0 0%, #fff 5%);
+        }
+
+        /* Number Badge */
+        .num-badge {
+            background: #f8f2e6;
+            color: #7b5f4a;
+            font-weight: 700;
+        }
+
+        .answered .num-badge {
+            background: #4caf50;
+            color: white;
+        }
+
+        .answered-no .num-badge {
+            background: #f44336;
+            color: white;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #fdfaf5;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cdaa84;
+            border-radius: 99px;
+        }
+
+        /* ── Note textarea ── */
+        .note-input {
+            font-size: 14px;
+            resize: none;
+            min-height: 44px;
+            transition: all .2s ease;
+            padding: 10px 14px;
+        }
+
+        .note-input:focus {
+            outline: none;
+            border-color: #7b5f4a;
+            box-shadow: 0 0 0 3px rgba(123, 95, 74, .12);
+            background: #fff;
+        }
+
+        /* ── Overlay ── */
+        .overlay-base {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(20, 15, 10, .75);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── Select ── */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237b5f4a' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+        }
+
+        /* Fast actions */
+        .touch-area {
+            min-height: 48px;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+
+    <!-- ══════════════════════════════════════════════════
+       LOADING SCREEN
+  ══════════════════════════════════════════════════ -->
+    <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-sand-50 text-vella">
+        <img src="<?!= logoBase64 ?>" alt="Logo"
+            class="w-28 h-28 rounded-full object-cover mb-6 ring-4 ring-vella/20 shadow-xl"
+            onerror="this.style.display='none'" />
+        <p class="font-display text-2xl font-bold mb-1 tracking-wide">Vella Beach Bar &amp; Bistro</p>
+        <p class="text-vella/70 text-sm mb-10 font-medium">กำลังโหลดโปรแกรม...</p>
+        <div class="flex gap-2.5">
+            <span class="w-3 h-3 bg-vella/80 rounded-full animate-bounce" style="animation-delay:0s"></span>
+            <span class="w-3 h-3 bg-vella/80 rounded-full animate-bounce" style="animation-delay:.15s"></span>
+            <span class="w-3 h-3 bg-vella/80 rounded-full animate-bounce" style="animation-delay:.30s"></span>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+       MAIN APP
+  ══════════════════════════════════════════════════ -->
+    <div id="app" class="hidden flex flex-col min-h-screen">
+
+        <!-- ── STICKY HEADER ── -->
+        <header class="sticky top-0 z-40 bg-white shadow-sm border-b border-sand-100">
+            <div class="max-w-5xl mx-auto px-4 py-3.5 flex items-center gap-4">
+                <img src="<?!= logoBase64 ?>" alt="Logo"
+                    class="w-12 h-12 rounded-full object-cover ring-2 ring-vella-bg flex-shrink-0"
+                    onerror="this.style.display='none'" />
+                <div class="flex-1 min-w-0">
+                    <h1 class="text-vella font-display font-bold text-lg leading-tight truncate">
+                        Vella Beach Bar &amp; Bistro
+                    </h1>
+                    <p class="text-vella/60 text-xs font-medium uppercase tracking-wider mt-0.5">Daily Preparation
+                        Checklist</p>
+                </div>
+                <div class="text-right text-vella/80 text-xs hidden sm:block">
+                    <p id="live-date" class="font-bold"></p>
+                    <p id="live-time" class="text-vella/60 font-mono mt-0.5"></p>
+                </div>
+            </div>
+
+            <!-- ── PROGRESS BAR ── -->
+            <div class="bg-vella-bg/50 px-4 py-2.5 border-t border-sand-100/50">
+                <div class="max-w-5xl mx-auto flex items-center gap-3">
+                    <div class="flex-1 h-2 bg-black/5 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full rounded-full bg-vella" style="width:0%"></div>
+                    </div>
+                    <span id="progress-text" class="text-vella text-xs font-bold w-16 text-right">0 / 0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ── FORM BODY ── -->
+        <main class="flex-1 max-w-5xl w-full mx-auto px-4 pb-40 pt-6 space-y-5">
+
+            <!-- ── INFO CARD ── -->
+            <div class="bg-white rounded-2xl shadow-card p-5 animate-slide-up border border-sand-50">
+                <div class="flex items-center gap-2 mb-4 pb-3 border-b border-sand-100 border-dashed">
+                    <div class="w-8 h-8 rounded-full bg-vella-bg flex items-center justify-center">
+                        <i data-lucide="user" class="w-4 h-4 text-vella"></i>
+                    </div>
+                    <h2 class="font-bold text-vella text-base">ข้อมูลผู้ปฏิบัติงาน</h2>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+                    <!-- Employee Select -->
+                    <div>
+                        <label class="block text-xs font-bold text-vella/60 uppercase tracking-wider mb-2">
+                            ชื่อพนักงาน <span class="text-coral">*</span>
+                        </label>
+                        <select id="employee-select"
+                            class="w-full rounded-xl border-2 border-sand-100 bg-sand-50 px-4 py-3 text-vella text-base font-semibold
+                     focus:outline-none focus:border-vella focus:bg-white transition-all cursor-pointer h-12 shadow-inner">
+                            <option value="">— เลือกพนักงาน —</option>
+                        </select>
+                    </div>
+
+                    <!-- Date display -->
+                    <div>
+                        <label class="block text-xs font-bold text-vella/60 uppercase tracking-wider mb-2">
+                            วันที่ / เวลา
+                        </label>
+                        <div
+                            class="w-full rounded-xl border-2 border-sand-100 bg-sand-50 px-4 py-3 text-vella/80 text-sm font-semibold flex items-center gap-2 h-12">
+                            <i data-lucide="clock" class="w-4 h-4 text-vella/60"></i>
+                            <span id="card-datetime">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── STATS ROW ── -->
+            <div id="stats-section" class="grid grid-cols-3 gap-3 animate-slide-up hidden" style="animation-delay:.08s">
+                <div class="bg-white rounded-2xl shadow-card p-4 text-center border border-sand-50">
+                    <p class="text-2xl font-bold text-vella" id="stat-total">0</p>
+                    <p class="text-xs text-vella/60 font-bold mt-0.5 uppercase tracking-wider">ทั้งหมด</p>
+                </div>
+                <div class="bg-success-light rounded-2xl shadow-card p-4 text-center border border-green-100">
+                    <p class="text-2xl font-bold text-success" id="stat-yes">0</p>
+                    <p class="text-xs text-success/70 font-bold mt-0.5 uppercase tracking-wider">Yes</p>
+                </div>
+                <div class="bg-red-50 rounded-2xl shadow-card p-4 text-center border border-red-100">
+                    <p class="text-2xl font-bold text-red-500" id="stat-no">0</p>
+                    <p class="text-xs text-red-500/70 font-bold mt-0.5 uppercase tracking-wider">No</p>
+                </div>
+            </div>
+
+            <!-- ── CHECKLIST ITEMS (injected here) ── -->
+            <div id="checklist-container"
+                class="bg-white rounded-2xl shadow-card overflow-hidden border border-sand-50 animate-slide-up hidden"></div>
+
+            <!-- ── SUBMIT BUTTON (floating) ── -->
+            <div id="footer-section" class="fixed bottom-0 left-0 right-0 z-30 pointer-events-none hidden">
+                <div class="max-w-5xl mx-auto px-4 pb-5 pointer-events-auto">
+                    <div
+                        class="bg-white/90 backdrop-blur-md rounded-2xl shadow-cardmd p-3 flex items-center gap-3 border border-sand-100/50">
+                        <!-- mini summary -->
+                        <div class="flex-1 flex gap-3 text-xs font-bold text-vella/70 pl-2">
+                            <span class="flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-success inline-block shadow-sm"></span>
+                                <span class="text-success/90">Yes</span>
+                                <span id="foot-yes">0</span>
+                            </span>
+                            <span class="flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block shadow-sm"></span>
+                                <span class="text-red-500/90">No</span>
+                                <span id="foot-no">0</span>
+                            </span>
+                            <span class="flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-sand-300 inline-block shadow-sm"></span>
+                                <span class="text-sand-400">Wait</span>
+                                <span id="foot-pending">0</span>
+                            </span>
+                        </div>
+                        <button id="submit-btn" class="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm
+                     bg-vella text-white transition-all hover:bg-vella-hover active:scale-95 shadow-md">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                            บันทึก
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+       SCRIPT
+  ══════════════════════════════════════════════════ -->
+    <script>
+        // ── State ─────────────────────────────────────────────
+        var checklistData = [];   // [{category, task, remarks}]
+        var checklistState = {};   // { index: {status:'yes'|'no'|'', note:''} }
+        var employees = [];
+
+        // ── Live Clock ────────────────────────────────────────
+        function updateClock() {
+            var now = new Date();
+            var days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+            var months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            var d = days[now.getDay()];
+            var dd = String(now.getDate()).padStart(2, '0');
+            var mm = months[now.getMonth()];
+            var yyyy = now.getFullYear() + 543;
+            var hh = String(now.getHours()).padStart(2, '0');
+            var min = String(now.getMinutes()).padStart(2, '0');
+            var ss = String(now.getSeconds()).padStart(2, '0');
+            $('#live-date').text(d + ' ' + dd + ' ' + mm + ' ' + yyyy);
+            $('#live-time').text(hh + ':' + min + ':' + ss);
+            $('#card-datetime').text(dd + '/' + (now.getMonth() + 1).toString().padStart(2, '0') + '/' + now.getFullYear() + '  ' + hh + ':' + min);
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // ── Render Checklist ──────────────────────────────────
+        function renderChecklist() {
+            var $container = $('#checklist-container').empty();
+            var currentCat = null;
+            var catDelay = 0;
+
+            checklistData.forEach(function (item, idx) {
+                // Category header
+                if (item.category && item.category !== currentCat) {
+                    currentCat = item.category;
+                    catDelay = (idx * 0.03).toFixed(2);
+                }
+
+                var state = checklistState[idx] || { status: '', note: '' };
+
+                var itemClass = 'checklist-item relative animate-slide-up';
+                if (state.status === 'yes') itemClass += ' answered';
+                else if (state.status === 'no') itemClass += ' answered-no';
+
+                var yesActive = state.status === 'yes' ? 'active' : '';
+                var noActive = state.status === 'no' ? 'active' : '';
+
+                var remarksHtml = item.remarks
+                    ? '<p class="text-[13px] text-vella/50 mt-1.5 flex items-start gap-1.5 font-medium"><i data-lucide="info" class="w-3.5 h-3.5 mt-[3px] flex-shrink-0"></i>' + $('<span/>').text(item.remarks).html() + '</p>'
+                    : '';
+
+                var noteVal = state.note ? $('<span/>').text(state.note).html() : '';
+                var itemDelay = ((idx * 0.04) + 0.06).toFixed(2);
+
+                var html = [
+                    '<div class="' + itemClass + '" data-idx="' + idx + '" style="animation-delay:' + itemDelay + 's">',
+                    '  <div class="flex items-start gap-3 sm:gap-4 md:items-center">',
+                    '    <!-- Number badge -->',
+                    '    <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm mt-0.5 md:mt-0 num-badge">' + (idx + 1) + '</div>',
+                    '    <div class="flex-1 min-w-0 md:flex md:items-center md:gap-5">',
+                    '      <!-- Task -->',
+                    '      <div class="md:flex-1 md:min-w-0">',
+                    '        <p class="text-vella font-bold text-[15px] leading-snug cursor-pointer card-title" data-idx="' + idx + '">' + $('<span/>').text(item.task).html() + '</p>',
+                    remarksHtml,
+                    '      </div>',
+                    '      <!-- Yes / No -->',
+                    '      <div class="yn-wrap w-full md:w-[260px] md:flex-shrink-0 mt-4 md:mt-0">',
+                    '        <button class="yn-btn yes ' + yesActive + '" data-idx="' + idx + '" data-val="yes">',
+                    '          <i data-lucide="check-circle-2" class="w-5 h-5"></i> Yes',
+                    '        </button>',
+                    '        <button class="yn-btn no ' + noActive + '" data-idx="' + idx + '" data-val="no">',
+                    '          <i data-lucide="x-circle" class="w-5 h-5"></i> No',
+                    '        </button>',
+                    '      </div>',
+                    '      <!-- Note input -->',
+                    '      <div class="mt-3 md:mt-0 note-wrapper md:w-[220px] md:flex-shrink-0' + (state.status ? '' : ' hidden') + '">',
+                    '        <textarea class="note-input w-full rounded-xl border-2 border-sand-100 bg-sand-50 px-4 py-3 md:py-2.5 md:text-sm text-vella"',
+                    '          placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)..." rows="1"',
+                    '          data-idx="' + idx + '">' + noteVal + '</textarea>',
+                    '      </div>',
+                    '    </div>',
+                    '  </div>',
+                    '</div>'
+                ].join('\n');
+
+                $container.append(html);
+            });
+
+            lucide.createIcons();
+            updateProgress();
+            updateStats();
+        }
+
+        // ── Progress / Stats ──────────────────────────────────
+        function updateProgress() {
+            var total = checklistData.length;
+            var done = 0;
+            var yesC = 0;
+            var noC = 0;
+            $.each(checklistState, function (k, v) {
+                if (v.status === 'yes') { done++; yesC++; }
+                if (v.status === 'no') { done++; noC++; }
+            });
+            var pct = total > 0 ? Math.round(done / total * 100) : 0;
+            $('#progress-bar').css('width', pct + '%');
+            $('#progress-text').text(done + ' / ' + total + ' รายการ');
+            $('#foot-yes').text(yesC);
+            $('#foot-no').text(noC);
+            $('#foot-pending').text(total - done);
+        }
+
+        function updateStats() {
+            var total = checklistData.length;
+            var yesC = 0, noC = 0;
+            $.each(checklistState, function (k, v) {
+                if (v.status === 'yes') yesC++;
+                if (v.status === 'no') noC++;
+            });
+            $('#stat-total').text(total);
+            $('#stat-yes').text(yesC);
+            $('#stat-no').text(noC);
+        }
+
+        // ── Populate Employee Dropdown ────────────────────────
+        function populateEmployees(list) {
+            var $sel = $('#employee-select');
+            $sel.find('option:not(:first)').remove();
+            list.forEach(function (name) {
+                $sel.append($('<option>').val(name).text(name));
+            });
+        }
+
+        // ── Employee Selection Handler ────────────────────────
+        $('#employee-select').on('change', function() {
+            var val = $(this).val();
+            if (val) {
+                $('#stats-section, #checklist-container, #footer-section').removeClass('hidden').addClass('animate-slide-up');
+                setTimeout(function(){
+                    $('html, body').animate({ scrollTop: $('#stats-section').offset().top - $('header').outerHeight() -30 }, 600);
+                }, 100);
+            } else {
+                $('#stats-section, #checklist-container, #footer-section').addClass('hidden').removeClass('animate-slide-up');
+            }
+        });
+
+        // ── Load Data from GAS ────────────────────────────────
+        function loadData() {
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    var data = JSON.parse(res);
+                    if (!data.success) {
+                        showError(data.error || 'Unknown error');
+                        return;
+                    }
+                    checklistData = data.checklist;
+                    employees = data.employees;
+
+                    // Init state
+                    checklistData.forEach(function (_, i) { checklistState[i] = { status: '', note: '' }; });
+
+                    populateEmployees(employees);
+                    $('#stat-total').text(checklistData.length);
+                    $('#foot-pending').text(checklistData.length);
+                    renderChecklist();
+
+                    // Show app
+                    $('#loading-screen').fadeOut(400, function () { $(this).addClass('hidden'); });
+                    $('#app').removeClass('hidden').addClass('animate-fade-in');
+                    lucide.createIcons();
+                })
+                .withFailureHandler(function (err) {
+                    showError(err.message || String(err));
+                })
+                .getInitialData();
+        }
+
+        function showError(msg) {
+            swalTheme.fire({
+                icon: 'error',
+                title: 'โหลดข้อมูลไม่สำเร็จ',
+                text: msg,
+                confirmButtonText: 'ลองใหม่อีกครั้ง'
+            }).then(() => location.reload());
+        }
+
+        // ── YES/NO Toggle ─────────────────────────────────────
+        $(document).on('click', '.yn-btn', function () {
+            var idx = $(this).data('idx');
+            var val = $(this).data('val');
+
+            var prev = checklistState[idx].status;
+            checklistState[idx].status = (prev === val) ? '' : val;
+
+            var $card = $('[data-idx="' + idx + '"].checklist-item');
+            var $yes = $card.find('.yn-btn.yes');
+            var $no = $card.find('.yn-btn.no');
+            var $wrap = $card.find('.note-wrapper');
+
+            $yes.removeClass('active');
+            $no.removeClass('active');
+            $card.removeClass('answered answered-no');
+
+            if (checklistState[idx].status === 'yes') {
+                $yes.addClass('active');
+                $card.addClass('answered');
+                $wrap.removeClass('hidden');
+            } else if (checklistState[idx].status === 'no') {
+                $no.addClass('active');
+                $card.addClass('answered-no');
+                $wrap.removeClass('hidden');
+            } else {
+                $wrap.addClass('hidden');
+            }
+
+            updateProgress();
+            updateStats();
+        });
+
+        // ── Note input ────────────────────────────────────────
+        $(document).on('input', '.note-input', function () {
+            var idx = $(this).data('idx');
+            checklistState[idx].note = $(this).val();
+            // Auto-expand
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // ── Submit ────────────────────────────────────────────
+        $('#submit-btn').off('click').on('click', function () {
+            // Re-bind after render
+        });
+
+        $(document).on('click', '#submit-btn', function () {
+            var employee = $('#employee-select').val();
+            if (!employee) {
+                $('#employee-select').addClass('border-red-400').focus();
+                setTimeout(function () { $('#employee-select').removeClass('border-red-400'); }, 2000);
+                return;
+            }
+
+            var answered = Object.keys(checklistState).filter(function (k) {
+                return checklistState[k].status !== '';
+            }).length;
+            var total = checklistData.length;
+
+            // Define results here so it's available for both paths
+            var results = checklistData.map(function (item, i) {
+                var s = checklistState[i] || {};
+                return {
+                    category: item.category,
+                    task: item.task,
+                    remarks: item.remarks,
+                    status: s.status || '',
+                    note: s.note || ''
+                };
+            });
+
+            if (answered < total) {
+                var left = total - answered;
+                swalTheme.fire({
+                    icon: 'warning',
+                    title: 'รายการไม่ครบถ้วน',
+                    html: `ยังมีรายการที่ยังไม่ได้ระบุ <b>${left}</b> รายการ<br>ต้องการบันทึกต่อไปหรือไม่?`,
+                    showCancelButton: true,
+                    confirmButtonText: 'บันทึกต่อไป',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        processSubmission(employee, results);
+                    }
+                });
+            } else {
+                processSubmission(employee, results);
+            }
+        });
+
+        function processSubmission(employee, results) {
+            var loadingSwal;
+
+            swalTheme.fire({
+                icon: 'info',
+                title: 'กำลังบันทึกข้อมูล...',
+                html: 'อัพโหลดไปยัง Google Drive...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            buildPDF(employee, results)
+                .then(function (pdfBase64) {
+                    var payload = JSON.stringify({
+                        employeeName: employee,
+                        checklistResults: results,
+                        pdfBase64: pdfBase64,
+                        timestamp: new Date().toISOString()
+                    });
+
+                    google.script.run
+                        .withSuccessHandler(function (res) {
+                            var data = JSON.parse(res);
+                            if (!data.success) {
+                                swalTheme.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: (data.error || 'unknown') });
+                                return;
+                            }
+
+                            // Show Success Modal via SweetAlert2 custom HTML
+                            var yesC = results.filter(function (r) { return r.status === 'yes'; }).length;
+                            var noC = results.filter(function (r) { return r.status === 'no'; }).length;
+
+                            swalTheme.fire({
+                                icon: 'success',
+                                title: 'บันทึกสำเร็จ!',
+                                html: `
+                <div class="mt-4 mb-6 space-y-4">
+                  <div class="bg-sand-50 rounded-xl p-4 flex items-start gap-3 border border-sand-100 text-left">
+                    <div class="w-8 h-8 rounded-full bg-white flex flex-shrink-0 items-center justify-center shadow-sm">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7b5f4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
+                    <div class="flex-1 min-w-0 pt-0.5">
+                      <p class="text-[11px] text-vella/60 font-bold uppercase tracking-wider mb-0.5">PDF Checklist</p>
+                      <a href="${data.pdfUrl}" target="_blank" class="text-vella font-bold text-sm hover:underline truncate block flex items-center gap-1">
+                        ${employee}_checklist.pdf 
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      </a>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3 text-center">
+                    <div class="bg-green-50 rounded-xl p-3 border border-green-100">
+                      <p class="text-2xl font-bold text-green-600">${yesC}</p>
+                      <p class="text-xs text-green-600/70 font-medium font-sans">Yes</p>
+                    </div>
+                    <div class="bg-red-50 rounded-xl p-3 border border-red-100">
+                      <p class="text-2xl font-bold text-red-500">${noC}</p>
+                      <p class="text-xs text-red-500/70 font-medium font-sans">No</p>
+                    </div>
+                  </div>
+                </div>
+              `,
+                                showCancelButton: true,
+                                confirmButtonText: 'เปิด PDF',
+                                cancelButtonText: 'ทำรายการใหม่',
+                                reverseButtons: true,
+                                focusConfirm: false
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    window.open(data.pdfUrl, '_blank');
+                                    resetForm();
+                                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                                    resetForm();
+                                }
+                            });
+                        })
+                        .withFailureHandler(function (err) {
+                            swalTheme.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: (err.message || String(err)) });
+                        })
+                        .submitChecklist(payload);
+                })
+                .catch(function (err) {
+                    swalTheme.fire({ icon: 'error', title: 'PDF Error', text: (err.message || String(err)) });
+                });
+        }
+
+        function resetForm() {
+            checklistData.forEach(function (_, i) { checklistState[i] = { status: '', note: '' }; });
+            $('#employee-select').val('');
+            renderChecklist();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ── New Checklist ─────────────────────────────────────
+        // (Note: The reset logic is now handled in callback, but we can keep button logic if needed elsewhere)
+        $(document).on('click', '#modal-new', function () {
+            // Legacy support if needed
+            resetForm();
+        });
+
+        // ── Init ──────────────────────────────────────────────
+        $(function () {
+            lucide.createIcons();
+            loadData();
+        });
+
+        // ══════════════════════════════════════════════════════
+        //  FRONTEND PDF BUILDER  (html2canvas + jsPDF)
+        // ══════════════════════════════════════════════════════
+        function escHTML(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function buildPDFHTML(employee, results, dateStr, timeStr, yesC, noC) {
+            var rows = '';
+            var currentCat = null;
+
+            results.forEach(function (item, i) {
+                var st = item.status;
+                var yesIcon = st === 'yes' ? '<span style="color:#0a7e3b; font-weight:bold;">✓</span>' : '';
+                var noIcon = st === 'no' ? '<span style="color:#c0392b; font-weight:bold;">✓</span>' : '';
+                var noteText = (item.note && item.note.trim()) ? item.note.trim() : (item.remarks || '');
+                var rowBg = (i % 2 === 0) ? '#ffffff' : '#fdfaf5';
+
+                rows += `
+        <tr style="background-color:${rowBg};">
+          <td style="width:30px; text-align:center; padding:6px; border:1px solid #e0c9b0; font-size:10px; color:#999; vertical-align:middle; flex-shrink:0;">
+            ${i + 1}
+          </td>
+          <td style="padding:6px 10px; font-size:11px; color:#4a382c; border:1px solid #e0c9b0; vertical-align:middle; flex:1;">
+            ${escHTML(item.task)}
+          </td>
+          <td style="width:40px; text-align:center; padding:6px; border:1px solid #e0c9b0; vertical-align:middle; flex-shrink:0;">
+            ${yesIcon}
+          </td>
+          <td style="width:40px; text-align:center; padding:6px; border:1px solid #e0c9b0; vertical-align:middle; flex-shrink:0;">
+            ${noIcon}
+          </td>
+          <td style="padding:6px 10px; font-size:10px; color:#666; border:1px solid #e0c9b0; word-break:break-all; vertical-align:middle; width:100px;">
+            ${escHTML(noteText)}
+          </td>
+        </tr>
+      `;
+            });
+
+            return `
+      <div style="font-family:'Noto Sans Thai', sans-serif; background:#fff; width:794px; padding:40px; box-sizing:border-box;">
+        
+        <!-- HEADER -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; border-bottom:2px solid #e0c9b0; padding-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:16px;">
+            <img src="<?!= logoBase64 ?>" alt="Logo"
+                 style="width:60px; height:60px; object-fit:cover; border-radius:50%; border:2px solid #eee1d1;" crossorigin="anonymous" />
+            <div>
+              <h1 style="font-size:20px; font-weight:bold; color:#7b5f4a; margin:0; line-height:1.2;">Vella Beach Bar &amp; Bistro</h1>
+              <p style="font-size:12px; color:#ac784b; margin:0;">Daily Preparation Checklist</p>
+            </div>
+          </div>
+          <div style="text-align:right;">
+             <div style="font-size:12px; color:#6b7280;">วันที่: <span style="font-weight:600; color:#4a382c;">${dateStr}</span></div>
+             <div style="font-size:12px; color:#6b7280; margin-top:2px;">เวลา: <span style="font-weight:600; color:#4a382c;">${timeStr}</span></div>
+          </div>
+        </div>
+
+        <!-- INFO -->
+        <div style="margin-bottom:16px; font-size:12px; color:#4a382c;">
+          <span style="font-weight:bold; color:#7b5f4a;">พนักงานผู้ปฏิบัติงาน:</span> ${escHTML(employee)}
+        </div>
+
+        <!-- TABLE -->
+        <table style="width:100%; border-collapse:collapse; margin-bottom:24px;">
+          <thead>
+            <tr style="background-color:#7b5f4a; color:#eee1d1;">
+              <th style="width:30px; padding:8px 4px; font-weight:bold; font-size:10px; border:1px solid #7b5f4a; text-align:center;">No.</th>
+              <th style="padding:8px 10px; font-weight:bold; font-size:10px; border:1px solid #7b5f4a; text-align:left;">Checklist</th>
+              <th style="width:40px; padding:8px 4px; font-weight:bold; font-size:10px; border:1px solid #7b5f4a; text-align:center;">Yes</th>
+              <th style="width:40px; padding:8px 4px; font-weight:bold; font-size:10px; border:1px solid #7b5f4a; text-align:center;">No</th>
+              <th style="padding:8px 10px; font-weight:bold; font-size:10px; border:1px solid #7b5f4a; text-align:left;">Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+
+        <!-- SUMMARY -->
+        <div style="display:flex; gap:20px; font-size:12px; margin-bottom:40px; border-top:1px solid #e0c9b0; padding-top:16px;">
+          <div><span style="color:#6b7280;">รายการทั้งหมด:</span> <b style="color:#4a382c;">${results.length}</b></div>
+          <div><span style="color:#0a7e3b;">ผ่าน (Yes):</span> <b>${yesC}</b></div>
+          <div><span style="color:#c0392b;">ไม่ผ่าน (No):</span> <b>${noC}</b></div>
+        </div>
+
+        <!-- SIGNATURES -->
+        <div style="display:flex; justify-content:space-between; gap:40px;">
+          <div style="flex:1; border-top:1px solid #e0c9b0; padding-top:8px; margin-top:16px;">
+            <div style="font-size:11px; font-weight:bold; color:#7b5f4a; margin-bottom:4px;">ผู้ตรวจสอบ (Verified by)</div>
+            <div style="font-size:11px; color:#ac784b;">ลงชื่อ <span style="font-weight:bold;">${escHTML(employee)}</span></div>
+          </div>
+          <div style="flex:1; border-top:1px solid #e0c9b0; padding-top:8px; margin-top:16px;">
+            <div style="font-size:11px; font-weight:bold; color:#7b5f4a; margin-bottom:4px;">ผู้อนุมัติ (Approved by)</div>
+            <div style="font-size:11px; color:#ac784b;">ลงชื่อ ...........................................................</div>
+          </div>
+        </div>
+
+      </div>
+    `;
+        }
+
+        function buildPDF(employee, results) {
+            return new Promise(function (resolve, reject) {
+                var now = new Date();
+                var pad = function (n) { return String(n).padStart(2, '0'); };
+                var dateStr = pad(now.getDate()) + '/' + pad(now.getMonth() + 1) + '/' + now.getFullYear();
+                var timeStr = pad(now.getHours()) + ':' + pad(now.getMinutes());
+                var yesC = results.filter(function (r) { return r.status === 'yes'; }).length;
+                var noC = results.filter(function (r) { return r.status === 'no'; }).length;
+
+                var $tmpl = $('#pdf-template');
+                $tmpl.html(buildPDFHTML(employee, results, dateStr, timeStr, yesC, noC));
+                $tmpl.css('display', 'block');
+
+                document.fonts.ready.then(function () {
+                    html2canvas($tmpl[0], {
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: false,
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    }).then(function (canvas) {
+                        $tmpl.css('display', 'none');
+
+                        var A4w = 210, A4h = 297;
+                        var imgData = canvas.toDataURL('image/jpeg', 0.92);
+                        var mmPerPx = A4w / canvas.width;
+                        var totalMM = canvas.height * mmPerPx;
+
+                        var doc = new jspdf.jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+                        var yPos = 0;
+                        while (yPos < totalMM) {
+                            if (yPos > 0) doc.addPage();
+                            doc.addImage(imgData, 'JPEG', 0, -yPos, A4w, totalMM);
+                            yPos += A4h;
+                        }
+
+                        resolve(doc.output('datauristring').split(',')[1]);
+                    }).catch(reject);
+                }).catch(reject);
+            });
+        }
+    </script>
+
+    <!-- Hidden A4 PDF render target -->
+    <div id="pdf-template" style="display:none;position:fixed;left:-9999px;top:0;z-index:-1;"></div>
+
+</body>
+
+</html>
