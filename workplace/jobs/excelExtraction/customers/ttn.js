@@ -2,7 +2,7 @@ function generateTTNTransactionJSON({ orderRows, dbRows } = {}) {
     orderRows = normalizeTTNOrderRows(orderRows)
     // orderRows = orderRows.slice(1); // Remove header rows
 
-     const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
     const matcherSheet = ss.getSheetByName('TTN') || ss.insertSheet('TTN');
     const matcherData = matcherSheet.getDataRange().getDisplayValues();
 
@@ -10,7 +10,7 @@ function generateTTNTransactionJSON({ orderRows, dbRows } = {}) {
     const productMap = new Map();
     const branchMap = new Map();
 
-     // Pre-process matcher data once
+    // Pre-process matcher data once
     for (const row of matcherData) {
         const productKey = String(row[1]).toLowerCase().trim()
         const branchKey = String(row[5]).toLowerCase().trim()
@@ -44,7 +44,7 @@ function generateTTNTransactionJSON({ orderRows, dbRows } = {}) {
     // Pre-normalize branch names for reuse
     const branches = orderRows.slice(1).reduce((uniqueBranches, row) => {
         const branchName = String(row[0]).toLowerCase().trim();
-        if(!branchMap.has(branchName) && branchName !== 'total'){
+        if (!branchMap.has(branchName) && branchName !== 'total') {
             branchMapErrors.add(branchName.trim());
             Logger.log(`Branch mapping not found for branch name: "${branchName}"`);
         }
@@ -52,22 +52,23 @@ function generateTTNTransactionJSON({ orderRows, dbRows } = {}) {
         if (!uniqueBranches.some(b => b.code === code)) {
             uniqueBranches.push({
                 code: code,
+                name: branchName,
                 index: 2 // Volume is always at index 2 for TTN
             });
         }
         return uniqueBranches;
-    }, []).filter(branch => branch.code); // Filter out any branches that ended up with empty code
+    }, []).filter(branch => branch.code !== null); // Filter out any branches that ended up with empty code
 
     // Process each branch
     for (const branch of branches) {
         // const branchSheet = newSpreadsheet.insertSheet(branch.code);
-        if(branch.code === 'ไม่มีชื่อสาขา TOTAL') continue;
+        if (branch.code === 'ไม่มีชื่อสาขา TOTAL') continue;
         const tabObject = { tabName: branch.code, rows: [] };
         const branchOrders = tabObject.rows;
         tableObjects.tabs.push(tabObject);
         for (let i = 1; i < orderRows.length; i++) {
             const row = orderRows[i];
-            if(row[0]?.toLowerCase().trim() !== branch.code.toLowerCase().trim()) continue; // Skip rows that don't belong to the current branch
+            if (row[0]?.toLowerCase().trim() !== branch.name.toLowerCase().trim()) continue; // Skip rows that don't belong to the current branch
             const quantity = row[branch.index];
 
             if (!quantity || quantity <= 0 || row[0]?.trim().toLowerCase() === 'total' || row[1]?.trim().toLowerCase() === 'total') continue;
@@ -97,15 +98,27 @@ function generateTTNTransactionJSON({ orderRows, dbRows } = {}) {
     return JSON.stringify({ tableObjects, productMapErrors, branchMapErrors });
 }
 
-function normalizeTTNOrderRows(orderRows){
-    let normalizedRows = [];
-    orderRows[0]['general order'].slice(1).forEach(row => {
-        if(row[0]?.toString().toLowerCase().includes('total')) return; // Skip total rows
-        normalizedRows.push(['GENERAL ORDER', row[1], row[3]])
-    })
-    orderRows[0]['order by shop'].slice(1).forEach(row => {
-        if(row[0]?.toString().toLowerCase().includes('total')) return; // Skip total rows
-        normalizedRows.push([row[1], row[3], row[6]])
-    })
-    return normalizedRows.filter(row => row.some(cell => cell !== undefined && cell !== null && cell.toString().trim() !== '')); // Remove empty rows
+function normalizeTTNOrderRows(orderRows) {
+    const normalizedRows = [];
+    const data = orderRows[0];
+
+    const generalOrders = data['general order'];
+    for (let i = 1; i < generalOrders.length; i++) {
+        const row = generalOrders[i];
+        const firstCol = row[0]?.toString().toLowerCase() ?? '';
+        if (!firstCol || firstCol.includes('total')) continue;
+        normalizedRows.push(['general order', row[1], row[3]]);
+    }
+
+    const shopOrders = data['order by shop'];
+    for (let i = 1; i < shopOrders.length; i++) {
+        const row = shopOrders[i];
+        const firstCol = row[0]?.toString().toLowerCase() ?? '';
+        if (!firstCol || firstCol.includes('total')) continue;
+        const branch = row[1];
+        if (!branch) continue;
+        normalizedRows.push([branch, row[3], row[6]]);
+    }
+
+    return normalizedRows;
 }
