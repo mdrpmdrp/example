@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CS168 - Smart Sales System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Select2 (สำหรับ Dropdown ค้นหาได้) -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            /* ปรับโทนสีตามโลโก้ CS168: เน้นแดงเข้ม, ดำ, และทอง */
+            --primary: #b60a07;
+            --primary-dark: #8b0806;
+            --accent: #d4af37;
+            /* Gold accent */
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f8fafc;
+            /* Light Gray/Blue background */
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 20px 20px;
+            min-height: 100vh;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .glass-card {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 10px 20px -5px rgba(182, 10, 7, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Select2 Custom Styles สำหรับ Tailwind */
+        .select2-container--default .select2-selection--single {
+            height: 3rem !important;
+            border-radius: 1rem !important;
+            border: 1px solid #e2e8f0 !important;
+            background-color: #ffffff !important;
+            display: flex;
+            align-items: center;
+            outline: none !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .select2-container--default .select2-selection--single:hover,
+        .select2-container--default.select2-container--open .select2-selection--single {
+            background-color: #ffffff !important;
+        }
+        .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #1e293b !important;
+            padding-left: 1rem !important;
+            padding-right: 2rem !important;
+            font-size: 0.875rem !important;
+            line-height: normal !important;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 100% !important;
+            right: 0.5rem !important;
+        }
+        .select2-dropdown {
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 1rem !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+            overflow: hidden !important;
+            z-index: 100 !important;
+        }
+        .select2-search--dropdown .select2-search__field {
+            border-radius: 0.5rem !important;
+            border: 1px solid #e2e8f0 !important;
+            padding: 0.5rem 1rem !important;
+            outline: none !important;
+        }
+        .select2-search--dropdown .select2-search__field:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
+        }
+        .select2-results__option {
+            padding: 0.75rem 1rem !important;
+            font-size: 0.875rem !important;
+        }
+        .select2-container--default .select2-results__option--highlighted[aria-selected] {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+        .select2-container--default .select2-results__option[aria-selected=true] {
+            background-color: #e2e8f0 !important;
+        }
+        textarea {
+            resize: none;
+            overflow: hidden;
+            min-height: 2.75rem;
+            transition: height 0.1s ease;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__clear {
+            margin-right: 0.5rem !important;
+            margin-left: 0.7rem !important;
+        }
+    </style>
+</head>
+
+<body class="pb-20">
+
+    <!-- Header -->
+    <nav class="bg-white text-slate-800 p-3 sticky top-0 z-50 shadow-sm no-print border-b border-slate-200">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="https://img2.pic.in.th/croped_Logo_cs168_png-02.png" alt="CS168 Logo"
+                    class="h-10 w-auto object-contain" onerror="this.src='https://placehold.co/100x40?text=CS168'">
+                <div class="h-6 w-[1px] bg-slate-200"></div>    
+                <h1 class="text-sm font-bold tracking-tight text-slate-600">SALES <span
+                        class="text-red-700">MANAGEMENT</span></h1>
+            </div>
+            <div class="flex gap-2 md:gap-4 items-center w-full md:w-auto justify-between md:justify-end">
+                <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                    <button onclick="switchView('sales')" id="tab-sales"
+                        class="tab-btn px-3 md:px-4 py-2 rounded-xl bg-red-50 text-red-700 font-bold text-sm md:text-base whitespace-nowrap transition-all border border-red-100 hover:border-red-200 shadow-sm">งานขาย</button>
+                    <button onclick="switchView('customers')" id="tab-customers"
+                        class="tab-btn px-3 md:px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-800 font-bold text-sm md:text-base whitespace-nowrap transition-all border border-transparent">ข้อมูลลูกค้า</button>
+                    <button onclick="switchView('products')" id="tab-products"
+                        class="tab-btn px-3 md:px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-800 font-bold text-sm md:text-base whitespace-nowrap transition-all border border-transparent">ข้อมูลสินค้า</button>
+                </div>
+                <div class="hidden md:block text-right border-l border-slate-200 pl-4 ml-2">
+                    <p class="text-sm uppercase text-slate-400 font-bold tracking-widest">Dashboard Summary</p>
+                    <p class="text-xs font-bold text-slate-700">
+                        <span id="countQ" class="text-red-600">0</span> QT |
+                        <span id="countS" class="text-green-600">0</span> IV
+                    </p>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div id="view-sales" class="view-section">
+        <main class="max-w-10xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 no-print">
+
+            <!-- Form Section -->
+            <div class="lg:col-span-5">
+                <div class="glass-card rounded-3xl shadow-xl overflow-hidden bg-white">
+                    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2 group">
+                            <i data-lucide="plus-circle"
+                                class="w-5 h-5 text-red-700 group-hover:rotate-90 transition-transform duration-300"></i>
+                            สร้าง Quotation ใหม่
+                        </h2>
+                    </div>
+                    <form id="quoteForm" class="p-6 space-y-6">
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-1.5 ml-2">
+                                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">ชื่อลูกค้า / บริษัท</label>
+                                    <button type="button" onclick="openCustomerModal()" class="text-blue-600 text-xs font-bold hover:text-blue-800 flex items-center gap-1 transition-colors">
+                                        <i data-lucide="plus-circle" class="w-3 h-3"></i> เพิ่มลูกค้าใหม่
+                                    </button>
+                                </div>
+                                <select id="custName" class="w-full" required>
+                                    <option value="" disabled selected>ค้นหา หรือ เลือกชื่อลูกค้า...</option>
+                                    <!-- ตัวเลือกจำลองจะถูกแทรกที่นี่ -->
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="text-xs font-bold text-slate-500 uppercase ml-2 mb-1.5 block tracking-wide">เบอร์โทรศัพท์</label>
+                                    <input type="tel" id="custTel" placeholder="08x-xxx-xxxx"
+                                        class="w-full h-12 px-4 bg-white hover:bg-white rounded-2xl border border-slate-200 outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 focus:bg-white transition-all shadow-sm text-sm"
+                                        required>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase ml-2 mb-1.5 block tracking-wide">เลขประจำตัวผู้เสียภาษี</label>
+                                    <input type="text" id="custTaxId" placeholder="0000000000000"
+                                        class="w-full h-12 px-4 bg-white rounded-2xl border border-slate-200 outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm text-sm">
+                                </div>
+                            </div>
+                            <div class="col-span-2">
+                                <label class="text-xs font-bold text-slate-500 uppercase ml-2 mb-1.5 block tracking-wide">ที่อยู่</label>
+                                <textarea id="custAddress" rows="2" placeholder="ที่อยู่สำหรับออกใบเสร็จ..."
+                                    class="w-full p-3 bg-white border border-slate-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <label
+                                    class="text-xs font-bold text-slate-400 uppercase ml-2">รายการสินค้าและบริการ</label>
+                                <div class="flex gap-3">
+                                    <button type="button" onclick="addItemRow()"
+                                        class="text-red-700 text-xs font-bold hover:text-red-800 flex items-center gap-1">
+                                        <i data-lucide="plus" class="w-3 h-3"></i> เพิ่มแถว
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="itemRows" class="space-y-3"></div>
+                        </div>
+
+                        <div
+                            class="bg-slate-900 text-white p-5 rounded-3xl flex justify-between items-center shadow-lg">
+                            <div class="flex flex-col">
+                                <span class="text-xs uppercase font-bold opacity-50">Estimated Total</span>
+                                <span class="text-xs text-red-400">ยังไม่รวมภาษีมูลค่าเพิ่ม</span>
+                            </div>
+                            <span class="text-2xl font-black italic">฿<span id="grandTotalDisplay">0.00</span></span>
+                        </div>
+
+                        <button type="submit"
+                            class="w-full btn-primary text-white h-14 rounded-2xl font-bold shadow-lg shadow-red-900/10 active:scale-[0.98]">
+                            บันทึกใบเสนอราคา
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- History Section -->
+            <div class="lg:col-span-7">
+                <div class="bg-white rounded-3xl shadow-xl border border-slate-200 p-6 min-h-[500px]">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        <div>
+                            <h2 class="font-bold text-slate-800 text-xl tracking-tight">ประวัติเอกสาร</h2>
+                            <p class="text-xs text-slate-400">จัดการข้อมูลและออกใบเสร็จรับเงิน</p>
+                        </div>
+                        <div class="relative w-full md:w-64">
+                            <i data-lucide="search" class="absolute left-3 top-3 w-4 h-4 text-slate-300"></i>
+                            <input type="text" id="search" placeholder="ค้นหาชื่อหรือเลขที่..."
+                                class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600">
+                        </div>
+                    </div>
+
+                    <div id="mainTable" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+                    <div id="empty" class="hidden py-32 text-center text-slate-300 animate-in fade-in duration-500">
+                        <div class="relative w-20 h-20 mx-auto mb-6">
+                            <div class="absolute inset-0 bg-slate-100 rounded-full animate-ping opacity-20"></div>
+                            <div
+                                class="relative flex items-center justify-center w-full h-full bg-slate-50 border border-slate-100 rounded-full shadow-inner">
+                                <i data-lucide="inbox" class="w-8 h-8 opacity-40 text-slate-400"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm font-medium tracking-wide">ไม่มีข้อมูลเอกสารในระบบ</p>
+                        <p class="text-xs mt-1 opacity-50">เริ่มสร้างใบเสนอราคาใหม่ที่แบบฟอร์มด้านซ้าย</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Customer View -->
+    <div id="view-customers" class="view-section hidden max-w-7xl mx-auto p-4 md:p-8 no-print">
+        <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+            <div
+                class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50">
+                <div>
+                    <h2 class="font-bold text-slate-800 text-xl tracking-tight flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-blue-600"></i> จัดการฐานข้อมูลลูกค้า
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">เพิ่ม แก้ไข ลบ ข้อมูลบริษัทหรือบุคคลสำหรับการออกเอกสาร</p>
+                </div>
+                <div class="flex gap-2 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-64">
+                        <i data-lucide="search" class="absolute left-3 top-3 w-4 h-4 text-slate-300"></i>
+                        <input type="text" id="searchCustomer" placeholder="ค้นหาชื่อลูกค้า..."
+                            class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-sm">
+                    </div>
+                    <button onclick="openCustomerModal()"
+                        class="h-11 px-4 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-900/10 transition-colors flex items-center gap-2 whitespace-nowrap">
+                        <i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden md:inline">เพิ่มลูกค้า</span>
+                    </button>
+                </div>
+            </div>
+            <div class="p-0 overflow-x-auto">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-xs">
+                        <tr>
+                            <th class="p-4 border-b border-slate-100">ชื่อบริษัท / บุคคล</th>
+                            <th class="p-4 border-b border-slate-100">เบอร์โทรศัพท์</th>
+                            <th class="p-4 border-b border-slate-100">เลขผู้เสียภาษี</th>
+                            <th class="p-4 border-b border-slate-100 hidden md:table-cell">ที่อยู่</th>
+                            <th class="p-4 border-b border-slate-100 text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerTable" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                </table>
+                <div id="customerEmpty" class="hidden py-24 text-center text-slate-400">ไม่มีข้อมูลลูกค้าในระบบ</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product View -->
+    <div id="view-products" class="view-section hidden max-w-7xl mx-auto p-4 md:p-8 no-print">
+        <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+            <div
+                class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50">
+                <div>
+                    <h2 class="font-bold text-slate-800 text-xl tracking-tight flex items-center gap-2">
+                        <i data-lucide="package" class="w-5 h-5 text-emerald-600"></i> จัดการฐานข้อมูลสินค้า
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">เพิ่ม แก้ไข ลบ ข้อมูลสินค้า รูปภาพ สเปค ราคา</p>
+                </div>
+                <div class="flex gap-2 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-64">
+                        <i data-lucide="search" class="absolute left-3 top-3 w-4 h-4 text-slate-300"></i>
+                        <input type="text" id="searchProduct" placeholder="ค้นหารหัส หรือชื่อสินค้า..."
+                            class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-sm">
+                    </div>
+                    <button onclick="openProductModal()"
+                        class="h-11 px-4 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-900/10 transition-colors flex items-center gap-2 whitespace-nowrap">
+                        <i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden md:inline">เพิ่มสินค้า</span>
+                    </button>
+                </div>
+            </div>
+            <div class="p-5">
+                <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+                <div id="productEmpty" class="hidden py-24 text-center text-slate-400 w-full col-span-full">
+                    ไม่มีข้อมูลสินค้าในระบบ</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Customer -->
+    <div id="customerModal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-[2rem] p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-slate-800" id="customerModalTitle">เพิ่มลูกค้าใหม่</h2>
+                <button onclick="closeCustomerModal()"
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"><i
+                        data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <form id="customerForm" class="space-y-4">
+                <input type="hidden" id="customerId">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">ชื่อบริษัท /
+                        บุคคล</label>
+                    <input type="text" id="custNameInput"
+                        class="w-full h-11 px-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        required>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">เบอร์โทรศัพท์</label>
+                    <input type="tel" id="custTelInput"
+                        class="w-full h-11 px-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        required>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">เลขประจำตัวผู้เสียภาษี
+                        (Tax ID)</label>
+                    <input type="text" id="custTaxIdInput"
+                        class="w-full h-11 px-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">ที่อยู่</label>
+                    <textarea id="custAddressInput" rows="3"
+                        class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"></textarea>
+                </div>
+                <button type="submit"
+                    class="w-full h-12 rounded-xl font-bold bg-blue-600 text-white shadow-lg hover:bg-blue-700 mt-2">บันทึกข้อมูลลูกค้า</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Product -->
+    <div id="productModal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
+        <div
+            class="bg-white w-full max-w-2xl rounded-[2rem] p-6 shadow-2xl relative animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto no-scrollbar">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-slate-800" id="productModalTitle">เพิ่มสินค้าใหม่</h2>
+                <button onclick="closeProductModal()"
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"><i
+                        data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <form id="productForm" class="space-y-4">
+                <input type="hidden" id="prodId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">รหัสสินค้า</label>
+                        <input type="text" id="prodCode"
+                            class="w-full h-11 px-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                            required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">ราคาขาย
+                            (ปรับแก้ได้)</label>
+                        <input type="number" step="0.01" id="prodPrice"
+                            class="w-full h-11 px-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                            required>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">ชื่อสินค้า</label>
+                    <input type="text" id="prodName"
+                        class="w-full h-11 px-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                        required>
+                </div>
+
+              
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">สเปค</label>
+                    <textarea id="prodSpec" rows="-"
+                        class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 min-h-[44px]"></textarea>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">สี</label>
+                    <div id="prodColorPicker" class="border border-slate-200 rounded-xl bg-white p-3"></div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">หน่วย</label>
+                        <input type="text" id="prodUnit" value="ชิ้น"
+                            class="w-full h-11 px-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                            required>
+                    </div>
+                </div>
+
+                <div>
+                    <label
+                        class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">การรับประกัน (เดือน)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="prodWarranty" min="0" placeholder="0"
+                            class="w-28 h-11 px-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-center">
+                        <span class="text-sm text-slate-500 font-medium">เดือน</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">หมายเหตุ</label>
+                    <textarea id="prodNotes" rows="2"
+                        class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-2 flex justify-between">
+                        <span>รูปภาพสินค้า (สูงสุด 10 รูป)</span>
+                        <span id="imgCountText" class="text-emerald-600 font-bold">0/10</span>
+                    </label>
+                    <div class="flex gap-3 flex-wrap items-start">
+                        <div id="prodImagePreview" class="flex flex-wrap gap-3"></div>
+                        <label id="uploadBtnLabel"
+                            class="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl bg-slate-50/50 text-slate-400 hover:bg-slate-50 hover:border-emerald-500 hover:text-emerald-600 transition-all cursor-pointer shadow-sm">
+                            <i data-lucide="plus" class="w-6 h-6"></i>
+                            <span class="text-sm font-bold mt-1">เพิ่มรูปภาพ</span>
+                            <input type="file" id="prodImageUpload" multiple accept="image/*" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit"
+                    class="w-full h-12 rounded-xl font-bold bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 mt-2">บันทึกข้อมูลสินค้า</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Finalize -->
+    <div id="confirmModal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
+        <div
+            class="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <div class="flex justify-center mb-6">
+                <img src="https://img2.pic.in.th/croped_Logo_cs168_png-02.png" alt="Logo" class="h-12 w-auto">
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 text-center mb-1">สรุปการขาย</h2>
+            <p class="text-sm text-slate-400 text-center mb-8">ตรวจสอบความถูกต้องและจัดการเงินมัดจำ</p>
+
+            <form id="finalizeForm" class="space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar pr-2">
+                <input type="hidden" id="finalId">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label
+                            class="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">ราคาขายสุทธิ</label>
+                        <input type="number" id="editFullPrice" step="0.01"
+                            class="w-full h-12 px-4 bg-white rounded-2xl border border-slate-200 font-bold text-slate-800 outline-none focus:border-red-600"
+                            oninput="calculateFinal()">
+                    </div>
+                    <div>
+                        <label
+                            class="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">รับมัดจำแล้ว</label>
+                        <input type="number" id="finalDeposit" value="0" step="0.01"
+                            class="w-full h-12 px-4 bg-white rounded-2xl border border-slate-200 font-bold text-blue-600 outline-none focus:border-blue-600"
+                            oninput="calculateFinal()">
+                    </div>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-3xl space-y-3 border border-slate-200">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-bold text-slate-700">ภาษีมูลค่าเพิ่ม (VAT 7%)</span>
+                        <input type="checkbox" id="finalVat" class="w-6 h-6 accent-red-600 cursor-pointer"
+                            onchange="calculateFinal()">
+                    </div>
+                </div>
+                <div class="bg-slate-900 text-white p-6 rounded-3xl">
+                    <div
+                        class="flex justify-between items-center mb-1 opacity-50 text-xs font-bold uppercase tracking-wider">
+                        <span>Grand Total</span>
+                        <span id="vatValueDisplay">VAT: ฿0.00</span>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <span class="text-3xl font-black italic">฿<span id="grandTotalFinal">0.00</span></span>
+                        <div class="text-right">
+                            <p class="text-sm opacity-50 uppercase">Balance Due</p>
+                            <p class="text-sm font-bold text-red-400" id="balanceDueDisplay">฿0.00</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="closeConfirmModal()"
+                        class="flex-1 h-14 rounded-2xl font-bold bg-slate-100 text-slate-400 hover:bg-slate-200">ยกเลิก</button>
+                    <button type="submit"
+                        class="flex-[2] h-14 rounded-2xl font-bold bg-red-700 text-white shadow-lg hover:bg-red-800">ยืนยันและออกใบเสร็จ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Print Modal -->
+    <div id="printModal" class="fixed inset-0 bg-white hidden z-[150] overflow-y-auto">
+        <div class="max-w-4xl mx-auto p-4 md:p-8" id="printContent"></div>
+        <div
+            class="max-w-4xl mx-auto p-6 space-y-3 no-print sticky bottom-0 bg-white border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+            <button onclick="window.print()"
+                class="w-full bg-slate-900 text-white h-14 rounded-2xl font-bold flex items-center justify-center gap-2">
+                <i data-lucide="printer" class="w-5 h-5"></i> พิมพ์เอกสาร
+            </button>
+            <button onclick="closePrintModal()"
+                class="w-full h-12 rounded-2xl font-bold text-slate-400 hover:text-slate-600">ปิดหน้าต่าง</button>
+        </div>
+    </div>
+
+    <script>
+        const PRESET_COLORS = ['ขาว','ดำ','เทา','เงิน','น้ำตาล','แดง','น้ำเงิน','เขียว','เหลือง','ส้ม','ทอง','ชมพู','ม่วง'];
+
+        function initColorPicker($container, currentValue) {
+            const selected = currentValue ? currentValue.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
+            const customColors = selected.filter(function(c){ return !PRESET_COLORS.includes(c); });
+            const allColors = PRESET_COLORS.concat(customColors);
+            $container.empty();
+            const $chips = $('<div class="color-chips grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2"></div>');
+            allColors.forEach(function(color) {
+                const isSel = selected.includes(color);
+                const baseClass = 'color-chip px-2.5 py-1 text-xs rounded-lg border transition-all cursor-pointer';
+                const selClass = isSel ? 'bg-slate-800 text-white border-slate-800 font-bold' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400';
+                const $chip = $('<button type="button" class="' + baseClass + ' ' + selClass + '" data-color="' + color + '">' + color + '</button>');
+                $chip.on('click', function() {
+                    const on = $(this).hasClass('bg-slate-800');
+                    if (on) { $(this).removeClass('bg-slate-800 text-white border-slate-800 font-bold').addClass('bg-white text-slate-600 border-slate-200 hover:border-slate-400'); }
+                    else     { $(this).removeClass('bg-white text-slate-600 border-slate-200 hover:border-slate-400').addClass('bg-slate-800 text-white border-slate-800 font-bold'); }
+                });
+                $chips.append($chip);
+            });
+            $container.append($chips);
+            const $addRow = $('<div class="flex gap-1.5 mt-3"></div>');
+            const $ci = $('<input type="text" placeholder="เพิ่มสีเอง..." class="color-custom-input h-8 px-2.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-slate-400 transition-all">');
+            const $cb = $('<button type="button" class="h-8 px-3 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 border border-transparent hover:border-emerald-200 rounded-lg text-xs font-bold transition-all">+ เพิ่ม</button>');
+            $cb.on('click', function() {
+                const val = $ci.val().trim();
+                if (!val) return;
+                if ($container.find('.color-chip[data-color="' + val + '"]').length) { $ci.val(''); return; }
+                const $nc = $('<button type="button" class="color-chip px-2.5 py-1 text-xs rounded-lg border bg-slate-800 text-white border-slate-800 font-bold transition-all cursor-pointer" data-color="' + val + '">' + val + '</button>');
+                $nc.on('click', function() {
+                    const on = $(this).hasClass('bg-slate-800');
+                    if (on) { $(this).removeClass('bg-slate-800 text-white border-slate-800 font-bold').addClass('bg-white text-slate-600 border-slate-200 hover:border-slate-400'); }
+                    else     { $(this).removeClass('bg-white text-slate-600 border-slate-200 hover:border-slate-400').addClass('bg-slate-800 text-white border-slate-800 font-bold'); }
+                });
+                $container.find('.color-chips').append($nc);
+                $ci.val('');
+            });
+            $ci.on('keydown', function(e){ if (e.key==='Enter'){ e.preventDefault(); $cb.trigger('click'); } });
+            $addRow.append($ci, $cb);
+            $container.append($addRow);
+        }
+
+        function getColorPickerValue($container) {
+            const colors = [];
+            $container.find('.color-chip').each(function() {
+                if ($(this).hasClass('bg-slate-800')) colors.push($(this).data('color'));
+            });
+            return colors.join(', ');
+        }
+
+        let db = [];
+        let customersDb = [
+            { id: 'C-001', name: 'บริษัท เทคโนโลยี สมาร์ท จำกัด', tel: '02-111-2222', taxId: '0105560123456', address: '99/1 ถ.สุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110' },
+            { id: 'C-002', name: 'ห้างหุ้นส่วน วิทยา เทรดดิ้ง', tel: '081-234-5678', taxId: '0103550234567', address: '12 ถ.พระราม 4 แขวงสีลม เขตบางรัก กรุงเทพฯ 10500' },
+            { id: 'C-003', name: 'บริษัท กรีน โซลูชั่น จำกัด', tel: '02-333-4444', taxId: '0105570345678', address: '55 ถ.รัชดาภิเษก แขวงดินแดง เขตดินแดง กรุงเทพฯ 10400' },
+            { id: 'C-004', name: 'คุณ สมชาย มีทรัพย์', tel: '089-456-7890', taxId: '3100600456789', address: '7/3 ซ.ลาดพร้าว 87 แขวงวังทองหลาง เขตวังทองหลาง กรุงเทพฯ 10310' },
+            { id: 'C-005', name: 'บริษัท พรีเมียม อีเว้นท์ จำกัด', tel: '02-555-6666', taxId: '0105580567890', address: '201 ถ.เพชรบุรี แขวงราชเทวี เขตราชเทวี กรุงเทพฯ 10400' },
+            { id: 'C-006', name: 'ร้าน ไอที ช็อป เชียงใหม่', tel: '053-211-333', taxId: '5500600678901', address: '88 ถ.นิมมานเหมินท์ ตำบลสุเทพ อำเภอเมือง เชียงใหม่ 50200' },
+            { id: 'C-007', name: 'บริษัท เน็กซ์ เจน โลจิสติกส์ จำกัด', tel: '038-789-012', taxId: '0205590789012', address: '333 นิคมอุตสาหกรรมอมตะนคร ชลบุรี 20000' },
+            { id: 'C-008', name: 'คุณ วรรณา ใจดี', tel: '091-012-3456', taxId: '3760500890123', address: '14 ม.3 ต.บางปลา อ.บางพลี สมุทรปราการ 10540' },
+            { id: 'C-009', name: 'สถาบันการศึกษา พัฒนาทักษะ', tel: '02-999-0000', taxId: '0994000901234', address: '100 ถ.พหลโยธิน แขวงสามเสนใน เขตพญาไท กรุงเทพฯ 10400' },
+            { id: 'C-010', name: 'บริษัท ซันไชน์ มีเดีย กรุ๊ป จำกัด', tel: '02-777-8888', taxId: '0105600012345', address: '30 อาคาร GMM Grammy ถ.สุขุมวิท 21 กรุงเทพฯ 10110' },
+        ];
+        let productsDb = [
+            { id: 'P-001', code: 'NB-001', name: 'โน้ตบุ๊ก Asus VivoBook 15', price: 18900, unit: 'เครื่อง', color: 'เงิน', desc: 'Intel Core i5 Gen 12, RAM 8GB, SSD 512GB', spec: 'CPU: Intel Core i5-1235U\nRAM: 8GB DDR4\nSSD: 512GB NVMe\nจอ: 15.6" FHD IPS', warranty: 12, notes: 'ประกันศูนย์ไทย', images: [] },
+            { id: 'P-002', code: 'NB-002', name: 'โน้ตบุ๊ก MacBook Air M2', price: 39900, unit: 'เครื่อง', color: 'เทาอวกาศ', desc: 'Apple M2 Chip, RAM 8GB Unified, SSD 256GB', spec: 'CPU: Apple M2\nRAM: 8GB Unified\nSSD: 256GB\nจอ: 13.6" Liquid Retina', warranty: 12, notes: 'ประกัน Apple Thailand', images: [] },
+            { id: 'P-003', code: 'MON-001', name: 'จอมอนิเตอร์ LG 27" 4K', price: 9500, unit: 'จอ', color: 'ดำ', desc: 'IPS 4K UHD 60Hz HDR400', spec: 'ขนาด: 27 นิ้ว\nความละเอียด: 3840x2160 (4K)\nพาแนล: IPS\nรีเฟรชเรต: 60Hz', warranty: 36, notes: 'ประกันพาแนล 3 ปี', images: [] },
+            { id: 'P-004', code: 'KEY-001', name: 'คีย์บอร์ด Keychron K2 Wireless', price: 3200, unit: 'ชิ้น', color: 'เทา', desc: 'Mechanical Wireless TKL, Switch Red', spec: 'ประเภท: Mechanical TKL\nSwitch: Gateron Red\nการเชื่อมต่อ: Bluetooth 5.0 / USB-C\nแบตเตอรี่: 4000mAh', warranty: 12, notes: '', images: [] },
+            { id: 'P-005', code: 'MOUSE-001', name: 'เมาส์ Logitech MX Master 3', price: 3500, unit: 'ชิ้น', color: 'เทาเข้ม', desc: 'Wireless Ergonomic Mouse 4000 DPI', spec: 'DPI: 200-4000\nการเชื่อมต่อ: Bluetooth / USB Nano\nแบตเตอรี่: ชาร์จได้ 70 วัน\nน้ำหนัก: 141g', warranty: 24, notes: 'ของแท้ประกันศูนย์', images: [] },
+            { id: 'P-006', code: 'SRV-INST', name: 'บริการติดตั้งระบบเครือข่าย', price: 5000, unit: 'ครั้ง', color: '-', desc: 'ติดตั้งและตั้งค่า Network ภายในอาคาร', spec: 'ขอบเขตงาน:\n- วางสายแลน\n- ตั้งค่า Router/Switch\n- ทดสอบระบบ', warranty: 1, notes: 'ราคาต่อจุด Access Point', images: [] },
+            { id: 'P-007', code: 'BAG-001', name: 'กระเป๋าโน้ตบุ๊ก Targus 15.6"', price: 1290, unit: 'ใบ', color: 'ดำ', desc: 'กระเป๋าสะพายหลัง ผ้ากันน้ำ', spec: 'รองรับ: โน้ตบุ๊กถึง 15.6 นิ้ว\nวัสดุ: โพลีเอสเตอร์กันน้ำ\nน้ำหนัก: 0.8kg', warranty: 6, notes: '', images: [] },
+            { id: 'P-008', code: 'HUB-001', name: 'USB-C Hub 7-in-1 Anker', price: 1690, unit: 'ชิ้น', color: 'เงิน', desc: 'HDMI 4K, USB-A x3, SD Card, PD 100W', spec: 'พอร์ต: HDMI 4K@30Hz, USB-A 3.0 x3, SD/MicroSD, PD 100W\nความยาวสาย: 30cm', warranty: 12, notes: 'ประกัน Anker Thailand', images: [] },
+            { id: 'P-009', code: 'SRV-MAINT', name: 'บริการซ่อมบำรุงคอมพิวเตอร์', price: 800, unit: 'ครั้ง', color: '-', desc: 'ตรวจเช็คและซ่อมแซม Hardware/Software', spec: 'บริการ:\n- ตรวจเช็คระบบ\n- ลงโปรแกรม/Windows\n- กำจัดไวรัส\n- ทำความสะอาดเครื่อง', warranty: 0, notes: 'ราคาเริ่มต้น ไม่รวมอะไหล่', images: [] },
+            { id: 'P-010', code: 'SSD-001', name: 'SSD External Samsung T7 1TB', price: 3290, unit: 'ชิ้น', color: 'น้ำเงินเข้ม', desc: 'Portable SSD USB 3.2 Gen 2 ความเร็ว 1050MB/s', spec: 'ความจุ: 1TB\nอินเทอร์เฟส: USB 3.2 Gen 2\nความเร็วอ่าน: 1050 MB/s\nความเร็วเขียน: 1000 MB/s\nน้ำหนัก: 57g\nขนาด: 85 x 57 x 8.8 มม.\nอุณหภูมิการทำงาน: 0-45°C\nความทนทาน: ต้านทานน้ำ และ ชนกระแทก\nรองรับระบบ: Windows, Mac, Android', warranty: 36, notes: 'ประกัน Samsung Thailand', images: [] },
+        ];
+        let currentProductImages = [];
+
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        }
+
+        $(document).ready(function () {
+            // Auto-resize all textareas on input
+            $(document).on('input', 'textarea', function() { autoResize(this); });
+            // Init on page load
+            $('textarea').each(function() { autoResize(this); });
+
+            lucide.createIcons();
+            addItemRow();
+            
+            // Initialize Select2 for Customers Dropdown
+            $('#custName').select2({
+                placeholder: "ค้นหา หรือ เลือกชื่อลูกค้า...",
+                allowClear: true,
+                language: {
+                    noResults: function() {
+                        return "ไม่พบข้อมูลลูกค้า";
+                    }
+                },
+                escapeMarkup: function (markup) {
+                    return markup; // Allow HTML in 'noResults' template
+                }
+            }).on('select2:open', function() {
+                // Always show Add New button
+                setTimeout(function() {
+                    if (!$('.select2-results__append').length) {
+                        $('.select2-results').append(`<div class="select2-results__append p-2 border-t border-slate-100 bg-white"><button type="button" class="w-full text-sm text-center text-blue-600 font-bold py-2 hover:bg-blue-50 rounded-lg transition-colors" onclick="$('#custName').select2('close'); openCustomerModal();">+ เพิ่มลูกค้าใหม่</button></div>`);
+                    }
+                }, 0);
+            });
+
+            // Auto-fill customer fields when customer is selected
+            $('#custName').on('select2:select', function(e) {
+                const selectedCustId = e.params.data.id;
+                const customer = customersDb.find(c => c.id === selectedCustId);
+                if (customer) {
+                    $('#custTel').val(customer.tel || '');
+                    $('#custTaxId').val(customer.taxId || '');
+                    $('#custAddress').val(customer.address || '');
+                    autoResize($('#custAddress')[0]);
+                }
+            });
+
+            // Clear all customer fields when selection is cleared
+            $('#custName').on('select2:clear', function(e) {
+                $('#custTel').val('');
+                $('#custTaxId').val('');
+                $('#custAddress').val('');
+                autoResize($('#custAddress')[0]);
+            });
+
+            $('#quoteForm').on('submit', saveQuote);
+            $('#finalizeForm').on('submit', saveFinalize);
+            $('#search').on('keyup', handleSearch);
+
+            // New Modules Events
+            $('#customerForm').on('submit', saveCustomer);
+            $('#searchCustomer').on('keyup', handleCustomerSearch);
+            $('#productForm').on('submit', saveProduct);
+            $('#searchProduct').on('keyup', handleProductSearch);
+            $('#prodImageUpload').on('change', handleImageUpload);
+
+            renderCustomers();
+            renderProducts();
+            updateCustomerDropdown(); // Initial load for dropdown
+        });
+
+        // ======================= Navigation / Tab System =======================
+        function switchView(view) {
+            $('.view-section').addClass('hidden');
+            $('#view-' + view).removeClass('hidden');
+
+            // Tab styling reset
+            $('.tab-btn').removeClass('bg-red-50 text-red-700 border-red-100 bg-blue-50 text-blue-700 border-blue-100 bg-emerald-50 text-emerald-700 border-emerald-100 shadow-sm').addClass('text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-800');
+
+            // Tab styling active
+            if (view === 'sales') $('#tab-' + view).removeClass('text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-800').addClass('bg-red-50 text-red-700 border-red-100 shadow-sm');
+            else if (view === 'customers') $('#tab-' + view).removeClass('text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-800').addClass('bg-blue-50 text-blue-700 border-blue-100 shadow-sm');
+            else if (view === 'products') $('#tab-' + view).removeClass('text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-800').addClass('bg-emerald-50 text-emerald-700 border-emerald-100 shadow-sm');
+        }
+
+        // ======================= Customer Management =======================
+        function renderCustomers(data = customersDb) {
+            const $list = $('#customerTable');
+            $list.empty();
+            if (data.length === 0) {
+                $('#customerEmpty').removeClass('hidden');
+            } else {
+                $('#customerEmpty').addClass('hidden');
+                data.forEach(item => {
+                    const tr = `
+                        <tr class="hover:bg-slate-50 transition-colors group">
+                            <td class="p-4 font-bold text-slate-800">${item.name}</td>
+                            <td class="p-4">${item.tel}</td>
+                            <td class="p-4">${item.taxId || '-'}</td>
+                            <td class="p-4 truncate max-w-[200px] hidden md:table-cell" title="${item.address}">${item.address || '-'}</td>
+                            <td class="p-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onclick="editCustomer('${item.id}')" class="text-blue-600 hover:text-blue-800 p-1"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                                <button onclick="deleteCustomer('${item.id}')" class="text-red-500 hover:text-red-700 p-1 ml-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    $list.append(tr);
+                });
+            }
+            updateCustomerDropdown();
+            lucide.createIcons();
+        }
+
+        // Helper function to keep Quote Form dropdown in sync with Database
+        function updateCustomerDropdown() {
+            const $select = $('#custName');
+            const currentValue = $select.val();
+            
+            $select.empty();
+            $select.append('<option value="" disabled selected>ค้นหา หรือ เลือกชื่อลูกค้า...</option>');
+            
+            customersDb.forEach(c => {
+                const isSelected = (c.id === currentValue) ? 'selected' : '';
+                $select.append(`<option value="${c.id}" ${isSelected}>${c.name}</option>`);
+            });
+            // Re-initialize select2 rendering silently
+            $select.trigger('change.select2');
+        }
+
+        function handleCustomerSearch() {
+            const q = $(this).val().toLowerCase();
+            renderCustomers(customersDb.filter(i => i.name.toLowerCase().includes(q) || i.tel.includes(q) || (i.taxId && i.taxId.includes(q))));
+        }
+
+        function openCustomerModal(id = null) {
+            $('#customerForm')[0].reset();
+            if (id) {
+                $('#customerModalTitle').text('แก้ไขข้อมูลลูกค้า');
+                const item = customersDb.find(i => i.id === id);
+                $('#customerId').val(item.id);
+                $('#custNameInput').val(item.name);
+                $('#custTelInput').val(item.tel);
+                $('#custTaxIdInput').val(item.taxId);
+                $('#custAddressInput').val(item.address);
+                autoResize($('#custAddressInput')[0]);
+            } else {
+                $('#customerModalTitle').text('เพิ่มลูกค้าใหม่');
+                $('#customerId').val('');
+            }
+            $('#customerModal').removeClass('hidden');
+        }
+
+        function closeCustomerModal() { $('#customerModal').addClass('hidden'); }
+
+        function saveCustomer(e) {
+            e.preventDefault();
+            const id = $('#customerId').val();
+            const data = {
+                name: $('#custNameInput').val(),
+                tel: $('#custTelInput').val(),
+                taxId: $('#custTaxIdInput').val(),
+                address: $('#custAddressInput').val()
+            };
+
+            let newId = id;
+            if (id) {
+                const idx = customersDb.findIndex(i => i.id === id);
+                customersDb[idx] = { ...customersDb[idx], ...data };
+            } else {
+                newId = 'C-' + Date.now();
+                customersDb.push({ id: newId, ...data });
+            }
+            renderCustomers();
+            
+
+            closeCustomerModal();
+        }
+
+        function deleteCustomer(id) {
+            if (confirm('ต้องการลบข้อมูลลูกค้านี้ใช่หรือไม่?')) {
+                customersDb = customersDb.filter(i => i.id !== id);
+                renderCustomers();
+            }
+        }
+
+        // ======================= Product Management =======================
+        function handleImageUpload(e) {
+            const files = Array.from(e.target.files);
+            const remaining = 10 - currentProductImages.length;
+            const toProcess = files.slice(0, remaining);
+
+            if (toProcess.length < files.length) {
+                alert(`คุณสามารถเพิ่มรูปภาพได้อีกแค่ ${remaining} รูปเท่านั้น`);
+            }
+
+            if (toProcess.length === 0) {
+                $(this).val('');
+                return;
+            }
+
+            let loadedCount = 0;
+            toProcess.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    currentProductImages.push(ev.target.result);
+                    loadedCount++;
+                    if (loadedCount === toProcess.length) {
+                        renderImagePreview();
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+            $(this).val(''); // Reset input
+        }
+
+        function removeProductImage(index) {
+            currentProductImages.splice(index, 1);
+            renderImagePreview();
+        }
+
+        function renderImagePreview() {
+            const $container = $('#prodImagePreview');
+            $container.empty();
+            $('#imgCountText').text(currentProductImages.length + '/10');
+
+            currentProductImages.forEach((src, idx) => {
+                const div = `
+                    <div class="relative w-20 h-20 rounded-xl border border-slate-200 overflow-hidden group shadow-sm bg-white">
+                        <img src="${src}" class="w-full h-full object-cover">
+                        <button type="button" onclick="removeProductImage(${idx})" class="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all backdrop-blur-[2px]">
+                            <i data-lucide="trash-2" class="w-5 h-5 hover:text-red-400 hover:scale-110 transition-transform"></i>
+                        </button>
+                    </div>
+                `;
+                $container.append(div);
+            });
+
+            if (currentProductImages.length >= 10) {
+                $('#uploadBtnLabel').hide();
+            } else {
+                $('#uploadBtnLabel').css('display', 'flex');
+            }
+
+            lucide.createIcons();
+        }
+
+        function renderProducts(data = productsDb) {
+            const $list = $('#productGrid');
+            $list.empty();
+            if (data.length === 0) {
+                $('#productEmpty').removeClass('hidden');
+            } else {
+                $('#productEmpty').addClass('hidden');
+                data.forEach(item => {
+                    const img = item.images && item.images.length > 0 ? item.images[0] : 'https://placehold.co/400x300?text=No+Image';
+                    const card = `
+                        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
+                            <div class="h-40 overflow-hidden bg-slate-50 relative">
+                                <img src="${img}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                                <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onclick="editProduct('${item.id}')" class="bg-white/90 p-1.5 rounded-lg text-emerald-600 hover:bg-white shadow backdrop-blur-sm"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                                    <button onclick="deleteProduct('${item.id}')" class="bg-white/90 p-1.5 rounded-lg text-red-600 hover:bg-white shadow backdrop-blur-sm"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                </div>
+                                <span class="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs font-bold rounded backdrop-blur-sm">${item.code}</span>
+                            </div>
+                            <div class="p-4 flex-grow flex flex-col">
+                                <h3 class="font-bold text-slate-800 text-sm line-clamp-1" title="${item.name}">${item.name || item.code}</h3>
+                                <p class="text-xs text-slate-500 mt-1 line-clamp-2" title="${item.desc}">${item.desc || '-'}</p>
+                                <div class="mt-2 text-xs text-slate-500 grid grid-cols-2 gap-y-1 mt-auto">
+                                    <div>สี: <span class="font-semibold text-slate-700">${item.color || '-'}</span></div>
+                                    <div>ประกัน: <span class="font-semibold text-slate-700">${item.warranty || '-'}</span></div>
+                                </div>
+                                <div class="mt-auto pt-3 flex justify-between items-end">
+                                    <span class="text-xs font-bold text-slate-400">หน่วย: ${item.unit}</span>
+                                    <span class="font-black text-emerald-600 text-lg">฿${parseFloat(item.price).toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $list.append(card);
+                });
+            }
+            lucide.createIcons();
+        }
+
+        function handleProductSearch() {
+            const q = $(this).val().toLowerCase();
+            renderProducts(productsDb.filter(i => i.code.toLowerCase().includes(q) || (i.name && i.name.toLowerCase().includes(q)) || i.desc.toLowerCase().includes(q)));
+        }
+
+        function openProductModal(id = null) {
+            $('#productForm')[0].reset();
+            currentProductImages = [];
+            renderImagePreview();
+
+            if (id) {
+                $('#productModalTitle').text('แก้ไขข้อมูลสินค้า');
+                const item = productsDb.find(i => i.id === id);
+                $('#prodId').val(item.id);
+                $('#prodCode').val(item.code);
+                $('#prodName').val(item.name);
+                $('#prodPrice').val(item.price);
+                initColorPicker($('#prodColorPicker'), item.color || '');
+                $('#prodSpec').val(item.spec);
+                $('#prodUnit').val(item.unit);
+                $('#prodWarranty').val(item.warranty);
+                $('#prodNotes').val(item.notes);
+                currentProductImages = [...(item.images || [])];
+                renderImagePreview();
+                setTimeout(function(){
+                    ['#prodSpec','#prodNotes'].forEach(function(sel){
+                        var el = $(sel)[0]; if(el) autoResize(el);
+                    });
+                }, 50);
+            } else {
+                $('#productModalTitle').text('เพิ่มสินค้าใหม่');
+                $('#prodId').val('');
+                initColorPicker($('#prodColorPicker'), '');
+            }
+            $('#productModal').removeClass('hidden');
+        }
+
+        function closeProductModal() { $('#productModal').addClass('hidden'); }
+
+        function saveProduct(e) {
+            e.preventDefault();
+            const id = $('#prodId').val();
+            const data = {
+                code: $('#prodCode').val(),
+                name: $('#prodName').val(),
+                price: parseFloat($('#prodPrice').val()) || 0,
+                color: getColorPickerValue($('#prodColorPicker')),
+                spec: $('#prodSpec').val(),
+                unit: $('#prodUnit').val(),
+                warranty: parseInt($('#prodWarranty').val()) || 0,
+                notes: $('#prodNotes').val(),
+                images: [...currentProductImages]
+            };
+
+            if (id) {
+                const idx = productsDb.findIndex(i => i.id === id);
+                productsDb[idx] = { ...productsDb[idx], ...data };
+            } else {
+                productsDb.push({ id: 'P-' + Date.now(), ...data });
+            }
+            renderProducts();
+            updateItemRowDropdowns();
+            closeProductModal();
+        }
+
+        function deleteProduct(id) {
+            if (confirm('ต้องการลบข้อมูลสินค้านี้ใช่หรือไม่?')) {
+                productsDb = productsDb.filter(i => i.id !== id);
+                renderProducts();
+                updateItemRowDropdowns();
+            }
+        }
+
+        // ======================= End New Modules =======================
+
+        function addItemRow() {
+            const id = 'row-' + Date.now();
+            const rowHtml = `
+                <div id="${id}" class="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative group animate-in slide-in-from-bottom-2 duration-200">
+                    <button type="button" onclick="removeItemRow('${id}')" class="absolute -top-2 -right-2 bg-slate-200 text-slate-500 w-6 h-6 rounded-full flex items-center justify-center hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-sm z-10">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                    <div class="grid grid-cols-12 gap-3">
+                        <div class="col-span-12">
+                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">ชื่อรายการสินค้า / บริการ</label>
+                            <select class="item-name w-full h-10 px-3.5 bg-white border border-slate-200/80 rounded-xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm shadow-slate-100" required>
+                                <option value="">เลือกสินค้า...</option>
+                            </select>
+                        </div>
+                        <div class="col-span-4">
+                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">ราคา/หน่วย</label>
+                            <input type="number" placeholder="0.00" class="item-price w-full h-10 px-3.5 bg-white border border-slate-200/80 rounded-xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm shadow-slate-100 placeholder:text-slate-300" oninput="calculateSubTotal()" required>
+                        </div>
+                        <div class="col-span-4">
+                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">จำนวน</label>
+                            <input type="number" value="1" min="1" class="item-qty w-full h-10 px-3.5 bg-white border border-slate-200/80 rounded-xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm shadow-slate-100" oninput="calculateSubTotal()" required>
+                        </div>
+                        <div class="col-span-4">
+                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">หน่วย</label>
+                            <input type="text" placeholder="ชิ้น" class="item-unit w-full h-10 px-3.5 bg-white border border-slate-200/80 rounded-xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm shadow-slate-100">
+                        </div>
+                        <div class="col-span-12">
+                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">สี</label>
+                            <div class="item-color-picker border border-slate-200/80 rounded-xl bg-white p-2.5"></div>
+                        </div>
+                        <div class="col-span-6">
+                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">การรับประกัน (เดือน)</label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" min="0" placeholder="0" class="item-warranty w-full h-10 px-3.5 bg-white border border-slate-200/80 rounded-xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm shadow-slate-100 text-center">
+                                <span class="text-xs text-slate-500 whitespace-nowrap">เดือน</span>
+                            </div>
+                        </div>
+                        <div class="col-span-12">
+                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">รายละเอียด / สเปค</label>
+                            <textarea class="item-spec w-full p-3 bg-white border border-slate-200/80 rounded-xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm shadow-slate-100" placeholder="-"></textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const $row = $(rowHtml);
+            $('#itemRows').append($row);
+            
+            lucide.createIcons();
+            initColorPicker($row.find('.item-color-picker'), '');
+            $row.find('textarea').each(function(){ autoResize(this); });
+
+            const $select = $row.find('.item-name');
+            $select.append('<option value="">เลือกสินค้า...</option>');
+            productsDb.forEach(p => {
+                $select.append(`<option value="${p.id}" data-price="${p.price}" data-code="${p.code || ''}">[${p.code || p.id}] - ${p.name}</option>`);
+            });
+
+            $select.select2({
+                placeholder: 'ค้นหารหัส หรือชื่อสินค้า...',
+                width: '100%',
+                allowClear: true,
+                matcher: function(params, data) {
+                    if (!params.term || params.term.trim() === '') return data;
+                    const term = params.term.trim().toLowerCase();
+                    const text = (data.text || '').toLowerCase();
+                    const code = ($(data.element).data('code') || '').toLowerCase();
+                    if (text.indexOf(term) > -1 || code.indexOf(term) > -1) return data;
+                    return null;
+                },
+                language: {
+                    noResults: function () {
+                        return "ไม่พบข้อมูลสินค้า";
+                    },
+                },
+                escapeMarkup: function (markup) {
+                    return markup;
+                }
+            }).on('select2:open', function() {
+                // Always show Add New button
+                setTimeout(function() {
+                    if (!$('.select2-results__append').length) {
+                        $('.select2-results').append(`<div class="select2-results__append p-2 border-t border-slate-100 bg-white"><button type="button" onclick="closeProductSelect2AndOpenModal()" class="w-full text-center text-sm text-emerald-600 font-bold py-2 hover:bg-emerald-50 rounded-lg transition-colors">+ เพิ่มสินค้าใหม่</button></div>`);
+                    }
+                }, 0);
+            }).on('select2:select', function(e) {
+                const selectedId = e.params.data.id;
+                const product = productsDb.find(p => p.id === selectedId);
+                if (product) {
+                    $row.find('.item-price').val(product.price || '');
+                    $row.find('.item-unit').val(product.unit || '');
+                    initColorPicker($row.find('.item-color-picker'), product.color || '');
+                    $row.find('.item-warranty').val(product.warranty || '');
+                    $row.find('.item-spec').val([product.spec, product.desc].filter(Boolean).join('\n') || '');
+                    $row.find('.item-spec').each(function(){ autoResize(this); });
+                }
+                calculateSubTotal();
+            }).on('select2:clear', function(e) {
+                $row.find('.item-price').val('');
+                $row.find('.item-unit').val('');
+                initColorPicker($row.find('.item-color-picker'), '');
+                $row.find('.item-warranty').val('');
+                $row.find('.item-spec').val('');
+                $row.find('.item-spec').each(function(){ autoResize(this); });
+                calculateSubTotal();
+            });
+        }
+        
+        function closeProductSelect2AndOpenModal() {
+            $('.item-name').select2('close');
+            openProductModal();
+        }
+
+        function updateItemRowDropdowns() {
+            $('.item-name').each(function() {
+                const $select = $(this);
+                const val = $select.val();
+                $select.empty().append('<option value="">เลือกสินค้า...</option>');
+                productsDb.forEach(p => {
+                    $select.append(`<option value="${p.id}" data-price="${p.price}" data-code="${p.code || ''}">[${p.code || p.id}] - ${p.name}</option>`);
+                });
+                $select.val(val).trigger('change.select2');
+            });
+        }
+
+        function removeItemRow(id) {
+            if ($('#itemRows > div').length > 1) {
+                $('#' + id).remove();
+                calculateSubTotal();
+            }
+        }
+
+        function calculateSubTotal() {
+            let total = 0;
+            $('#itemRows > div').each(function () {
+                const p = parseFloat($(this).find('.item-price').val()) || 0;
+                const q = parseFloat($(this).find('.item-qty').val()) || 0;
+                total += (p * q);
+            });
+            $('#grandTotalDisplay').text(total.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            return total;
+        }
+
+        function saveQuote(e) {
+            e.preventDefault();
+            const items = [];
+            $('#itemRows > div').each(function () {
+                items.push({
+                    name: $(this).find('.item-name').val(),
+                    price: parseFloat($(this).find('.item-price').val()) || 0,
+                    qty: parseFloat($(this).find('.item-qty').val()) || 0
+                });
+            });
+            
+            const custId = $('#custName').val();
+            let finalName = '';
+            if (custId) {
+               const cData = customersDb.find(c => c.id === custId);
+               finalName = cData ? cData.name : custId;
+            }
+
+            const entry = {
+                id: 'QT-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+                date: new Date().toLocaleDateString('th-TH'),
+                name: finalName,
+                tel: $('#custTel').val(),
+                items: items,
+                subTotal: calculateSubTotal(),
+                status: 'Quotation'
+            };
+            db.unshift(entry);
+            render();
+            
+            // Explicit Resetting
+            this.reset();
+            $('#custName').val('').trigger('change');
+            $('#itemRows').empty();
+            addItemRow();
+            calculateSubTotal();
+        }
+
+        function render(data = db) {
+            const $list = $('#mainTable');
+            $list.empty();
+            if (data.length === 0) { $('#empty').removeClass('hidden'); return; }
+            $('#empty').addClass('hidden');
+            data.forEach(item => {
+                const isQ = item.status === 'Quotation';
+                const card = `
+                    <div class="bg-white border border-slate-200/60 rounded-3xl p-5 hover:border-red-200 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 group relative overflow-hidden transform hover:-translate-y-1">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-50 to-transparent rounded-bl-full -z-10 opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div>
+                                <span class="text-sm font-black text-slate-300 tracking-widest uppercase">#${item.id}</span>
+                                <h3 class="font-bold text-slate-800 group-hover:text-red-700 transition-colors">${item.name}</h3>
+                                <p class="text-xs text-slate-400">${item.tel}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="px-2 py-0.5 rounded-full text-sm font-bold ${isQ ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}">
+                                    ${isQ ? 'ใบเสนอราคา' : 'ยืนยันการขาย'}
+                                </span>
+                                <p class="text-lg font-black text-slate-900 mt-1">฿${item.subTotal.toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 pt-4 border-t border-slate-100 relative z-10">
+                            ${isQ ? `
+                                <button onclick="printDoc('${item.id}', 'Quotation')" class="flex-1 h-10 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold text-slate-600 hover:bg-white hover:border-slate-300 hover:text-slate-800 transition-all shadow-sm group-hover:shadow">พิมพ์ QT</button>
+                                <button onclick="openConfirm('${item.id}')" class="flex-1 h-10 bg-gradient-to-r from-red-600 to-red-700 rounded-xl text-xs font-bold text-white hover:from-red-700 hover:to-red-800 shadow-md hover:shadow-lg hover:shadow-red-900/20 transform hover:-translate-y-0.5 transition-all">ออกใบเสร็จ</button>
+                            ` : `
+                                <button onclick="printDoc('${item.id}', 'InvoiceFull')" class="flex-1 h-10 bg-slate-900 rounded-xl text-xs font-bold text-white hover:bg-slate-800 shadow-md hover:-translate-y-0.5 transition-all">ใบเสร็จ (เต็ม)</button>
+                                <button onclick="printDoc('${item.id}', 'Deposit')" class="flex-1 h-10 bg-blue-50/80 rounded-xl text-xs font-bold text-blue-600 hover:bg-blue-100 shadow-sm hover:-translate-y-0.5 transition-all">ใบมัดจำ</button>
+                            `}
+                        </div>
+                    </div>
+                `;
+                $list.append(card);
+            });
+            $('#countQ').text(db.filter(i => i.status === 'Quotation').length);
+            $('#countS').text(db.filter(i => i.status === 'Confirmed').length);
+            lucide.createIcons();
+        }
+
+        function openConfirm(id) {
+            const item = db.find(i => i.id === id);
+            $('#finalId').val(id);
+            $('#editFullPrice').val(item.subTotal);
+            $('#finalDeposit').val(0);
+            $('#finalVat').prop('checked', false);
+            calculateFinal();
+            $('#confirmModal').removeClass('hidden');
+        }
+
+        function calculateFinal() {
+            const price = parseFloat($('#editFullPrice').val()) || 0;
+            const deposit = parseFloat($('#finalDeposit').val()) || 0;
+            const hasVat = $('#finalVat').is(':checked');
+            const vat = hasVat ? price * 0.07 : 0;
+            const grandTotal = price + vat;
+            const balance = grandTotal - deposit;
+            $('#vatValueDisplay').text('VAT: ฿' + vat.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            $('#grandTotalFinal').text(grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            $('#balanceDueDisplay').text('฿' + balance.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+        }
+
+        function saveFinalize(e) {
+            e.preventDefault();
+            const id = $('#finalId').val();
+            const index = db.findIndex(i => i.id === id);
+            db[index].subTotal = parseFloat($('#editFullPrice').val()) || 0;
+            db[index].deposit = parseFloat($('#finalDeposit').val()) || 0;
+            db[index].wantVat = $('#finalVat').is(':checked');
+            db[index].status = 'Confirmed';
+            render();
+            closeConfirmModal();
+            printDoc(id, 'InvoiceFull');
+        }
+
+        function printDoc(id, type) {
+            const item = db.find(i => i.id === id);
+            const vat = item.wantVat ? item.subTotal * 0.07 : 0;
+            const grandTotal = item.subTotal + vat;
+            let itemsHtml = '';
+            if (type === 'Deposit') {
+                const depVat = item.wantVat ? item.deposit * 0.07 : 0;
+                itemsHtml = `<tr><td class="py-4 border-b">เงินมัดจำล่วงหน้า เพื่อยืนยันการจองสินค้า/บริการ</td><td class="py-4 border-b text-center">1</td><td class="py-4 border-b text-right font-bold">฿${item.deposit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td></tr>`;
+                renderPrint("ใบรับเงินมัดจำ / DEPOSIT RECEIPT", item, item.deposit, depVat, "ชำระเงินมัดจำเรียบร้อยแล้ว", itemsHtml);
+            } else {
+                item.items.forEach(i => {
+                    itemsHtml += `<tr><td class="py-4 border-b">${i.name}</td><td class="py-4 border-b text-center">${i.qty}</td><td class="py-4 border-b text-right font-bold">฿${(i.price * i.qty).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td></tr>`;
+                });
+                const title = type === 'Quotation' ? "ใบเสนอราคา / QUOTATION" : (item.wantVat ? "ใบกำกับภาษี/ใบเสร็จรับเงิน" : "ใบเสร็จรับเงิน / RECEIPT");
+                renderPrint(title, item, item.subTotal, vat, type === 'Quotation' ? "ยืนยันราคาภายใน 30 วัน" : "ยอดคงเหลือที่ต้องชำระ ฿" + (grandTotal - item.deposit).toLocaleString(), itemsHtml);
+            }
+        }
+
+        function renderPrint(title, item, base, vat, note, rows) {
+            const html = `
+                <div class="p-8 bg-white text-slate-900 border-[12px] border-slate-100 min-h-[1000px] flex flex-col">
+                    <div class="flex justify-between items-center border-b-2 border-slate-900 pb-8 mb-8">
+                        <div class="flex items-center gap-4">
+                            <img src="https://img2.pic.in.th/croped_Logo_cs168_png-02.png" alt="CS168" class="h-20 w-auto">
+                            <div>
+                                <h1 class="text-2xl font-black italic tracking-tighter text-red-700">${title}</h1>
+                                <p class="text-xs font-bold opacity-50 uppercase tracking-widest">Document No: ${item.id} | Date: ${item.date}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <h2 class="font-black text-xl leading-tight">CS168 CO., LTD.</h2>
+                            <p class="text-xs font-bold opacity-50 uppercase">Bangkok, Thailand | Tel: 02-xxx-xxxx</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-10">
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Customer / Bill To:</p>
+                        <p class="text-2xl font-black text-slate-800">${item.name}</p>
+                        <p class="text-sm font-bold text-slate-500">${item.tel}</p>
+                    </div>
+
+                    <table class="w-full text-left text-sm mb-10 flex-grow">
+                        <thead class="bg-slate-900 text-white font-bold uppercase tracking-widest text-xs">
+                            <tr><th class="p-4 rounded-l-lg">Description</th><th class="p-4 text-center">Qty</th><th class="p-4 text-right rounded-r-lg">Amount</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">${rows}</tbody>
+                    </table>
+
+                    <div class="mt-auto pt-10 border-t-2 border-slate-100 grid grid-cols-2 gap-8">
+                        <div>
+                            <p class="text-xs font-black text-slate-400 uppercase mb-1">Remarks / Terms:</p>
+                            <p class="text-xs italic text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100">${note}</p>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-xs font-bold text-slate-500 px-2"><span>Subtotal</span> <span>฿${base.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+                            <div class="flex justify-between text-xs font-bold text-slate-400 px-2"><span>VAT (7%)</span> <span>฿${vat.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+                            <div class="flex justify-between text-3xl font-black italic bg-slate-900 text-white p-4 rounded-2xl shadow-xl shadow-slate-900/20">
+                                <span>TOTAL</span> 
+                                <span>฿${(base + vat).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-end mt-16 px-4 pb-4">
+                        <div class="text-center w-40">
+                            <div class="border-b border-slate-300 h-10 mb-2"></div>
+                            <p class="text-sm font-bold text-slate-400 uppercase">Customer Signature</p>
+                        </div>
+                        <div class="text-center w-40">
+                            <div class="border-b border-slate-900 h-10 mb-2"></div>
+                            <p class="text-sm font-black text-slate-900 uppercase">Authorized Signature</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            $('#printContent').html(html);
+            $('#printModal').removeClass('hidden');
+        }
+
+        function handleSearch() {
+            const q = $(this).val().toLowerCase();
+            const filtered = db.filter(i => i.name.toLowerCase().includes(q) || i.id.toLowerCase().includes(q));
+            render(filtered);
+        }
+        function closeConfirmModal() { $('#confirmModal').addClass('hidden'); }
+        function closePrintModal() { $('#printModal').addClass('hidden'); }
+    </script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+
