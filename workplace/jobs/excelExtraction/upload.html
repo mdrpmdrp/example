@@ -114,6 +114,7 @@
                         <option value="FFV">FFV</option>
                         <option value="FRF">FRF</option>
                         <option value="MGT">MGT</option>
+                        <option value="TTN">TTN</option>
                     </select>
                 </div>
 
@@ -348,7 +349,19 @@
                 boko: ['pdf'],
                 ffv: ['xlsx', 'xls', 'csv'],
                 ak: ['xlsx', 'xls', 'csv'],
-                mgt: ['xlsx', 'xls', 'csv']
+                mgt: ['xlsx', 'xls', 'csv'],
+                ttn: ['xlsx', 'xls', 'csv']
+            }
+        }
+        const multipleTabs = {
+            database: false,
+            order: {
+                frf: false,
+                boko: false,
+                ffv: false,
+                ak: false,
+                mgt: false,
+                ttn: ['GENERAL ORDER', 'ORDER BY SHOP']
             }
         }
         const acceptMultipleFiles = {
@@ -358,7 +371,8 @@
                 boko: true,
                 ffv: false,
                 ak: false,
-                mgt: false
+                mgt: false,
+                ttn: false
             }
         }
         const fileIcons = {
@@ -442,8 +456,6 @@
 
                 $uploadPromptDb.removeClass('hidden');
                 $filePreviewDb.addClass('hidden');
-
-
             });
 
             $downloadBtn.on('click', function () {
@@ -780,7 +792,12 @@
 
                     if (isOrderExcel) {
                         // Read as Excel/CSV and parse to JSON array
-                        filesOrderData.push({ isExcel: true, name: orderFile.name, data: await readFileAsJson(orderFile, orderFileExt) });
+                        let jsonArray = { isExcel: true, name: orderFile.name, data: await readFileAsJson(orderFile, orderFileExt, multipleTabs.order[storeName.toLowerCase()] || undefined) }
+                        if(!multipleTabs.order[storeName.toLowerCase()]) {
+                            filesOrderData.push(Object.values(jsonArray.data)[0]); // Push only the first sheet's data
+                        }else{
+                            filesOrderData.push(jsonArray);
+                        }
                     } else {
                         // Read as DataURL for other formats (PDF, JPEG, etc.)
                         filesOrderData.push({
@@ -803,8 +820,10 @@
                 const isDbExcel = ['xlsx', 'xls', 'csv'].includes(dbFileExt);
 
                 let fileDbData;
-                fileDbData = await readFileAsJson(dbFile, dbFileExt, "list");
-
+                fileDbData = await readFileAsJson(dbFile, dbFileExt, "list")
+                if(!multipleTabs.database) {
+                    fileDbData = Object.values(fileDbData)[0]; // Use only the first sheet's data
+                }
                 // Show loading
                 Swal.fire({
                     iconHtml: '<i class="fas fa-spinner fa-pulse"></i>',
@@ -848,7 +867,6 @@
                 mainTableObject = tableObjects;
                 mainProductMapErrors = productMapErrors;
                 mainBranchMapErrors = branchMapErrors;
-                
                 showTablePreview();
 
             });
@@ -874,32 +892,41 @@
                                 }
                                 return matches;
                             }).filter(row => row.length > 0);
-                            resolve(rows);
+                            resolve({ csvData: rows });
                         } else {
                             // Parse Excel (xlsx, xls)
                             const data = new Uint8Array(e.target.result);
                             const workbook = XLSX.read(data, { type: 'array' });
                             if (tabName) {
-                                const worksheet = workbook.Sheets[tabName];
-                                if (!worksheet) {
-                                    Swal.fire({
-                                        iconHtml: '<i class="fas fa-times-circle"></i>',
-                                        title: 'เกิดข้อผิดพลาด',
-                                        text: `ไม่พบแผ่นงานชื่อ "${tabName}" ในไฟล์ฐานข้อมูล`,
-                                        confirmButtonColor: '#6366f1',
-                                        customClass: {
-                                            icon: 'text-xl border-none text-red-600',
-                                        }
-                                    })
-                                    throw new Error(`ไม่พบแผ่นงานชื่อ "${tabName}" ในไฟล์ฐานข้อมูล`);
+                                if (typeof tabName === 'string') {
+                                    tabName = [tabName];
                                 }
-                                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                                resolve(jsonData);
+                                
+                                let allJsonData = {};
+                                for (let sheetName of tabName) {
+                                    const worksheet = workbook.Sheets[sheetName];
+                                    if (!worksheet) {
+                                        Swal.fire({
+                                            iconHtml: '<i class="fas fa-times-circle"></i>',
+                                            title: 'เกิดข้อผิดพลาด',
+                                            text: `ไม่พบแผ่นงานชื่อ "${sheetName}" ในไฟล์ฐานข้อมูล`,
+                                            confirmButtonColor: '#6366f1',
+                                            customClass: {
+                                                icon: 'text-xl border-none text-red-600',
+                                            }
+                                        })
+                                        throw new Error(`ไม่พบแผ่นงานชื่อ "${sheetName}" ในไฟล์ฐานข้อมูล`);
+                                    }
+                                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                                    allJsonData[sheetName.toLowerCase()] = jsonData;
+                                }
+                                console.log(allJsonData);
+                                resolve(allJsonData);
                             } else {
                                 const firstSheetName = workbook.SheetNames[0];
                                 const worksheet = workbook.Sheets[firstSheetName];
                                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                                resolve(jsonData);
+                                resolve({ excelData: jsonData });
                             }
                         }
                     } catch (error) {

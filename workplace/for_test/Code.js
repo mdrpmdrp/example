@@ -7,6 +7,7 @@ const CALENDAR_ID = 'f99f6c1f368607108c81b6303c42ce7aeb81776a648ef098582d4da9a5d
 const EVENT_COLOR = CalendarApp.EventColor.ORANGE;
 const EVENT_START_HOUR = 10; // 10:00 AM
 const EVENT_END_HOUR = 11; // 11:00 AM
+const REMINDER_MINS = 60 * 24 * 3; // 3 days before
 
 function onFormSubmit(e) {
     try {
@@ -38,6 +39,8 @@ function onFormSubmit(e) {
         const eventSeries = calendar.createEventSeries(eventName, startTime, endTime, recurrence);
 
         eventSeries.setColor(EVENT_COLOR);
+        eventSeries.removeAllReminders(); // clear default 30-min reminder
+        eventSeries.addPopupReminder(REMINDER_MINS);
 
         // Write the event series ID back to column D of the response row
         if (e.range) {

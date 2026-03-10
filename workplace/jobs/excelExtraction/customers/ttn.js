@@ -1,0 +1,111 @@
+function generateTTNTransactionJSON({ orderRows, dbRows } = {}) {
+    orderRows = normalizeTTNOrderRows(orderRows)
+    // orderRows = orderRows.slice(1); // Remove header rows
+
+     const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const matcherSheet = ss.getSheetByName('TTN') || ss.insertSheet('TTN');
+    const matcherData = matcherSheet.getDataRange().getDisplayValues();
+
+    // Build optimized maps for O(1) lookups
+    const productMap = new Map();
+    const branchMap = new Map();
+
+     // Pre-process matcher data once
+    for (const row of matcherData) {
+        const productKey = String(row[1]).toLowerCase().trim()
+        const branchKey = String(row[5]).toLowerCase().trim()
+        if (productKey) productMap.set(productKey, String(row[0]).trim());
+        if (branchKey) branchMap.set(branchKey, String(row[4]).trim());
+    }
+
+    // Build database map for O(1) product lookups
+    const dbMap = new Map();
+    for (const row of dbRows) {
+        const code = String(row[0]).toLowerCase().trim();
+        if (code) {
+            dbMap.set(code, {
+                nameEN: row[1],
+                nameTH: row[2],
+                unit: row[3],
+                price: row[4]
+            });
+        }
+    }
+
+    // ถึงนี่ล่ะ
+
+    const header = ["Product Code", "Name (Eng)", "Name (Thai)", "ราคา", "Volume", "Unit"];
+    // const newSpreadsheet = SpreadsheetApp.create(`order_${dateStr}-MGT`);
+
+    const tableObjects = { header, tabs: [] };
+    let branchMapErrors = new Set();
+    let productMapErrors = new Set();
+
+    // Pre-normalize branch names for reuse
+    const branches = orderRows.slice(1).reduce((uniqueBranches, row) => {
+        const branchName = String(row[0]).toLowerCase().trim();
+        if(!branchMap.has(branchName) && branchName !== 'total'){
+            branchMapErrors.add(branchName.trim());
+            Logger.log(`Branch mapping not found for branch name: "${branchName}"`);
+        }
+        const code = branchMap.get(branchName) || ("ไม่มีชื่อสาขา " + branchName.trim());
+        if (!uniqueBranches.some(b => b.code === code)) {
+            uniqueBranches.push({
+                code: code,
+                index: 2 // Volume is always at index 2 for TTN
+            });
+        }
+        return uniqueBranches;
+    }, []).filter(branch => branch.code); // Filter out any branches that ended up with empty code
+
+    // Process each branch
+    for (const branch of branches) {
+        // const branchSheet = newSpreadsheet.insertSheet(branch.code);
+        if(branch.code === 'ไม่มีชื่อสาขา TOTAL') continue;
+        const tabObject = { tabName: branch.code, rows: [] };
+        const branchOrders = tabObject.rows;
+        tableObjects.tabs.push(tabObject);
+        for (let i = 1; i < orderRows.length; i++) {
+            const row = orderRows[i];
+            if(row[0]?.toLowerCase().trim() !== branch.code.toLowerCase().trim()) continue; // Skip rows that don't belong to the current branch
+            const quantity = row[branch.index];
+
+            if (!quantity || quantity <= 0 || row[0]?.trim().toLowerCase() === 'total' || row[1]?.trim().toLowerCase() === 'total') continue;
+
+            const productName = String(row[1]).toLowerCase().trim();
+            if (!productMap.has(productName) && !productMapErrors.has(productName)) {
+                productMapErrors.add(productName);
+                Logger.log(`Product mapping not found for product name: "${productName}"`);
+            }
+
+            const productCode = productMap.get(productName) || 'UNKNOWN';
+            const dbData = dbMap.get(productCode.toLowerCase());
+
+            branchOrders.push([
+                productCode,
+                dbData?.nameEN ?? row[1]?.trim(), // Use original name if not found in DB
+                dbData?.nameTH ?? "",
+                dbData?.price ?? 0,
+                quantity,
+                dbData?.unit ?? "" // For FRF, unit is in db
+            ]);
+        }
+    }
+
+    productMapErrors = [...productMapErrors];
+    branchMapErrors = [...branchMapErrors];
+    return JSON.stringify({ tableObjects, productMapErrors, branchMapErrors });
+}
+
+function normalizeTTNOrderRows(orderRows){
+    let normalizedRows = [];
+    orderRows[0]['general order'].slice(1).forEach(row => {
+        if(row[0]?.toString().toLowerCase().includes('total')) return; // Skip total rows
+        normalizedRows.push(['GENERAL ORDER', row[1], row[3]])
+    })
+    orderRows[0]['order by shop'].slice(1).forEach(row => {
+        if(row[0]?.toString().toLowerCase().includes('total')) return; // Skip total rows
+        normalizedRows.push([row[1], row[3], row[6]])
+    })
+    return normalizedRows.filter(row => row.some(cell => cell !== undefined && cell !== null && cell.toString().trim() !== '')); // Remove empty rows
+}
