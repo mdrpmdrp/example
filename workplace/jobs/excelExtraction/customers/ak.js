@@ -52,7 +52,7 @@ function generateAKTransactionJSON({ orderRows, dbRows } = {}) {
         }
     });
 
-    orderRows = orderRows.slice(2, -1); // Remove header rows and total row
+    orderRows = orderRows.filter(row => row[0] && row[0] != null && row[1] && row[1] != null); // Filter out empty rows
 
 
     // Process each branch

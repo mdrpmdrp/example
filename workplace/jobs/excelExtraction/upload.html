@@ -791,13 +791,13 @@
                     const isOrderExcel = ['xlsx', 'xls', 'csv'].includes(orderFileExt);
 
                     if (isOrderExcel) {
-                        // Read as Excel/CSV and parse to JSON array
-                        let jsonArray = { isExcel: true, name: orderFile.name, data: await readFileAsJson(orderFile, orderFileExt, multipleTabs.order[storeName.toLowerCase()] || undefined) }
-                        if(!multipleTabs.order[storeName.toLowerCase()]) {
-                            filesOrderData.push(Object.values(jsonArray.data)[0]); // Push only the first sheet's data
-                        }else{
-                            filesOrderData.push(jsonArray);
-                        }
+                        const jsonArray = await readFileAsJson(orderFile, orderFileExt, multipleTabs.order[storeName.toLowerCase()] || undefined);
+                        const hasMultipleTabs = multipleTabs.order[storeName.toLowerCase()];
+                        filesOrderData.push({
+                            isExcel: true,
+                            name: orderFile.name,
+                            data: hasMultipleTabs ? jsonArray : Object.values(jsonArray)[0]
+                        });
                     } else {
                         // Read as DataURL for other formats (PDF, JPEG, etc.)
                         filesOrderData.push({
@@ -814,6 +814,7 @@
                     }
                 }
                 
+                console.log(filesOrderData)
                 // Read database file - check if Excel/CSV
                 const dbFile = $fileInputDb[0].files[0];
                 const dbFileExt = dbFile.name.split('.').pop().toLowerCase();
@@ -947,6 +948,7 @@
         }
 
         function getOrderData(storeName, filesOrderData, fileDbArray) {
+            console.log('getOrderData called with:', { storeName, filesOrderData, fileDbArray });
             // return new Promise((resolve, reject) => {
             //     google.script.run.withSuccessHandler(function (response) {
             //         response = JSON.parse(response);
