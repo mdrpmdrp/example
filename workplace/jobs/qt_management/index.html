@@ -13,6 +13,8 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script
+        src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@2.0.2/resumableupload_js.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&display=swap');
@@ -45,8 +47,8 @@
 
         @media print {
             body {
+                print-color-adjust: exact;
                 -webkit-print-color-adjust: exact;
-                color-adjust: exact;
             }
 
             .no-print {
@@ -171,14 +173,24 @@
         #loadingOverlay {
             will-change: opacity;
         }
+
         #loadingOverlay.fade-out {
             opacity: 0 !important;
             pointer-events: none;
         }
+
         @keyframes bar-pulse {
-            0%, 100% { opacity: 1; }
-            50%       { opacity: 0.7; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
         }
+
         #loadingBar.indeterminate {
             animation: bar-pulse 1.2s ease-in-out infinite;
         }
@@ -190,67 +202,89 @@
             padding: 2rem !important;
             background: #ffffff !important;
             border: 1px solid #e2e8f0 !important;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15) !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
         }
+
         .swal2-title {
             font-family: 'Noto Sans Thai', sans-serif !important;
             font-weight: 800 !important;
             color: #0f172a !important;
             font-size: 1.2rem !important;
         }
-        .swal2-html-container, .swal2-content {
+
+        .swal2-html-container,
+        .swal2-content {
             font-family: 'Noto Sans Thai', sans-serif !important;
             color: #475569 !important;
             font-size: 0.9rem !important;
         }
+
         /* Coloured icon rings match primary red */
         .swal2-icon.swal2-warning {
             border-color: #fbbf24 !important;
             color: #f59e0b !important;
         }
+
         .swal2-icon.swal2-error {
             border-color: #b60a07 !important;
             color: #b60a07 !important;
         }
+
         .swal2-icon.swal2-success {
             border-color: #10b981 !important;
             color: #10b981 !important;
         }
+
         .swal2-icon.swal2-success .swal2-success-ring {
-            border-color: rgba(16,185,129,0.3) !important;
+            border-color: rgba(16, 185, 129, 0.3) !important;
         }
+
         .swal2-icon.swal2-success [class^=swal2-success-line] {
             background-color: #10b981 !important;
         }
+
         /* Backdrop */
         .swal2-backdrop-show {
-            background: rgba(15,23,42,0.55) !important;
+            background: rgba(15, 23, 42, 0.55) !important;
             backdrop-filter: blur(4px) !important;
         }
+
         /* Actions row gap */
         .swal2-actions {
             gap: 0.75rem !important;
             margin-top: 1.5rem !important;
         }
+
         /* Toast overrides */
         .swal2-toast {
             border-radius: 1rem !important;
-            box-shadow: 0 8px 24px -4px rgba(0,0,0,0.12) !important;
+            box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.12) !important;
             border: 1px solid #e2e8f0 !important;
             background: #ffffff !important;
             padding: 0.75rem 1.25rem !important;
         }
+
         .swal2-toast .swal2-title {
             font-size: 0.875rem !important;
             color: #1e293b !important;
         }
+
         .swal2-toast.swal2-show {
-            animation: toast-slide-in 0.25s cubic-bezier(0.4,0,0.2,1) !important;
+            animation: toast-slide-in 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
+
         @keyframes toast-slide-in {
-            from { opacity: 0; transform: translateX(2rem); }
-            to   { opacity: 1; transform: translateX(0); }
+            from {
+                opacity: 0;
+                transform: translateX(2rem);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
+
         /* Timer progress bar = primary red */
         .swal2-toast .swal2-timer-progress-bar {
             background: linear-gradient(90deg, #b60a07, #d4af37) !important;
@@ -263,19 +297,24 @@
 <body class="pb-20">
 
     <!-- ── Loading Overlay ───────────────────────────── -->
-    <div id="loadingOverlay" class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-red-900 transition-opacity duration-500">
+    <div id="loadingOverlay"
+        class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-red-900 transition-opacity duration-500">
         <div class="flex flex-col items-center gap-6 w-72">
             <!-- Brand mark -->
             <div class="flex flex-col items-center gap-2">
-                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-700 to-red-900 flex items-center justify-center shadow-xl shadow-red-900/40">
+                <div
+                    class="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-700 to-red-900 flex items-center justify-center shadow-xl shadow-red-900/40">
                     <span class="text-white font-black text-2xl tracking-tighter">CS</span>
                 </div>
                 <h1 class="text-white font-black text-xl tracking-tight">CS168 Sales System</h1>
-                <p id="loadingStatus" class="text-slate-400 text-xs font-medium tracking-wide">กำลังเชื่อมต่อ Google Sheets...</p>
+                <p id="loadingStatus" class="text-slate-400 text-xs font-medium tracking-wide">กำลังเชื่อมต่อ Google
+                    Sheets...</p>
             </div>
             <!-- Progress bar track -->
             <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                <div id="loadingBar" class="h-full rounded-full bg-gradient-to-r from-red-700 via-red-500 to-amber-400 transition-all duration-500 ease-out" style="width:5%"></div>
+                <div id="loadingBar"
+                    class="h-full rounded-full bg-gradient-to-r from-red-700 via-red-500 to-amber-400 transition-all duration-500 ease-out"
+                    style="width:5%"></div>
             </div>
             <p class="text-slate-600 text-[11px]">กรุณารอสักครู่</p>
         </div>
@@ -500,10 +539,22 @@
                     </button>
                 </div>
             </div>
-            <div class="p-5">
-                <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-                <div id="productEmpty" class="hidden py-24 text-center text-slate-400 w-full col-span-full">
-                    ไม่มีข้อมูลสินค้าในระบบ</div>
+            <div class="p-0 overflow-x-auto">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-xs">
+                        <tr>
+                            <th class="p-4 border-b border-slate-100 w-16">รูปภาพ</th>
+                            <th class="p-4 border-b border-slate-100">รหัส</th>
+                            <th class="p-4 border-b border-slate-100 min-w-[200px]">ชื่อสินค้าและรายละเอียด</th>
+                            <th class="p-4 border-b border-slate-100 hidden md:table-cell">ราคา (฿)</th>
+                            <th class="p-4 border-b border-slate-100 hidden lg:table-cell">หน่วย</th>
+                            <th class="p-4 border-b border-slate-100 hidden lg:table-cell">สี</th>
+                            <th class="p-4 border-b border-slate-100 text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productGrid" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                </table>
+                <div id="productEmpty" class="hidden py-24 text-center text-slate-400">ไม่มีข้อมูลสินค้าในระบบ</div>
             </div>
         </div>
     </div>
@@ -850,11 +901,11 @@
 
         const mySwal = Swal.mixin({
             customClass: {
-                popup:         'font-sans',
-                title:         'font-sans',
+                popup: 'font-sans',
+                title: 'font-sans',
                 htmlContainer: 'font-sans',
                 confirmButton: 'inline-flex items-center justify-center gap-2 bg-gradient-to-br from-red-700 to-red-900 hover:from-red-800 hover:to-red-950 text-white font-bold rounded-xl px-6 py-2.5 shadow-lg shadow-red-900/20 transition-all active:scale-[0.98]',
-                cancelButton:  'inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-600 font-bold rounded-xl px-6 py-2.5 transition-all border border-slate-200 shadow-sm'
+                cancelButton: 'inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-600 font-bold rounded-xl px-6 py-2.5 transition-all border border-slate-200 shadow-sm'
             },
             buttonsStyling: false,
             reverseButtons: false
@@ -879,9 +930,9 @@
 
         function onDataLoaded(data) {
             setLoadingProgress(80, 'กำลังเตรียมข้อมูล...');
-            customersDb = data.customers  || [];
-            productsDb  = data.products   || [];
-            db          = data.quotations || [];
+            customersDb = data.customers || [];
+            productsDb = data.products || [];
+            db = data.quotations || [];
             setLoadingProgress(100, 'โหลดข้อมูลสำเร็จ!');
             setTimeout(() => {
                 initApp();
@@ -1146,7 +1197,7 @@
         }
 
         // ======================= Product Management =======================
-        function handleImageUpload(e) {
+        async function handleImageUpload(e) {
             const files = Array.from(e.target.files);
             const remaining = 10 - currentProductImages.length;
             const toProcess = files.slice(0, remaining);
@@ -1154,35 +1205,171 @@
             if (toProcess.length < files.length) {
                 mySwal.fire({
                     title: 'รูปภาพเกินกำหนด',
-                    text: `คุณสามารถเพิ่มรูปภาพได้อีกแค่ ${remaining} รูปเท่านั้น`,
+                    text: 'คุณสามารถเพิ่มรูปภาพได้อีกแค่ ' + remaining + ' รูปเท่านั้น',
                     icon: 'warning',
                     confirmButtonText: 'ตกลง'
                 });
-            }
-
-            if (toProcess.length === 0) {
-                $(this).val('');
                 return;
             }
 
-            let loadedCount = 0;
-            toProcess.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    currentProductImages.push(ev.target.result);
-                    loadedCount++;
-                    if (loadedCount === toProcess.length) {
-                        renderImagePreview();
-                    }
-                };
-                reader.readAsDataURL(file);
+            if (toProcess.length === 0) {
+                e.target.value = '';
+                return;
+            }
+
+            e.target.value = '';
+
+            if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                let loadedCount = 0;
+                toProcess.forEach(function (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (ev) {
+                        currentProductImages.push(ev.target.result);
+                        loadedCount++;
+                        if (loadedCount === toProcess.length) renderImagePreview();
+                    };
+                    reader.readAsDataURL(file);
+                });
+                return;
+            }
+
+            Swal.fire({
+                icon: 'info',
+                title: 'กำลังอัพโหลดรูปภาพ...',
+                html: '<div class="w-full"><div class="mb-4"><div class="flex justify-between items-center mb-1.5"><span class="text-sm text-slate-500">ความคืบหน้า</span><span id="imgUploadPercent" class="text-sm font-bold text-red-700">0%</span></div><div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden"><div id="imgUploadBar" class="bg-gradient-to-r from-red-800 to-red-500 h-2 rounded-full transition-all duration-300" style="width:0%"></div></div><p id="imgUploadStatus" class="text-xs text-slate-400 mt-2 text-center">กำลังเตรียมไฟล์...</p></div><div id="imgUploadProgress" class="flex flex-col gap-1.5 text-xs max-h-40 overflow-y-auto"></div></div>',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                customClass: { popup: 'font-sans' }
             });
-            $(this).val(''); // Reset input
+
+            try {
+                const { token, folderId } = await new Promise((resolve, reject) => {
+                    google.script.run
+                        .withSuccessHandler(resolve)
+                        .withFailureHandler(reject)
+                        .getProductImageUploadToken();
+                });
+
+                const fileIds = await new Promise((resolve, reject) => {
+                    const totalFiles = toProcess.length;
+                    let doneCount = 0;
+                    const uploadedIds = [];
+                    let totalProgress = 0;
+
+                    const updateOverall = () => {
+                        const pct = Math.round(totalProgress / totalFiles);
+                        $('#imgUploadBar').css('width', pct + '%');
+                        $('#imgUploadPercent').text(pct + '%');
+                        $('#imgUploadStatus').text('อัพโหลด ' + doneCount + ' / ' + totalFiles + ' ไฟล์');
+                    };
+
+                    toProcess.forEach((file, i) => {
+                        const rowId = 'img-row-' + i;
+                        $('#imgUploadProgress').append(
+                            '<div id="' + rowId + '" class="px-2 py-1 bg-slate-50 rounded-lg truncate text-slate-400">' + file.name + '</div>'
+                        );
+
+                        let fileProgress = 0;
+                        const fr = new FileReader();
+                        fr.fileName = file.name;
+                        fr.fileSize = file.size;
+                        fr.fileType = file.type;
+                        fr.readAsArrayBuffer(file);
+
+                        fr.onload = function (ev) {
+                            const resource = {
+                                fileName: ev.target.fileName,
+                                fileSize: ev.target.fileSize,
+                                fileType: ev.target.fileType,
+                                fileBuffer: ev.target.result,
+                                accessToken: token,
+                                folderId: folderId,
+                                fields: 'id'
+                            };
+                            const ru = new ResumableUploadToGoogleDrive();
+                            ru.Do(resource, function (res, err) {
+                                if (err) { console.error(err); return; }
+                                let msg = '';
+                                if (res.status === 'Uploading') {
+                                    const pct = Math.round((res.progressNumber.current / res.progressNumber.end) * 100);
+                                    totalProgress = totalProgress - fileProgress + pct;
+                                    fileProgress = pct;
+                                    updateOverall();
+                                    msg = '<span class="text-orange-500 font-semibold">' + pct + '%</span> <span class="text-slate-500 truncate">' + file.name + '</span>';
+                                } else if (res.status === 'Done') {
+                                    totalProgress = totalProgress - fileProgress + 100;
+                                    fileProgress = 100;
+                                    doneCount++;
+                                    updateOverall();
+                                    uploadedIds.push(res.result.id);
+                                    msg = '<span class="text-emerald-600 font-semibold">✓ สำเร็จ</span> <span class="text-slate-400 truncate">' + file.name + '</span>';
+                                    if (uploadedIds.length === totalFiles) resolve(uploadedIds);
+                                } else {
+                                    msg = '<span class="text-slate-400 truncate">' + file.name + '</span>';
+                                }
+                                $('#' + rowId).html(msg);
+                            });
+                        };
+                    });
+                });
+
+                const newUrls = fileIds.map(function (id) { return 'https://drive.google.com/thumbnail?id=' + id + '&sz=w400'; });
+                currentProductImages = currentProductImages.concat(newUrls);
+                renderImagePreview();
+
+                Swal.close();
+                Toast.fire({ icon: 'success', title: 'อัพโหลดสำเร็จ ' + fileIds.length + ' รูป' });
+
+            } catch (err) {
+                console.error('Image upload error:', err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาดในการอัพโหลด',
+                    text: err.message || String(err),
+                    customClass: { popup: 'font-sans' }
+                });
+            }
         }
 
         function removeProductImage(index) {
-            currentProductImages.splice(index, 1);
-            renderImagePreview();
+            const url = currentProductImages[index];
+
+            mySwal.fire({
+                title: 'ลบรูปภาพนี้?',
+                html: `
+                    <div class="flex flex-col items-center gap-3">
+                        <img src="${url}" class="w-40 h-40 object-cover rounded-2xl border border-slate-200 shadow-md">
+                        <p class="text-sm text-slate-500">รูปภาพจะถูกลบออกจาก Google Drive และไม่สามารถกู้คืนได้</p>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'ใช่, ลบเลย',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+
+                currentProductImages.splice(index, 1);
+                renderImagePreview();
+
+                // If it's a Drive thumbnail URL, delete the file from Drive too
+                if (url && typeof url === 'string' && url.includes('drive.google.com/thumbnail')) {
+                    try {
+                        const fileId = new URL(url).searchParams.get('id');
+                        if (fileId && typeof google !== 'undefined' && google.script && google.script.run) {
+                            google.script.run
+                                .withFailureHandler(function (err) {
+                                    console.warn('deleteProductImage failed:', err);
+                                })
+                                .deleteProductImage(fileId);
+                        }
+                    } catch (err) {
+                        console.warn('Could not parse Drive file ID from URL:', url);
+                    }
+                }
+
+                Toast.fire({ icon: 'success', title: 'ลบรูปภาพเรียบร้อยแล้ว' });
+            });
         }
 
         function renderImagePreview() {
@@ -1220,31 +1407,30 @@
                 $('#productEmpty').addClass('hidden');
                 data.forEach(item => {
                     const img = item.images && item.images.length > 0 ? item.images[0] : 'https://placehold.co/400x300?text=No+Image';
-                    const card = `
-                        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
-                            <div class="h-40 overflow-hidden bg-slate-50 relative">
-                                <img src="${img}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                                <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onclick="editProduct('${item.id}')" class="bg-white/90 p-1.5 rounded-lg text-emerald-600 hover:bg-white shadow backdrop-blur-sm"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                                    <button onclick="deleteProduct('${item.id}')" class="bg-white/90 p-1.5 rounded-lg text-red-600 hover:bg-white shadow backdrop-blur-sm"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    const tr = `
+                        <tr class="hover:bg-slate-50 transition-colors group">
+                            <td class="p-3">
+                                <div class="w-12 h-12 rounded-lg overflow-hidden border border-slate-200">
+                                    <img src="${img}" class="w-full h-full object-cover">
                                 </div>
-                                <span class="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs font-bold rounded backdrop-blur-sm">${item.code}</span>
-                            </div>
-                            <div class="p-4 flex-grow flex flex-col">
-                                <h3 class="font-bold text-slate-800 text-sm line-clamp-1" title="${item.name}">${item.name || item.code}</h3>
-                                <p class="text-xs text-slate-500 mt-1 line-clamp-2" title="${item.desc}">${item.desc || '-'}</p>
-                                <div class="mt-2 text-xs text-slate-500 grid grid-cols-2 gap-y-1 mt-auto">
-                                    <div>สี: <span class="font-semibold text-slate-700">${item.color || '-'}</span></div>
-                                    <div>ประกัน: <span class="font-semibold text-slate-700">${item.warranty || '-'}</span></div>
-                                </div>
-                                <div class="mt-auto pt-3 flex justify-between items-end">
-                                    <span class="text-xs font-bold text-slate-400">หน่วย: ${item.unit}</span>
-                                    <span class="font-black text-emerald-600 text-lg">฿${parseFloat(item.price).toLocaleString()}</span>
-                                </div>
-                            </div>
-                        </div>
+                            </td>
+                            <td class="p-4 font-bold text-slate-800">${item.code || '-'}</td>
+                            <td class="p-4 whitespace-normal">
+                                <div class="font-bold text-slate-800 line-clamp-1" title="${item.name}">${item.name || item.code}</div>
+                                <div class="text-xs text-slate-500 line-clamp-1 max-w-[250px] mt-0.5" title="${item.desc}">${item.desc || '-'}</div>
+                            </td>
+                            <td class="p-4 font-black text-emerald-600 hidden md:table-cell">${parseFloat(item.price).toLocaleString()}</td>
+                            <td class="p-4 hidden lg:table-cell">${item.unit || '-'}</td>
+                            <td class="p-4 hidden lg:table-cell">
+                                ${item.color ? `<span class="px-2.5 py-1 bg-slate-100 text-slate-600 font-medium rounded-full text-xs">${item.color}</span>` : '-'}
+                            </td>
+                            <td class="p-4 text-right opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                <button onclick="editProduct('${item.id}')" class="text-emerald-600 hover:text-emerald-800 p-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors inline-block"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                                <button onclick="deleteProduct('${item.id}')" class="text-red-500 hover:text-red-700 p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors ml-1.5 inline-block"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </td>
+                        </tr>
                     `;
-                    $list.append(card);
+                    $list.append(tr);
                 });
             }
             lucide.createIcons();
@@ -1315,8 +1501,9 @@
                 productsDb.push(newProduct);
                 saveData = newProduct;
             }
+
             Swal.fire({
-                icon: 'success',
+                icon: 'info',
                 title: id ? 'กำลังบันทึกการแก้ไข...' : 'กำลังเพิ่มสินค้าใหม่...',
                 allowOutsideClick: false,
                 didOpen: () => {
@@ -1333,6 +1520,10 @@
                 renderProducts();
                 updateItemRowDropdowns();
                 closeProductModal();
+                // Move uploaded images into the product's own Drive subfolder (fire-and-forget)
+                google.script.run
+                    .withFailureHandler(function(err) { console.warn('moveFilesToProductFolder failed:', err); })
+                    .moveFilesToProductFolder(saveData.images || [], saveData.id);
             }).withFailureHandler((e) => {
                 Swal.fire({
                     icon: 'error',
