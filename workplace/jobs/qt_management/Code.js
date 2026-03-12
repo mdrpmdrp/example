@@ -65,7 +65,7 @@ function _ensureSheet(ss, name, cols) {
 
 /** Returns all customers as an array of objects. */
 function getCustomers() {
-  return _sheetToObjects(SHEET_CUSTOMERS, CUSTOMER_COLS);
+  return JSON.stringify(_sheetToObjects(SHEET_CUSTOMERS, CUSTOMER_COLS));
 }
 
 /**
@@ -101,12 +101,12 @@ function deleteCustomer(id) {
 /** Returns all products as an array of objects. Images array is parsed. */
 function getProducts() {
   const rows = _sheetToObjects(SHEET_PRODUCTS, PRODUCT_COLS);
-  return rows.map(p => {
+  return JSON.stringify(rows.map(p => {
     p.images = _parseJson(p.images, []);
     p.price = parseFloat(p.price) || 0;
     p.warranty = parseFloat(p.warranty) || 0;
     return p;
-  });
+  }))
 }
 
 /**
@@ -145,14 +145,14 @@ function deleteProduct(id) {
 /** Returns all quotations as an array of objects. Items array is parsed. */
 function getQuotations() {
   const rows = _sheetToObjects(SHEET_QUOTATIONS, QUOTATION_COLS);
-  return rows.map(q => {
+  return JSON.stringify(rows.map(q => {
     q.items = _parseJson(q.items, []);
     q.subTotal = parseFloat(q.subTotal) || 0;
     q.deposit = parseFloat(q.deposit) || 0;
     q.grandTotal = parseFloat(q.grandTotal) || 0;
     q.wantVat = (q.wantVat === true || q.wantVat === 'TRUE' || q.wantVat === 'true');
     return q;
-  });
+  }));
 }
 
 /**

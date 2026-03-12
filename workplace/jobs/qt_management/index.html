@@ -244,7 +244,7 @@
         }
 
         /* Backdrop */
-        .swal2-backdrop-show {
+        body:not(.swal2-toast-shown) .swal2-container.swal2-backdrop-show {
             background: rgba(15, 23, 42, 0.55) !important;
             backdrop-filter: blur(4px) !important;
         }
@@ -298,25 +298,33 @@
 
     <!-- ── Loading Overlay ───────────────────────────── -->
     <div id="loadingOverlay"
-        class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-red-900 transition-opacity duration-500">
-        <div class="flex flex-col items-center gap-6 w-72">
+        class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-900/95 backdrop-blur-md transition-opacity duration-500">
+        <div class="flex flex-col items-center gap-8 w-80 p-10 rounded-[2.5rem] bg-white/10 border border-white/20 shadow-2xl backdrop-blur-xl">
             <!-- Brand mark -->
-            <div class="flex flex-col items-center gap-2">
-                <div
-                    class="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-700 to-red-900 flex items-center justify-center shadow-xl shadow-red-900/40">
-                    <span class="text-white font-black text-2xl tracking-tighter">CS</span>
+            <div class="flex flex-col items-center gap-4">
+                <div class="relative w-20 h-20">
+                    <div class="absolute inset-0 bg-red-600 rounded-3xl blur-xl opacity-50 animate-pulse"></div>
+                    <div class="relative w-full h-full rounded-3xl bg-gradient-to-br from-red-600 to-slate-900 border border-red-500/30 flex items-center justify-center shadow-inner">
+                        <span class="text-white font-black text-3xl tracking-tighter mix-blend-overlay">CS</span>
+                    </div>
                 </div>
-                <h1 class="text-white font-black text-xl tracking-tight">CS168 Sales System</h1>
-                <p id="loadingStatus" class="text-slate-400 text-xs font-medium tracking-wide">กำลังเชื่อมต่อ Google
-                    Sheets...</p>
+                <div class="text-center">
+                    <h1 class="text-white font-bold text-lg tracking-wide mb-1">CS168 System</h1>
+                    <p id="loadingStatus" class="text-slate-300 text-[11px] font-medium tracking-wider uppercase">Initializing...</p>
+                </div>
             </div>
             <!-- Progress bar track -->
-            <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                <div id="loadingBar"
-                    class="h-full rounded-full bg-gradient-to-r from-red-700 via-red-500 to-amber-400 transition-all duration-500 ease-out"
-                    style="width:5%"></div>
+            <div class="w-full space-y-2">
+                <div class="w-full bg-slate-800/50 rounded-full h-2 overflow-hidden ring-1 ring-white/10">
+                    <div id="loadingBar"
+                        class="h-full rounded-full bg-gradient-to-r from-red-600 via-red-400 to-amber-400 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(239,68,68,0.5)]"
+                        style="width:5%"></div>
+                </div>
+                <div class="flex justify-between items-center text-[10px] text-slate-400 font-medium">
+                    <span>Loading Data</span>
+                    <span id="loadingPercent">5%</span>
+                </div>
             </div>
-            <p class="text-slate-600 text-[11px]">กรุณารอสักครู่</p>
         </div>
     </div>
 
@@ -414,11 +422,19 @@
                         </div>
 
                         <div class="bg-slate-900 text-white p-5 rounded-3xl flex flex-col gap-3 shadow-lg">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs uppercase font-bold text-slate-400">รวม Vat.7%</span>
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <span class="text-xs text-slate-400" id="quoteVatLabel">รวม</span>
+                                    <input type="checkbox" id="quoteWantVat" class="w-5 h-5 accent-emerald-400 cursor-pointer" onchange="calculateSubTotal()" checked>
+                                </label>
+                            </div>
+                            <div class="h-px w-full bg-slate-700"></div>
                             <div class="flex justify-between items-center text-slate-300">
                                 <span class="text-xs uppercase font-bold">Subtotal (ก่อนรวม VAT)</span>
                                 <span class="text-sm font-semibold">฿<span id="subTotalDisplay">0.00</span></span>
                             </div>
-                            <div class="flex justify-between items-center text-slate-300">
+                            <div class="flex justify-between items-center text-slate-300" id="vatNote">
                                 <span class="text-xs uppercase font-bold">VAT (7%)</span>
                                 <span class="text-sm font-semibold">฿<span id="vatTotalDisplay">0.00</span></span>
                             </div>
@@ -673,8 +689,8 @@
 
                 <div>
                     <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-2 flex justify-between">
-                        <span>รูปภาพสินค้า (สูงสุด 10 รูป)</span>
-                        <span id="imgCountText" class="text-emerald-600 font-bold">0/10</span>
+                        <span>รูปภาพสินค้า (สูงสุด 5 รูป)</span>
+                        <span id="imgCountText" class="text-emerald-600 font-bold">0/5</span>
                     </label>
                     <div class="flex gap-3 flex-wrap items-start">
                         <div id="prodImagePreview" class="flex flex-wrap gap-3"></div>
@@ -693,7 +709,7 @@
         </div>
     </div>
 
-    <!-- Modal: Finalize -->
+    <!-- Modal: Issue Invoice -->
     <div id="confirmModal"
         class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
         <div
@@ -701,32 +717,27 @@
             <div class="flex justify-center mb-6">
                 <img src="https://img2.pic.in.th/croped_Logo_cs168_png-02.png" alt="Logo" class="h-12 w-auto">
             </div>
-            <h2 class="text-2xl font-black text-slate-800 text-center mb-1">สรุปการขาย</h2>
-            <p class="text-sm text-slate-400 text-center mb-8">ตรวจสอบความถูกต้องและจัดการเงินมัดจำ</p>
+            <h2 class="text-2xl font-black text-slate-800 text-center mb-1">ออกใบแจ้งหนี้</h2>
+            <p class="text-sm text-slate-400 text-center mb-8">ระบุราคาขายและยอดมัดจำ (ถ้ามี) เพื่อออกใบแจ้งหนี้</p>
 
             <form id="finalizeForm" class="space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar pr-2">
                 <input type="hidden" id="finalId">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">ราคาขายสุทธิ</label>
+                        <label class="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">ราคาขายสุทธิ (ก่อน VAT)</label>
                         <input type="number" id="editFullPrice" step="0.01"
                             class="w-full h-12 px-4 bg-white rounded-2xl border border-slate-200 font-bold text-slate-800 outline-none focus:border-red-600"
                             oninput="calculateFinal()">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">รับมัดจำแล้ว</label>
+                        <label class="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">ยอดมัดจำ (0 = ไม่มีมัดจำ)</label>
                         <input type="number" id="finalDeposit" value="0" step="0.01"
                             class="w-full h-12 px-4 bg-white rounded-2xl border border-slate-200 font-bold text-blue-600 outline-none focus:border-blue-600"
                             oninput="calculateFinal()">
+                        <p id="depositHint" class="text-[11px] text-amber-600 ml-2 mt-1 hidden">* ยอดมัดจำ = ยอดรวม VAT แล้ว</p>
                     </div>
                 </div>
-                <div class="p-4 bg-slate-50 rounded-3xl space-y-3 border border-slate-200">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm font-bold text-slate-700">ภาษีมูลค่าเพิ่ม (VAT 7%)</span>
-                        <input type="checkbox" id="finalVat" class="w-6 h-6 accent-red-600 cursor-pointer"
-                            onchange="calculateFinal()">
-                    </div>
-                </div>
+                <input type="hidden" id="finalVat" value="0">
                 <div class="bg-slate-900 text-white p-6 rounded-3xl">
                     <div
                         class="flex justify-between items-center mb-1 opacity-50 text-xs font-bold uppercase tracking-wider">
@@ -745,7 +756,7 @@
                     <button type="button" onclick="closeConfirmModal()"
                         class="flex-1 h-14 rounded-2xl font-bold bg-slate-100 text-slate-400 hover:bg-slate-200">ยกเลิก</button>
                     <button type="submit"
-                        class="flex-[2] h-14 rounded-2xl font-bold bg-red-700 text-white shadow-lg hover:bg-red-800">ยืนยันและออกใบเสร็จ</button>
+                        class="flex-[2] h-14 rounded-2xl font-bold bg-red-700 text-white shadow-lg hover:bg-red-800">ออกใบแจ้งหนี้</button>
                 </div>
             </form>
         </div>
@@ -804,7 +815,7 @@
                     <span>ราคาก่อน VAT</span>
                     <span id="viewDocSubTotal" class="font-semibold"></span>
                 </div>
-                <div class="flex justify-between text-sm text-slate-500">
+                <div id="viewDocVatRow" class="flex justify-between text-sm text-slate-500">
                     <span>VAT (7%)</span>
                     <span id="viewDocVat" class="font-semibold"></span>
                 </div>
@@ -919,6 +930,7 @@
         // ── Loading helpers ──────────────────────────────────────────
         function setLoadingProgress(pct, status) {
             $('#loadingBar').css('width', pct + '%').removeClass('indeterminate');
+            $('#loadingPercent').text(pct + '%');
             if (status) $('#loadingStatus').text(status);
         }
 
@@ -1003,17 +1015,39 @@
             updateCustomerDropdown();
         }
 
-        $(document).ready(function () {
+        $(document).ready(async function () {
             setLoadingProgress(20, 'กำลังเชื่อมต่อ Google Sheets...');
             $('#loadingBar').addClass('indeterminate');
 
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 // Running inside Google Apps Script Web App
                 setLoadingProgress(40, 'กำลังโหลดข้อมูลจาก Google Sheets...');
-                google.script.run
-                    .withSuccessHandler(onDataLoaded)
-                    .withFailureHandler(onDataError)
-                    .loadAllData();
+
+                const gs = google.script.run;
+                let loaded = 0;
+                const steps = [
+                    { label: 'ลูกค้า', pct: 60 },
+                    { label: 'สินค้า', pct: 80 },
+                    { label: 'เอกสาร', pct: 95 }
+                ];
+
+                const track = (promise, idx) => promise.then(result => {
+                    loaded++;
+                    setLoadingProgress(steps[idx].pct, `โหลด${steps[idx].label}สำเร็จ... (${loaded}/3)`);
+                    return JSON.parse(result);
+                });
+
+                try {
+                    const [customers, products, quotations] = await Promise.all([
+                        track(new Promise((res, rej) => gs.withSuccessHandler(res).withFailureHandler(rej).getCustomers()), 0),
+                        track(new Promise((res, rej) => gs.withSuccessHandler(res).withFailureHandler(rej).getProducts()), 1),
+                        track(new Promise((res, rej) => gs.withSuccessHandler(res).withFailureHandler(rej).getQuotations()), 2)
+                    ]);
+
+                    onDataLoaded({ customers, products, quotations });
+                } catch (err) {
+                    onDataError(err);
+                }
             } else {
                 // Local dev fallback — start with empty data
                 console.warn('google.script.run not available — running in local dev mode with empty data.');
@@ -1199,7 +1233,7 @@
         // ======================= Product Management =======================
         async function handleImageUpload(e) {
             const files = Array.from(e.target.files);
-            const remaining = 10 - currentProductImages.length;
+            const remaining = 4 - currentProductImages.length;
             const toProcess = files.slice(0, remaining);
 
             if (toProcess.length < files.length) {
@@ -1375,7 +1409,7 @@
         function renderImagePreview() {
             const $container = $('#prodImagePreview');
             $container.empty();
-            $('#imgCountText').text(currentProductImages.length + '/10');
+            $('#imgCountText').text(currentProductImages.length + '/4');
 
             currentProductImages.forEach((src, idx) => {
                 const div = `
@@ -1389,7 +1423,7 @@
                 $container.append(div);
             });
 
-            if (currentProductImages.length >= 10) {
+            if (currentProductImages.length >= 4) {
                 $('#uploadBtnLabel').hide();
             } else {
                 $('#uploadBtnLabel').css('display', 'flex');
@@ -1522,7 +1556,7 @@
                 closeProductModal();
                 // Move uploaded images into the product's own Drive subfolder (fire-and-forget)
                 google.script.run
-                    .withFailureHandler(function(err) { console.warn('moveFilesToProductFolder failed:', err); })
+                    .withFailureHandler(function (err) { console.warn('moveFilesToProductFolder failed:', err); })
                     .moveFilesToProductFolder(saveData.images || [], saveData.id);
             }).withFailureHandler((e) => {
                 Swal.fire({
@@ -1702,8 +1736,14 @@
                 total += (p * q);
             });
 
-            const vat = total * 0.07;
+            const wantVat = $('#quoteWantVat').is(':checked');
+            const vat = wantVat ? total * 0.07 : 0;
             const grandTotal = total + vat;
+            if(wantVat) {
+                $('#vatNote').removeClass('hidden');
+            } else {
+                $('#vatNote').addClass('hidden');
+            }
 
             $('#subTotalDisplay').text(total.toLocaleString(undefined, { minimumFractionDigits: 2 }));
             $('#vatTotalDisplay').text(vat.toLocaleString(undefined, { minimumFractionDigits: 2 }));
@@ -1736,50 +1776,82 @@
 
             const totals = calculateSubTotal();
             const editId = $('#quoteForm').attr('data-edit-id');
+            const formObj = this;
+
+            let entryData = {};
 
             if (editId) {
                 // Update existing entry
                 const index = db.findIndex(i => i.id === editId);
                 if (index > -1) {
-                    db[index] = {
+                    entryData = {
                         ...db[index],
                         name: finalName,
                         tel: $('#custTel').val(),
+                        taxId: $('#custTaxId').val(),
+                        address: $('#custAddress').val(),
                         items: items,
                         subTotal: totals.subTotal,
                         vat: totals.vat,
                         grandTotal: totals.grandTotal,
+                        wantVat: $('#quoteWantVat').is(':checked'),
                     };
                 }
-                $('#quoteForm').removeAttr('data-edit-id');
-                $('#quoteForm button[type=submit]').text('บันทึกใบเสนอราคา');
-                Toast.fire({ icon: 'success', title: 'อัปเดตใบเสนอราคาเรียบร้อยแล้ว' });
             } else {
                 // New entry
-                const entry = {
-                    id: 'QT-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
-                    date: new Date().toLocaleDateString('th-TH'),
+                entryData = {
+                    id: '',
+                    date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
                     name: finalName,
                     tel: $('#custTel').val(),
+                    taxId: $('#custTaxId').val(),
+                    address: $('#custAddress').val(),
                     items: items,
                     subTotal: totals.subTotal,
                     vat: totals.vat,
+                    deposit: 0,
+                    wantVat: $('#quoteWantVat').is(':checked'),
                     grandTotal: totals.grandTotal,
                     status: 'Quotation'
                 };
-                db.unshift(entry);
-                Toast.fire({ icon: 'success', title: 'สร้างใบเสนอราคาใหม่เรียบร้อยแล้ว' });
             }
 
-            render();
+            Swal.fire({
+                icon: 'info',
+                title: editId ? 'กำลังบันทึกการแก้ไข...' : 'กำลังสร้างใบเสนอราคา...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
 
-            // Explicit Resetting
-            this.reset();
-            $('#custName').val('').trigger('change');
-            $('#itemRows').empty();
-            addItemRow();
-            calculateSubTotal();
+            google.script.run.withSuccessHandler((savedData) => {
+                Swal.fire({
+                    icon: 'success',
+                    title: editId ? 'อัปเดตใบเสนอราคาเรียบร้อยแล้ว' : 'สร้างใบเสนอราคาใหม่เรียบร้อยแล้ว',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
 
+                if (editId) {
+                    const index = db.findIndex(i => i.id === editId);
+                    if (index > -1) db[index] = savedData;
+                    $('#quoteForm').removeAttr('data-edit-id');
+                    $('#quoteForm button[type=submit]').text('บันทึกใบเสนอราคา');
+                } else {
+                    db.unshift(savedData);
+                }
+
+                render();
+
+                // Explicit Resetting
+                formObj.reset();
+                $('#custName').val('').trigger('change.select2');
+                $('#quoteWantVat').prop('checked', false);
+                $('#itemRows').empty();
+                addItemRow();
+                calculateSubTotal();
+            }).withFailureHandler((err) => {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'error: ' + err.message });
+            }).saveQuotation(entryData);
         }
 
         function render(data = db) {
@@ -1805,7 +1877,8 @@
                             <th class="px-6 py-4 font-semibold">วันที่</th>
                             <th class="px-6 py-4 font-semibold">สถานะ</th>
                             <th class="px-6 py-4 font-semibold text-right whitespace-nowrap">ยอดรวม + vat</th>
-                            <th class="px-6 py-4 font-semibold text-center rounded-tr-2xl">จัดการ</th>
+                            <th class="px-6 py-4 font-semibold text-center">ดู / แก้ไข</th>
+                            <th class="px-6 py-4 font-semibold text-center rounded-tr-2xl">พิมพ์ / ดำเนินการ</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -1815,20 +1888,28 @@
 
             const $tbody = $table.find('tbody');
 
+            const statusConfig = {
+                'Quotation':        { label: 'ใบเสนอราคา',     cls: 'bg-amber-100 text-amber-700' },
+                'Pending Deposit':  { label: 'รอชำระมัดจำ',     cls: 'bg-blue-100 text-blue-700' },
+                'Pending Payment':  { label: 'รอชำระ',           cls: 'bg-orange-100 text-orange-700' },
+                'Paid':             { label: 'ชำระเรียบร้อย',    cls: 'bg-green-100 text-green-700' },
+            };
+
             data.forEach(item => {
+                const st = statusConfig[item.status] || { label: item.status, cls: 'bg-slate-100 text-slate-700' };
                 const isQ = item.status === 'Quotation';
 
-                let actionBtns = '';
-                if (isQ) {
-                    actionBtns = `
-                        <button onclick="printDoc('${item.id}', 'Quotation')" class="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-200 hover:text-slate-900 flex items-center justify-center transition-colors" title="พิมพ์ QT"><i data-lucide="printer" class="w-4 h-4"></i></button>
-                        <button onclick="openConfirm('${item.id}')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 flex items-center justify-center transition-colors" title="ออกใบเสร็จ"><i data-lucide="check-circle" class="w-4 h-4"></i></button>
-                    `;
-                } else {
-                    actionBtns = `
-                        <button onclick="printDoc('${item.id}', 'InvoiceFull')" class="w-8 h-8 rounded-lg bg-slate-900 text-white hover:bg-slate-800 flex items-center justify-center transition-colors" title="ใบเสร็จ (เต็ม)"><i data-lucide="receipt" class="w-4 h-4"></i></button>
-                        <button onclick="printDoc('${item.id}', 'Deposit')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors" title="ใบมัดจำ"><i data-lucide="file-text" class="w-4 h-4"></i></button>
-                    `;
+                // Edit button: only on Quotation
+                const editBtn = isQ ? `<button onclick="editDoc('${item.id}')" class="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-200 hover:text-slate-900 flex items-center justify-center transition-colors" title="แก้ไข"><i data-lucide="edit" class="w-4 h-4"></i></button>` : '';
+
+                // Action button per status
+                let actionBtn = '';
+                if (item.status === 'Quotation') {
+                    actionBtn = `<button onclick="openConfirm('${item.id}')" class="h-8 px-3 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold flex items-center gap-1 transition-colors" title="ออกใบแจ้งหนี้"><i data-lucide="file-plus" class="w-3.5 h-3.5"></i>ออกใบแจ้งหนี้</button>`;
+                } else if (item.status === 'Pending Deposit') {
+                    actionBtn = `<button onclick="confirmDeposit('${item.id}')" class="h-8 px-3 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold flex items-center gap-1 transition-colors" title="ยืนยันยอดมัดจำ"><i data-lucide="check" class="w-3.5 h-3.5"></i>ยืนยันมัดจำ</button>`;
+                } else if (item.status === 'Pending Payment') {
+                    actionBtn = `<button onclick="confirmPayment('${item.id}')" class="h-8 px-3 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 text-xs font-bold flex items-center gap-1 transition-colors" title="ยืนยันยอดชำระ"><i data-lucide="check-circle" class="w-3.5 h-3.5"></i>ยืนยันชำระ</button>`;
                 }
 
                 const row = `
@@ -1841,23 +1922,25 @@
                             <div class="text-xs text-slate-500 flex items-center gap-1 mt-0.5"><a href="tel:${item.tel}" class="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors"><i data-lucide="phone" class="w-3 h-3"></i>${item.tel}</a></div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-slate-600 flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>${item.date || 'N/A'}</div>
+                            <div class="text-sm text-slate-600 flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>${item.date ? new Date(item.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}</div>
                             <div class="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5"><i data-lucide="package" class="w-3.5 h-3.5"></i>${item.items ? item.items.length : 0} รายการ</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide ${isQ ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}">
-                                ${isQ ? 'ใบเสนอราคา' : 'ยืนยันการขาย'}
-                            </span>
+                            <span class="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide ${st.cls}">${st.label}</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
                             <div class="text-lg font-black text-slate-900">฿${(item.grandTotal || (item.subTotal * 1.07) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
-                            <div class="flex items-center justify-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                ${actionBtns}
-                                <div class="w-px h-6 bg-slate-200 mx-1"></div>
+                            <div class="flex items-center justify-center gap-1.5">
                                 <button onclick="viewDoc('${item.id}')" class="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-200 hover:text-slate-900 flex items-center justify-center transition-colors" title="รายละเอียด"><i data-lucide="eye" class="w-4 h-4"></i></button>
-                                ${isQ ? `<button onclick="editDoc('${item.id}')" class="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-200 hover:text-slate-900 flex items-center justify-center transition-colors" title="แก้ไข"><i data-lucide="edit" class="w-4 h-4"></i></button>` : ''}
+                                ${editBtn}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="flex items-center justify-center gap-2 flex-wrap">
+                                <button onclick="openPrintMenu('${item.id}')" class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 flex items-center justify-center transition-colors" title="พิมพ์เอกสาร"><i data-lucide="printer" class="w-4 h-4"></i></button>
+                                ${actionBtn}
                             </div>
                         </td>
                     </tr>
@@ -1867,7 +1950,7 @@
 
             $list.append($table);
             $('#countQ').text(db.filter(i => i.status === 'Quotation').length);
-            $('#countS').text(db.filter(i => i.status === 'Confirmed').length);
+            $('#countS').text(db.filter(i => ['Pending Deposit','Pending Payment','Paid'].includes(i.status)).length);
             lucide.createIcons();
         }
 
@@ -1876,37 +1959,144 @@
             $('#finalId').val(id);
             $('#editFullPrice').val(item.subTotal);
             $('#finalDeposit').val(0);
-            $('#finalVat').prop('checked', false);
+            $('#finalVat').val(item.wantVat ? '1' : '0');
+            updateDepositHint(item.wantVat || false);
             calculateFinal();
             $('#confirmModal').removeClass('hidden');
+        }
+
+        function confirmDeposit(id) {
+            const item = db.find(i => i.id === id);
+            const depRaw = item.deposit || 0;
+            const depDisplay = item.wantVat
+                ? `฿${(depRaw / 1.07).toLocaleString(undefined, { minimumFractionDigits: 2 })} (+VAT ฿${(depRaw - depRaw / 1.07).toLocaleString(undefined, { minimumFractionDigits: 2 })}) = ฿${depRaw.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                : `฿${depRaw.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            mySwal.fire({
+                title: 'ยืนยันการรับเงินมัดจำ?',
+                html: `<div class="text-left space-y-2 text-sm">
+                    <p class="text-slate-500">ลูกค้า: <strong class="text-slate-800">${item.name}</strong></p>
+                    <p class="text-slate-500">ยอดมัดจำ: <strong class="text-blue-700">${depDisplay}</strong></p>
+                    <p class="text-xs text-slate-400 mt-3">สถานะจะเปลี่ยนเป็น <span class="font-bold text-orange-600">รอชำระ</span> และสามารถพิมพ์ใบเสร็จมัดจำ / ใบแจ้งหนี้ที่เหลือได้</p>
+                </div>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '✔ ยืนยันรับมัดจำ',
+                cancelButtonText: 'ยกเลิก'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                const index = db.findIndex(i => i.id === id);
+                const updatedData = { ...db[index], status: 'Pending Payment' };
+                Swal.fire({ icon: 'info', title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                google.script.run
+                    .withSuccessHandler(saved => {
+                        Swal.fire({ icon: 'success', title: 'ยืนยันรับมัดจำเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
+                        db[index] = saved;
+                        render();
+                        openPrintMenu(saved.id);
+                    })
+                    .withFailureHandler(err => Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message }))
+                    .saveQuotation(updatedData);
+            });
+        }
+
+        function confirmPayment(id) {
+            const item = db.find(i => i.id === id);
+            const hasDeposit = item.deposit && parseFloat(item.deposit) > 0;
+            const remaining = hasDeposit
+                ? item.subTotal - (item.wantVat ? item.deposit / 1.07 : item.deposit)
+                : item.subTotal;
+            const remainingVat = item.wantVat ? remaining * 0.07 : 0;
+            const remainingTotal = remaining + remainingVat;
+            const display = `฿${remainingTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            mySwal.fire({
+                title: 'ยืนยันการรับชำระเงิน?',
+                html: `<div class="text-left space-y-2 text-sm">
+                    <p class="text-slate-500">ลูกค้า: <strong class="text-slate-800">${item.name}</strong></p>
+                    <p class="text-slate-500">ยอดที่ต้องชำระ: <strong class="text-green-700">${display}</strong></p>
+                    <p class="text-xs text-slate-400 mt-3">สถานะจะเปลี่ยนเป็น <span class="font-bold text-green-600">ชำระเรียบร้อย</span></p>
+                </div>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '✔ ยืนยันรับชำระ',
+                cancelButtonText: 'ยกเลิก'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                const index = db.findIndex(i => i.id === id);
+                const updatedData = { ...db[index], status: 'Paid' };
+                Swal.fire({ icon: 'info', title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                google.script.run
+                    .withSuccessHandler(saved => {
+                        Swal.fire({ icon: 'success', title: 'บันทึกการชำระเงินเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
+                        db[index] = saved;
+                        render();
+                        openPrintMenu(saved.id);
+                    })
+                    .withFailureHandler(err => Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message }))
+                    .saveQuotation(updatedData);
+            });
         }
 
         function calculateFinal() {
             const price = parseFloat($('#editFullPrice').val()) || 0;
             const deposit = parseFloat($('#finalDeposit').val()) || 0;
-            const hasVat = $('#finalVat').is(':checked');
+            const hasVat = $('#finalVat').val() === '1';
             const vat = hasVat ? price * 0.07 : 0;
             const grandTotal = price + vat;
             const balance = grandTotal - deposit;
-            $('#vatValueDisplay').text('VAT: ฿' + vat.toLocaleString(undefined, { minimumFractionDigits: 2 }));
-            $('#grandTotalFinal').text(grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }));
-            $('#balanceDueDisplay').text('฿' + balance.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            if (hasVat) {
+                $('#vatValueDisplay').text('VAT: ฿' + vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })).removeClass('hidden');
+            } else {
+                $('#vatValueDisplay').addClass('hidden');
+            }
+            $('#grandTotalFinal').text(grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            $('#balanceDueDisplay').text('฿' + balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            updateDepositHint(hasVat);
+        }
+
+        function updateDepositHint(hasVat) {
+            if (hasVat) {
+                $('#depositHint').text('* ยอดมัดจำที่กรอก = ยอดรวม VAT แล้ว (ระบบคำนวณ base = มัดจำ ÷ 1.07)').removeClass('hidden');
+            } else {
+                $('#depositHint').addClass('hidden');
+            }
         }
 
         function saveFinalize(e) {
             e.preventDefault();
             const id = $('#finalId').val();
             const index = db.findIndex(i => i.id === id);
-            db[index].subTotal = parseFloat($('#editFullPrice').val()) || 0;
-            db[index].deposit = parseFloat($('#finalDeposit').val()) || 0;
-            db[index].wantVat = $('#finalVat').is(':checked');
-            db[index].status = 'Confirmed';
-            render();
 
-            Toast.fire({ icon: 'success', title: 'ยืนยันการขายเรียบร้อยแล้ว' });
+            const rawDeposit = parseFloat($('#finalDeposit').val()) || 0;
+            const hasVat = $('#finalVat').val() === '1';
+            const depositSubTotal = (hasVat && rawDeposit > 0) ? rawDeposit / 1.07 : rawDeposit;
 
-            closeConfirmModal();
-            printDoc(id, 'InvoiceFull');
+            const newStatus = rawDeposit > 0 ? 'Pending Deposit' : 'Pending Payment';
+            const updatedData = {
+                ...db[index],
+                subTotal: parseFloat($('#editFullPrice').val()) || 0,
+                deposit: rawDeposit,
+                depositSubTotal: depositSubTotal,
+                wantVat: hasVat,
+                status: newStatus
+            };
+
+            Swal.fire({
+                icon: 'info',
+                title: 'กำลังบันทึกการยืนยัน...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            google.script.run.withSuccessHandler((savedData) => {
+                const label = savedData.status === 'Pending Deposit' ? 'ออกใบแจ้งหนี้มัดจำเรียบร้อยแล้ว' : 'ออกใบแจ้งหนี้เรียบร้อยแล้ว';
+                Swal.fire({ icon: 'success', title: label, timer: 1500, showConfirmButton: false });
+                db[index] = savedData;
+                render();
+                closeConfirmModal();
+                openPrintMenu(savedData.id);
+            }).withFailureHandler((err) => {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'error: ' + err.message });
+            }).saveQuotation(updatedData);
         }
 
         function ThaiBahtText(num) {
@@ -1939,24 +2129,152 @@
             return bahtText + "บาท" + (satang === "00" ? "ถ้วน" : satangText + "สตางค์");
         }
 
+        function openPrintMenu(id) {
+            const item = db.find(i => i.id === id);
+            if (!item) return;
+            const status = item.status;
+            const hasDeposit = item.deposit && parseFloat(item.deposit) > 0;
+            const hasVat = item.wantVat;
+            const btnClass = 'w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl flex items-center gap-3 transition-colors border border-slate-200 mb-2';
+
+            // Helper to build a button row
+            const btn = (type, icon, color, label, sub) =>
+                `<button onclick="Swal.close(); printDoc('${id}', '${type}')" class="${btnClass}">
+                    <div class="w-9 h-9 rounded-lg ${color} flex items-center justify-center shrink-0">
+                        <i data-lucide="${icon}" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm font-bold text-slate-800">${label}</div>
+                        <div class="text-xs text-slate-400">${sub}</div>
+                    </div>
+                </button>`;
+
+            let menuHtml = `<div class="flex flex-col gap-1 text-left mt-2">`;
+
+            // ── Stage 1: Quotation ──────────────────────────────
+            if (status === 'Quotation') {
+                menuHtml += `<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ใบเสนอราคา</p>`;
+                menuHtml += btn('Quotation', 'file-text', 'bg-amber-100 text-amber-600', 'ใบเสนอราคา', 'Quotation');
+            }
+
+            // ── Stage 2a: Pending Deposit ───────────────────────
+            else if (status === 'Pending Deposit') {
+                menuHtml += `<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ใบแจ้งหนี้ (รอชำระมัดจำ)</p>`;
+                menuHtml += btn('Quotation', 'file-text', 'bg-amber-100 text-amber-600', 'ใบเสนอราคา', 'Quotation');
+                menuHtml += `<div class="border-t border-slate-100 my-2"></div>`;
+                const depInvLabel = hasVat ? 'ใบแจ้งหนี้มัดจำ (ภาษีมูลค่าเพิ่ม)' : 'ใบแจ้งหนี้มัดจำ';
+                menuHtml += btn('DepositInvoice', 'file-clock', 'bg-sky-100 text-sky-600', depInvLabel, hasVat ? 'Deposit Invoice (Tax)' : 'Deposit Invoice');
+            }
+
+            // ── Stage 2b: Pending Payment (no deposit) ──────────
+            else if (status === 'Pending Payment' && !hasDeposit) {
+                menuHtml += `<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ใบแจ้งหนี้ (รอชำระ)</p>`;
+                menuHtml += btn('Quotation', 'file-text', 'bg-amber-100 text-amber-600', 'ใบเสนอราคา', 'Quotation');
+                menuHtml += `<div class="border-t border-slate-100 my-2"></div>`;
+                const invLabel = hasVat ? 'ใบแจ้งหนี้ยอดเต็ม (ภาษีมูลค่าเพิ่ม)' : 'ใบแจ้งหนี้ยอดเต็ม';
+                menuHtml += btn('BalanceInvoice', 'file-clock', 'bg-orange-100 text-orange-600', invLabel, hasVat ? 'Full Invoice (Tax)' : 'Full Invoice');
+            }
+
+            // ── Stage 2b: Pending Payment (with deposit) ────────
+            else if (status === 'Pending Payment' && hasDeposit) {
+                menuHtml += `<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">เอกสารมัดจำ</p>`;
+                menuHtml += btn('Quotation', 'file-text', 'bg-amber-100 text-amber-600', 'ใบเสนอราคา', 'Quotation');
+                menuHtml += `<div class="border-t border-slate-100 my-2"></div>`;
+                const depLabel = hasVat ? 'ใบเสร็จ/ใบกำกับภาษีมัดจำ' : 'ใบเสร็จรับเงินมัดจำ';
+                menuHtml += btn('Deposit', 'file-check', 'bg-blue-100 text-blue-600', depLabel, hasVat ? 'Deposit Tax Receipt' : 'Deposit Receipt');
+                menuHtml += `<div class="border-t border-slate-100 my-2"></div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ยอดที่เหลือ</p>`;
+                const balInvLabel = hasVat ? 'ใบแจ้งหนี้ยอดที่เหลือ (ภาษีมูลค่าเพิ่ม)' : 'ใบแจ้งหนี้ยอดที่เหลือ';
+                menuHtml += btn('BalanceInvoice', 'file-clock', 'bg-orange-100 text-orange-600', balInvLabel, hasVat ? 'Balance Due Invoice (Tax)' : 'Balance Due Invoice');
+            }
+
+            // ── Stage 3: Paid (no deposit) ───────────────────────
+            else if (status === 'Paid' && !hasDeposit) {
+                menuHtml += `<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ชำระเรียบร้อย</p>`;
+                menuHtml += btn('Quotation', 'file-text', 'bg-amber-100 text-amber-600', 'ใบเสนอราคา', 'Quotation');
+                menuHtml += `<div class="border-t border-slate-100 my-2"></div>`;
+                const fullInvLabel = hasVat ? 'ใบแจ้งหนี้ยอดเต็ม' : 'ใบแจ้งหนี้ยอดเต็ม';
+                menuHtml += btn('BalanceInvoice', 'file-minus', 'bg-orange-100 text-orange-600', fullInvLabel, hasVat ? 'Full Invoice (Tax)' : 'Full Invoice');
+                menuHtml += `<div class="border-t border-slate-100 my-2"></div>`;
+                const recLabel = hasVat ? 'ใบเสร็จ/ใบกำกับภาษียอดเต็ม' : 'ใบเสร็จรับเงินยอดเต็ม';
+                menuHtml += btn('BalanceReceipt', 'file-check-2', 'bg-green-100 text-green-600', recLabel, hasVat ? 'Full Tax Receipt' : 'Full Receipt');
+            }
+
+            // ── Stage 3: Paid (with deposit) ─────────────────────
+            else if (status === 'Paid' && hasDeposit) {
+                menuHtml += `<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ชำระเรียบร้อย</p>`;
+                menuHtml += btn('Quotation', 'file-text', 'bg-amber-100 text-amber-600', 'ใบเสนอราคา', 'Quotation');
+                menuHtml += `<div class="border-t border-slate-100 my-2"></div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">เอกสารมัดจำ</p>`;
+                const depLabel = hasVat ? 'ใบเสร็จ/ใบกำกับภาษีมัดจำ' : 'ใบเสร็จรับเงินมัดจำ';
+                menuHtml += btn('Deposit', 'file-check', 'bg-blue-100 text-blue-600', depLabel, hasVat ? 'Deposit Tax Receipt' : 'Deposit Receipt');
+                menuHtml += `<div class="border-t border-slate-100 my-2"></div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ยอดที่เหลือ</p>`;
+                const balInvLabel = hasVat ? 'ใบแจ้งหนี้ยอดที่เหลือ' : 'ใบแจ้งหนี้ยอดที่เหลือ';
+                menuHtml += btn('BalanceInvoice', 'file-clock', 'bg-orange-100 text-orange-600', balInvLabel, hasVat ? 'Balance Due Invoice (Tax)' : 'Balance Due Invoice');
+                const balRecLabel = hasVat ? 'ใบเสร็จ/ใบกำกับภาษียอดที่เหลือ' : 'ใบเสร็จรับเงินยอดที่เหลือ';
+                menuHtml += btn('BalanceReceipt', 'file-check-2', 'bg-indigo-100 text-indigo-600', balRecLabel, hasVat ? 'Balance Tax Receipt' : 'Balance Receipt');
+            }
+
+            menuHtml += '</div>';
+            mySwal.fire({
+                title: 'เลือกประเภทเอกสาร',
+                html: menuHtml,
+                showConfirmButton: false,
+                showCloseButton: true,
+                customClass: { popup: 'font-sans max-w-sm' }
+            });
+            setTimeout(() => lucide.createIcons(), 100);
+        }
+
         function printDoc(id, type) {
             const item = db.find(i => i.id === id);
             const vat = item.wantVat ? item.subTotal * 0.07 : 0;
             const grandTotal = item.subTotal + vat;
             let pagesRows = [];
 
-            if (type === 'Deposit') {
-                const depVat = item.wantVat ? item.deposit * 0.07 : 0;
+            if (type === 'DepositInvoice' || type === 'Deposit') {
+                const depRaw = item.deposit || 0;
+                const depBase = item.wantVat ? depRaw / 1.07 : depRaw;
+                const depVat = item.wantVat ? depRaw - depBase : 0;
+                const isReceipt = type === 'Deposit';
+                const depTitle = isReceipt
+                    ? (item.wantVat ? "ใบกำกับภาษี/ใบเสร็จรับเงิน" : "ใบเสร็จรับเงิน")
+                    : (item.wantVat ? "ใบแจ้งหนี้ / DEPOSIT INVOICE" : "ใบแจ้งหนี้ / DEPOSIT INVOICE");
+                const depNote = isReceipt ? "ชำระเงินเรียบร้อยแล้ว" : "กรุณาชำระเงินภายในกำหนด";
                 let itemsHtml = `<tr>
                     <td class="py-3 px-2 border-b border-slate-200 text-center">1</td>
                     <td class="py-3 px-2 border-b border-slate-200 text-center">-</td>
-                    <td class="py-3 px-2 border-b border-slate-200">เงินมัดจำล่วงหน้า เพื่อยืนยันการจองสินค้า/บริการ</td>
+                    <td class="py-3 px-2 border-b border-slate-200">
+                        <div class="font-bold">เงินมัดจำล่วงหน้า เพื่อยืนยันการจองสินค้า/บริการ</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">อ้างอิงใบเสนอราคาเลขที่ ${item.id}</div>
+                    </td>
                     <td class="py-3 px-2 border-b border-slate-200 text-center">1</td>
-                    <td class="py-3 px-2 border-b border-slate-200 text-right font-bold">฿${item.deposit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td class="py-3 px-2 border-b border-slate-200 text-right font-bold text-indigo-700">฿${item.deposit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td class="py-3 px-2 border-b border-slate-200 text-right font-bold">฿${depBase.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td class="py-3 px-2 border-b border-slate-200 text-right font-bold text-indigo-700">฿${depBase.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                 </tr>`;
                 pagesRows.push(itemsHtml);
-                renderPrint("ใบรับเงินมัดจำ / DEPOSIT RECEIPT", item, item.deposit, depVat, "ชำระเงินมัดจำเรียบร้อยแล้ว", pagesRows);
+                renderPrint(depTitle, item, depBase, depVat, depNote, pagesRows);
+            } else if (type === 'BalanceInvoice' || type === 'BalanceReceipt') {
+                const balance = (item.subTotal - (item.wantVat ? (item.deposit || 0) / 1.07 : (item.deposit || 0)));
+                const balanceVat = item.wantVat ? balance * 0.07 : 0;
+                const isReceipt = type === 'BalanceReceipt';
+                const balTitle = isReceipt
+                    ? (item.wantVat ? "ใบกำกับภาษี/ใบเสร็จรับเงิน" : "ใบเสร็จรับเงิน")
+                    : (item.wantVat ? "ใบแจ้งหนี้" : "ใบแจ้งหนี้");
+                const balNote = isReceipt ? "ชำระยอดที่เหลือเรียบร้อยแล้ว" : "กรุณาชำระยอดที่เหลือภายในกำหนด";
+                const depDisplay = item.wantVat ? (item.deposit || 0) / 1.07 : (item.deposit || 0);
+                let itemsHtml = `<tr>
+                    <td class="py-3 px-2 border-b border-slate-200 text-center">1</td>
+                    <td class="py-3 px-2 border-b border-slate-200 text-center">-</td>
+                    <td class="py-3 px-2 border-b border-slate-200">
+                        <div class="font-bold">ยอดค้างชำระส่วนที่เหลือ</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">ยอดรวมทั้งหมด ฿${item.subTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} หักมัดจำ ฿${depDisplay.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">อ้างอิงใบเสนอราคาเลขที่ ${item.id}</div>
+                    </td>
+                    <td class="py-3 px-2 border-b border-slate-200 text-center">1</td>
+                    <td class="py-3 px-2 border-b border-slate-200 text-right font-bold">฿${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td class="py-3 px-2 border-b border-slate-200 text-right font-bold text-indigo-700">฿${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                </tr>`;
+                pagesRows.push(itemsHtml);
+                renderPrint(balTitle, item, balance, balanceVat, balNote, pagesRows);
             } else {
                 const ITEMS_PER_PAGE = 1;
                 let currentRowsHtml = '';
@@ -1966,21 +2284,23 @@
                 } else {
                     item.items.forEach((i, idx) => {
                         const no = idx + 1;
-                        const code = i.code || '-';
                         const price = parseFloat(i.price) || 0;
                         const qty = parseFloat(i.qty) || 0;
                         const amount = price * qty;
 
-                        // Retrieve product images if any (match via Product DB)
-                        const productMatch = productsDb.find(p => p.id === i.id || p.name === i.name);
+                        // Retrieve product info and images (match via Product DB)
+                        const productMatch = productsDb.find(p => p.id === i.name || p.name === i.name);
+                        const code = productMatch ? (productMatch.code || '-') : '-';
+                        const displayName = productMatch ? productMatch.name : (i.name || '-');
+
                         let productImages = [];
                         if (productMatch && productMatch.images && productMatch.images.length > 0) {
                             productImages = productMatch.images;
                         }
 
                         const imagesHtml = productImages.length > 0
-                            ? `<div class="flex gap-2 mt-2">
-                                 ${productImages.slice(0, 3).map(img => `<img src="${img}" class="h-12 w-12 object-cover rounded border border-slate-200" />`).join('')}
+                            ? `<div class="flex gap-2 mt-3 mb-1">
+                                 ${productImages.slice(0, 3).map(img => `<img src="${img}" class="h-40 w-40 object-cover rounded-lg border border-slate-300 shadow-sm" />`).join('')}
                                </div>`
                             : '';
 
@@ -1988,7 +2308,7 @@
                             <td class="py-3 px-2 text-center align-top">${no}</td>
                             <td class="py-3 px-2 text-center align-top whitespace-nowrap">${code}</td>
                             <td class="py-3 px-2 align-top">
-                                <div class="font-bold text-sm">${i.name}</div>
+                                <div class="font-bold text-sm">${displayName}</div>
                                 ${i.spec ? `<div class="text-[11px] text-slate-500 whitespace-pre-wrap mt-1">${i.spec}</div>` : ''}
                                 ${imagesHtml}
                             </td>
@@ -2003,8 +2323,8 @@
                         }
                     });
                 }
-                const title = type === 'Quotation' ? "ใบเสนอราคา / QUOTATION" : (item.wantVat ? "ใบกำกับภาษี/ใบเสร็จรับเงิน" : "ใบเสร็จรับเงิน / RECEIPT");
-                renderPrint(title, item, item.subTotal, vat, type === 'Quotation' ? "ยืนยันราคาภายใน 30 วัน" : "ยอดคงเหลือที่ต้องชำระ ฿" + (grandTotal - item.deposit).toLocaleString(), pagesRows);
+                const title = type === 'Quotation' ? "ใบเสนอราคา / QUOTATION" : (item.wantVat ? "ใบกำกับภาษี/ใบเสร็จรับเงิน/ใบส่งของ" : "ใบเสร็จรับเงิน/ใบส่งของ");
+                renderPrint(title, item, item.subTotal, vat, type === 'Quotation' ? "ยืนยันราคาภายใน 30 วัน" : "ยอดคงเหลือที่ต้องชำระ ฿" + (grandTotal - (item.deposit || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 }), pagesRows);
             }
         }
 
@@ -2034,24 +2354,42 @@
                 const pageBreakStyle = isLastPage ? '' : 'page-break-after: always;';
                 const pageCountStr = pagesRows.length > 1 ? `<div class="absolute top-4 right-6 text-[10px] text-slate-500 font-bold z-10">Page ${pageIndex + 1} of ${pagesRows.length}</div>` : '';
 
-                let footerHtml = '';
-                if (isLastPage) {
-                    footerHtml = `
-                    <!-- Specs & Warranty Below Table -->
+                // Extract product info for this specific page (since ITEMS_PER_PAGE = 1)
+                const currentItem = item.items && item.items[pageIndex] ? item.items[pageIndex] : null;
+                
+                let pageWarranty = "ตามเงื่อนไขบริษัทกำหนด (Standard Corporate Policy)";
+                if (currentItem && currentItem.warranty) {
+                    pageWarranty = `${currentItem.warranty} เดือน`;
+                }
+
+                let pageRemark = note;
+                if (currentItem && productsDb) {
+                    const matchedProduct = productsDb.find(p => p.id === currentItem.name || p.name === currentItem.name);
+                    if (matchedProduct && matchedProduct.notes) {
+                        // Prepend product notes to the default document note
+                        pageRemark = matchedProduct.notes + (note ? "\n\n" + note : "");
+                    }
+                }
+
+                let footerHtml = `
+                    <!-- Specs & Warranty Below Table (Per Page) -->
                     <div class="mb-6 border border-slate-200 rounded-lg p-4 bg-slate-50/50 mt-4">
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Specifications & Terms:</p>
                         <div class="grid grid-cols-2 gap-4 text-xs">
                             <div>
                                 <strong class="text-slate-600">Warranty Terms:</strong>
-                                <p class="text-slate-700 whitespace-pre-wrap mt-1">${warranties}</p>
+                                <p class="text-slate-700 whitespace-pre-wrap mt-1">${pageWarranty}</p>
                             </div>
                             <div>
                                 <strong class="text-slate-600">Remarks:</strong>
-                                <p class="text-slate-700 whitespace-pre-wrap mt-1">${note}</p>
+                                <p class="text-slate-700 whitespace-pre-wrap mt-1">${pageRemark}</p>
                             </div>
                         </div>
                     </div>
+                `;
 
+                if (isLastPage) {
+                    footerHtml += `
                     <!-- Summary Footer -->
                     <div class="grid grid-cols-12 gap-6 mt-auto mb-8">
                         <!-- Thai Baht Text -->
@@ -2068,10 +2406,10 @@
                                 <span class="font-bold text-slate-500">Subtotal</span> 
                                 <span class="font-bold text-slate-800">฿${base.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
-                            <div class="flex justify-between items-center text-xs px-4 py-2 border-b border-slate-200 bg-white">
+                            ${vat > 0 ? `<div class="flex justify-between items-center text-xs px-4 py-2 border-b border-slate-200 bg-white">
                                 <span class="font-bold text-slate-500">VAT (7%)</span> 
                                 <span class="font-bold text-slate-800">฿${vat.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                            </div>
+                            </div>` : ''}
                             <div class="flex justify-between items-center px-4 py-3 bg-slate-900 text-white font-black">
                                 <span class="text-xs tracking-widest">GRAND TOTAL</span> 
                                 <span class="text-base tracking-tight">฿${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
@@ -2094,7 +2432,7 @@
                     </div>
                     `;
                 } else {
-                    footerHtml = `
+                    footerHtml += `
                     <div class="mt-auto pt-4 pb-8 text-center text-[11px] text-slate-400 font-bold border-t border-slate-200">
                         -- มีรายการต่อหน้าถัดไป / Continued on next page --
                     </div>
@@ -2122,10 +2460,10 @@
                             </div>
                         </div>
                         <div class="text-right flex flex-col items-end">
-                            <h2 class="text-xl font-black italic tracking-tighter text-indigo-700 uppercase mb-3">${title}</h2>
+                            <h2 class="text-base font-black italic tracking-tighter text-indigo-700 uppercase mb-3">${title}</h2>
                             <div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs text-left bg-slate-50 p-3 rounded-lg border border-slate-200 min-w-[200px]">
                                 <span class="font-bold text-slate-500">Doc No:</span> <span class="font-bold text-slate-900 text-right">${item.id}</span>
-                                <span class="font-bold text-slate-500">Date:</span> <span class="text-slate-900 text-right">${item.date}</span>
+                                <span class="font-bold text-slate-500">Date:</span> <span class="text-slate-900 text-right">${new Date(item.date).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                                 <span class="font-bold text-slate-500">Term:</span> <span class="text-slate-900 text-right">Cash / Transfer</span>
                             </div>
                         </div>
@@ -2185,13 +2523,19 @@
 
             const isQ = item.status === 'Quotation';
             const subTotal = item.subTotal || 0;
-            const vat = item.vat || subTotal * 0.07;
-            const grandTotal = item.grandTotal || subTotal + vat;
+            const vat = item.wantVat ? (item.vat || subTotal * 0.07) : 0;
+            const grandTotal = subTotal + vat;
 
             // Header
+            const statusConfig = {
+                'Quotation':        { label: 'ใบเสนอราคา',      cls: 'bg-amber-100 text-amber-700' },
+                'Pending Deposit':  { label: 'รอชำระมัดจำ',      cls: 'bg-blue-100 text-blue-700' },
+                'Pending Payment':  { label: 'รอชำระ',            cls: 'bg-orange-100 text-orange-700' },
+                'Paid':             { label: 'ชำระเรียบร้อย',     cls: 'bg-green-100 text-green-700' },
+            };
+            const st = statusConfig[item.status] || { label: item.status, cls: 'bg-slate-100 text-slate-700' };
             const $status = $('#viewDocStatus');
-            $status.text(isQ ? 'ใบเสนอราคา' : 'ยืนยันการขาย')
-                .attr('class', `px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide ${isQ ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`);
+            $status.text(st.label).attr('class', `px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide ${st.cls}`);
             $('#viewDocId').text('#' + item.id);
             $('#viewDocDate').html(`<i data-lucide="calendar" class="w-3.5 h-3.5 mr-1"></i>${item.date || 'N/A'}`);
 
@@ -2225,7 +2569,12 @@
 
             // Totals
             $('#viewDocSubTotal').text('฿' + subTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }));
-            $('#viewDocVat').text('฿' + vat.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            if (vat > 0) {
+                $('#viewDocVatRow').removeClass('hidden');
+                $('#viewDocVat').text('฿' + vat.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            } else {
+                $('#viewDocVatRow').addClass('hidden');
+            }
             $('#viewDocGrandTotal').text('฿' + grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }));
 
             $('#viewDocModal').removeClass('hidden');
@@ -2278,6 +2627,7 @@
                     autoResize($row.find('.item-spec')[0]);
                 });
             }
+            $('#quoteWantVat').prop('checked', item.wantVat || false);
             calculateSubTotal();
 
             // Change submit button to "อัปเดต"
