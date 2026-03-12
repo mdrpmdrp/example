@@ -17,7 +17,8 @@ const SHEET_PRODUCTS = 'Products';
 const QUOTATION_COLS = [
   'id', 'date', 'name', 'tel', 'taxId', 'address',
   'status', 'subTotal', 'deposit', 'wantVat', 'grandTotal',
-  'items'           // stored as JSON string
+  'items',          // stored as JSON string
+  'confirmDeposit'  // boolean: true when deposit payment is confirmed
 ];
 
 const CUSTOMER_COLS = [
@@ -32,12 +33,27 @@ const PRODUCT_COLS = [
 
 // ── Serve Web App ─────────────────────────────────────────────
 function doGet(e) {
-  return HtmlService
-    .createHtmlOutputFromFile('index')
+  let html =  HtmlService.createTemplateFromFile('index')
+  html.logoBase64 = _getLogoBase64();
+  return html.evaluate()
     .setTitle('QT Management')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .setSandboxMode(HtmlService.SandboxMode.IFRAME)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function _getLogoBase64() {
+  const fileUrl = 'https://img2.pic.in.th/croped_Logo_cs168_png-02.png';
+  try {
+    const response = UrlFetchApp.fetch(fileUrl, { muteHttpExceptions: true });
+    if (response.getResponseCode() !== 200) return '';
+    const contentType = (response.getHeaders()['Content-Type'] || 'image/png').split(';')[0].trim();
+    const base64 = Utilities.base64Encode(response.getContent());
+    return 'data:' + contentType + ';base64,' + base64;
+  } catch (e) {
+    Logger.log('Error fetching logo image: ' + e);
+    return '';
+  }
 }
 
 function _ensureSheet(ss, name, cols) {
@@ -151,6 +167,7 @@ function getQuotations() {
     q.deposit = parseFloat(q.deposit) || 0;
     q.grandTotal = parseFloat(q.grandTotal) || 0;
     q.wantVat = (q.wantVat === true || q.wantVat === 'TRUE' || q.wantVat === 'true');
+    q.confirmDeposit = (q.confirmDeposit === true || q.confirmDeposit === 'TRUE' || q.confirmDeposit === 'true');
     return q;
   }));
 }
