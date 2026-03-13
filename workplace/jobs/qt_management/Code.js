@@ -10,6 +10,7 @@
 const SHEET_QUOTATIONS = 'Quotations';
 const SHEET_CUSTOMERS = 'Customers';
 const SHEET_PRODUCTS = 'Products';
+const SHEET_BANK = 'BankAccounts';
 
 // ── Column Definitions ───────────────────────────────────────
 //   Each array defines the header row for that sheet.
@@ -18,7 +19,9 @@ const QUOTATION_COLS = [
   'id', 'date', 'name', 'tel', 'taxId', 'address',
   'status', 'subTotal', 'deposit', 'wantVat', 'grandTotal',
   'items',          // stored as JSON string
-  'confirmDeposit'  // boolean: true when deposit payment is confirmed
+  'confirmDeposit',  // boolean: true when deposit payment is confirmed
+  'confirmSuccess',   // datetime when quotation is marked as successful (won)
+  'bankId',           // reference to BankAccounts id
 ];
 
 const CUSTOMER_COLS = [
@@ -28,7 +31,12 @@ const CUSTOMER_COLS = [
 const PRODUCT_COLS = [
   'id', 'code', 'name', 'price', 'unit', 'color',
   'desc', 'spec', 'warranty', 'notes',
-  'images'          // stored as JSON string (base64 array)
+  'images',         // stored as JSON string (base64 array)
+  'warrantyItems'   // stored as JSON string ([{label, months}])
+];
+
+const BANK_COLS = [
+  'id', 'bankName', 'accountName', 'accountNumber'
 ];
 
 // ── Serve Web App ─────────────────────────────────────────────
@@ -81,7 +89,7 @@ function _ensureSheet(ss, name, cols) {
 
 /** Returns all customers as an array of objects. */
 function getCustomers() {
-  return JSON.stringify(_sheetToObjects(SHEET_CUSTOMERS, CUSTOMER_COLS));
+  return JSON.stringify(_sheetToObjects(SHEET_CUSTOMERS, CUSTOMER_COLS, true));
 }
 
 /**
@@ -119,6 +127,7 @@ function getProducts() {
   const rows = _sheetToObjects(SHEET_PRODUCTS, PRODUCT_COLS);
   return JSON.stringify(rows.map(p => {
     p.images = _parseJson(p.images, []);
+    p.warrantyItems = _parseJson(p.warrantyItems, []);
     p.price = parseFloat(p.price) || 0;
     p.warranty = parseFloat(p.warranty) || 0;
     return p;
@@ -132,9 +141,10 @@ function getProducts() {
  */
 function saveProduct(data) {
   const sheet = _getSheet(SHEET_PRODUCTS);
-  // Serialize images array to JSON string
+  // Serialize images and warrantyItems arrays to JSON strings
   const serialized = Object.assign({}, data, {
-    images: JSON.stringify(data.images || [])
+    images: JSON.stringify(data.images || []),
+    warrantyItems: JSON.stringify(data.warrantyItems || [])
   });
   if (data.id) {
     const row = _findRowById(sheet, data.id);
@@ -155,6 +165,39 @@ function deleteProduct(id) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// BANK ACCOUNTS — CRUD
+// ─────────────────────────────────────────────────────────────
+
+/** Returns all bank accounts as an array of objects. */
+function getBankAccounts() {
+  return JSON.stringify(_sheetToObjects(SHEET_BANK, BANK_COLS, true));
+}
+
+/**
+ * Save (insert or update) a bank account.
+ * @param {Object} data  { id?, bankName, accountName, accountNumber }
+ * @returns {Object}     saved record with id
+ */
+function saveBankAccount(data) {
+  const sheet = _getSheet(SHEET_BANK) || _ensureSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_BANK, BANK_COLS);
+  if (data.id) {
+    const row = _findRowById(sheet, data.id);
+    if (row) {
+      _writeRow(sheet, row, BANK_COLS, data);
+      return data;
+    }
+  }
+  data.id = data.id || 'B-' + Date.now();
+  sheet.appendRow(_objToRow(BANK_COLS, data));
+  return data;
+}
+
+/** Delete a bank account row by id. */
+function deleteBankAccount(id) {
+  return _deleteById(SHEET_BANK, id);
+}
+
+// ─────────────────────────────────────────────────────────────
 // QUOTATIONS — CRUD
 // ─────────────────────────────────────────────────────────────
 
@@ -168,6 +211,8 @@ function getQuotations() {
     q.grandTotal = parseFloat(q.grandTotal) || 0;
     q.wantVat = (q.wantVat === true || q.wantVat === 'TRUE' || q.wantVat === 'true');
     q.confirmDeposit = (q.confirmDeposit === true || q.confirmDeposit === 'TRUE' || q.confirmDeposit === 'true');
+    q.confirmSuccess = q.confirmSuccess ? String(q.confirmSuccess) : '';
+    q.bankId = q.bankId ? String(q.bankId) : '';
     return q;
   }));
 }
@@ -206,10 +251,12 @@ function deleteQuotation(id) {
 // Returns all data needed to boot the app in one round-trip.
 // ─────────────────────────────────────────────────────────────
 function loadAllData() {
+  _ensureSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_BANK, BANK_COLS);
   return {
     customers: getCustomers(),
     products: getProducts(),
-    quotations: getQuotations()
+    quotations: getQuotations(),
+    bankAccounts: getBankAccounts()
   };
 }
 
@@ -319,11 +366,11 @@ function _getSheet(name) {
 }
 
 /** Reads all data rows and converts to array of objects keyed by cols. */
-function _sheetToObjects(sheetName, cols) {
+function _sheetToObjects(sheetName, cols, asText = false) {
   const sheet = _getSheet(sheetName);
   const last = sheet.getLastRow();
   if (last < 2) return [];
-  const values = sheet.getRange(2, 1, last - 1, cols.length).getValues();
+  const values = sheet.getRange(2, 1, last - 1, cols.length)[asText ? 'getDisplayValues' : 'getValues']();
   return values
     .filter(row => row[0] !== '' && row[0] !== null)
     .map(row => {
