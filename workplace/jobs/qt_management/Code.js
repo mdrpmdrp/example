@@ -22,6 +22,7 @@ const QUOTATION_COLS = [
   'confirmDeposit',  // boolean: true when deposit payment is confirmed
   'confirmSuccess',   // datetime when quotation is marked as successful (won)
   'bankId',           // reference to BankAccounts id
+  'paymentTerm',       // e.g. "30% deposit, balance on delivery"
 ];
 
 const CUSTOMER_COLS = [
