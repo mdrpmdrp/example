@@ -39,7 +39,7 @@ function formatDateThai(date) {
     year: 'numeric' 
   };
   
-  return d.toLocaleDateString('th-TH', options);
+  return d.toLocaleDateString('en-GB', options);
 }
 
 /**
