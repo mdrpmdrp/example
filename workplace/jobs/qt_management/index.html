@@ -512,7 +512,17 @@
                                 <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มสินค้า / บริการ
                             </button>
                         </div>
-
+                        <!-- Bank Account Selector -->
+                        <div class="border border-slate-200 rounded-2xl p-4 bg-white">
+                            <label
+                                class="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                <i data-lucide="landmark" class="w-3.5 h-3.5"></i>บัญชีรับโอน (แสดงในเอกสาร)
+                            </label>
+                            <select id="quoteBankId"
+                                class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-red-200">
+                                <option value="">— ไม่ระบุ —</option>
+                            </select>
+                        </div>
                         <div class="bg-slate-900 text-white p-5 rounded-3xl flex flex-col gap-3 shadow-lg">
                             <div class="flex justify-between items-center">
                                 <span class="text-xs uppercase font-bold text-slate-400">รวม Vat.7%</span>
@@ -543,15 +553,7 @@
                             </div>
                         </div>
 
-                        <!-- Bank Account Selector -->
-                        <div class="border border-slate-200 rounded-2xl p-4 bg-white">
-                            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                <i data-lucide="landmark" class="w-3.5 h-3.5"></i>บัญชีรับโอน (แสดงในเอกสาร)
-                            </label>
-                            <select id="quoteBankId" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-red-200">
-                                <option value="">— ไม่ระบุ —</option>
-                            </select>
-                        </div>
+
 
                         <button type="submit"
                             class="w-full btn-primary text-white h-14 rounded-2xl font-bold shadow-lg shadow-red-900/10 active:scale-[0.98]">
@@ -976,6 +978,11 @@
                     <span class="font-bold text-slate-800">ยอดรวมทั้งสิ้น</span>
                     <span id="viewDocGrandTotal" class="text-2xl font-black text-slate-900"></span>
                 </div>
+                <div id="viewDocBank" class="hidden mt-3 pt-3 border-t border-slate-100">
+                    <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1.5">ช่องทางชำระเงิน</p>
+                    <p id="viewDocBankName" class="text-sm font-black text-blue-900"></p>
+                    <p id="viewDocBankNumber" class="text-sm font-bold text-blue-700 tracking-widest"></p>
+                </div>
             </div>
         </div>
     </div>
@@ -1004,7 +1011,7 @@
             const customColors = selected.filter(function (c) { return !PRESET_COLORS.includes(c); });
             const allColors = PRESET_COLORS.concat(customColors);
             $container.empty();
-            const $chips = $('<div class="color-chips grid grid-cols-3 md:grid-cols-5 gap-2"></div>');
+            const $chips = $('<div class="color-chips grid grid-cols-4 md:grid-cols-8 gap-2"></div>');
             allColors.forEach(function (color) {
                 const isSel = selected.includes(color);
                 const baseClass = 'color-chip px-2.5 py-1 text-xs rounded-lg border transition-all cursor-pointer';
@@ -1057,6 +1064,36 @@
             return WARRANTY_DEFS
                 .filter(d => $('#' + d.cbId).is(':checked'))
                 .map(d => ({ label: d.label, months: parseInt($('#' + d.mthId).val()) || d.defaultMonths }));
+        }
+
+        function getItemRowWarrantyItems($row) {
+            const items = [];
+            $row.find('.item-warranty-cb').each(function (i) {
+                if ($(this).is(':checked')) {
+                    const months = parseInt($row.find('.item-warranty-mth[data-idx="' + i + '"]').val()) || WARRANTY_DEFS[i].defaultMonths;
+                    items.push({ label: WARRANTY_DEFS[i].label, months: months });
+                }
+            });
+            return items;
+        }
+
+        function setItemRowWarrantyItems($row, items) {
+            WARRANTY_DEFS.forEach(function (d, i) {
+                const match = items && items.find(function (w) { return w.label === d.label; });
+                const $cb = $row.find('.item-warranty-cb[data-idx="' + i + '"]');
+                const $mth = $row.find('.item-warranty-mth[data-idx="' + i + '"]');
+                if (match) {
+                    $cb.prop('checked', true);
+                    $mth.val(match.months).prop('disabled', false)
+                        .removeClass('opacity-40 pointer-events-none bg-slate-100')
+                        .addClass('bg-white');
+                } else {
+                    $cb.prop('checked', false);
+                    $mth.val(d.defaultMonths).prop('disabled', true)
+                        .addClass('opacity-40 pointer-events-none bg-slate-100')
+                        .removeClass('bg-white');
+                }
+            });
         }
 
         function setWarrantyItems(items) {
@@ -1205,9 +1242,22 @@
             $('#searchProduct').on('keyup', handleProductSearch);
             $('#prodImageUpload').on('change', handleImageUpload);
 
-            // Warranty checkboxes toggle month inputs
+            // Warranty checkboxes toggle month inputs (product modal)
             $(document).on('change', '.prod-warranty-cb', function () {
                 const $mth = $('#' + $(this).data('target'));
+                if ($(this).is(':checked')) {
+                    $mth.prop('disabled', false).removeClass('opacity-40 pointer-events-none bg-slate-100').addClass('bg-white');
+                } else {
+                    $mth.prop('disabled', true).addClass('opacity-40 pointer-events-none bg-slate-100').removeClass('bg-white');
+                }
+            });
+
+            // Warranty checkboxes toggle month inputs (item rows)
+            $(document).on('change', '.item-warranty-cb', function () {
+                const $row = $(this).closest('.item-row-warranty-wrap').parent().closest('[id^="row-"]');
+                const idx = $(this).data('idx');
+                const $cont = $(this).closest('.item-warranty-container');
+                const $mth = $cont.find('.item-warranty-mth[data-idx="' + idx + '"]');
                 if ($(this).is(':checked')) {
                     $mth.prop('disabled', false).removeClass('opacity-40 pointer-events-none bg-slate-100').addClass('bg-white');
                 } else {
@@ -1235,25 +1285,27 @@
                 const gs = google.script.run;
                 let loaded = 0;
                 const steps = [
-                    { label: 'ลูกค้า', pct: 60 },
-                    { label: 'สินค้า', pct: 80 },
-                    { label: 'เอกสาร', pct: 95 }
+                    { label: 'ลูกค้า', pct: 55 },
+                    { label: 'สินค้า', pct: 70 },
+                    { label: 'เอกสาร', pct: 85 },
+                    { label: 'บัญชีธนาคาร', pct: 95 }
                 ];
 
                 const track = (promise, idx) => promise.then(result => {
                     loaded++;
-                    setLoadingProgress(steps[idx].pct, `โหลด${steps[idx].label}สำเร็จ... (${loaded}/3)`);
+                    setLoadingProgress(steps[idx].pct, `โหลด${steps[idx].label}สำเร็จ... (${loaded}/4)`);
                     return JSON.parse(result);
                 });
 
                 try {
-                    const [customers, products, quotations] = await Promise.all([
+                    const [customers, products, quotations, bankAccounts] = await Promise.all([
                         track(new Promise((res, rej) => gs.withSuccessHandler(res).withFailureHandler(rej).getCustomers()), 0),
                         track(new Promise((res, rej) => gs.withSuccessHandler(res).withFailureHandler(rej).getProducts()), 1),
-                        track(new Promise((res, rej) => gs.withSuccessHandler(res).withFailureHandler(rej).getQuotations()), 2)
+                        track(new Promise((res, rej) => gs.withSuccessHandler(res).withFailureHandler(rej).getQuotations()), 2),
+                        track(new Promise((res, rej) => gs.withSuccessHandler(res).withFailureHandler(rej).getBankAccounts()), 3)
                     ]);
 
-                    onDataLoaded({ customers, products, quotations });
+                    onDataLoaded({ customers, products, quotations, bankAccounts });
                 } catch (err) {
                     onDataError(err);
                 }
@@ -1274,12 +1326,11 @@
                 $('#quoteForm').removeAttr('data-edit-id');
                 $('#quoteForm button[type=submit]').text('บันทึกใบเสนอราคา');
                 $('#custName').val('').trigger('change.select2');
-                $('#quoteWantVat').prop('checked', false);
+                $('#quoteWantVat').prop('checked', true);
                 $('#itemRows').empty();
                 addItemRow();
                 calculateSubTotal();
             }
-            _currentView = view;
 
             $('.view-section').addClass('hidden');
             $('#view-' + view).removeClass('hidden');
@@ -1361,6 +1412,7 @@
                 $('#customerId').val('');
             }
             $('#customerModal').removeClass('hidden');
+            $('#customerModal').find('.overflow-y-auto').scrollTop(0);
         }
 
         function closeCustomerModal() { $('#customerModal').addClass('hidden'); }
@@ -1733,6 +1785,7 @@
                 setWarrantyItems([]);
             }
             $('#productModal').removeClass('hidden');
+            $('#productModal').find('.overflow-y-auto').scrollTop(0);
         }
 
         function closeProductModal() { $('#productModal').addClass('hidden'); }
@@ -1850,11 +1903,23 @@
                             <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">สี</label>
                             <div class="item-color-picker border border-slate-200/80 rounded-xl bg-white p-2.5"></div>
                         </div>
-                        <div class="col-span-6">
-                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">การรับประกัน (เดือน)</label>
-                            <div class="flex items-center gap-1.5">
-                                <input type="number" min="0" placeholder="0" class="item-warranty w-full h-10 px-3.5 bg-white border border-slate-200/80 rounded-xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm shadow-slate-100 text-center">
-                                <span class="text-xs text-slate-500 whitespace-nowrap">เดือน</span>
+                        <div class="col-span-12">
+                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">การรับประกัน</label>
+                            <div class="item-warranty-container border border-slate-200/80 rounded-xl bg-white p-3 space-y-2">
+                                ${WARRANTY_DEFS.map((d, i) => `
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox"
+                                        class="item-warranty-cb w-4 h-4 accent-red-500 cursor-pointer rounded"
+                                        data-idx="${i}">
+                                    <label class="text-sm text-slate-700 flex-1 cursor-pointer font-medium select-none">${d.label}</label>
+                                    <div class="flex items-center gap-1.5">
+                                        <input type="number" min="0" value="${d.defaultMonths}"
+                                            class="item-warranty-mth w-20 h-9 px-2 bg-slate-100 border border-slate-200/80 rounded-lg text-sm outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-center opacity-40 pointer-events-none"
+                                            data-idx="${i}" disabled>
+                                        <span class="text-xs text-slate-400 w-8">เดือน</span>
+                                    </div>
+                                </div>
+                                `).join('')}
                             </div>
                         </div>
                         <div class="col-span-12">
@@ -1916,8 +1981,7 @@
                     $row.find('.item-price').val(product.price || '');
                     $row.find('.item-unit').val(product.unit || '');
                     initColorPicker($row.find('.item-color-picker'), product.color || '');
-                    const _mainWarranty = (product.warrantyItems && product.warrantyItems.length > 0) ? product.warrantyItems[0].months : (product.warranty || '');
-                    $row.find('.item-warranty').val(_mainWarranty);
+                    setItemRowWarrantyItems($row, product.warrantyItems || []);
                     $row.find('.item-spec').val([product.spec, product.desc].filter(Boolean).join('\n') || '');
                     $row.find('.item-spec').each(function () { autoResize(this); });
                 }
@@ -1926,7 +1990,7 @@
                 $row.find('.item-price').val('');
                 $row.find('.item-unit').val('');
                 initColorPicker($row.find('.item-color-picker'), '');
-                $row.find('.item-warranty').val('');
+                setItemRowWarrantyItems($row, []);
                 $row.find('.item-spec').val('');
                 $row.find('.item-spec').each(function () { autoResize(this); });
                 calculateSubTotal();
@@ -1991,7 +2055,7 @@
                     qty: parseFloat($(this).find('.item-qty').val()) || 0,
                     unit: $(this).find('.item-unit').val(),
                     color: getColorPickerValue($(this).find('.item-color-picker')),
-                    warranty: parseInt($(this).find('.item-warranty').val()) || 0,
+                    warrantyItems: getItemRowWarrantyItems($(this)),
                     spec: $(this).find('.item-spec').val()
                 });
             });
@@ -2029,9 +2093,11 @@
                 }
             } else {
                 // New entry
+                const _now = new Date();
+                const _isoDate = _now.getFullYear() + '-' + String(_now.getMonth() + 1).padStart(2, '0') + '-' + String(_now.getDate()).padStart(2, '0');
                 entryData = {
                     id: '',
-                    date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                    date: _isoDate,
                     name: finalName,
                     tel: $('#custTel').val(),
                     taxId: $('#custTaxId').val(),
@@ -2053,7 +2119,7 @@
                 allowOutsideClick: false,
                 didOpen: () => { Swal.showLoading(); }
             });
-
+            console.log('Saving entry data:', entryData);
             google.script.run.withSuccessHandler((savedData) => {
                 Swal.fire({
                     icon: 'success',
@@ -2076,7 +2142,7 @@
                 // Explicit Resetting
                 formObj.reset();
                 $('#custName').val('').trigger('change.select2');
-                $('#quoteWantVat').prop('checked', false);
+                $('#quoteWantVat').prop('checked', true);
                 $('#quoteBankId').val('');
                 $('#itemRows').empty();
                 addItemRow();
@@ -2152,9 +2218,10 @@
 
         function render(data = db) {
             renderDashboard(); // Update dashboard
+            const sorted = [...data].sort((a, b) => String(b.id).localeCompare(String(a.id), undefined, { numeric: true }));
             const $list = $('#mainTable');
             $list.empty();
-            if (data.length === 0) {
+            if (sorted.length === 0) {
                 $list.addClass('hidden');
                 $('#empty').removeClass('hidden');
                 $('#countQ').text(0);
@@ -2191,7 +2258,7 @@
                 'Paid': { label: 'ชำระเรียบร้อย', cls: 'bg-green-100 text-green-700', icon: 'badge-check' },
             };
 
-            data.forEach(item => {
+            sorted.forEach(item => {
                 const st = statusConfig[item.status] || { label: item.status, cls: 'bg-slate-100 text-slate-700', icon: 'circle' };
                 const isQ = item.status === 'Quotation';
 
@@ -2258,6 +2325,7 @@
             $('#finalVat').val(item.wantVat ? '1' : '0');
             calculateFinal();
             $('#confirmModal').removeClass('hidden');
+            $('#finalizeForm').scrollTop(0);
         }
 
         function confirmDeposit(id) {
@@ -2316,7 +2384,7 @@
             }).then(result => {
                 if (!result.isConfirmed) return;
                 const index = db.findIndex(i => i.id === id);
-                const updatedData = { ...db[index], status: 'Paid', confirmSuccess: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) };
+                const updatedData = { ...db[index], status: 'Paid', confirmSuccess: new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) };
                 Swal.fire({ icon: 'info', title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 google.script.run
                     .withSuccessHandler(saved => {
@@ -2544,7 +2612,7 @@
                     d.setMonth(d.getMonth() + n);
                     return d;
                 };
-                const _fmtTH = (date) => date.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const _fmtTH = (date) => date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
                 const startDate = _parseSaleDate(saleDate);
 
@@ -2699,6 +2767,7 @@
 
                 $('#printContent').html(warrantyHtml);
                 $('#printModal').removeClass('hidden').attr('data-item-id', item.id);
+                $('#printModal').scrollTop(0);
                 lucide.createIcons();
                 return;
             }
@@ -2747,7 +2816,8 @@
                 } else {
                     renderPrint(depTitle, item, depBase, depVat, depNote, pagesRows, type);
                 }
-            } else if (type === 'BalanceInvoice' || type === 'BalanceReceipt') {
+            } 
+            else if (type === 'BalanceInvoice' || type === 'BalanceReceipt') {
                 const balance = (item.subTotal - (item.wantVat ? (item.deposit || 0) / 1.07 : (item.deposit || 0)));
                 const balanceVat = item.wantVat ? balance * 0.07 : 0;
                 const isReceipt = type === 'BalanceReceipt';
@@ -2879,6 +2949,7 @@
         }
 
         function renderPrint(title, item, base, vat, note, pagesRows, docType) {
+            console.log("🚀 ~ renderPrint ~ item:", item)
             if (!Array.isArray(pagesRows)) pagesRows = [pagesRows];
 
             const grandTotal = base + vat;
@@ -2922,15 +2993,6 @@
                                     return `ประกัน ที่ชาร์จ สายไฟ กล่องควบคุม ${w.months} เดือน (เสียหายจากการใช้งานเท่านั้น)`;
                                 }
                             }).join('\n')
-                            // if(matchedProduct.warrantyItems.some(w => ['ประกันมอเตอร์', 'ประกันแบต'].includes(w.label))) {
-                            //      pageWarranty +=
-                            //     `\n\n🔩 การซ่อม ทางร้านมีอะไหล่ทุกชิ้น หากไม่สะดวกนำรถมาที่ทางร้าน
-                            //     สามารถสั่งซื้ออะไหล่ไปให้ช่างใกล้บ้านลูกค้าสามารถเปลี่ยนได้ไม่ยาก
-                            //     🔩 หรือในกรณีที่ลูกค้าสะดวกรอ ทางร้านจะมีรถวิ่งไปทุกจังหวัดในทุกๆเดือน
-                            //     สามารถแจ้งทางร้านให้เช็คตารางรถเพื่อนัดเข้าไปซ่อมได้ ( มีค่าเดินทางแล้วแต่พื้นที่ 500-1000 บาท )
-                            //     📦มีรับประกันระหว่างการจัดส่งหากลูกค้าได้รับรถแล้วมีชิ้นส่วนเสียหาย/แตกหัก 
-                            //     สามารถแจ้งเคลมทางร้านได้`
-                            // }
                         } else if (currentItem.warranty) {
                             pageWarranty = `${currentItem.warranty} เดือน`;
                         }
@@ -2968,19 +3030,16 @@
                         <!-- Thai Baht Text + Bank -->
                         <div class="col-span-7 flex flex-col justify-end gap-2">
                             <div class="bg-indigo-50/50 border border-indigo-100/50 rounded-lg p-2 text-center">
-                                <span class="text-[10px] font-bold text-indigo-400 uppercase block mb-1 tracking-widest">Total Amount in Words</span>
                                 <span class="text-[11px] font-black text-indigo-900 italic">${thaiText}</span>
                             </div>
                             ${(() => {
-                                if (docType === 'Quotation') return '';
-                                const bank = banksDb && item.bankId ? banksDb.find(b => b.id === item.bankId) : null;
-                                if (!bank) return '';
-                                return `<div class="border border-blue-200 bg-blue-50/60 rounded-lg p-2">
+                            const bank = banksDb && item.bankId ? banksDb.find(b => b.id === item.bankId) : null;
+                            if (!bank) return '';
+                            return `<div class="border border-blue-200 bg-blue-50/60 rounded-lg p-2">
                                     <span class="text-[10px] font-bold text-blue-500 uppercase block mb-1 tracking-widest">ช่องทางชำระเงิน</span>
-                                    <p class="text-[11px] font-black text-blue-900">${bank.bankName ? bank.bankName + ' — ' : ''}${bank.accountName}</p>
-                                    <p class="text-[11px] font-bold text-blue-700 tracking-widest">${bank.accountNumber}</p>
+                                    <p class="text-[11px] font-black text-blue-900"><span class="font-bold text-blue-700 tracking-widest">${bank.accountNumber}  — </span>${bank.bankName ? bank.bankName + ' — ' : ''}${bank.accountName}</p>
                                 </div>`;
-                            })()}
+                        })()}
                         </div>
                         
                         <!-- Totals Calculation -->
@@ -3046,7 +3105,7 @@
                             <h2 class="text-sm font-black italic tracking-tighter text-indigo-700 uppercase mb-3">${title}</h2>
                             <div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs text-left bg-slate-50 p-3 rounded-lg border border-slate-200 min-w-[200px]">
                                 <span class="font-bold text-slate-500">Doc No:</span> <span class="font-bold text-slate-900 text-right">${item.id}</span>
-                                <span class="font-bold text-slate-500">Date:</span> <span class="text-slate-900 text-right">${new Date(item.date).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                                <span class="font-bold text-slate-500">Date:</span> <span class="text-slate-900 text-right">${new Date(item.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                                 <span class="font-bold text-slate-500">Term:</span> <span class="text-slate-900 text-right">Cash / Transfer</span>
                                 ${docType !== 'Quotation' ? `<span class="font-bold text-slate-500">อ้างอิงใบเสนอราคา:</span> <span class="text-slate-900 text-right">${item.id}</span>` : ''}
                             </div>
@@ -3092,6 +3151,7 @@
 
             $('#printContent').html(html);
             $('#printModal').removeClass('hidden').attr('data-item-id', item.id);
+            $('#printModal').scrollTop(0);
             lucide.createIcons();
         }
 
@@ -3121,7 +3181,7 @@
             const $status = $('#viewDocStatus');
             $status.text(st.label).attr('class', `px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide ${st.cls}`);
             $('#viewDocId').text('#' + item.id);
-            $('#viewDocDate').html(`<i data-lucide="calendar" class="w-3.5 h-3.5 mr-1"></i>${item.date ? new Date(item.date).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}`);
+            $('#viewDocDate').html(`<i data-lucide="calendar" class="w-3.5 h-3.5 mr-1"></i>${item.date ? new Date(item.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}`);
 
             // Customer
             $('#viewDocName').text(item.name || '-');
@@ -3161,6 +3221,16 @@
             }
             $('#viewDocGrandTotal').text('฿' + grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }));
 
+            // Bank account
+            const bank = banksDb && item.bankId ? banksDb.find(b => b.id === item.bankId) : null;
+            if (bank) {
+                $('#viewDocBankName').text((bank.bankName ? bank.bankName + ' — ' : '') + bank.accountName);
+                $('#viewDocBankNumber').text(bank.accountNumber);
+                $('#viewDocBank').removeClass('hidden');
+            } else {
+                $('#viewDocBank').addClass('hidden');
+            }
+
             // Warranty section (only when Paid)
             const $warranty = $('#viewDocWarranty');
             if (item.status === 'Paid') {
@@ -3179,7 +3249,7 @@
                     d.setMonth(d.getMonth() + months);
                     return d;
                 };
-                const _fmtTH = (date) => date ? date.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
+                const _fmtTH = (date) => date ? date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
                 const _warrantyDesc = {
                     'ประกันมอเตอร์': 'ครอบคลุมมอเตอร์ขับเคลื่อน กรณีชำรุดจากการผลิต ไม่รวมการใช้งานผิดวิธี',
                     'ประกันแบตเตอรี่': 'ครอบคลุมแบตเตอรี่หลัก กรณีความจุลดลงผิดปกติ ไม่รวมการชาร์จผิดวิธี',
@@ -3239,6 +3309,7 @@
             }
 
             $('#viewDocModal').removeClass('hidden');
+            $('#viewDocModal').find('.overflow-y-auto').scrollTop(0);
             lucide.createIcons();
         }
 
@@ -3283,7 +3354,7 @@
                     $row.find('.item-qty').val(it.qty || 1);
                     $row.find('.item-unit').val(it.unit || '');
                     initColorPicker($row.find('.item-color-picker'), it.color || '');
-                    $row.find('.item-warranty').val(it.warranty || '');
+                    setItemRowWarrantyItems($row, it.warrantyItems || []);
                     $row.find('.item-spec').val(it.spec || '');
                     autoResize($row.find('.item-spec')[0]);
                 });

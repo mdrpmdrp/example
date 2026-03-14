@@ -109,6 +109,8 @@ function saveCustomer(data) {
   }
   // Insert new
   data.id = data.id || 'C-' + Date.now();
+  data.tel = data.tel ? "'" + data.tel : '';
+  data.taxId = data.taxId ? "'" + data.taxId : '';
   sheet.appendRow(_objToRow(CUSTOMER_COLS, data));
   return data;
 }
@@ -237,6 +239,8 @@ function saveQuotation(data) {
   // Generate QT id: QT-YYYYMMDD-XXX
   serialized.id = serialized.id || _generateQtId(sheet);
   data.id = serialized.id;
+  serialized.tel = serialized.tel ? "'" + serialized.tel : '';
+  serialized.taxId = serialized.taxId ? "'" + serialized.taxId : '';
   sheet.appendRow(_objToRow(QUOTATION_COLS, serialized));
   return data;
 }
