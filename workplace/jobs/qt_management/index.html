@@ -1052,6 +1052,20 @@
         </div>
     </div>
 
+    <!-- Modal: Print Menu -->
+    <div id="printMenuModal"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-[2rem] p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-slate-800">เลือกประเภทเอกสาร</h2>
+                <button onclick="closePrintMenuModal()"
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"><i
+                        data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div id="printMenuContent" class="max-h-[70vh] overflow-y-auto no-scrollbar"></div>
+        </div>
+    </div>
+
     <!-- Print Modal -->
     <div id="printModal"
         class="fixed inset-0 bg-slate-100/80 backdrop-blur-sm hidden z-[150] overflow-y-auto print:bg-white">
@@ -2569,6 +2583,10 @@
             return bahtText + "บาท" + (satang === "00" ? "ถ้วน" : satangText + "สตางค์");
         }
 
+        function closePrintMenuModal() {
+            $('#printMenuModal').addClass('hidden');
+        }
+
         function openPrintMenu(id) {
             const item = db.find(i => i.id === id);
             if (!item) return;
@@ -2579,7 +2597,7 @@
 
             // Helper to build a button row
             const btn = (type, icon, color, label, sub) =>
-                `<button onclick="Swal.close(); printDoc('${id}', '${type}')" class="${btnClass}">
+                `<button onclick="closePrintMenuModal(); printDoc('${id}', '${type}')" class="${btnClass}">
                     <div class="w-9 h-9 rounded-lg ${color} flex items-center justify-center shrink-0">
                         <i data-lucide="${icon}" class="w-4 h-4"></i>
                     </div>
@@ -2658,13 +2676,8 @@
             }
 
             menuHtml += '</div>';
-            mySwal.fire({
-                title: 'เลือกประเภทเอกสาร',
-                html: menuHtml,
-                showConfirmButton: false,
-                showCloseButton: true,
-                customClass: { popup: 'font-sans max-w-lg' }
-            });
+            $('#printMenuContent').html(menuHtml);
+            $('#printMenuModal').removeClass('hidden');
             setTimeout(() => lucide.createIcons(), 100);
         }
 
