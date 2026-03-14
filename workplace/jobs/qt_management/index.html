@@ -3059,7 +3059,7 @@
                             const transportQty = parseFloat(transportItem.qty) || 0;
                             const transportAmount = transportPrice * transportQty;
                             currentRowsHtml += `<tr class="border-b border-slate-200 mb-2">
-                                        <td class="py-3 px-2 text-center align-top">${no +1}</td>
+                                        <td class="py-3 px-2 text-center align-top">${no + 1}</td>
                                         <td class="py-3 px-2 text-center align-top whitespace-nowrap">${transportItem.code || 'Transport'}</td>
                                         <td class="py-3 px-2 align-top">
                                             <div class="font-bold">${transportItem.description || 'ค่าขนส่ง (Transportation)'}</div>
@@ -3072,7 +3072,7 @@
                             currentRowsHtml = '';
                             // Skip the next item in the loop since we've already processed it
                             idx++;
-                        }else{
+                        } else {
                             // Regular item, just push current rows if we've reached the items per page limit
                             if ((idx + 1) % ITEMS_PER_PAGE === 0) {
                                 pagesRows.push(currentRowsHtml);
@@ -3081,19 +3081,22 @@
                         }
                     }
                 }
-                console.log(item)
                 const title = type === 'Quotation' ? "ใบเสนอราคา / QUOTATION" : (item.wantVat ? "ใบกำกับภาษี/ใบเสร็จรับเงิน/ใบส่งของ" : "ใบเสร็จรับเงิน/ใบส่งของ");
                 renderPrint(title, item, item.subTotal, vat, type === 'Quotation' ? item.note : "ยอดคงเหลือที่ต้องชำระ ฿" + (grandTotal - (item.deposit || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 }), pagesRows, type);
             }
         }
 
         function renderPrint(title, item, base, vat, note, pagesRows, docType) {
-            console.log("🚀 ~ renderPrint ~ item:", item)
             if (!Array.isArray(pagesRows)) pagesRows = [pagesRows];
 
             const grandTotal = base + vat;
             const thaiText = ThaiBahtText(grandTotal);
-
+            const transportIndex = item.items.findIndex(isTransportItem);
+            if (transportIndex !== -1) {
+                // move transport item to the end of the list to ensure it doesn't split across pages
+                const transportItem = item.items.splice(transportIndex, 1)[0];
+                item.items.push(transportItem);
+            }
             // Gather unique warranties for the footer
             let warranties = '';
             if (item.items && item.items.length > 0) {
@@ -3175,7 +3178,7 @@
                         </div>
                     </div>
                 ` : '';
-
+                const nextIsTransport = pageIndex < pagesRows.length && rows.includes('Transport');
                 if (isLastPage) {
                     footerHtml += `
                     <!-- Summary Footer -->
@@ -3262,7 +3265,7 @@
                         <div class="text-right flex flex-col items-end">
                             <h2 class="text-sm font-black italic tracking-tighter text-indigo-700 uppercase mb-2">${title}</h2>
                             <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] text-left bg-slate-50 p-2 rounded-lg border border-slate-200 min-w-[200px]">
-                                <span class="font-bold text-slate-500">Doc No:</span> <span class="font-bold text-slate-900 text-right">${title === 'ใบเสนอราคา / QUOTATION' ? item.id : item.id.replace('QT', 'INV')}</span>
+                                <span class="font-bold text-slate-500">Doc No:</span> <span class="font-bold text-slate-900 text-right">${title === 'ใบเสนอราคา / QUOTATION' ? item.id : title.includes('ใบกำกับ') ? item.id.replace('QT', 'CS') : title.includes('ใบเสร็จ') ? item.id.replace('QT', 'RC') : item.id.replace('QT', 'INV')}</span>
                                 <span class="font-bold text-slate-500">Date:</span> <span class="text-slate-900 text-right">${new Date(item.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                                 <span class="font-bold text-slate-500">Term:</span> <span class="text-slate-900 text-right">Cash / Transfer</span>
                                 ${docType !== 'Quotation' ? `<span class="font-bold text-slate-500">อ้างอิงใบเสนอราคา:</span> <span class="text-slate-900 text-right">${item.id}</span>` : ''}
@@ -3286,7 +3289,7 @@
                     </div>
 
                     <!-- Items Table -->
-                    <table class="w-full text-left text-xs ${docType === 'Quotation' ? 'flex-grow' : ''} border-collapse border border-slate-300 rounded-lg overflow-hidden h-fit" style="border-spacing: 0;">
+                    <table class="w-full text-left text-xs ${docType === 'Quotation' && !nextIsTransport ? 'flex-grow' : ''} border-collapse border border-slate-300 rounded-lg overflow-hidden h-fit" style="border-spacing: 0;">
                         <thead class="bg-slate-900 text-white font-bold uppercase tracking-widest text-[9px]">
                             <tr>
                                 <th class="py-1.5 px-2 w-[5%] text-center border-b border-slate-900">No.</th>
