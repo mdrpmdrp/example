@@ -53,7 +53,9 @@ const CONFIG = {
     URL: {
       PUSH_MESSAGE: 'https://api.line.me/v2/bot/message/push'
     }
-  }
+  },
+
+  REFRESH_INTERVAL: 10  // in seconds
   
 };
 

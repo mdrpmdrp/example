@@ -146,6 +146,16 @@
             border-color: #DC2626 !important;
             /* ring-color: rgba(239, 68, 68, 0.1) !important; */
         }
+
+        @keyframes icon-spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
+        .icon-spinning {
+            display: inline-block;
+            animation: icon-spin 1s linear infinite;
+        }
     </style>
 </head>
 
@@ -869,39 +879,20 @@
            ============================================================================ */
 
         function startAutoReload() {
-            // Clear existing interval if any
             if (reloadIntervalId) {
                 clearInterval(reloadIntervalId);
             }
 
+            const reloadMs = Number(<?= refreshInterval ?>) * 1000;
+
             const checkAndReload = () => {
                 const activeTab = $('.tab-content-section:not(.hidden)').attr('id');
-                const currentHour = new Date().getHours();
-                let currentReloadInterval;
-
-                currentReloadInterval = 10000; // 10 seconds
-
-                // if (currentHour >= 7 && currentHour < 9) {
-                //     currentReloadInterval = 60000; // 1 minute
-                // }
-                // else if (currentHour >= 9 && currentHour < 18) {
-                //     currentReloadInterval = 600000; // 10 minutes
-                // } else {
-                //     currentReloadInterval = 3600000; // 1 hour
-                // }
-
-                console.log(`Auto-reload interval: ${currentReloadInterval / 1000 / 60} minutes. Active tab: ${activeTab}`);
-
-                // Only reload if a dashboard tab is active
                 if (activeTab && activeTab !== 'createUpdateTabContent') {
                     loadDashboardData();
                 }
             };
 
-            // Check every minute if interval needs to change
-            reloadIntervalId = setInterval(checkAndReload, 60000);
-
-            // Run immediately on start
+            reloadIntervalId = setInterval(checkAndReload, reloadMs);
             checkAndReload();
         }
 
@@ -942,6 +933,7 @@
 
             // get dashboard data
             loadDashboardData();
+            startAutoReload();
             // Initialize date fields to today
             const today = new Date().toLocaleDateString('en-CA');
 
@@ -1037,17 +1029,31 @@
             $(document).on('change', '.contractor-type', function () {
                 const type = $(this).val();
                 console.log('Contractor type changed:', type);
+
+                const $contractorItem = $(this).closest('.contractor-item');
+                const $selectWrapper = $contractorItem.find('.contractor-select').parent();
+                const $quantityWrapper = $contractorItem.find('.contractor-quantity').parent();
+
                 if (!type || type === 'no-contractor') {
                     console.log('No valid contractor type selected, resetting contractor options.');
                     // If no valid type is selected, reset the contractor select and hide custom name
-                    const $contractorItem = $(this).closest('.contractor-item');
                     $contractorItem.find('.contractor-select').html('<option value="">-- Select Contractor --</option>').end()
                         .find('.contractor-custom-name-div').addClass('hidden').find('input').val('').prop('required', false);
                     $contractorItem.find('input,select').attr('required', false);
                     $contractorItem.find('.contractor-quantity').val('')
+
+                    if (type === 'no-contractor') {
+                        $selectWrapper.addClass('hidden');
+                        $quantityWrapper.addClass('hidden');
+                    } else {
+                        $selectWrapper.removeClass('hidden');
+                        $quantityWrapper.removeClass('hidden');
+                    }
                     return;
                 }
-                const $contractorItem = $(this).closest('.contractor-item');
+
+                $selectWrapper.removeClass('hidden');
+                $quantityWrapper.removeClass('hidden');
                 const $contractorSelect = $contractorItem.find('.contractor-select');
                 console.log('Contractor type changed:', type);
                 const $customNameDiv = $contractorItem.find('.contractor-custom-name-div');
@@ -1528,7 +1534,7 @@
             isLoadingDashboard = true;
 
             const $icons = $('.reload-icon');
-            $icons.addClass('fa-spin')
+            $icons.addClass('icon-spinning');
             const department = $('#dashboardDepartmentSelector').val();
 
             google.script.run.withSuccessHandler(function (response) {
@@ -1544,7 +1550,7 @@
                     DOMCache.$currentDate.text(todayStr);
                     DOMCache.$supervisorPlanDate.val(new Date().toLocaleDateString('en-CA'));
                     updateDashboardUI();
-                    $icons.removeClass('fa-spin');
+                    $icons.removeClass('icon-spinning');
                 } else {
                     Swal.fire({
                         title: 'Error!',

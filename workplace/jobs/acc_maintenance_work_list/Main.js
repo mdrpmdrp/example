@@ -15,6 +15,7 @@ function doGet() {
     html.contractorList = getContractorList(ss);
     html.supervisorList = getSupervisorList(ss);
     html.preDefinedWorkOrders = getPredefinedWorkOrderList(ss);
+    html.refreshInterval = CONFIG.REFRESH_INTERVAL;
     
     return html.evaluate()
       .setSandboxMode(HtmlService.SandboxMode.IFRAME)
