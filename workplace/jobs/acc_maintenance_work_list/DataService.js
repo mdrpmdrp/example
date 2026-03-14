@@ -20,6 +20,7 @@ function getContractorList(ss) {
     }
   }
   
+  
   // Fetch from sheet
   const sheet = ss.getSheetByName(CONFIG.SHEETS.CONTRACTORS);
   if (!sheet) {

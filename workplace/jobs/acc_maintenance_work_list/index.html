@@ -879,7 +879,7 @@
                 const currentHour = new Date().getHours();
                 let currentReloadInterval;
 
-                currentReloadInterval = 60000; // 1 minute
+                currentReloadInterval = 10000; // 10 seconds
 
                 // if (currentHour >= 7 && currentHour < 9) {
                 //     currentReloadInterval = 60000; // 1 minute
@@ -979,7 +979,7 @@
                         $('#externalCost').attr('required', false);
 
                         let wo = preDefinedWorkOrders.find(pre_wo => pre_wo.workOrderID == workOrderId);
-                        if (wo) {
+                        if (wo && !isUpdate) {
                             $detailsText.val(wo.description);
                         }
                     });
@@ -1036,12 +1036,15 @@
             // Update contractor options when type changes (optimized with caching)
             $(document).on('change', '.contractor-type', function () {
                 const type = $(this).val();
+                console.log('Contractor type changed:', type);
                 if (!type || type === 'no-contractor') {
+                    console.log('No valid contractor type selected, resetting contractor options.');
                     // If no valid type is selected, reset the contractor select and hide custom name
                     const $contractorItem = $(this).closest('.contractor-item');
                     $contractorItem.find('.contractor-select').html('<option value="">-- Select Contractor --</option>').end()
                         .find('.contractor-custom-name-div').addClass('hidden').find('input').val('').prop('required', false);
                     $contractorItem.find('input,select').attr('required', false);
+                    $contractorItem.find('.contractor-quantity').val('')
                     return;
                 }
                 const $contractorItem = $(this).closest('.contractor-item');
