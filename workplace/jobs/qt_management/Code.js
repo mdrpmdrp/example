@@ -23,6 +23,8 @@ const QUOTATION_COLS = [
   'confirmSuccess',   // datetime when quotation is marked as successful (won)
   'bankId',           // reference to BankAccounts id
   'paymentTerm',       // e.g. "30% deposit, balance on delivery"
+  'docDates',          // stored as JSON string { "Deposit": "YYYY-MM-DD", ... }
+  'discount',          // stored as JSON string { amt, type, raw }
 ];
 
 const CUSTOMER_COLS = [
@@ -209,9 +211,15 @@ function getQuotations() {
   const rows = _sheetToObjects(SHEET_QUOTATIONS, QUOTATION_COLS);
   return JSON.stringify(rows.map(q => {
     q.items = _parseJson(q.items, []);
+    q.docDates = _parseJson(q.docDates, {});
     q.subTotal = parseFloat(q.subTotal) || 0;
     q.deposit = parseFloat(q.deposit) || 0;
     q.grandTotal = parseFloat(q.grandTotal) || 0;
+    const _disc = _parseJson(q.discount, {});
+    q.discountAmt = parseFloat(_disc.amt) || 0;
+    q.discountRaw = parseFloat(_disc.raw) || 0;
+    q.discountType = _disc.type || 'amount';
+    delete q.discount;
     q.wantVat = (q.wantVat === true || q.wantVat === 'TRUE' || q.wantVat === 'true');
     q.confirmDeposit = (q.confirmDeposit === true || q.confirmDeposit === 'TRUE' || q.confirmDeposit === 'true');
     q.confirmSuccess = q.confirmSuccess ? String(q.confirmSuccess) : '';
@@ -228,8 +236,13 @@ function getQuotations() {
 function saveQuotation(data) {
   const sheet = _getSheet(SHEET_QUOTATIONS);
   const serialized = Object.assign({}, data, {
-    items: JSON.stringify(data.items || [])
+    items: JSON.stringify(data.items || []),
+    docDates: JSON.stringify(data.docDates || {}),
+    discount: JSON.stringify({ amt: data.discountAmt || 0, type: data.discountType || 'amount', raw: data.discountRaw || 0 })
   });
+  delete serialized.discountAmt;
+  delete serialized.discountType;
+  delete serialized.discountRaw;
   if (data.id) {
     const row = _findRowById(sheet, data.id);
     if (row) {
@@ -249,6 +262,27 @@ function saveQuotation(data) {
 /** Delete a quotation row by id. */
 function deleteQuotation(id) {
   return _deleteById(SHEET_QUOTATIONS, id);
+}
+
+/** Update the document date for a specific type */
+function updateDocDate(id, type, dateStr) {
+  const sheet = _getSheet(SHEET_QUOTATIONS);
+  const rowNum = _findRowById(sheet, id);
+  if (!rowNum) return null;
+  
+  // Enforce header structure if missing
+  const docDatesColIdx = QUOTATION_COLS.indexOf('docDates');
+  const headerCell = sheet.getRange(1, docDatesColIdx + 1);
+  if (headerCell.getValue() !== 'docDates') {
+    headerCell.setValue('docDates');
+  }
+  
+  const cell = sheet.getRange(rowNum, docDatesColIdx + 1);
+  const docDates = _parseJson(cell.getValue(), {});
+  docDates[type] = dateStr;
+  cell.setValue(JSON.stringify(docDates));
+  
+  return docDates;
 }
 
 // ─────────────────────────────────────────────────────────────

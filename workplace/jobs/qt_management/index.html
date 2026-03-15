@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 
 <head>
@@ -26,6 +26,9 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script
         src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@2.0.2/resumableupload_js.min.js"></script>
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&display=swap');
@@ -325,7 +328,7 @@
 
             <!-- Logo Container (Glassmorphism) -->
             <div
-                class="relative w-24 h-24 mb-6 rounded-[2rem] bg-white/60 backdrop-blur-md border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.08)] p-2 overflow-hidden flex items-center justify-center">
+                class="relative w-[100px] h-[100px] mb-6 rounded-[2rem] bg-white/60 backdrop-blur-md border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.08)] p-2 overflow-hidden flex items-center justify-center">
                 <img src="<?!= logoBase64 ?>" alt="CS168" class="w-full h-full object-cover rounded-2xl drop-shadow-sm">
             </div>
 
@@ -533,13 +536,29 @@
                                 <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มสินค้า / บริการ
                             </button>
                         </div>
+                        <!-- discount -->
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-bold text-slate-400 uppercase ml-2">ส่วนลด</label>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <input type="number" id="quoteDiscount" min="0" value="0"
+                                    oninput="debouncedCalculateSubTotal()"
+                                    class="w-full h-12 px-4 bg-white rounded-2xl border border-slate-200 outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm text-sm">
+                                <select id="quoteDiscountType" onchange="calculateSubTotal()"
+                                    class="h-12 px-3 bg-white rounded-2xl border border-slate-200 outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm text-sm">
+                                    <option value="amount">บาท</option>
+                                    <option value="percent">เปอร์เซ็นต์</option>
+                                </select>
+                            </div>
+                        </div>
                         <!-- Payment Terms -->
                         <div class="border border-slate-200 rounded-2xl p-5 bg-white shadow-sm">
                             <label
                                 class="flex items-center gap-2 text-xs font-bold text-slate-600 uppercase tracking-wider mb-4">
                                 <i data-lucide="wallet" class="w-4 h-4 text-emerald-500"></i>เงื่อนไขการชำระเงิน
                             </label>
-                            <div class="space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <label
                                     class="group relative flex items-start gap-4 cursor-pointer p-4 rounded-xl border-2 border-slate-100 bg-slate-50/50 hover:bg-amber-50/30 hover:border-amber-200 has-[:checked]:bg-amber-50 has-[:checked]:border-amber-400 has-[:checked]:shadow-md transition-all duration-200">
                                     <div class="flex items-center h-5 mt-0.5">
@@ -600,6 +619,10 @@
                                 </label>
                             </div>
                             <div class="h-px w-full bg-slate-700"></div>
+                            <div class="flex justify-between items-center text-red-400" id="discountNote">
+                                <span class="text-xs uppercase font-bold">Discount</span>
+                                <span class="text-sm font-semibold">-฿<span id="discountAmtDisplay">0.00</span></span>
+                            </div>
                             <div class="flex justify-between items-center text-slate-300">
                                 <span class="text-xs uppercase font-bold">Subtotal (ก่อนรวม VAT)</span>
                                 <span class="text-sm font-semibold">฿<span id="subTotalDisplay">0.00</span></span>
@@ -621,10 +644,16 @@
 
 
 
-                        <button type="submit"
-                            class="w-full btn-primary text-white h-14 rounded-2xl font-bold shadow-lg shadow-red-900/10 active:scale-[0.98]">
-                            บันทึกใบเสนอราคา
-                        </button>
+                        <div class="flex gap-3">
+                            <button type="button" id="quoteClearBtn" onclick="resetQuoteForm()"
+                                class="flex-1 h-14 rounded-2xl font-bold border border-slate-300 text-slate-600 bg-white hover:bg-slate-50 active:scale-[0.98] transition-colors">
+                                ล้างข้อมูล
+                            </button>
+                            <button type="submit"
+                                class="flex-[2] btn-primary text-white h-14 rounded-2xl font-bold shadow-lg shadow-red-900/10 active:scale-[0.98]">
+                                บันทึกใบเสนอราคา
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -940,14 +969,14 @@
                             VAT)</label>
                         <input type="number" id="editFullPrice" step="0.01"
                             class="w-full h-12 px-4 bg-white rounded-2xl border border-slate-200 font-bold text-slate-800 outline-none focus:border-red-600"
-                            oninput="calculateFinal()">
+                            oninput="debouncedCalculateFinal()">
                     </div>
                     <div>
                         <label class="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">ยอดมัดจำ (0 =
                             ไม่มีมัดจำ)</label>
                         <input type="number" id="finalDeposit" step="0.01"
                             class="w-full h-12 px-4 bg-white rounded-2xl border border-slate-200 font-bold text-blue-600 outline-none focus:border-blue-600"
-                            oninput="calculateFinal()" placeholder="0.00">
+                            oninput="debouncedCalculateFinal()" placeholder="0.00">
                     </div>
                 </div>
                 <input type="hidden" id="finalVat" value="0">
@@ -1084,6 +1113,7 @@
 
     <script>
         const PRESET_COLORS = ['ขาว', 'ดำ', 'เทา', 'เงิน', 'น้ำตาล', 'แดง', 'น้ำเงิน', 'เขียว', 'เหลือง', 'ส้ม', 'ทอง', 'ชมพู', 'ม่วง'];
+        const FMT_2DP = { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 };
 
         function initColorPicker($container, currentValue) {
             const selected = currentValue ? currentValue.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
@@ -1403,24 +1433,31 @@
         });
 
         // ======================= Navigation / Tab System =======================
-        let _currentView = null;
+        let _currentView = 'dashboard';
 
         function switchView(view) {
+            console.log("🚀 ~ _currentView:", _currentView)
+            console.log("🚀 ~ switchView ~ view:", view)
             // Reset quote form when leaving the create tab
             if (_currentView === 'create' && view !== 'create') {
                 $('#quoteForm')[0].reset();
                 $('#quoteForm').removeAttr('data-edit-id');
                 $('#quoteForm button[type=submit]').text('บันทึกใบเสนอราคา');
+                $('#quoteClearBtn').text('ล้างข้อมูล');
                 $('#custName').val('').trigger('change.select2');
                 $('#quoteWantVat').prop('checked', true);
                 $('input[name="paymentTerm"]').prop('checked', false);
+                $('#quoteDiscount').val(0);
+                $('#quoteDiscountType').val('amount');
                 $('#itemRows').empty();
                 addItemRow();
                 calculateSubTotal();
             }
 
+
             $('.view-section').addClass('hidden');
             $('#view-' + view).removeClass('hidden');
+         
 
             // Tab styling reset
             $('.tab-btn').removeClass('bg-violet-50 text-violet-700 border-violet-100 bg-red-50 text-red-700 border-red-100 bg-amber-50 text-amber-700 border-amber-100 bg-blue-50 text-blue-700 border-blue-100 bg-emerald-50 text-emerald-700 border-emerald-100 shadow-sm').addClass('text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-800');
@@ -1431,6 +1468,11 @@
             else if (view === 'history') $('#tab-' + view).removeClass('text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-800').addClass('bg-amber-50 text-amber-700 border-amber-100 shadow-sm');
             else if (view === 'customers') $('#tab-' + view).removeClass('text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-800').addClass('bg-blue-50 text-blue-700 border-blue-100 shadow-sm');
             else if (view === 'products') $('#tab-' + view).removeClass('text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-800').addClass('bg-emerald-50 text-emerald-700 border-emerald-100 shadow-sm');
+            _currentView = view;
+
+            setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 300);
         }
 
         // ======================= Customer Management =======================
@@ -1976,11 +2018,11 @@
                         </div>
                         <div class="col-span-4">
                             <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">ราคา/หน่วย</label>
-                            <input type="number" placeholder="0.00" class="item-price w-full h-10 px-3.5 bg-white border border-slate-200/80 rounded-xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm shadow-slate-100 placeholder:text-slate-300" oninput="calculateSubTotal()" required>
+                            <input type="number" placeholder="0.00" class="item-price w-full h-10 px-3.5 bg-white border border-slate-200/80 rounded-xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm shadow-slate-100 placeholder:text-slate-300" oninput="debouncedCalculateSubTotal()" required>
                         </div>
                         <div class="col-span-4">
                             <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">จำนวน</label>
-                            <input type="number" value="1" min="1" class="item-qty w-full h-10 px-3.5 bg-white border border-slate-200/80 rounded-xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm shadow-slate-100" oninput="calculateSubTotal()" required>
+                            <input type="number" value="1" min="1" class="item-qty w-full h-10 px-3.5 bg-white border border-slate-200/80 rounded-xl text-sm outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm shadow-slate-100" oninput="debouncedCalculateSubTotal()" required>
                         </div>
                         <div class="col-span-4">
                             <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-wide">หน่วย</label>
@@ -2109,12 +2151,17 @@
         }
 
         function calculateSubTotal() {
-            let total = 0;
+            let itemsTotal = 0;
             $('#itemRows > div').each(function () {
                 const p = parseFloat($(this).find('.item-price').val()) || 0;
                 const q = parseFloat($(this).find('.item-qty').val()) || 0;
-                total += (p * q);
+                itemsTotal += (p * q);
             });
+
+            const discountRaw = parseFloat($('#quoteDiscount').val()) || 0;
+            const discountType = $('#quoteDiscountType').val() || 'amount';
+            const discountAmt = discountType === 'percent' ? itemsTotal * discountRaw / 100 : discountRaw;
+            const total = Math.max(0, itemsTotal - discountAmt);
 
             const wantVat = $('#quoteWantVat').is(':checked');
             const vat = wantVat ? total * 0.07 : 0;
@@ -2125,12 +2172,20 @@
                 $('#vatNote').addClass('hidden');
             }
 
-            $('#subTotalDisplay').text(total.toLocaleString(undefined, { minimumFractionDigits: 2 }));
-            $('#vatTotalDisplay').text(vat.toLocaleString(undefined, { minimumFractionDigits: 2 }));
-            $('#grandTotalDisplay').text(grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            if (discountAmt > 0) {
+                $('#discountNote').removeClass('hidden');
+                $('#discountAmtDisplay').text(discountAmt.toLocaleString(undefined, FMT_2DP));
+            } else {
+                $('#discountNote').addClass('hidden');
+            }
 
-            return { subTotal: total, vat: vat, grandTotal: grandTotal };
+            $('#subTotalDisplay').text(total.toLocaleString(undefined, FMT_2DP));
+            $('#vatTotalDisplay').text(vat.toLocaleString(undefined, FMT_2DP));
+            $('#grandTotalDisplay').text(grandTotal.toLocaleString(undefined, FMT_2DP));
+
+            return { subTotal: total, vat: vat, grandTotal: grandTotal, discountAmt: discountAmt, discountType: discountType, discountRaw: discountRaw };
         }
+        const debouncedCalculateSubTotal = _.debounce(calculateSubTotal, 300);
 
         function saveQuote(e) {
             e.preventDefault();
@@ -2152,11 +2207,11 @@
                     notes: productNotes
                 });
             });
-            const transportIndex = item.items.findIndex(isTransportItem);
+            const transportIndex = items.findIndex(isTransportItem);
             if (transportIndex !== -1) {
                 // move transport item to the end of the list to ensure it doesn't split across pages
-                const transportItem = item.items.splice(transportIndex, 1)[0];
-                item.items.push(transportItem);
+                const transportItem = items.splice(transportIndex, 1)[0];
+                items.push(transportItem);
             }
             const custId = $('#custName').val();
             let finalName = '';
@@ -2188,6 +2243,9 @@
                         wantVat: $('#quoteWantVat').is(':checked'),
                         bankId: $('#quoteBankId').val(),
                         paymentTerm: $('input[name="paymentTerm"]:checked').val() || '',
+                        discountAmt: totals.discountAmt,
+                        discountType: totals.discountType,
+                        discountRaw: totals.discountRaw,
                     };
                 }
             } else {
@@ -2207,9 +2265,12 @@
                     deposit: 0,
                     wantVat: $('#quoteWantVat').is(':checked'),
                     grandTotal: totals.grandTotal,
+                    discountAmt: totals.discountAmt,
+                    discountType: totals.discountType,
+                    discountRaw: totals.discountRaw,
                     bankId: $('#quoteBankId').val(),
                     paymentTerm: $('input[name="paymentTerm"]:checked').val() || '',
-                    status: 'Quotation'
+                    status: 'Quotation',
                 };
             }
 
@@ -2233,6 +2294,7 @@
                     if (index > -1) db[index] = savedData;
                     $('#quoteForm').removeAttr('data-edit-id');
                     $('#quoteForm button[type=submit]').text('บันทึกใบเสนอราคา');
+                    $('#quoteClearBtn').text('ล้างข้อมูล');
                 } else {
                     db.unshift(savedData);
                 }
@@ -2275,8 +2337,8 @@
                 }
             });
 
-            $('#dash-totalSales').text('฿' + totalSales.toLocaleString(undefined, { minimumFractionDigits: 2 }));
-            $('#dash-totalPending').text('฿' + totalPending.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            $('#dash-totalSales').text('฿' + totalSales.toLocaleString(undefined, FMT_2DP));
+            $('#dash-totalPending').text('฿' + totalPending.toLocaleString(undefined, FMT_2DP));
             $('#dash-countUnpaid').text(countUnpaid);
             $('#dash-countPaid').text(countPaid);
 
@@ -2307,7 +2369,7 @@
                             <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-slate-800">${item.name}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-500">${dateStr}</td>
                             <td class="px-4 py-3 whitespace-nowrap"><span class="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide ${st.cls}">${st.label}</span></td>
-                            <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-black text-slate-800">฿${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-black text-slate-800">฿${total.toLocaleString(undefined, FMT_2DP)}</td>
                         </tr>
                     `;
                     $recentTbody.append(row);
@@ -2403,7 +2465,7 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">
-                            <div class="text-lg font-black text-slate-900">฿${(item.grandTotal || (item.subTotal * 1.07) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                            <div class="text-lg font-black text-slate-900">฿${(item.grandTotal || (item.subTotal * 1.07) || 0).toLocaleString(undefined, FMT_2DP)}</div>
                             <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${item.wantVat ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}"><i data-lucide="${item.wantVat ? 'badge-check' : 'badge-minus'}" class="w-3 h-3"></i>${item.wantVat ? 'รวม VAT 7%' : 'ไม่รวม VAT'}</div>
                         </td>
                     </tr>
@@ -2432,8 +2494,8 @@
             const item = db.find(i => i.id === id);
             const depRaw = item.deposit || 0;
             const depDisplay = item.wantVat
-                ? `฿${(depRaw / 1.07).toLocaleString(undefined, { minimumFractionDigits: 2 })} (+VAT ฿${(depRaw - depRaw / 1.07).toLocaleString(undefined, { minimumFractionDigits: 2 })}) = ฿${depRaw.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
-                : `฿${depRaw.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                ? `฿${(depRaw / 1.07).toLocaleString(undefined, FMT_2DP)} (+VAT ฿${(depRaw - depRaw / 1.07).toLocaleString(undefined, FMT_2DP)}) = ฿${depRaw.toLocaleString(undefined, FMT_2DP)}`
+                : `฿${depRaw.toLocaleString(undefined, FMT_2DP)}`;
             mySwal.fire({
                 title: 'ยืนยันการรับเงินมัดจำ?',
                 html: `<div class="text-left space-y-2 text-sm">
@@ -2469,7 +2531,7 @@
                 : item.subTotal;
             const remainingVat = item.wantVat ? remaining * 0.07 : 0;
             const remainingTotal = remaining + remainingVat;
-            const display = `฿${remainingTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            const display = `฿${remainingTotal.toLocaleString(undefined, FMT_2DP)}`;
             mySwal.fire({
                 title: 'ยืนยันการรับชำระเงิน?',
                 html: `<div class="text-left space-y-2 text-sm">
@@ -2506,13 +2568,15 @@
             const grandTotal = price + vat;
             const balance = grandTotal - deposit;
             if (hasVat) {
-                $('#vatValueDisplay').text('VAT: ฿' + vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })).removeClass('hidden');
+                $('#vatValueDisplay').text('VAT: ฿' + vat.toLocaleString(undefined, FMT_2DP)).removeClass('hidden');
             } else {
                 $('#vatValueDisplay').addClass('hidden');
             }
-            $('#grandTotalFinal').text(grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-            $('#balanceDueDisplay').text('฿' + balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            $('#grandTotalFinal').text(grandTotal.toLocaleString(undefined, FMT_2DP));
+            $('#balanceDueDisplay').text('฿' + balance.toLocaleString(undefined, FMT_2DP));
         }
+
+        const debouncedCalculateFinal = _.debounce(calculateFinal, 300);
 
         function saveFinalize(e) {
             e.preventDefault();
@@ -2587,6 +2651,64 @@
             $('#printMenuModal').addClass('hidden');
         }
 
+        function handleDocDateChange(id, type, val) {
+            const item = db.find(i => i.id === id);
+            if (!item) return;
+            if (!item.docDates) item.docDates = {};
+            item.docDates[type] = val;
+
+            // Sync locked date display dynamically
+            if (type === 'BalanceReceipt') {
+                const targetText = document.getElementById(`locked-date-text-${type}`);
+                if (targetText) {
+                    const dParts = val.split('-');
+                    const fmtDate = dParts.length === 3 ? `${dParts[2]}/${dParts[1]}/${dParts[0]}` : val;
+                    targetText.innerText = fmtDate;
+                }
+            }
+
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timerProgressBar: true,
+            });
+
+            Toast.fire({
+                icon: 'info',
+                title: 'กำลังบันทึกวันที่...',
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            google.script.run
+                .withSuccessHandler(() => {
+                    Toast.fire({
+                        icon: 'success',
+                        title: 'อัปเดตวันที่สำเร็จ',
+                        timer: 2000
+                    });
+                })
+                .withFailureHandler(err => {
+                    console.error(err);
+                    Toast.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาดในการบันทึก',
+                        timer: 3000
+                    });
+                })
+                .updateDocDate(id, type, val);
+        }
+
+        function handlePrintClick(e, id, type) {
+            e.preventDefault();
+            const dateInput = document.getElementById(`date-${type}`);
+            closePrintMenuModal();
+            // A slight delay ensures the local db object has the updated docDates
+            setTimeout(() => printDoc(id, type), 50);
+        }
+
         function openPrintMenu(id) {
             const item = db.find(i => i.id === id);
             if (!item) return;
@@ -2595,17 +2717,56 @@
             const hasVat = item.wantVat;
             const btnClass = 'w-full text-left px-4 py-3 hover:bg-slate-50 rounded-xl flex items-center gap-3 transition-colors border border-slate-200 mb-2';
 
+            const _isoDate = (d) => {
+                const _d = d ? new Date(d) : new Date();
+                return _d.getFullYear() + '-' + String(_d.getMonth() + 1).padStart(2, '0') + '-' + String(_d.getDate()).padStart(2, '0');
+            };
+
             // Helper to build a button row
-            const btn = (type, icon, color, label, sub) =>
-                `<button onclick="closePrintMenuModal(); printDoc('${id}', '${type}')" class="${btnClass}">
+            const btn = (type, icon, color, label, sub) => {
+                let dateDisplayHtml = '';
+
+                if (type === 'Warranty') {
+                    // Lock Warranty to BalanceReceipt date
+                    const lockType = 'BalanceReceipt';
+                    const lockedDate = (item.docDates && item.docDates[lockType])
+                        ? item.docDates[lockType]
+                        : (item.confirmSuccess || item.date || _isoDate());
+
+                    const dParts = lockedDate.split('-');
+                    const fmtDate = dParts.length === 3 ? `${dParts[2]}/${dParts[1]}/${dParts[0]}` : lockedDate;
+
+                    dateDisplayHtml = `
+                    <div class="ml-auto flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-500 font-medium">
+                        <i data-lucide="lock" class="w-3.5 h-3.5 text-slate-400"></i>
+                        <span id="locked-date-text-${lockType}">${fmtDate}</span>
+                    </div>`;
+                } else {
+                    // Normal date picker for other documents
+                    const initialDate = (item.docDates && item.docDates[type])
+                        ? item.docDates[type]
+                        : (type === 'Quotation' ? item.date : _isoDate());
+
+                    dateDisplayHtml = `
+                        <div class="ml-auto relative" onclick="event.stopPropagation()">
+                            <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
+                            </div>
+                            <input type="text" id="date-${type}" class="flatpickr-input pl-7 text-xs border border-slate-200 rounded p-1.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-sans bg-white w-[110px] cursor-pointer text-slate-700 font-medium" placeholder="เลือกวันที่..." data-type="${type}" value="${initialDate}">
+                        </div>`;
+                }
+
+                return `<button onclick="handlePrintClick(event, '${id}', '${type}')" class="${btnClass}">
                     <div class="w-9 h-9 rounded-lg ${color} flex items-center justify-center shrink-0">
                         <i data-lucide="${icon}" class="w-4 h-4"></i>
                     </div>
-                    <div>
+                    <div class="flex-1">
                         <div class="text-sm font-bold text-slate-800">${label}</div>
                         <div class="text-xs text-slate-400">${sub}</div>
                     </div>
+                    ${dateDisplayHtml}
                 </button>`;
+            };
 
             let menuHtml = `<div class="flex flex-col gap-1 text-left mt-2">`;
 
@@ -2678,6 +2839,20 @@
             menuHtml += '</div>';
             $('#printMenuContent').html(menuHtml);
             $('#printMenuModal').removeClass('hidden');
+
+            // Initialize flatpickr
+            flatpickr(".flatpickr-input", {
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "d/m/Y",
+                onChange: function (selectedDates, dateStr, instance) {
+                    const type = instance.element.getAttribute('data-type');
+                    if (dateStr) {
+                        handleDocDateChange(id, type, dateStr);
+                    }
+                }
+            });
+
             setTimeout(() => lucide.createIcons(), 100);
         }
 
@@ -2688,7 +2863,10 @@
             let pagesRows = [];
 
             if (type === 'Warranty') {
-                const saleDate = item.confirmSuccess || item.date || '';
+                const lockType = 'BalanceReceipt';
+                const saleDate = (item.docDates && item.docDates[lockType])
+                    ? item.docDates[lockType]
+                    : (item.confirmSuccess || item.date || '');
                 const custMatch = customersDb ? customersDb.find(c => c.name === item.name) : null;
                 const custAddress = custMatch && custMatch.address ? custMatch.address : '-';
                 const custTaxId = custMatch && custMatch.taxId ? custMatch.taxId : '-';
@@ -2729,7 +2907,7 @@
                 const headerHtml = `
                     <div class="flex justify-between items-start border-b-2 border-teal-600 pb-3 mb-4">
                         <div class="flex items-start gap-3">
-                            <div class="w-20 h-20 flex items-center justify-center overflow-hidden rounded-md shrink-0">
+                            <div class="w-[95px] h-[95px] flex items-center justify-center overflow-hidden rounded-md shrink-0">
                                 <img src='<?!= logoBase64 ?>' class="w-full h-full object-contain">
                             </div>
                             <div>
@@ -2746,8 +2924,8 @@
                                 <span class="text-sm font-black uppercase tracking-wide">ใบรับประกันสินค้า</span>
                             </div>
                             <div class="text-[11px] text-slate-500 space-y-1">
-                                <div><span class="font-bold">เลขที่:</span> ${item.id}</div>
-                                <div><span class="font-bold">วันที่ซื้อ:</span> ${saleDate}</div>
+                                <div><span class="font-bold">อ้างอิงใบเสนอราคาเลขที่:</span> ${item.id}</div>
+                                <div><span class="font-bold">วันที่ซื้อ:</span> ${_fmtTH(startDate)}</div>
                             </div>
                         </div>
                     </div>`;
@@ -2763,7 +2941,6 @@
                             <div class="text-right text-[11px] text-slate-600 space-y-0.5">
                                 <p><span class="font-bold">Tax ID:</span> ${custTaxId}</p>
                                 <p><span class="font-bold">โทร:</span> ${item.tel || '-'}</p>
-                                <p><span class="font-bold">Line:</span> ${item.line || '-'}</p>
                             </div>
                         </div>
                     </div>`;
@@ -2886,7 +3063,7 @@
                 const depTitle = isReceipt
                     ? (item.wantVat ? "ใบกำกับภาษี / ใบเสร็จรับเงิน" : "ใบเสร็จรับเงิน")
                     : (item.wantVat ? "ใบแจ้งหนี้" : "ใบแจ้งหนี้");
-                const depNote = isReceipt ? "ชำระเงินเรียบร้อยแล้ว" : "กรุณาชำระเงินภายในกำหนด";
+                const depNote = isReceipt ? "ชำระเงินเรียบร้อยแล้ว" : "";
 
                 // Get product names for the deposit
                 const productNames = item.items && item.items.length > 0
@@ -2905,8 +3082,8 @@
                         <div class="text-slate-500 mt-1">อ้างอิงใบเสนอราคาเลขที่ ${item.id}</div>
                     </td>
                     <td class="py-3 px-2 border-b border-slate-200 text-center">1</td>
-                    <td class="py-3 px-2 border-b border-slate-200 text-right font-bold">฿${depBase.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td class="py-3 px-2 border-b border-slate-200 text-right font-bold text-indigo-700">฿${depBase.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td class="py-3 px-2 border-b border-slate-200 text-right font-bold">฿${depBase.toLocaleString(undefined, FMT_2DP)}</td>
+                    <td class="py-3 px-2 border-b border-slate-200 text-right font-bold text-indigo-700">฿${depBase.toLocaleString(undefined, FMT_2DP)}</td>
                 </tr>
                 <tr>
                     <td class="py-3 px-2 text-center" colspan="6">
@@ -2921,8 +3098,8 @@
                 </tr>`;
                 pagesRows.push(itemsHtml);
                 if (isReceipt) {
-                    const origDepTitle = item.wantVat ? "ต้นฉบับ ใบกำกับภาษี / ใบเสร็จรับเงิน" : "ต้นฉบับ ใบเสร็จรับเงิน";
-                    const copyDepTitle = item.wantVat ? "สำเนา ใบกำกับภาษี / ใบเสร็จรับเงิน" : "สำเนา ใบเสร็จรับเงิน";
+                    const origDepTitle = item.wantVat ? "ต้นฉบับใบกำกับภาษี/ใบเสร็จรับเงิน/ใบส่งสินค้า" : "ต้นฉบับใบเสร็จรับเงิน/ใบส่งสินค้า";
+                    const copyDepTitle = item.wantVat ? "สำเนาใบกำกับภาษี/ใบเสร็จรับเงิน/ใบส่งสินค้า" : "สำเนาใบเสร็จรับเงิน/ใบส่งสินค้า";
                     renderPrint(origDepTitle, item, depBase, depVat, depNote, pagesRows, type);
                     const origHtml = $('#printContent').html();
                     renderPrint(copyDepTitle, item, depBase, depVat, depNote, pagesRows, type);
@@ -2965,8 +3142,8 @@
                                 <div class="font-bold text-sm">${displayName}</div>
                             </td>
                             <td class="py-3 px-2 text-center align-top">${qty} ${i.unit || ''}</td>
-                            <td class="py-3 px-2 text-right align-top">฿${price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                            <td class="py-3 px-2 text-right font-bold text-slate-800 align-top">฿${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td class="py-3 px-2 text-right align-top">฿${price.toLocaleString(undefined, FMT_2DP)}</td>
+                            <td class="py-3 px-2 text-right font-bold text-slate-800 align-top">฿${amount.toLocaleString(undefined, FMT_2DP)}</td>
                         </tr>`;
                     });
                 }
@@ -2982,8 +3159,8 @@
                             <div class="text-[11px] text-slate-500 mt-0.5">อ้างอิงใบเสนอราคาเลขที่ ${item.id}</div>
                         </td>
                         <td class="py-2 px-2 text-center align-top">-</td>
-                        <td class="py-2 px-2 text-right align-top font-bold text-orange-700">-฿${depDisplay.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                        <td class="py-2 px-2 text-right font-bold align-top text-orange-700">-฿${depDisplay.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td class="py-2 px-2 text-right align-top font-bold text-orange-700">-฿${depDisplay.toLocaleString(undefined, FMT_2DP)}</td>
+                        <td class="py-2 px-2 text-right font-bold align-top text-orange-700">-฿${depDisplay.toLocaleString(undefined, FMT_2DP)}</td>
                     </tr>`;
                 }
 
@@ -3043,8 +3220,8 @@
                                 <div class="font-bold text-sm">${displayName}</div>
                             </td>
                             <td class="py-${type === 'Quotation' ? '3' : '5'} px-2 text-center align-top">${qty} ${i.unit || ''}</td>
-                            <td class="py-${type === 'Quotation' ? '3' : '5'} px-2 text-right align-top">฿${price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                            <td class="py-${type === 'Quotation' ? '3' : '5'} px-2 text-right font-bold text-slate-800 align-top">฿${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td class="py-${type === 'Quotation' ? '3' : '5'} px-2 text-right align-top">฿${price.toLocaleString(undefined, FMT_2DP)}</td>
+                            <td class="py-${type === 'Quotation' ? '3' : '5'} px-2 text-right font-bold text-slate-800 align-top">฿${amount.toLocaleString(undefined, FMT_2DP)}</td>
                         </tr>`
                         if (i.spec || productImages.length > 0) {
                             currentRowsHtml += `<tr class="border-b border-slate-200">
@@ -3078,8 +3255,8 @@
                                             <div class="font-bold">${transportItem.description || 'ค่าขนส่ง (Transportation)'}</div>
                                         </td>
                                         <td class="py-3 px-2 text-center align-top">${transportQty} ${transportItem.unit || ''}</td>
-                                        <td class="py-3 px-2 text-right align-top">฿${transportPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                        <td class="py-${type === 'Quotation' ? '3' : '5'} px-2 text-right font-bold text-slate-800 align-top">฿${transportAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                        <td class="py-3 px-2 text-right align-top">฿${transportPrice.toLocaleString(undefined, FMT_2DP)}</td>
+                                        <td class="py-${type === 'Quotation' ? '3' : '5'} px-2 text-right font-bold text-slate-800 align-top">฿${transportAmount.toLocaleString(undefined, FMT_2DP)}</td>
                                     </tr>`;
                             pagesRows.push(currentRowsHtml);
                             currentRowsHtml = '';
@@ -3095,7 +3272,7 @@
                     }
                 }
                 const title = type === 'Quotation' ? "ใบเสนอราคา / QUOTATION" : (item.wantVat ? "ใบกำกับภาษี/ใบเสร็จรับเงิน/ใบส่งของ" : "ใบเสร็จรับเงิน/ใบส่งของ");
-                renderPrint(title, item, item.subTotal, vat, type === 'Quotation' ? item.note : "ยอดคงเหลือที่ต้องชำระ ฿" + (grandTotal - (item.deposit || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 }), pagesRows, type);
+                renderPrint(title, item, item.subTotal, vat, type === 'Quotation' ? item.note : "ยอดคงเหลือที่ต้องชำระ ฿" + (grandTotal - (item.deposit || 0)).toLocaleString(undefined, FMT_2DP), pagesRows, type);
             }
         }
 
@@ -3218,17 +3395,21 @@
                         
                         <!-- Totals Calculation -->
                         <div class="col-span-5 border border-slate-300 rounded-lg overflow-hidden flex flex-col">
+                              ${(item.discountAmt > 0 && docType !== 'DepositInvoice' && docType !== 'Deposit') ? `<div class="flex flex-none justify-between items-center text-[10px] px-3 py-1.5 border-b border-slate-200 bg-red-50">
+                                <span class="font-bold text-red-600">Discount${item.discountType === 'percent' ? ' (' + item.discountRaw + '%)' : ''}</span> 
+                                <span class="font-bold text-red-600">-฿${item.discountAmt.toLocaleString(undefined, FMT_2DP)}</span>
+                            </div>` : ''}
                             <div class="flex flex-none justify-between items-center text-[10px] px-3 py-1.5 border-b border-slate-200 bg-white">
                                 <span class="font-bold text-slate-500">Subtotal</span> 
-                                <span class="font-bold text-slate-800">฿${base.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                <span class="font-bold text-slate-800">฿${base.toLocaleString(undefined, FMT_2DP)}</span>
                             </div>
                             ${vat > 0 ? `<div class="flex flex-none justify-between items-center text-[10px] px-3 py-1.5 border-b border-slate-200 bg-white">
                                 <span class="font-bold text-slate-500">VAT (7%)</span> 
-                                <span class="font-bold text-slate-800">฿${vat.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                <span class="font-bold text-slate-800">฿${vat.toLocaleString(undefined, FMT_2DP)}</span>
                             </div>` : ''}
                             <div class="flex flex-grow justify-between items-center px-3 py-2 bg-slate-900 text-white font-black">
                                 <span class="text-[9px] tracking-widest">GRAND TOTAL</span> 
-                                <span class="text-xs tracking-tight">฿${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                <span class="text-xs tracking-tight">฿${grandTotal.toLocaleString(undefined, FMT_2DP)}</span>
                             </div>
                         </div>
                     </div>
@@ -3262,7 +3443,7 @@
                     <!-- Header: Seller details -->
                     <div class="flex justify-between items-start border-b-2 border-slate-900 pb-1.5 mb-1.5">
                         <div class="flex items-start gap-3">
-                            <div class="w-16 h-16 bg-slate-50 border border-slate-200 flex items-center justify-center overflow-hidden rounded-md shrink-0">
+                            <div class="w-[95px] h-[95px] bg-slate-50 border border-slate-200 flex items-center justify-center overflow-hidden rounded-md shrink-0">
                                 <img src='<?!= logoBase64 ?>' class="w-full h-full object-contain" >
                             </div>
                             <div>
@@ -3276,10 +3457,10 @@
                             </div>
                         </div>
                         <div class="text-right flex flex-col items-end">
-                            <h2 class="text-sm font-black italic tracking-tighter text-indigo-700 uppercase mb-2">${title}</h2>
+                            <h2 class="text-sm font-black italic tracking-tighter text-gray-900 uppercase mb-2">${title}</h2>
                             <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] text-left bg-slate-50 p-2 rounded-lg border border-slate-200 min-w-[200px]">
                                 <span class="font-bold text-slate-500">Doc No:</span> <span class="font-bold text-slate-900 text-right">${title === 'ใบเสนอราคา / QUOTATION' ? item.id : title.includes('ใบกำกับ') ? item.id.replace('QT', 'CS') : title.includes('ใบเสร็จ') ? item.id.replace('QT', 'RC') : item.id.replace('QT', 'INV')}</span>
-                                <span class="font-bold text-slate-500">Date:</span> <span class="text-slate-900 text-right">${new Date(item.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                                <span class="font-bold text-slate-500">Date:</span> <span class="text-slate-900 text-right">${new Date((item.docDates && item.docDates[docType]) ? item.docDates[docType] : item.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                                 <span class="font-bold text-slate-500">Term:</span> <span class="text-slate-900 text-right">Cash / Transfer</span>
                                 ${docType !== 'Quotation' ? `<span class="font-bold text-slate-500">อ้างอิงใบเสนอราคา:</span> <span class="text-slate-900 text-right">${item.id}</span>` : ''}
                             </div>
@@ -3374,10 +3555,10 @@
                         <tr class="hover:bg-slate-50/50">
                             <td class="px-6 py-3.5">
                                 <div class="font-medium text-slate-800">${productName}</div>
-                                <div class="text-xs text-slate-400">฿${(it.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} / หน่วย</div>
+                                <div class="text-xs text-slate-400">฿${(it.price || 0).toLocaleString(undefined, FMT_2DP)} / หน่วย</div>
                             </td>
                             <td class="px-4 py-3.5 text-center text-slate-600 font-semibold">${it.qty || 0}</td>
-                            <td class="px-6 py-3.5 text-right font-bold text-slate-900">฿${lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td class="px-6 py-3.5 text-right font-bold text-slate-900">฿${lineTotal.toLocaleString(undefined, FMT_2DP)}</td>
                         </tr>
                     `);
                 });
@@ -3386,14 +3567,14 @@
             }
 
             // Totals
-            $('#viewDocSubTotal').text('฿' + subTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            $('#viewDocSubTotal').text('฿' + subTotal.toLocaleString(undefined, FMT_2DP));
             if (vat > 0) {
                 $('#viewDocVatRow').removeClass('hidden');
-                $('#viewDocVat').text('฿' + vat.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+                $('#viewDocVat').text('฿' + vat.toLocaleString(undefined, FMT_2DP));
             } else {
                 $('#viewDocVatRow').addClass('hidden');
             }
-            $('#viewDocGrandTotal').text('฿' + grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            $('#viewDocGrandTotal').text('฿' + grandTotal.toLocaleString(undefined, FMT_2DP));
 
             // Bank account
             const bank = banksDb && item.bankId ? banksDb.find(b => b.id === item.bankId) : null;
@@ -3495,7 +3676,6 @@
 
             // Switch to create tab and scroll to form
             switchView('create');
-            $('html, body').animate({ scrollTop: $('#quoteForm').offset().top - 20 }, 300);
 
             // Mark the entry as being edited
             $('#quoteForm').attr('data-edit-id', id);
@@ -3536,10 +3716,29 @@
             $('#quoteWantVat').prop('checked', item.wantVat || false);
             $('#quoteBankId').val(item.bankId || '');
             $('input[name="paymentTerm"][value="' + (item.paymentTerm || '') + '"]').prop('checked', true);
+            $('#quoteDiscount').val(item.discountRaw || 0);
+            $('#quoteDiscountType').val(item.discountType || 'amount');
             calculateSubTotal();
 
-            // Change submit button to "อัปเดต"
+            // Change submit button to "อัปเดต" and clear btn to "ยกเลิก"
             $('#quoteForm button[type=submit]').text('อัปเดตใบเสนอราคา');
+            $('#quoteClearBtn').text('ยกเลิก');
+        }
+
+        function resetQuoteForm() {
+            $('#quoteForm')[0].reset();
+            $('#quoteForm').removeAttr('data-edit-id');
+            $('#quoteForm button[type=submit]').text('บันทึกใบเสนอราคา');
+            $('#quoteClearBtn').text('ล้างข้อมูล');
+            $('#custName').val('').trigger('change.select2');
+            $('#quoteWantVat').prop('checked', true);
+            $('#quoteBankId').val('');
+            $('#quoteDiscount').val(0);
+            $('#quoteDiscountType').val('amount');
+            $('#itemRows').empty();
+            addItemRow();
+            calculateSubTotal();
+            document.getElementById('quoteForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function deleteDoc(id) {
