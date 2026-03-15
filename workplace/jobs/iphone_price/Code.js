@@ -118,6 +118,22 @@ function logSearch(payload) {
   }
 }
 
+
+// ---------- Interest Calc Log ----------
+function logVnCalInterest(payload) {
+  var p = JSON.parse(payload);
+  try {
+    var eventStr = 'Calc Interest: ราคา ' + p.cashPrice
+      + ' | ดาวน์ ' + p.down
+      + ' | งวด ' + p.installment + 'x' + p.periods
+      + ' | rate ' + (Number(p.interestRate) || 0).toFixed(2) + '%';
+    logEvent(eventStr, { nickname: p.nickname || '', firstName: p.firstName || p.nickname || '', email: p.email || '' });
+    return jsonSuccess('logged');
+  } catch (e) {
+    return jsonError(e.message);
+  }
+}
+
 // ---------- Auth ----------
 function registerUser(payload) {
   var p = JSON.parse(payload);
