@@ -2731,7 +2731,7 @@
                     const lockType = 'BalanceReceipt';
                     const lockedDate = (item.docDates && item.docDates[lockType])
                         ? item.docDates[lockType]
-                        : (item.confirmSuccess || item.date || _isoDate());
+                        : _isoDate(item.confirmSuccess || item.date || null);
 
                     const dParts = lockedDate.split('-');
                     const fmtDate = dParts.length === 3 ? `${dParts[2]}/${dParts[1]}/${dParts[0]}` : lockedDate;
@@ -3063,7 +3063,7 @@
                 const depTitle = isReceipt
                     ? (item.wantVat ? "ใบกำกับภาษี / ใบเสร็จรับเงิน" : "ใบเสร็จรับเงิน")
                     : (item.wantVat ? "ใบแจ้งหนี้" : "ใบแจ้งหนี้");
-                const depNote = isReceipt ? "ชำระเงินเรียบร้อยแล้ว" : "";
+                const depNote = ""
 
                 // Get product names for the deposit
                 const productNames = item.items && item.items.length > 0
@@ -3117,7 +3117,7 @@
                 const balTitle = isReceipt
                     ? (item.wantVat ? "ใบกำกับภาษี / ใบเสร็จรับเงิน" : "ใบเสร็จรับเงิน")
                     : (item.wantVat ? "ใบแจ้งหนี้" : "ใบแจ้งหนี้");
-                const balNote = isReceipt ? "ชำระยอดที่เหลือเรียบร้อยแล้ว" : "กรุณาชำระยอดที่เหลือภายในกำหนด";
+                const balNote = ""
                 const depDisplay = item.wantVat ? (item.deposit || 0) / 1.07 : (item.deposit || 0);
 
                 let currentRowsHtml = '';
@@ -3165,8 +3165,8 @@
                 }
 
                 if (isReceipt) {
-                    const origTitle = item.wantVat ? "ต้นฉบับ ใบกำกับภาษี / ใบเสร็จรับเงิน" : "ต้นฉบับ ใบเสร็จรับเงิน";
-                    const copyTitle = item.wantVat ? "สำเนา ใบกำกับภาษี / ใบเสร็จรับเงิน" : "สำเนา ใบเสร็จรับเงิน";
+                    const origTitle = item.wantVat ? "ต้นฉบับใบกำกับภาษี/ใบเสร็จรับเงิน/ใบส่งสินค้า" : "ต้นฉบับใบเสร็จรับเงินฝ/ใบส่งสินค้า";
+                    const copyTitle = item.wantVat ? "สำเนาใบกำกับภาษี/ใบเสร็จรับเงิน/ใบส่งสินค้า" : "สำเนาใบเสร็จรับเงินฝ/ใบส่งสินค้า";
                     renderPrint(origTitle, item, balance, balanceVat, balNote, pagesRows, type);
                     const origHtml = $('#printContent').html();
                     renderPrint(copyTitle, item, balance, balanceVat, balNote, pagesRows, type);
@@ -3443,22 +3443,22 @@
                     <!-- Header: Seller details -->
                     <div class="flex justify-between items-start border-b-2 border-slate-900 pb-1.5 mb-1.5">
                         <div class="flex items-start gap-3">
-                            <div class="w-[95px] h-[95px] bg-slate-50 border border-slate-200 flex items-center justify-center overflow-hidden rounded-md shrink-0">
+                            <div class="w-[122px] h-[122px] bg-slate-50 border border-slate-200 flex items-center justify-center overflow-hidden rounded-md shrink-0">
                                 <img src='<?!= logoBase64 ?>' class="w-full h-full object-contain" >
                             </div>
-                            <div>
+                            <div class="text-[11px] leading-tight mt-2 space-y-2">
                                 <h1 class="text-sm font-black text-slate-800 tracking-tight">บริษัท ซีเอส168 จำกัด (สำนักงานใหญ่)</h1>
-                                <p class="text-[9px] text-slate-600 mt-0.5">เลขที่ 168 หมู่ 4 ตำบลบางสีทอง อำเภอบางกรวย จังหวัดนนทบุรี 11130</p>
-                                <p class="text-[9px] font-bold text-slate-700 mt-0.5">Tax ID: 0105563173967</p>
-                                <p class="text-[9px] text-slate-600 mt-0.5 flex flex-col gap-0.5">
+                                <p class="text-[11px] text-slate-600 mt-0.5">เลขที่ 168 หมู่ 4 ตำบลบางสีทอง อำเภอบางกรวย จังหวัดนนทบุรี 11130</p>
+                                <p class="text-[11px] font-bold text-slate-700 mt-0.5">Tax ID: 0105563173967</p>
+                                <p class="text-[11px] text-slate-600 mt-0.5 flex flex-col gap-0.5 space-y-2">
                                     <span><i data-lucide="phone" class="w-2.5 h-2.5 inline"></i> 094-456-4296, 096-198-9823</span>
                                     <span><i data-lucide="mail" class="w-2.5 h-2.5 inline"></i> chinastore.cs@gmail.com | <i data-lucide="message-circle" class="w-2.5 h-2.5 inline"></i> Line: @chinastore (มี @)</span>
                                 </p>
                             </div>
                         </div>
-                        <div class="text-right flex flex-col items-end">
+                        <div class="text-right flex flex-col items-end self-stretch">
                             <h2 class="text-sm font-black italic tracking-tighter text-gray-900 uppercase mb-2">${title}</h2>
-                            <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] text-left bg-slate-50 p-2 rounded-lg border border-slate-200 min-w-[200px]">
+                            <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] text-left bg-slate-50 p-2 rounded-lg border border-slate-200 min-w-[200px] flex-1 content-start">
                                 <span class="font-bold text-slate-500">Doc No:</span> <span class="font-bold text-slate-900 text-right">${title === 'ใบเสนอราคา / QUOTATION' ? item.id : title.includes('ใบกำกับ') ? item.id.replace('QT', 'CS') : title.includes('ใบเสร็จ') ? item.id.replace('QT', 'RC') : item.id.replace('QT', 'INV')}</span>
                                 <span class="font-bold text-slate-500">Date:</span> <span class="text-slate-900 text-right">${new Date((item.docDates && item.docDates[docType]) ? item.docDates[docType] : item.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                                 <span class="font-bold text-slate-500">Term:</span> <span class="text-slate-900 text-right">Cash / Transfer</span>
