@@ -101,7 +101,7 @@ function handleReceipt(webhook) {
     price || null,
     vat || null,
     extracted.grand_price || null,
-    extracted.line_id || null,
+    webhook.profile().displayName,
     fileUrl
   ])
 
@@ -110,18 +110,17 @@ function handleReceipt(webhook) {
     : '-'
 
   const replyLines = [
-    `ข้อมูลใบเสร็จ`,
-    `วันที่บิล: ${extracted.payment_date ?? '-'}`,
-    `เลขที่ใบแจ้งหนี้: ${extracted.invoice_number ?? '-'}`,
-    `ผู้จำหน่าย: ${extracted.supplier_name ?? '-'}`,
-    `ที่อยู่: ${extracted.address ?? '-'}`,
-    `โทร: ${extracted.telephone_number ?? '-'}`,
-    `ผู้ติดต่อ: ${extracted.contact_name ?? '-'}`,
-    `ราคา: ${price ?? '-'} บาท`,
-    `VAT: ${vat ?? '-'} บาท`,
-    `ยอดรวม: ${grandPriceString} บาท`,
-    `LINE ID: ${extracted.line_id ?? '-'}`,
-    `ดูรูปฉบับเต็ม: \n${fileUrl}`
+    `📃 ข้อมูลใบเสร็จ`,
+    `📅 วันที่บิล: ${extracted.payment_date ?? '-'}`,
+    `🧾 เลขที่ใบแจ้งหนี้: ${extracted.invoice_number ?? '-'}`,
+    `🏢 ผู้จำหน่าย: ${extracted.supplier_name ?? '-'}`,
+    `📍 ที่อยู่: ${extracted.address ?? '-'}`,
+    `📞 โทร: ${extracted.telephone_number ?? '-'}`,
+    `👤 ผู้ติดต่อ: ${extracted.contact_name ?? '-'}`,
+    `💰 ราคา: ${price ?? '-'} บาท`,
+    `💵 VAT: ${vat ?? '-'} บาท`,
+    `🧾 ยอดรวม: ${grandPriceString} บาท`,
+    `🖼️ ดูรูปฉบับเต็ม: \n${fileUrl}`
   ]
 
   webhook.reply([replyLines.join('\n')])
