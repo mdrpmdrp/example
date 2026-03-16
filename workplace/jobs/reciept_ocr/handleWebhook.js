@@ -1,19 +1,23 @@
 function doPost(e) {
   if (e.parameter?.action) return hanDleAPI(e)
-  Logger = BetterLog.useSpreadsheet()
-  try {
-    let webhook = LineBotWebhook.init(e, LINE_ACCESS_TOKEN)
-    if (webhook.eventType == 'message' && webhook.messageType == 'text') {
-      if (webhook.message == '/groupid') {
-        webhook.reply(['Group ID ของกลุ่มนี้คือ', webhook.groupId])
+
+  LineBotWebhook.init(e, LINE_ACCESS_TOKEN, true).forEach(webhook => {
+    try {
+      if (webhook.eventType == 'message' && webhook.messageType == 'text') {
+        if (webhook.message == '/groupid') {
+          webhook.reply(['Group ID ของกลุ่มนี้คือ', webhook.groupId])
+        }
+      } else if (webhook.eventType == 'message' && (webhook.messageType == 'image' || webhook.messageType == 'file')) {
+        return handleReceipt(webhook)
       }
-    } else if (webhook.eventType == 'message' && (webhook.messageType == 'image' || webhook.messageType == 'file')) {
-      return handleReceipt(webhook)
+      return webhook.ok
+    } catch (e) { //with stack tracing if your exceptions bubble up to here
+      e = (typeof e === 'string') ? new Error(e) : e;
+      Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s"', e.name || '',
+        e.message || '', e.lineNumber || '', e.fileName || '', e.stack || '');
+      throw e;
     }
-    return webhook.ok
-  } catch (e) {
-    Logger.log(e)
-  }
+  })
 }
 
 const GEMINI_TOKEN = PropertiesService.getScriptProperties().getProperty('GEMINI_TOKEN')
@@ -50,7 +54,6 @@ function extractReceiptData(blob) {
     { method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true }
   )
   const rawText = response.getContentText()
-  Logger.log('Gemini response: ' + rawText)
   const text = JSON.parse(rawText)?.candidates?.[0]?.content?.parts?.[0]?.text || ''
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/)
@@ -73,7 +76,6 @@ function handleReceipt(webhook) {
   webhook.showLoading()
   const blob = webhook.file()
   const extracted = extractReceiptData(blob)
-  Logger.log(JSON.stringify(extracted))
 
   if (!extracted.invoice_number) {
     webhook.reply(['ไม่ใช่ภาพใบเสร็จ'])
@@ -126,7 +128,7 @@ function handleReceipt(webhook) {
 }
 
 function uploadToDrive(blob, filename, month) {
-  const mainFolderID = '1CEWlvFURW0X6uRa_uAAPDjyczE5cr329'
+  const mainFolderID = '13AxFQXeEgmRAvF9iGA3hQ4__H3kl7zYh'
   const monthName = ['01_JAN', '02_FEB', '03_MAR', '04_APR', '05_MAY', '06_JUN', '07_JUL', '08_AUG', '09_SEP', '10_OCT', '11_NOV', '12_DEC']
   let mainFolder = DriveApp.getFolderById(mainFolderID)
   let monthFolder = mainFolder.getFoldersByName(monthName[month - 1])
