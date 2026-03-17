@@ -11,11 +11,11 @@ function doPost(e) {
         return handleReceipt(webhook)
       }
       return webhook.ok
-    } catch (err) {
-      err = (typeof err === 'string') ? new Error(err) : err;
-      Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s"', err.name || '',
-        err.message || '', err.lineNumber || '', err.fileName || '', err.stack || '');
-      try { webhook.reply(['เกิดข้อผิดพลาดในการประมวลผล']) } catch (_) {}
+    } catch (e) { //with stack tracing if your exceptions bubble up to here
+      e = (typeof e === 'string') ? new Error(e) : e;
+      Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s"', e.name || '',
+        e.message || '', e.lineNumber || '', e.fileName || '', e.stack || '');
+      throw e;
     }
   })
 }
