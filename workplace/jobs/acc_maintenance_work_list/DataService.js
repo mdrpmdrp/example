@@ -128,6 +128,7 @@ function getPredefinedWorkOrderList(ss) {
  * Get dashboard data for today and future dates
  */
 function getDashboardData() {
+    Logger = BetterLog.useSpreadsheet()
   try {
     const ss = getSpreadsheet();
     const workOrderSheet = ss.getSheetByName(CONFIG.SHEETS.WORK_ORDERS);
