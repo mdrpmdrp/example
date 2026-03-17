@@ -8,14 +8,13 @@ function doPost(e) {
           webhook.reply(['Group ID ของกลุ่มนี้คือ', webhook.groupId])
         }
       } else if (webhook.eventType == 'message' && (webhook.messageType == 'image' || webhook.messageType == 'file')) {
-        return handleReceipt(webhook)
+        handleReceipt(webhook)
       }
-      return webhook.ok
-    } catch (e) { //with stack tracing if your exceptions bubble up to here
-      e = (typeof e === 'string') ? new Error(e) : e;
-      Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s"', e.name || '',
-        e.message || '', e.lineNumber || '', e.fileName || '', e.stack || '');
-      throw e;
+    } catch (err) { //with stack tracing if your exceptions bubble up to here
+      err = (typeof err === 'string') ? new Error(err) : err;
+      Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s"', err.name || '',
+        err.message || '', err.lineNumber || '', err.fileName || '', err.stack || '');
+      // Do not rethrow — allow remaining webhook events in this batch to continue processing
     }
   })
 }
@@ -123,7 +122,12 @@ function handleReceipt(webhook) {
     `🖼️ ดูรูปฉบับเต็ม: \n${fileUrl}`
   ]
 
-  webhook.reply([replyLines.join('\n')])
+  // Reply token may expire when multiple images are processed sequentially; log instead of throwing
+  try {
+    webhook.reply([replyLines.join('\n')])
+  } catch (replyErr) {
+    Logger.log('Reply failed (token may have expired) for invoice %s: %s', extracted.invoice_number, replyErr)
+  }
 }
 
 function uploadToDrive(blob, filename, month) {

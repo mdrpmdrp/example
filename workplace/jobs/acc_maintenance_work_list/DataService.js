@@ -9,7 +9,7 @@ function getContractorList(ss) {
   ss = ss || getSpreadsheet();
   const cache = CacheService.getScriptCache();
   const cacheKey = 'contractorList';
-  
+
   // Try to get from cache first
   const cached = cache.get(cacheKey);
   if (cached) {
@@ -19,17 +19,17 @@ function getContractorList(ss) {
       Logger.log('Cache parse error: ' + e);
     }
   }
-  
-  
+
+
   // Fetch from sheet
   const sheet = ss.getSheetByName(CONFIG.SHEETS.CONTRACTORS);
   if (!sheet) {
     return [];
   }
-  
+
   const values = sheet.getDataRange().getValues();
   const [header, ...data] = values;
-  
+
   const contractorList = data
     .filter(row => row[0])
     .map(row => ({
@@ -38,10 +38,10 @@ function getContractorList(ss) {
       me: row[2] || 'All',
       capacity: row[3]
     }));
-  
+
   // Cache for 5 minutes
   cache.put(cacheKey, JSON.stringify(contractorList), 300);
-  
+
   return contractorList;
 }
 
@@ -52,7 +52,7 @@ function getSupervisorList(ss) {
   ss = ss || getSpreadsheet();
   const cache = CacheService.getScriptCache();
   const cacheKey = 'supervisorList';
-  
+
   // Try to get from cache first
   const cached = cache.get(cacheKey);
   if (cached) {
@@ -62,16 +62,16 @@ function getSupervisorList(ss) {
       Logger.log('Cache parse error: ' + e);
     }
   }
-  
+
   // Fetch from sheet
   const sheet = ss.getSheetByName(CONFIG.SHEETS.SUPERVISORS);
   if (!sheet) {
     return [];
   }
-  
+
   const values = sheet.getDataRange().getValues();
   const [header, ...data] = values;
-  
+
   const supervisorList = data
     .filter(row => row[0])
     .map(row => ({
@@ -81,10 +81,10 @@ function getSupervisorList(ss) {
       mainDuty: row[4],
       contractors: [row[5], row[6], row[7]].filter(Boolean)
     }));
-  
+
   // Cache for 5 minutes
   cache.put(cacheKey, JSON.stringify(supervisorList), 300);
-  
+
   return supervisorList;
 }
 
@@ -95,7 +95,7 @@ function getPredefinedWorkOrderList(ss) {
   ss = ss || getSpreadsheet();
   const cache = CacheService.getScriptCache();
   const cacheKey = 'preDefinedWorkOrders';
-  
+
   // Try to get from cache first
   const cached = cache.get(cacheKey);
   if (cached) {
@@ -105,7 +105,7 @@ function getPredefinedWorkOrderList(ss) {
       Logger.log('Cache parse error: ' + e);
     }
   }
-  
+
   // Fetch from sheet
   const sheet = ss.getSheetByName(CONFIG.SHEETS.PRE_DEFINED_WORK_ORDERS);
   if (!sheet) {
@@ -131,20 +131,20 @@ function getDashboardData() {
   try {
     const ss = getSpreadsheet();
     const workOrderSheet = ss.getSheetByName(CONFIG.SHEETS.WORK_ORDERS);
-    
+
     if (!workOrderSheet) {
       return JSON.stringify({
         success: false,
         message: 'Work Orders sheet not found',
       });
     }
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const values = workOrderSheet.getDataRange().getValues();
     const [header, ...rows] = values;
-    
+
     // Filter and map in one pass for better performance
     const woData = rows
       .filter(row => {
@@ -165,26 +165,28 @@ function getDashboardData() {
           workOrderID: row[CONFIG.WORK_ORDER_COLUMNS.ID],
           details: row[CONFIG.WORK_ORDER_COLUMNS.DETAILS]
         },
-        contractors: row[CONFIG.WORK_ORDER_COLUMNS.CONTRACTORS_JSON] 
-          ? JSON.parse(row[CONFIG.WORK_ORDER_COLUMNS.CONTRACTORS_JSON]) 
+        contractors: row[CONFIG.WORK_ORDER_COLUMNS.CONTRACTORS_JSON]
+          ? JSON.parse(row[CONFIG.WORK_ORDER_COLUMNS.CONTRACTORS_JSON])
           : [],
-        spareParts: row[CONFIG.WORK_ORDER_COLUMNS.SPARE_PARTS_JSON] 
-          ? JSON.parse(row[CONFIG.WORK_ORDER_COLUMNS.SPARE_PARTS_JSON]) 
+        spareParts: row[CONFIG.WORK_ORDER_COLUMNS.SPARE_PARTS_JSON]
+          ? JSON.parse(row[CONFIG.WORK_ORDER_COLUMNS.SPARE_PARTS_JSON])
           : [],
         externalCost: row[CONFIG.WORK_ORDER_COLUMNS.EXTERNAL_COST],
         status: row[CONFIG.WORK_ORDER_COLUMNS.STATUS],
         timestamp: row[CONFIG.WORK_ORDER_COLUMNS.TIMESTAMP],
         recordId: row[CONFIG.WORK_ORDER_COLUMNS.RECORD_ID]
       }));
-    
+
     return JSON.stringify({
       success: true,
       message: 'Dashboard data retrieved successfully',
       data: woData
     });
-    
-  } catch (error) {
-    Logger.log('Error in getDashboardData: ' + error);
+
+  } catch (e) { //with stack tracing if your exceptions bubble up to here
+    e = (typeof e === 'string') ? new Error(e) : e;
+    Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s" .', e.name || '',
+      e.message || '', e.lineNumber || '', e.fileName || '', e.stack || '');
     return JSON.stringify({
       success: false,
       message: 'Error getting dashboard data: ' + error.toString(),
