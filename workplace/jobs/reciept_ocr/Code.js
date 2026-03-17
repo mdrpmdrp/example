@@ -37,7 +37,7 @@ function sendData() {
   }
 }
 
-const LINE_ACCESS_TOKEN = 'TmO6zZ4elwE/LvZosHZFM8nYx+KaiMBssRi/VFo2JQFffrdfuq1vRyPhGfAPWPpfw+Plm6Bm5IDFnsm9VJ1TBcMCg57RSTQBsNtgEjOJrObUCNGF6W5VjcMuqqe3P790Hug/3U+RNbmSkaYxhrCd9AdB04t89/1O/w1cDnyilFU='
+
 const update_url = 'https://liff.line.me/2006601191-QGe1GayY';
 function sendMessages(id, data, resend = false) {
   const messages = [
