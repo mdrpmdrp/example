@@ -47,8 +47,8 @@ function doPost(e) {
   return ContentService.createTextOutput('OK')
 }
 
-// const LINE_ACCESS_TOKEN = 'TmO6zZ4elwE/LvZosHZFM8nYx+KaiMBssRi/VFo2JQFffrdfuq1vRyPhGfAPWPpfw+Plm6Bm5IDFnsm9VJ1TBcMCg57RSTQBsNtgEjOJrObUCNGF6W5VjcMuqqe3P790Hug/3U+RNbmSkaYxhrCd9AdB04t89/1O/w1cDnyilFU='
-const LINE_ACCESS_TOKEN = '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU='
+const LINE_ACCESS_TOKEN = 'TmO6zZ4elwE/LvZosHZFM8nYx+KaiMBssRi/VFo2JQFffrdfuq1vRyPhGfAPWPpfw+Plm6Bm5IDFnsm9VJ1TBcMCg57RSTQBsNtgEjOJrObUCNGF6W5VjcMuqqe3P790Hug/3U+RNbmSkaYxhrCd9AdB04t89/1O/w1cDnyilFU='
+// const LINE_ACCESS_TOKEN = '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU='
 const GEMINI_TOKEN = PropertiesService.getScriptProperties().getProperty('GEMINI_TOKEN')
 
 const RECEIPT_PROMPT = `You are an expert OCR AI parsing receipts. Extract the following information from the provided receipt. 
@@ -57,7 +57,6 @@ Return ONLY a valid JSON object matching the exact structure below, without mark
 {
   "payment_date": "Date of transaction. You MUST format this strictly as YYYY-MM-DD (e.g., 2024-12-31). Convert other formats. (if available, else null)",
   "invoice_number": "Invoice, Receipt, or Tax Invoice number. Exclude any labels like 'No.'",
-  "purchase_order": "Purchase order number if available, else null",
   "supplier_name": "Full name of the supplier, store, or company",
   "address": "Full address of the supplier",
   "telephone_number": "Phone number(s), stripped of extra text",
@@ -116,7 +115,45 @@ function processReceipt(webhook, blob, rawText, sheet) {
     return
   }
 
+  // Check for duplicate invoice number (invoice_number is in column 4)
+  const lastRow = sheet.getLastRow()
+  if (lastRow > 1) {
+    const existingInvoices = sheet.getRange(2, 4, lastRow - 1, 1).getValues().flat()
+    if (existingInvoices.includes(extracted.invoice_number)) {
+      try { webhook.reply([`⚠️ เลขที่ใบแจ้งหนี้ ${extracted.invoice_number} ซ้ำกับที่มีอยู่แล้ว ไม่มีการบันทึกข้อมูล`], true) } catch (replyErr) {
+        Logger.log('Failed to send LINE reply: ' + replyErr)
+      }
+      return
+    }
+  }
+
   const { price, vat } = calculatePrice(extracted.grand_price, extracted.vat_includes, extracted.price)
+  const grandPriceString = extracted.grand_price
+    ? Number(extracted.grand_price.replace(/[^0-9.-]+/g, "")).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '-'
+  // Cache profile (HTTP call) before replying
+  const displayName = webhook.profile().displayName
+
+  // Reply immediately — before the slow Drive upload so user gets instant feedback
+  const replyLines = [
+    `📃 ข้อมูลใบเสร็จ`,
+    `📅 วันที่บิล: ${extracted.payment_date ?? '-'}`,
+    `🧾 เลขที่ใบแจ้งหนี้: ${extracted.invoice_number ?? '-'}`,
+    `🏢 ผู้จำหน่าย: ${extracted.supplier_name ?? '-'}`,
+    `📍 ที่อยู่: ${extracted.address ?? '-'}`,
+    `📞 โทร: ${extracted.telephone_number ?? '-'}`,
+    `👤 ผู้ติดต่อ: ${extracted.contact_name ?? '-'}`,
+    `💰 ราคา: ${price ?? '-'} บาท`,
+    `💵 VAT: ${vat ?? '-'} บาท`,
+    `🧾 ยอดรวม: ${grandPriceString} บาท`
+  ]
+  try {
+    webhook.reply([replyLines.join('\n')], true)
+  } catch (replyErr) {
+    Logger.log('Failed to send LINE reply: ' + replyErr)
+  }
+
+  // Upload to Drive and save to sheet after reply (user already has their data)
   const receiptMonth = extracted.payment_date ? new Date(extracted.payment_date).getMonth() + 1 : null
   const fileName = `receipt_${extracted.invoice_number || Date.now()}_${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss')}.jpg`
   const fileId = uploadToDrive(blob, fileName, receiptMonth)
@@ -134,35 +171,18 @@ function processReceipt(webhook, blob, rawText, sheet) {
     price || null,
     vat || null,
     extracted.grand_price ? extracted.grand_price.replace(/[^0-9.-]+/g, "") : null,
-    webhook.profile().displayName,
+    displayName,
     fileUrl,
-    extracted.purchase_order || null
   ])
 
-  const grandPriceString = extracted.grand_price
-    ? Number(extracted.grand_price.replace(/[^0-9.-]+/g, "")).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : '-'
-
-  const replyLines = [
-    `📃 ข้อมูลใบเสร็จ`,
-    `📅 วันที่บิล: ${extracted.payment_date ?? '-'}`,
-    `📦 เลขที่ใบสั่งซื้อ: ${extracted.purchase_order ?? '-'}`,
-    `🧾 เลขที่ใบแจ้งหนี้: ${extracted.invoice_number ?? '-'}`,
-    `🏢 ผู้จำหน่าย: ${extracted.supplier_name ?? '-'}`,
-    `📍 ที่อยู่: ${extracted.address ?? '-'}`,
-    `📞 โทร: ${extracted.telephone_number ?? '-'}`,
-    `👤 ผู้ติดต่อ: ${extracted.contact_name ?? '-'}`,
-    `💰 ราคา: ${price ?? '-'} บาท`,
-    `💵 VAT: ${vat ?? '-'} บาท`,
-    `🧾 ยอดรวม: ${grandPriceString} บาท`,
-    `🖼️ ดูรูปฉบับเต็ม: \n${fileUrl}`
-  ]
-
-  try {
-    webhook.reply([replyLines.join('\n')], true)
-  } catch (replyErr) {
-    Logger.log('Failed to send LINE reply: ' + replyErr)
-  }
+  // const sourceId = webhook.groupId
+  // if (sourceId) {
+  //   try {
+  //     LineBotWebhook.push(sourceId, LINE_ACCESS_TOKEN, [`🖼️ ดูรูปฉบับเต็ม:\n${fileUrl}`])
+  //   } catch (pushErr) {
+  //     Logger.log('Failed to push image URL: ' + pushErr)
+  //   }
+  // }
 }
 
 function uploadToDrive(blob, filename, month) {
