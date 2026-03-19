@@ -2687,14 +2687,20 @@
             if (!item.docDates) item.docDates = {};
             item.docDates[type] = val;
 
-            // Sync locked date display dynamically
-            if (type === 'BalanceReceipt') {
-                const targetText = document.getElementById(`locked-date-text-${type}`);
-                if (targetText) {
-                    const dParts = val.split('-');
-                    const fmtDate = dParts.length === 3 ? `${dParts[2]}/${dParts[1]}/${dParts[0]}` : val;
-                    targetText.innerText = fmtDate;
-                }
+            // Sync locked date displays when a parent invoice date changes
+            if (type === 'BalanceInvoice') {
+                const dParts = val.split('-');
+                const fmtDate = dParts.length === 3 ? `${dParts[2]}/${dParts[1]}/${dParts[0]}` : val;
+                ['BalanceReceipt', 'Warranty'].forEach(lockedType => {
+                    const targetText = document.getElementById(`locked-date-text-${lockedType}`);
+                    if (targetText) targetText.innerText = fmtDate;
+                });
+            }
+            if (type === 'DepositInvoice') {
+                const dParts = val.split('-');
+                const fmtDate = dParts.length === 3 ? `${dParts[2]}/${dParts[1]}/${dParts[0]}` : val;
+                const targetText = document.getElementById('locked-date-text-Deposit');
+                if (targetText) targetText.innerText = fmtDate;
             }
 
             const Toast = Swal.mixin({
@@ -2758,21 +2764,20 @@
             const btn = (type, icon, color, label, sub) => {
                 let dateDisplayHtml = '';
 
-                if (type === 'Warranty') {
-                    // Lock Warranty to BalanceReceipt date
-                    const lockType = 'BalanceReceipt';
+                if (type === 'Warranty' || type === 'BalanceReceipt' || type === 'Deposit') {
+                    // Lock BalanceReceipt/Warranty to BalanceInvoice; Lock Deposit to DepositInvoice
+                    const lockType = (type === 'Deposit') ? 'DepositInvoice' : 'BalanceInvoice';
                     const lockedDate = (item.docDates && item.docDates[lockType])
                         ? item.docDates[lockType]
                         : _isoDate(item.confirmSuccess || item.date || null);
-                    console.log("🚀 ~ btn ~ lockedDate:", lockedDate)
 
                     const dParts = lockedDate.split('-');
                     const fmtDate = dParts.length === 3 ? `${dParts[2]}/${dParts[1]}/${dParts[0]}` : lockedDate;
 
                     dateDisplayHtml = `
-                    <div class="ml-auto flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-500 font-medium">
+                    <div class="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-500 font-medium w-[110px] box-border">
                         <i data-lucide="lock" class="w-3.5 h-3.5 text-slate-400"></i>
-                        <span id="locked-date-text-${lockType}">${fmtDate}</span>
+                        <span id="locked-date-text-${type}">${fmtDate}</span>
                     </div>`;
                 } else {
                     // Normal date picker for other documents
@@ -2832,6 +2837,8 @@
                 menuHtml += `<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">เอกสารมัดจำ</p>`;
                 menuHtml += btn('Quotation', 'file-text', 'bg-amber-100 text-amber-600', 'ใบเสนอราคา', 'Quotation');
                 menuHtml += `<div class="border-t border-slate-100 my-2"></div>`;
+                const depInvLabel2 = hasVat ? 'ใบแจ้งหนี้มัดจำ (ภาษีมูลค่าเพิ่ม)' : 'ใบแจ้งหนี้มัดจำ';
+                menuHtml += btn('DepositInvoice', 'file-clock', 'bg-sky-100 text-sky-600', depInvLabel2, hasVat ? 'Deposit Invoice (Tax)' : 'Deposit Invoice');
                 const depLabel = hasVat ? 'ใบเสร็จ/ใบกำกับภาษีมัดจำ' : 'ใบเสร็จรับเงินมัดจำ';
                 menuHtml += btn('Deposit', 'file-check', 'bg-blue-100 text-blue-600', depLabel, hasVat ? 'Deposit Tax Receipt' : 'Deposit Receipt');
                 menuHtml += `<div class="border-t border-slate-100 my-2"></div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ยอดที่เหลือ</p>`;
@@ -2858,6 +2865,8 @@
                 menuHtml += `<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ชำระเรียบร้อย</p>`;
                 menuHtml += btn('Quotation', 'file-text', 'bg-amber-100 text-amber-600', 'ใบเสนอราคา', 'Quotation');
                 menuHtml += `<div class="border-t border-slate-100 my-2"></div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">เอกสารมัดจำ</p>`;
+                const depInvLabelPaid = hasVat ? 'ใบแจ้งหนี้มัดจำ (ภาษีมูลค่าเพิ่ม)' : 'ใบแจ้งหนี้มัดจำ';
+                menuHtml += btn('DepositInvoice', 'file-clock', 'bg-sky-100 text-sky-600', depInvLabelPaid, hasVat ? 'Deposit Invoice (Tax)' : 'Deposit Invoice');
                 const depLabel = hasVat ? 'ใบเสร็จ/ใบกำกับภาษีมัดจำ' : 'ใบเสร็จรับเงินมัดจำ';
                 menuHtml += btn('Deposit', 'file-check', 'bg-blue-100 text-blue-600', depLabel, hasVat ? 'Deposit Tax Receipt' : 'Deposit Receipt');
                 menuHtml += `<div class="border-t border-slate-100 my-2"></div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ยอดที่เหลือ</p>`;
@@ -2896,7 +2905,7 @@
             let pagesRows = [];
 
             if (type === 'Warranty') {
-                const lockType = 'BalanceReceipt';
+                const lockType = 'BalanceInvoice';
                 const saleDate = (item.docDates && item.docDates[lockType])
                     ? item.docDates[lockType]
                     : (item.confirmSuccess || item.date || '');
@@ -3409,7 +3418,7 @@
                     <div class="grid grid-cols-12 gap-2 mb-2">
                         <!-- Thai Baht Text + Bank -->
                         <div class="col-span-7 flex flex-col justify-end gap-1.5">
-                            <div class="bg-indigo-50/50 border border-indigo-100/50 rounded-lg p-1.5 text-center">
+                            <div class="bg-indigo-50/50 border border-indigo-100/50 rounded-lg p-1.5 text-center self-stretch flex flex-1 justify-center items-center">
                                 <span class="text-[10px] font-black text-indigo-900 italic">${thaiText}</span>
                             </div>
                             ${(() => {
@@ -3494,7 +3503,7 @@
                             <h2 class="text-sm font-black italic tracking-tighter text-gray-900 uppercase mb-2">${title}</h2>
                             <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] text-left bg-slate-50 p-2 rounded-lg border border-slate-200 min-w-[200px] flex-1 content-center">
                                 <span class="font-bold text-slate-500">Doc No:</span> <span class="font-bold text-slate-900 text-right">${title === 'ใบเสนอราคา / QUOTATION' ? item.id : title.includes('ใบกำกับ') ? item.id.replace('QT', 'CS') : title.includes('ใบเสร็จ') ? item.id.replace('QT', 'RC') : item.id.replace('QT', 'INV')}</span>
-                                <span class="font-bold text-slate-500">Date:</span> <span class="text-slate-900 text-right">${new Date((item.docDates && item.docDates[docType]) ? item.docDates[docType] : item.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                                <span class="font-bold text-slate-500">Date:</span> <span class="text-slate-900 text-right">${new Date((item.docDates && item.docDates[docType === 'BalanceReceipt' ? 'BalanceInvoice' : docType === 'Deposit' ? 'DepositInvoice' : docType]) ? item.docDates[docType === 'BalanceReceipt' ? 'BalanceInvoice' : docType === 'Deposit' ? 'DepositInvoice' : docType] : item.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                                 <span class="font-bold text-slate-500">Term:</span> <span class="text-slate-900 text-right">Cash / Transfer</span>
                                 ${docType !== 'Quotation' ? `<span class="font-bold text-slate-500">อ้างอิงใบเสนอราคา:</span> <span class="text-slate-900 text-right">${item.id}</span>` : ''}
                             </div>
