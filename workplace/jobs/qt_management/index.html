@@ -311,6 +311,33 @@
             height: 3px !important;
             border-radius: 2px !important;
         }
+
+        /* ── High Visibility Inputs (Customer & Product) ── */
+        #custName + .select2-container .select2-selection--single,
+        .item-name + .select2-container .select2-selection--single {
+            background-color: #fef2f2 !important; /* Red 50 - Theme Tint */
+            border: 1px solid var(--primary) !important; /* Theme Primary */
+        }
+
+        #custName + .select2-container .select2-selection--single .select2-selection__rendered,
+        .item-name + .select2-container .select2-selection--single .select2-selection__rendered {
+            color: var(--primary-dark) !important;
+            font-weight: 500 !important;
+        }
+
+        #custName + .select2-container .select2-selection--single:hover,
+        #custName + .select2-container.select2-container--open .select2-selection--single,
+        .item-name + .select2-container .select2-selection--single:hover,
+        .item-name + .select2-container.select2-container--open .select2-selection--single {
+            background-color: #fee2e2 !important; /* Red 100 */
+            border-color: var(--primary-dark) !important;
+        }
+
+        #custName + .select2-container.select2-container--focus .select2-selection--single,
+        .item-name + .select2-container.select2-container--focus .select2-selection--single {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 4px rgba(182, 10, 7, 0.2) !important;
+        }
     </style>
 </head>
 
@@ -542,7 +569,7 @@
                                 <label class="text-xs font-bold text-slate-400 uppercase ml-2">ส่วนลด</label>
                             </div>
                             <div class="flex items-center gap-3">
-                                <input type="number" id="quoteDiscount" min="0" value="0"
+                                <input type="number" id="quoteDiscount" min="0" placeholder="0"
                                     oninput="debouncedCalculateSubTotal()"
                                     class="w-full h-12 px-4 bg-white rounded-2xl border border-slate-200 outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500 transition-all shadow-sm text-sm">
                                 <select id="quoteDiscountType" onchange="calculateSubTotal()"
@@ -1447,7 +1474,7 @@
                 $('#custName').val('').trigger('change.select2');
                 $('#quoteWantVat').prop('checked', true);
                 $('input[name="paymentTerm"]').prop('checked', false);
-                $('#quoteDiscount').val(0);
+                $('#quoteDiscount').val('');
                 $('#quoteDiscountType').val('amount');
                 $('#itemRows').empty();
                 addItemRow();
@@ -2483,7 +2510,7 @@
             const item = db.find(i => i.id === id);
             $('#finalId').val(id);
             $('#editFullPrice').val(item.subTotal);
-            $('#finalDeposit').val(0);
+            $('#finalDeposit').val("");
             $('#finalVat').val(item.wantVat ? '1' : '0');
             calculateFinal();
             $('#confirmModal').removeClass('hidden');
@@ -2546,11 +2573,14 @@
             }).then(result => {
                 if (!result.isConfirmed) return;
                 const index = db.findIndex(i => i.id === id);
-                const updatedData = { ...db[index], status: 'Paid', confirmSuccess: new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) };
+
+                const saveDate = new Date();
+                const updatedData = { ...db[index], status: 'Paid', confirmSuccess: saveDate.toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }) };
                 Swal.fire({ icon: 'info', title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 google.script.run
                     .withSuccessHandler(saved => {
                         Swal.fire({ icon: 'success', title: 'บันทึกการชำระเงินเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
+                        saved.confirmSuccess = saveDate.getFullYear() + '-' + String(saveDate.getMonth() + 1).padStart(2, '0') + '-' + String(saveDate.getDate()).padStart(2, '0');
                         db[index] = saved;
                         render();
                         openPrintMenu(saved.id);
@@ -2711,6 +2741,8 @@
 
         function openPrintMenu(id) {
             const item = db.find(i => i.id === id);
+            console.log("🚀 ~ openPrintMenu ~ item:", item)
+            
             if (!item) return;
             const status = item.status;
             const hasDeposit = item.deposit && parseFloat(item.deposit) > 0;
@@ -2732,6 +2764,7 @@
                     const lockedDate = (item.docDates && item.docDates[lockType])
                         ? item.docDates[lockType]
                         : _isoDate(item.confirmSuccess || item.date || null);
+                    console.log("🚀 ~ btn ~ lockedDate:", lockedDate)
 
                     const dParts = lockedDate.split('-');
                     const fmtDate = dParts.length === 3 ? `${dParts[2]}/${dParts[1]}/${dParts[0]}` : lockedDate;
@@ -2873,6 +2906,7 @@
 
                 // ── Date helpers ─────────────────────────────────────────────
                 const _parseSaleDate = (str) => {
+                    console.log("🚀 ~ _parseSaleDate ~ str:", str)
                     if (!str) return new Date();
                     // Thai locale: "13/3/2569, 14:30:00" — Buddhist year
                     const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
@@ -3374,14 +3408,14 @@
                     <!-- Summary Footer -->
                     <div class="grid grid-cols-12 gap-2 mb-2">
                         <!-- Thai Baht Text + Bank -->
-                        <div class="col-span-7 flex flex-col justify-end gap-1.5 self-stretch">
-                            <div class="bg-indigo-50/50 border border-indigo-100/50 rounded-lg p-1.5 text-center flex flex-1 items-center justify-center">
+                        <div class="col-span-7 flex flex-col justify-end gap-1.5">
+                            <div class="bg-indigo-50/50 border border-indigo-100/50 rounded-lg p-1.5 text-center">
                                 <span class="text-[10px] font-black text-indigo-900 italic">${thaiText}</span>
                             </div>
                             ${(() => {
                             const bank = banksDb && item.bankId ? banksDb.find(b => b.id === item.bankId) : null;
                             if (!bank) return '';
-                            return `<div class="border border-blue-200 bg-blue-50/60 rounded-lg p-1.5 flex flex-col gap-1.5 items-center self-stretch">
+                            return `<div class="border border-blue-200 bg-blue-50/60 rounded-lg p-1.5">
                                     <p class="text-[9px] font-bold text-blue-900 text-center">
                                         <span class="text-blue-500 uppercase tracking-widest">ช่องทางชำระเงิน:</span>
                                         <span class="font-bold tracking-widest">${bank.bankName ? bank.bankName + ' — ' : ''}${bank.accountName}  —  เลขบัญชี ${bank.accountNumber}</span>
