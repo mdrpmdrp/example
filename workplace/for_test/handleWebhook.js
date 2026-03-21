@@ -45,7 +45,7 @@ function doPost(e) {
   return ContentService.createTextOutput('OK')
 }
 
-const LINE_ACCESS_TOKEN = '19tSHISQVfgi4VIJYKJyfPUla30PrXS/0vqkiJJ/lk97ksDjGc+Gi4b2edKhJz3pEahVJx3hmxinwMmVhi15Vq9Ni9T9u5zQvmB55WFTtPfnP9MXob85lm167SxPQ/28zffgDk+ZP1VbxzRKCDSkpAdB04t89/1O/w1cDnyilFU='
+const LINE_ACCESS_TOKEN = "hhtpjACdP6l/NpHaUNC/oNapdQkbr7iQr0U5GL6LkzKTzU4UyW/TVROgQCnGBBogMZqafQEb8Prik9pKazS1RqndW5ViQoUbKW20lkvWHMEdYBrDXhQ89UC5LqolFtFvuV3EPnU0SKpJ3KaegfEUNAdB04t89/1O/w1cDnyilFU="
 const GEMINI_TOKEN = PropertiesService.getScriptProperties().getProperty('GEMINI_TOKEN')
 const NUM_STRIP_RE = /[^0-9.-]+/g
 
@@ -105,12 +105,17 @@ function processExtract(webhook, rawText, ss) {
   }
 
   const fmt = (n) => n ? Number(String(n).replace(NUM_STRIP_RE, '')).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'
+  const dateValue = extracted.date ? new Date(extracted.date) : null
+  const hasValidDate = dateValue && !isNaN(dateValue.getTime())
+  const displayDate = hasValidDate
+    ? Utilities.formatDate(dateValue, 'GMT', 'dd MMMM')
+    : (extracted.date ?? '-')
 
   // Build reply with all categories listed
   const categoryLines = categories.map(c => `  • ${c.name ?? '-'}: ${fmt(c.net_sales)} บาท`)
   const replyLines = [
     `📃 ข้อมูลรายงานยอดขาย`,
-    `📅 วันที่ : ${extracted.date ?? '-'}`,
+    `📅 วันที่ : ${displayDate}`,
     `🗂️ หมวดหมู่ :`,
     ...categoryLines,
     `🏦 เงินโอน : ${fmt(extracted.total_transfer)}`,
@@ -122,11 +127,9 @@ function processExtract(webhook, rawText, ss) {
     Logger.log('Failed to send LINE reply: ' + replyErr)
   }
 
-  const dateValue = extracted.date ? new Date(extracted.date) : null
-  const monthText = dateValue ? Utilities.formatDate(dateValue, 'GMT', 'MMMM').replace(/^./, c => c.toUpperCase()) : null
-  const monthSheet = ss.getSheetByName(monthText) || ss.insertSheet(monthText)
-
-  if (dateValue) {
+  if (hasValidDate) {
+    const monthText = Utilities.formatDate(dateValue, 'GMT', 'MMMM').replace(/^./, c => c.toUpperCase())
+    const monthSheet = ss.getSheetByName(monthText) || ss.insertSheet(monthText)
     writeToMonthSheet(monthSheet, dateValue, categories)
   }
 }
@@ -152,7 +155,10 @@ function writeToMonthSheet(sheet, dateObj, categories) {
   categories.forEach(cat => {
     if (cat.net_sales == null) return
     const numMatch = String(cat.name ?? '').match(/^0*(\d+)\./)
-    const colOffset = numMatch ? parseInt(numMatch[1], 10) - 1 : 7
+    // ถ้าชื่อ มีคำว่า "promade" ให้จัดไปช่องสุดท้ายเลย
+    const isPromade = /promade/i.test(cat.name ?? '')
+    if(!isPromade && !numMatch) return
+    const colOffset = isPromade ? 7 : (parseInt(numMatch[1], 10) - 1)
     if (colOffset < 0 || colOffset >= rowData.length) return
     const val = Number(String(cat.net_sales).replace(NUM_STRIP_RE, ''))
     if (!isNaN(val)) rowData[colOffset] = val
