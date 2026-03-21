@@ -157,7 +157,7 @@ function writeToMonthSheet(sheet, dateObj, categories) {
     const numMatch = String(cat.name ?? '').match(/^0*(\d+)\./)
     // ถ้าชื่อ มีคำว่า "promade" ให้จัดไปช่องสุดท้ายเลย
     const isPromade = /promade/i.test(cat.name ?? '')
-    if(!isPromade && !numMatch) return
+    if (!isPromade && !numMatch) return
     const colOffset = isPromade ? 7 : (parseInt(numMatch[1], 10) - 1)
     if (colOffset < 0 || colOffset >= rowData.length) return
     const val = Number(String(cat.net_sales).replace(NUM_STRIP_RE, ''))
