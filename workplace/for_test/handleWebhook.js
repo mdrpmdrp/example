@@ -1,3 +1,5 @@
+// Latest code: 2026-03-22 
+
 function doPost(e) {
   if (e.parameter?.action) return hanDleAPI(e)
   Logger = BetterLog.useSpreadsheet()
@@ -155,10 +157,10 @@ function writeToMonthSheet(sheet, dateObj, categories) {
   categories.forEach(cat => {
     if (cat.net_sales == null) return
     const numMatch = String(cat.name ?? '').match(/^0*(\d+)\./)
-    // ถ้าชื่อ มีคำว่า "promade" ให้จัดไปช่องสุดท้ายเลย
-    const isPromade = /promade/i.test(cat.name ?? '')
-    if (!isPromade && !numMatch) return
-    const colOffset = isPromade ? 7 : (parseInt(numMatch[1], 10) - 1)
+    // ถ้าชื่อ มีคำว่า "pomade" ให้จัดไปช่องสุดท้ายเลย
+    const isPomade = /pomade/i.test((cat.name ?? '').toLowerCase())
+    if (!isPomade && !numMatch) return
+    const colOffset = isPomade ? 7 : (parseInt(numMatch[1], 10) - 1)
     if (colOffset < 0 || colOffset >= rowData.length) return
     const val = Number(String(cat.net_sales).replace(NUM_STRIP_RE, ''))
     if (!isNaN(val)) rowData[colOffset] = val
