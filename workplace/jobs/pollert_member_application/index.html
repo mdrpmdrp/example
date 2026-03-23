@@ -9,7 +9,7 @@
     <!-- no cache -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>แบบฟอร์มสมัครสมาชิก สมาคมช่างกุญแจไทยแห่งประเทศไทย</title>
+    <title>แบบฟอร์มสมัครสมาชิก สมาคมช่างกุญแจไทย</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
         integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
@@ -176,7 +176,7 @@
         <div class="max-w-4xl mx-auto bg-white shadow-md rounded-lg p-8">
             <div class="flex items-center justify-center mb-4">
                 <img src="./logo.png" alt="สมาคมช่างกุญแจไทย" class="w-20 h-20 object-contain mr-4" />
-                <h1 class="text-2xl font-bold mb-0 text-center accent-text">ใบสมัครสมาชิก สมาคมช่างกุญแจไทยแห่งประเทศไทย
+                <h1 class="text-2xl font-bold mb-0 text-center accent-text">ใบสมัครสมาชิก สมาคมช่างกุญแจไทย
                 </h1>
             </div>
             <p class="text-base text-gray-600 mb-6 text-center">Application form — กรอกข้อมูลให้ครบถ้วน</p>
@@ -359,7 +359,7 @@
                             <label>
                                 <i class="fa-solid fa-phone form-icon"></i>
                                 เบอร์โทรร้าน (ถ้ามี)</label>
-                            <input name="business_phone" type="tel" inputmode="tel" pattern="[0-9]*" minlength="10"
+                            <input name="business_phone" type="tel" inputmode="tel" pattern="[0-9]*" minlength="9"
                                 maxlength="10" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                         </div>
                     </div>
@@ -1259,11 +1259,27 @@
                             title: 'text-gray-900 font-bold',
                         }
                     }).then(() => {
-                        // show pdf download link
-                        populatedApplicationData({
-                            ...formData,
-                            is_approved: formData.application_status === 'approved'
-                        });
+                        let isApproved = formData.application_status === 'approved';
+                        const offCanvasEl = document.getElementById('officer_signature');
+                        officerSignaturePad.off();
+                        if (data.is_approved === true) {
+                            $('button[type="reset"]').parent().html(`
+                    <p class="text-xl text-gray-600">
+                        <i class="fa fa-check-circle text-green-600 mr-2"></i>
+                        ใบสมัครนี้ได้รับการอนุมัติแล้ว</p>
+                    <a href="https://drive.google.com/uc?export=view&id=${data.approval_pdf_url.split('/')[5]}&openExternalBrowser=true" id="download_pdf" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                        ดาวน์โหลดไฟล์ PDF
+                    </a>
+                `)
+                        } else {
+                            $('button[type="reset"]').parent().html(`
+                    <p class="text-xl text-gray-600">
+                        <i class="fa fa-times-circle text-red-600 mr-2"></i>
+                        ใบสมัครนี้ได้รับการปฏิเสธแล้ว</p>
+                `);
+                        }
+                        $('#clear_officer_signature').addClass('hidden');
+                        $('#for_officer').find('input, select, textarea').prop('disabled', true);
                     });
                 })
                 .catch((error) => {
@@ -1278,6 +1294,36 @@
                     });
                 });
         };
+
+        function rescaleSignatureData(signatureData, targetWidth, targetHeight) {
+            if (!signatureData || signatureData.length === 0) return signatureData;
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            signatureData.forEach(group => {
+                (group.points || []).forEach(point => {
+                    minX = Math.min(minX, point.x);
+                    minY = Math.min(minY, point.y);
+                    maxX = Math.max(maxX, point.x);
+                    maxY = Math.max(maxY, point.y);
+                });
+            });
+            if (!isFinite(minX) || maxX <= minX || maxY <= minY) return signatureData;
+            const padding = 16;
+            const srcWidth = maxX - minX;
+            const srcHeight = maxY - minY;
+            const availW = targetWidth - padding * 2;
+            const availH = targetHeight - padding * 2;
+            const scale = Math.min(availW / srcWidth, availH / srcHeight);
+            const offsetX = padding + (availW - srcWidth * scale) / 2;
+            const offsetY = padding + (availH - srcHeight * scale) / 2;
+            return signatureData.map(group => ({
+                ...group,
+                points: (group.points || []).map(point => ({
+                    ...point,
+                    x: (point.x - minX) * scale + offsetX,
+                    y: (point.y - minY) * scale + offsetY,
+                }))
+            }));
+        }
 
         function generateUniqueId() {
             const timestamp = Date.now().toString(36);
@@ -1340,12 +1386,14 @@
             let signatures = typeof data.signatures === 'string' ? JSON.parse(data.signatures) : data.signatures;
             if (signatures.applicant_signature && signatures.applicant_signature.length > 0) {
                 console.log('setting applicant signature', signatures.applicant_signature);
-                applicantSignaturePad.fromData(signatures.applicant_signature);
+                const appCanvasEl = document.getElementById('applicant_signature');
+                applicantSignaturePad.fromData(rescaleSignatureData(signatures.applicant_signature, appCanvasEl.offsetWidth, appCanvasEl.offsetHeight));
                 applicantSignaturePad.off();
                 $('#clear_applicant_signature').addClass('hidden');
             }
             if (signatures.officer_signature && signatures.officer_signature.length > 0) {
-                officerSignaturePad.fromData(signatures.officer_signature);
+                const offCanvasEl = document.getElementById('officer_signature');
+                officerSignaturePad.fromData(rescaleSignatureData(signatures.officer_signature, offCanvasEl.offsetWidth, offCanvasEl.offsetHeight));
                 officerSignaturePad.off();
                 if (data.is_approved === true) {
                     $('button[type="reset"]').parent().html(`
