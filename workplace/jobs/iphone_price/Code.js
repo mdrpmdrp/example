@@ -1,7 +1,7 @@
 var SS = SpreadsheetApp.getActiveSpreadsheet();
 
 // Column counts for known price sheets — avoids reading unused columns
-var _SHEET_COLS    = { 'ผ่อน': 8, 'มือสอง': 8, 'Freedown': 8, 'ซื้อสด': 4 };
+var _SHEET_COLS    = { 'ผ่อน': 8, 'มือสอง': 8, 'Freedown': 8, 'ซื้อสด': 4, 'สดvnphone': 4 };
 var _INSTALLMENT   = { 'ผ่อน': true, 'มือสอง': true, 'Freedown': true };
 
 // ---------- Serve Web App ----------
@@ -302,7 +302,7 @@ function logLogout(payload) {
 
 function getPriceData() {
   try {
-    var result = { 'ผ่อน': {}, 'มือสอง': {}, 'Freedown': {}, 'ซื้อสด': {} };
+    var result = { 'ผ่อน': {}, 'มือสอง': {}, 'Freedown': {}, 'ซื้อสด': {}, 'สดvnphone': {} };
 
     // Installment sheets: brand | model | storage | down | 6mo | 8mo | 10mo | 12mo
     ['ผ่อน', 'มือสอง', 'Freedown'].forEach(function (sn) {
@@ -329,6 +329,15 @@ function getPriceData() {
       if (!sc[b])    sc[b]    = {};
       if (!sc[b][m]) sc[b][m] = {};
       sc[b][m][s] = price;
+    });
+
+    var vn = result['สดvnphone'];
+    sheetData('สดvnphone').forEach(function (r) {
+      var b = String(r[0]), m = String(r[1]), s = String(r[2]), price = Number(r[3]);
+      if (!price || isNaN(price)) return;
+      if (!vn[b])    vn[b]    = {};
+      if (!vn[b][m]) vn[b][m] = {};
+      vn[b][m][s] = price;
     });
 
     return jsonSuccess(result);
