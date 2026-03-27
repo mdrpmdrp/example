@@ -1,3 +1,5 @@
+// Latest code: 2026-03-24 
+
 function doPost(e) {
   if (e.parameter?.action) return hanDleAPI(e)
   Logger = BetterLog.useSpreadsheet()
@@ -29,11 +31,23 @@ function doPost(e) {
 
     // Fetch all blobs and fire all Gemini requests in parallel
     const items = imageWebhooks.map(wh => ({ webhook: wh, blob: wh.file() }))
-    const geminiResponses = UrlFetchApp.fetchAll(items.map(({ blob }) => buildGeminiRequest(blob)))
+    const primaryResponses = UrlFetchApp.fetchAll(items.map(({ blob }) => buildGeminiRequest(blob, GEMINI_MODEL_PRIMARY)))
+    // Fall back to backup model for any 503 (high-demand) response
+    const geminiTexts = primaryResponses.map((resp, i) => {
+      const text = resp.getContentText()
+      try {
+        if (JSON.parse(text)?.error?.code === 503) {
+          Logger.log('Primary model 503 – retrying with fallback model for item ' + i)
+          const fallbackReq = buildGeminiRequest(items[i].blob, GEMINI_MODEL_FALLBACK)
+          return UrlFetchApp.fetch(fallbackReq.url, fallbackReq).getContentText()
+        }
+      } catch (_) {}
+      return text
+    })
     const ss = SpreadsheetApp.getActiveSpreadsheet()
     items.forEach(({ webhook }, i) => {
       try {
-        processExtract(webhook, geminiResponses[i].getContentText(), ss)
+        processExtract(webhook, geminiTexts[i], ss)
       } catch (err) {
         err = (typeof err === 'string') ? new Error(err) : err;
         Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s"', err.name || '',
@@ -47,6 +61,8 @@ function doPost(e) {
 
 const LINE_ACCESS_TOKEN = "hhtpjACdP6l/NpHaUNC/oNapdQkbr7iQr0U5GL6LkzKTzU4UyW/TVROgQCnGBBogMZqafQEb8Prik9pKazS1RqndW5ViQoUbKW20lkvWHMEdYBrDXhQ89UC5LqolFtFvuV3EPnU0SKpJ3KaegfEUNAdB04t89/1O/w1cDnyilFU="
 const GEMINI_TOKEN = PropertiesService.getScriptProperties().getProperty('GEMINI_TOKEN')
+const GEMINI_MODEL_PRIMARY = 'gemini-3.1-flash-lite-preview'
+const GEMINI_MODEL_FALLBACK = 'gemini-2.5-flash-lite'
 const NUM_STRIP_RE = /[^0-9.-]+/g
 
 const EXTRACT_PROMPT = `You are an expert OCR AI parsing screenshots of daily sales reports. Extract the following information from the provided screenshot.
@@ -62,10 +78,11 @@ Return ONLY a valid JSON object matching the exact structure below, without mark
 }
 If a field is not found in the image, set its value to null. 'categories' must be an array; include every category row shown. Ensure the output is strictly valid JSON.`
 
-function buildGeminiRequest(blob) {
+function buildGeminiRequest(blob, model) {
+  model = model || GEMINI_MODEL_PRIMARY
   const mimeType = blob.getContentType() || 'image/jpeg'
   return {
-    url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${GEMINI_TOKEN}`,
+    url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_TOKEN}`,
     method: 'post',
     contentType: 'application/json',
     payload: JSON.stringify({
@@ -94,6 +111,19 @@ function parseGeminiResponse(rawText) {
 
 function processExtract(webhook, rawText, ss) {
   Logger.log('Gemini raw response: ' + rawText)
+
+  // Detect API-level errors returned by Gemini
+  try {
+    const apiErr = JSON.parse(rawText)?.error
+    if (apiErr) {
+      const msg = apiErr.code === 503
+        ? '⚠️ Gemini กำลังมีผู้ใช้งานสูง กรุณาลองส่งภาพใหม่อีกครั้งในอีกสักครู่'
+        : `❌ เกิดข้อผิดพลาดจาก Gemini (${apiErr.code}): ${apiErr.message}`
+      try { webhook.reply([msg], true) } catch (replyErr) { Logger.log('Failed to send LINE reply: ' + replyErr) }
+      return
+    }
+  } catch (_) {}
+
   const extracted = parseGeminiResponse(rawText)
   const categories = Array.isArray(extracted.categories) ? extracted.categories : []
 
@@ -155,10 +185,10 @@ function writeToMonthSheet(sheet, dateObj, categories) {
   categories.forEach(cat => {
     if (cat.net_sales == null) return
     const numMatch = String(cat.name ?? '').match(/^0*(\d+)\./)
-    // ถ้าชื่อ มีคำว่า "promade" ให้จัดไปช่องสุดท้ายเลย
-    const isPromade = /promade/i.test(cat.name ?? '')
-    if (!isPromade && !numMatch) return
-    const colOffset = isPromade ? 7 : (parseInt(numMatch[1], 10) - 1)
+    // ถ้าชื่อ มีคำว่า "pomade" ให้จัดไปช่องสุดท้ายเลย
+    const isPomade = /pomade/i.test((cat.name ?? '').toLowerCase())
+    if (!isPomade && !numMatch) return
+    const colOffset = isPomade ? 7 : (parseInt(numMatch[1], 10) - 1)
     if (colOffset < 0 || colOffset >= rowData.length) return
     const val = Number(String(cat.net_sales).replace(NUM_STRIP_RE, ''))
     if (!isNaN(val)) rowData[colOffset] = val

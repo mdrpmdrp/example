@@ -200,12 +200,13 @@ function uploadApprovalPDF(e) {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Member Applications');
     let data = sheet.getDataRange().getValues();
+    let pdf;
     for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
         if (data[i][1] == applicationId) { // Assuming application_id is in the second column
             let fullname = `${data[i][2]}${data[i][3]} ${data[i][4]}`; // prefix + first_name + last_name
             let pdfName = `application_${fullname}.pdf`;
             let blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'application/pdf', pdfName);
-            let pdf = applicationFolder.createFile(blob);
+            pdf = applicationFolder.createFile(blob);
             sheet.getRange(i + 1, 40).setValue(pdf.getUrl()); // Assuming PDF URL is stored in the 40th column
             sendApprovalEmail(data[i], blob, pdfName);
             break;
