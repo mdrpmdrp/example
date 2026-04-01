@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <script src="https://code.jquery.com/jquery-3.6.1.slim.js"
+    integrity="sha256-tXm+sa1uzsbFnbXt8GJqsgi2Tw+m4BLGDof6eUPjbtk=" crossorigin="anonymous"></script>
+  <link href="https://unpkg.com/tabulator-tables@5.2.3/dist/css/tabulator.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.2/font/bootstrap-icons.css">
+  <link href="https://cdn.jsdelivr.net/npm/mc-datepicker/dist/mc-calendar.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/mc-datepicker/dist/mc-calendar.min.js"></script>
+  <?!= HtmlService.createHtmlOutputFromFile('css').getContent() ?>
+</head>
+
+<body>
+  <!-- LOADING ******************************** -->
+  <div id="loading" class="d-flex flex-row justify-content-center align-items-center invisible">
+    <div class="spinner-grow text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-grow text-secondary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-grow text-success" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-grow text-danger" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-grow text-warning" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="spinner-grow text-info" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+
+  <nav class="navbar bg-success text-white mb-3">
+    <div class="container">
+      <h3><i class="bi bi-megaphone red-color"></i> ประกาศรับสมัคร</h3>
+    </div>
+  </nav>
+  <div class="container" id="app">
+    <div class="row">
+      <div class="col mt-3">
+        <label class="form-label"><i class="bi bi-search"></i> ค้นหาจาก หัวข้อประกาศ/ประเภทตำแหน่ง/ตำแหน่งงาน</label>
+        <input type="text" class="form-control" id="search-input" placeholder="พิมพ์ข้อความ">
+      </div>
+      <div class="col mt-3">
+        <label class="form-label"><i class="bi bi-people-fill"></i> ค้นหาจาก JobNo</label>
+        <select class="form-select" id="filter-diagGroup-input">
+          <option value="" selected>ทั้งหมด</option>
+          <?!= list_jobno; ?>
+        </select>
+      </div>
+    </div>
+    <section id="show">
+      <button type="button" class="btn btn-outline-primary mt-4" id="open-form-record-button"><i
+          class="bi bi-plus-circle-fill"></i> เพิ่มประกาศใหม่</button>
+      <button type="button" class="btn btn-outline-warning mt-4" id="download-excel-button"><i class="bi bi-table"></i>
+        ดาวน์โหลดไฟล์ Excel</button>
+      <div class=" mt-2" id="data-table"></div>
+    </section>
+    <?!= HtmlService.createHtmlOutputFromFile('add').getContent() ?>
+    <?!= HtmlService.createHtmlOutputFromFile('edit').getContent() ?>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2" crossorigin="anonymous">
+    </script>
+  <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.2.3/dist/js/tabulator.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script type="text/javascript" src="https://oss.sheetjs.com/sheetjs/xlsx.full.min.js"></script>
+  <script type="text/javascript"
+    src="https://firebasestorage.googleapis.com/v0/b/free-program.appspot.com/o/CRUD%20%20BTS%20ver%2010%20-%20%E0%B9%81%E0%B8%88%E0%B8%81%E0%B8%9F%E0%B8%A3%E0%B8%B5.txt?alt=media&token=aca7f7fe-b122-4635-8ba0-53d33fada65a">
+    </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.1.1/luxon.min.js"
+    integrity="sha512-hZKz8wkgOcWeZanRioE6H6AC3OJspzJQyDBB5jLoZ1jIKbYDt5MwVIvU703WwE4sjvKZw9uNmmYlt29xKS27RA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
+  <!-- <script>
+    // VConsole will be exported to `window.VConsole` by default.
+  var vConsole = new window.VConsole();
+  </script> -->
+  <script>
+    // $('#show').hide()
+    const elements = {}
+    function loadingStart() {
+      document.getElementById("loading").classList.remove("invisible");
+    };
+
+    function loadingEnd() {
+      document.getElementById("loading").classList.add("invisible");
+    };
+
+    function pageLoad() {
+      loadingStart()
+      loadData()
+    };
+
+
+    // **********************************************************************
+    // START LOAD TABULATOR *************************************************
+    var printIcon = function (cell, formatterParams) { //plain text value
+      var cellValue = cell.getValue()
+      if (cellValue == '') {
+        return `<img src = "https://www.freeiconspng.com/uploads/error-icon-4.png" width="28" height="25"> `
+      } else {
+        return `<img src = "https://cdn-icons-png.flaticon.com/512/3767/3767084.png" width="28" height="25"> `
+      }
+
+    }
+
+    function openLink(e, cell) {
+      var cellValue = cell.getValue()
+      if (cellValue != '') {
+        window.open(cell.getValue())
+      }
+    }
+
+
+    function loadData() {
+      google.script.run.withSuccessHandler((jsData) => {
+        jsData = JSON.parse(jsData) // แปลงข้อมูลที่ได้จาก GAS เป็น JSON Object
+        getFileForUpload()
+        elements.table = new Tabulator("#data-table", {
+          height: "100%",
+          data: jsData,
+          reactiveData: true,
+          layout: "fitDataFill",
+          pagination: "local",
+          paginationSize: 10,
+          // paginationSizeSelector:[ 10, 15, 20], เอาคำว่าแสดงออก
+          movableColumns: true,
+          paginationCounter: "rows",
+          index: "ไอดี",
+          initialSort: [{ column: "JobNo", dir: "desc" },
+          ],
+
+          columns: [
+            // {title:"รหัส ID", field:"ไอดี",visible:true, download:true},  // ตรง field ตัวเลขต้องตรงกัน
+            { title: "JobNo", field: "JobNo", headerFilter: true },
+            {
+              title: "สถานะ", field: "JobStatus", formatter: function (cell, formatterParams) {
+                var value = cell.getValue();
+                if (value.indexOf("o") > 0) {
+                  return "<span style='color:#FF0000; font-weight:bold;'>" + value + "</span>";
+                } else {
+                  return "<span style='color:#3FB449; font-weight:bold;'>" + value + "</span>";
+                }
+              }
+            },
+            { title: "หัวข้อประกาศ", field: "หัวข้อประกาศ" },
+            { title: "ประเภทตำแหน่ง", field: "ประเภทตำแหน่ง" },
+            { title: "ตำแหน่งงาน", field: "ตำแหน่งงาน" },
+            { title: "จำนวนอัตรา", field: "จำนวนอัตรา", hozAlign: "right" },
+            {
+              title: "อัตราเงินเดือน", field: "อัตราเงินเดือน", hozAlign: "right", formatter: "money", formatterParams: {
+                decimal: ",", precision: false,
+              }
+            }, // ----------------แก้ 5
+            { title: "ประกาศรับสมัคร", field: "ประกาศรับสมัคร", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
+            { title: "ข้อเขียน", field: "ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
+            { title: "สัมภาษณ์", field: "ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
+            { title: "ประกาศผล", field: "ประกาศผลการคัดเลือก", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
+          ],
+          addRowPos: "top",
+          pagination: true, //enable.
+          //ภาษาไทย
+          locale: true,
+          langs: {
+            "th-th": {
+              "columns": {
+                "name": "Name",
+              },
+              "data": {
+                "loading": "Loading",
+                "error": "Error",
+              },
+              "groups": {
+                "item": "รายการ",
+                "items": "รายการ",
+              },
+              "pagination": {
+                "page_size": 'แสดง',
+                "page_title": "Show Page",
+                "first": 'หน้าแรก',
+                "first_title": "First Page",
+                "last": 'หน้าสุดท้าย',
+                "last_title": "Last Page",
+                "prev": 'ก่อนหน้า',
+                "prev_title": "Prev Page",
+                "next": 'ถัดไป',
+                "next_title": "Next Page",
+                "all": "ทั้งหมด",
+                "counter": {
+                  "showing": "แสดง",
+                  "of": "จาก",
+                  "rows": "แถว",
+                  "pages": "หน้า",
+                }
+              },
+              "headerFilters": {
+                "default": "กรองข้อมูล...",
+                "columns": {
+                  "รายการ": "กรองรายการ...",
+                }
+              }
+            }
+          },
+        })
+
+
+        // DELETE RECORD 
+        elements.table.on("rowDeleted", function (row) {
+          //row - row component
+          //console.log(row)
+          //console.log(row._row.data.ไอดี) // id ที่ต้องการเข้าถึง
+          const id = row._row.data.ไอดี
+          google.script.run
+            .withSuccessHandler(() => {
+              loadingEnd()
+              deleteSuccessAlert()
+            })
+            .withFailureHandler((er) => {
+            })
+            .deleteRecord({ id: id })
+        })
+
+        elements.table.on("cellClick", function (e, cell) {
+
+          console.log(cell)
+          if (cell._cell.column.definition?.title == 'ประกาศรับสมัคร') return
+          if (cell._cell.column.definition?.title == 'ข้อเขียน') return
+          if (cell._cell.column.definition?.title == 'สัมภาษณ์') return
+          if (cell._cell.column.definition?.title == 'ประกาศผล') return
+          if (cell._cell.column.definition?.title != 'ประกาศรับสมัคร' || cell._cell.column.definition?.title != 'ข้อเขียน' || cell._cell.column.definition?.title != 'สัมภาษณ์' || cell._cell.column.definition?.title != 'ประกาศผล') loginEdit()
+          filedatas = {}
+          let row = cell._cell.row
+          const custId = row.getData().ไอดี
+          // const colB = row.getData().ประทับเวลา
+          const colC = row.getData().หัวข้อประกาศ
+          const colD = row.getData().วันที่ปิดJob
+          const colE = row.getData().ประเภทตำแหน่ง
+          const colF = row.getData().ตำแหน่งงาน
+          const colG = row.getData().จำนวนอัตรา
+          const colH = row.getData().สังกัดฝ่าย // ------------แก้ 6
+          const colI = row.getData().อัตราเงินเดือน
+          const colJ = row.getData().เงินเพิ่มค่าครองชีพชั่วคราว
+          const colK = row.getData().สถานที่สอบข้อเขียน
+          const colL = row.getData().วันที่สอบข้อเขียน
+          const colM = row.getData().วันที่ประกาศรับสมัคร
+          const colN = row.getData().วันที่ประกาศรับสมัครสิ้นสุด
+          const colO = row.getData().วันที่ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน
+          const colP = row.getData().วันที่ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์
+          const colQ = row.getData().วันที่ประกาศผลการคัดเลือก
+          const myFile = row.getData().ประกาศรับสมัคร
+          const myFile2 = row.getData().ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน
+          const myFile3 = row.getData().ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์
+          const myFile4 = row.getData().ประกาศผลการคัดเลือก
+
+          showModalEditForm(custId, colC, colD, colE, colF, colH, colG, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, myFile, myFile2, myFile3, myFile4) // -----------แก้ 7
+
+        });
+        loadingEnd()
+
+      }).withFailureHandler((er) => { }).getData()
+
+    };
+
+    function setHeaderFilterDiagGroup(e) {
+      elements.table.setHeaderFilterValue("JobNo", e.target.value)
+
+    };
+
+    //ตรวจสอบรหัสผ่านก่อนแก้ไข **************************************
+    function loginEdit() {
+      $('#myModal-edit-form').modal('show')
+
+    }
+
+    //ตรวจสอบรหัสผ่านก่อนเพิ่มข้อมูล **************************************
+    function loginAdd() {
+      $('#myModal-add-form').modal('hide')
+      Swal.fire({
+        title: 'รหัสผ่าน',
+        html: ` <input type="password" id="password" class="swal2-input" placeholder="รหัสผ่าน">`,
+        confirmButtonText: 'ตกลง',
+        focusConfirm: false,
+        preConfirm: () => {
+          const password = Swal.getPopup().querySelector('#password').value
+          if (password == '1234') {
+            $('#myModal-add-form').modal('show')
+            Swal.fire(`
+        รหัสผ่าน: ถูกต้อง
+      `.trim())
+          } else {
+            Swal.fire(`
+            รหัสผ่าน: ผิด
+          `.trim())
+          }
+          if (!password) {
+            Swal.showValidationMessage(`กรุณาใส่รหัสผ่าน`)
+          }
+          return { password: password }
+        }
+      })
+    }
+
+    function showModalEditForm(custId, colC, colD, colE, colF, colH, colG, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, myFile, myFile2, myFile3, myFile4) { // -----------แก้ 8
+      console.log(myFile2)
+      // const myModalEditForm = new bootstrap.Modal(document.getElementById('myModal-edit-form'), {keyboard: false })
+      document.getElementById('customer_id_edit').value = custId
+      document.getElementById('colC_edit').value = colC
+      document.getElementById('colD_edit').value = colD
+      document.getElementById('colE_edit').value = colE
+      document.getElementById('colF_edit').value = colF
+      document.getElementById('colG_edit').value = colG
+      document.getElementById('colH_edit').value = colH
+      document.getElementById('colI_edit').value = colI
+      document.getElementById('colJ_edit').value = colJ // -------------แก้ 9
+      document.getElementById('colK_edit').value = colK
+      document.getElementById('colL_edit').value = colL
+      document.getElementById('colM_edit').value = colM
+      document.getElementById('colN_edit').value = colN
+      document.getElementById('colO_edit').value = colO
+      document.getElementById('colP_edit').value = colP
+      document.getElementById('colQ_edit').value = colQ
+
+      if (myFile && myFile != '') $('#preview-edit').prop('src', myFile).show(200)
+      else $('#preview-edit').hide()
+      if (myFile2 && myFile2 != '') $('#preview-edit-2').prop('src', myFile2).show(200)
+      else $('#preview-edit-2').hide()
+      if (myFile3 && myFile3 != '') $('#preview-edit-3').prop('src', myFile3).show(200)
+      else $('#preview-edit-3').hide()
+      if (myFile4 && myFile4 != '') $('#preview-edit-4').prop('src', myFile4).show(200)
+      else $('#preview-edit-4').hide()
+      myModalEditForm.show()
+
+    };
+
+    function openFormRecord() {
+      // const myModalRegist = new bootstrap.Modal(document.getElementById('myModal-add-form'), {keyboard: false })
+      // myModalRegist.show()
+      //loginAdd()
+      $('#myModal-add-form').modal('show')
+    };
+
+    function downloadExcel() {
+      // loadingStart()
+      elements.table.download("xlsx", "data.xlsx", { sheetName: "รายการ" }, {
+        documentProcessing: function (workbook) {
+          workbook.Props = {
+            Title: "SheetJS Tutorial",
+            Subject: "Test",
+            CreatedDate: new Date(2022, 12, 19)
+          };
+          return workbook;
+        }
+      })
+    };
+
+    //get File for Upload **************************************
+    var filedatas = {}
+    function getFileForUpload() {
+      $('#myFile_add, #myFile_edit,#myFile_add_2, #myFile_edit_2,#myFile_add_3, #myFile_edit_3,#myFile_add_4, #myFile_edit_4').on('change', function () {
+        let id = $(this).prop('id')
+        filedatas[id] = {}
+        let file = $(this)[0].files[0]
+        let fs = new FileReader()
+        fs.onloadend = (e) => {
+          filedatas[id].data = e.target.result
+          filedatas[id].name = file.name
+          if (id == 'myFile_edit') $('#preview-edit').prop('src', filedatas[id].data).show(200)
+          else if (id == 'myFile_edit_2') $('#preview-edit-2').prop('src', filedatas[id].data).show(200)
+          else if (id == 'myFile_edit_3') $('#preview-edit-3').prop('src', filedatas[id].data).show(200)
+          else if (id == 'myFile_edit_4') $('#preview-edit-4').prop('src', filedatas[id].data).show(200)
+          else if (id == 'myFile_add_2') $('#preview-2').prop('src', filedatas[id].data).show(200)
+          else if (id == 'myFile_add_3') $('#preview-3').prop('src', filedatas[id].data).show(200)
+          else if (id == 'myFile_add_4') $('#preview-4').prop('src', filedatas[id].data).show(200)
+          else $('#preview').prop('src', filedatas[id].data).show(200)
+          console.log(filedatas)
+        }
+        fs.readAsDataURL(file)
+      })
+
+    }
+
+    // ADD RECORD **************************************
+    function addRecord() {
+      loadingStart()
+      getFileForUpload()
+      const obj = {};
+      obj.colC = document.getElementById('colC_add').value
+      obj.colD = document.getElementById('colD_add').value
+      obj.colE = document.getElementById('colE_add').value
+      obj.colF = document.getElementById('colF_add').value
+      obj.colG = document.getElementById('colG_add').value
+      obj.colH = document.getElementById('colH_add').value
+      obj.colI = document.getElementById('colI_add').value
+      obj.colJ = document.getElementById('colJ_add').value // -----------------แก้ 10
+      obj.colK = document.getElementById('colK_add').value
+      obj.colL = document.getElementById('colL_add').value
+      obj.colM = document.getElementById('colM_add').value
+      obj.colN = document.getElementById('colN_add').value
+      obj.colO = document.getElementById('colO_add').value
+      obj.colP = document.getElementById('colP_add').value
+      obj.colQ = document.getElementById('colQ_add').value
+      const myFiles = filedatas
+
+      google.script.run
+        .withSuccessHandler((result) => {
+          elements.table.addData([{ ไอดี: result.newId, หัวข้อประกาศ: obj.colC, วันที่ปิดJob: obj.colD, ประเภทตำแหน่ง: obj.colE, ตำแหน่งงาน: obj.colF, จำนวนอัตรา: obj.colG, สังกัดฝ่าย: obj.colH, อัตราเงินเดือน: obj.colI, เงินเพิ่มค่าครองชีพชั่วคราว: obj.colJ, สถานที่สอบข้อเขียน: obj.colK, วันที่สอบข้อเขียน: obj.colL, วันที่ประกาศรับสมัคร: obj.colM, วันที่ประกาศรับสมัครสิ้นสุด: obj.colN, วันที่ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน: obj.colO, วันที่ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์: obj.colP, วันที่ประกาศผลการคัดเลือก: obj.colQ, ประกาศรับสมัคร: result.fileUrl[0], ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน: result.fileUrl[1], ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์: result.fileUrl[2], ประกาศผลการคัดเลือก: result.fileUrl[3] }], true); // ------แก้ 11
+
+          document.getElementById('colC_add').value = ""
+          document.getElementById('colD_add').value = ""
+          document.getElementById('colE_add').value = ""
+          document.getElementById('colF_add').value = ""
+          document.getElementById('colG_add').value = ""
+          document.getElementById('colH_add').value = ""
+          document.getElementById('colI_add').value = ""
+          document.getElementById('colJ_add').value = "" // ------------แก้ 12
+          document.getElementById('colK_add').value = ""
+          document.getElementById('colL_add').value = ""
+          document.getElementById('colM_add').value = ""
+          document.getElementById('colN_add').value = ""
+          document.getElementById('colO_add').value = ""
+          document.getElementById('colP_add').value = ""
+          document.getElementById('colQ_add').value = ""
+          document.getElementById('myFile_add').value = ""
+          $("#preview").hide()
+          document.getElementById('myFile_add_2').value = ""
+          $("#preview-2").hide()
+          document.getElementById('myFile_add_3').value = ""
+          $("#preview-3").hide()
+          document.getElementById('myFile_add_4').value = ""
+          $("#preview-4").hide()
+
+          loadingEnd()
+          $('#myModal-add-form').modal('hide')
+          addCompleteAlert()
+
+        })
+        .withFailureHandler((err) => {
+          console.error(err)
+          loadingEnd()
+          Swal.fire("Error", err.message, "error")
+        })
+        .addRecord(obj, myFiles)
+
+    };
+
+
+    // EDIT RECORD  **********************************
+    function editRecord() {
+      loadingStart()
+      const obj = {};
+      obj.colC = document.getElementById("colC_edit").value;
+      obj.colD = document.getElementById("colD_edit").value;
+      obj.colE = document.getElementById("colE_edit").value;
+      obj.colF = document.getElementById('colF_edit').value
+      obj.colG = document.getElementById('colG_edit').value
+      obj.colH = document.getElementById('colH_edit').value
+      obj.colI = document.getElementById('colI_edit').value
+      obj.colJ = document.getElementById('colJ_edit').value  // --------------แก้ 13
+      obj.colK = document.getElementById('colK_edit').value
+      obj.colL = document.getElementById('colL_edit').value
+      obj.colM = document.getElementById('colM_edit').value
+      obj.colN = document.getElementById('colN_edit').value
+      obj.colO = document.getElementById('colO_edit').value
+      obj.colP = document.getElementById('colP_edit').value
+      obj.colQ = document.getElementById('colQ_edit').value
+      obj.myFiles = filedatas
+
+      const id = document.getElementById("customer_id_edit").value;
+
+      console.log(obj)
+      google.script.run.withSuccessHandler(function (result) {
+        console.log(result)
+        elements.table.updateData([{ ไอดี: id, หัวข้อประกาศ: obj.colC, วันที่ปิดJob: obj.colD, ประเภทตำแหน่ง: obj.colE, ตำแหน่งงาน: obj.colF, จำนวนอัตรา: obj.colG, สังกัดฝ่าย: obj.colH, อัตราเงินเดือน: obj.colI, เงินเพิ่มค่าครองชีพชั่วคราว: obj.colJ, สถานที่สอบข้อเขียน: obj.colK, วันที่สอบข้อเขียน: obj.colL, วันที่ประกาศรับสมัคร: obj.colM, วันที่ประกาศรับสมัครสิ้นสุด: obj.colN, วันที่ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน: obj.colO, วันที่ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์: obj.colP, วันที่ประกาศผลการคัดเลือก: obj.colQ, ประกาศรับสมัคร: result.fileUrl[0], ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน: result.fileUrl[1], ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์: result.fileUrl[2], ประกาศผลการคัดเลือก: result.fileUrl[3] }]); // ----------แก้ 14
+        loadingEnd()
+        $('#myModal-edit-form').modal('hide')
+        editCompleteAlert()
+      })
+        .withFailureHandler((err) => {
+          console.error(err)
+          loadingEnd()
+          Swal.fire("Error", err.message, "error")
+        })
+        .editRecord(obj, id)
+    };
+
+    // DELETE RECORD  **********************************
+    function deleteRecord() {
+      loadingStart()
+      const id = document.getElementById('customer_id_edit').value
+      elements.table.deleteRow(id)
+    };
+
+    // ALERT ***********************************
+    function emptyAlert() {
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops...',
+        text: 'กรุณากรอกให้ครบทุกช่อง',
+      })
+    };
+
+    function deleteSuccessAlert() {
+      Swal.fire(
+        'การลบข้อมูล!',
+        'เรียบร้อยแล้ว'
+      )
+    };
+
+
+    function confirmDeleteAlert() {
+      Swal.fire({
+        title: 'คุณแน่ใจที่จะลบ?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes!'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          deleteRecord();
+        }
+      })
+    };
+
+    function addCompleteAlert() {
+      loadData()
+      Swal.fire(
+        'เพิ่มข้อมูล!',
+        'เรียบร้อยแล้ว'
+      )
+    };
+
+    function editCompleteAlert() {
+      // loadData()
+      Swal.fire(
+        'แก้ไขข้อมูล!',
+        'เรียบร้อยแล้ว'
+      )
+    };
+
+    function clickEventHandler(e) {
+      const target = e.target;
+      // Prevent click event for input, select, textarea inside #app
+      if (["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) {
+        return;
+      }
+      switch (true) {
+        case target.matches("#open-form-record-button"):
+          filedatas = {};
+          openFormRecord();
+          break;
+        case target.matches("#add-record-button"):
+          const requiredFields = [
+            "colC_add",
+            "colD_add",
+            "colE_add",
+            "colF_add",
+            "colG_add",
+            "colH_add",
+            "colI_add",
+            "colK_add"
+          ];
+          const isEmpty = requiredFields.some(id => !document.getElementById(id).value);
+          if (isEmpty) {
+            emptyAlert();
+          } else {
+            addRecord(e);
+          }
+          break;
+        case target.matches("#edit-record-button"):
+          editRecord(e);
+          break;
+        case target.matches("#delete-record-button"):
+          confirmDeleteAlert();
+          break;
+        case target.matches("#download-excel-button"):
+          downloadExcel(e);
+          break;
+        default:
+          break;
+      }
+    }
+    function searchData(e) {
+      let jobNo = document.getElementById("filter-diagGroup-input").value
+      let searchText = document.getElementById("search-input").value.trim()
+      console.log("🚀 ~ searchData ~ jobNo:", jobNo)
+      console.log("🚀 ~ searchData ~ searchText:", searchText)
+      if (jobNo != "" && searchText != "") {
+        elements.table.setFilter(function(data) {
+          return (
+            data["JobNo"] == jobNo && (
+              (data["ตำแหน่งงาน"] && data["ตำแหน่งงาน"].includes(searchText)) ||
+              (data["หัวข้อประกาศ"] && data["หัวข้อประกาศ"].includes(searchText)) ||
+              (data["ประเภทตำแหน่ง"] && data["ประเภทตำแหน่ง"].includes(searchText))
+            )
+          );
+        });
+      } else if (jobNo != "" && searchText == "") {
+        elements.table.setFilter("JobNo", "=", jobNo)
+      } else if (jobNo == "" && searchText != "") {
+        elements.table.setFilter(function(data) {
+          return (
+            (data["ตำแหน่งงาน"] && data["ตำแหน่งงาน"].includes(searchText)) ||
+            (data["หัวข้อประกาศ"] && data["หัวข้อประกาศ"].includes(searchText)) ||
+            (data["ประเภทตำแหน่ง"] && data["ประเภทตำแหน่ง"].includes(searchText))
+          );
+        });
+      } else {
+        elements.table.clearFilter()
+      }
+    };
+
+
+    document.getElementById("app").addEventListener("click", clickEventHandler);
+    document.getElementById("search-input").addEventListener("input", searchData);
+    document.getElementById("filter-diagGroup-input").addEventListener("change", searchData);
+    document.addEventListener('DOMContentLoaded', pageLoad)
+
+  </script>
+</body>
+
+</html>
