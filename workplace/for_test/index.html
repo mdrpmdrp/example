@@ -230,39 +230,35 @@
         })
 
         elements.table.on("cellClick", function (e, cell) {
+          const title = cell._cell.column.definition?.title;
+          // Skip if the column is one of the file columns
+          if (["ประกาศรับสมัคร", "ข้อเขียน", "สัมภาษณ์", "ประกาศผล"].includes(title)) return;
 
-          console.log(cell)
-          if (cell._cell.column.definition?.title == 'ประกาศรับสมัคร') return
-          if (cell._cell.column.definition?.title == 'ข้อเขียน') return
-          if (cell._cell.column.definition?.title == 'สัมภาษณ์') return
-          if (cell._cell.column.definition?.title == 'ประกาศผล') return
-          if (cell._cell.column.definition?.title != 'ประกาศรับสมัคร' || cell._cell.column.definition?.title != 'ข้อเขียน' || cell._cell.column.definition?.title != 'สัมภาษณ์' || cell._cell.column.definition?.title != 'ประกาศผล') loginEdit()
-          filedatas = {}
-          let row = cell._cell.row
-          const custId = row.getData().ไอดี
-          // const colB = row.getData().ประทับเวลา
-          const colC = row.getData().หัวข้อประกาศ
-          const colD = row.getData().วันที่ปิดJob
-          const colE = row.getData().ประเภทตำแหน่ง
-          const colF = row.getData().ตำแหน่งงาน
-          const colG = row.getData().จำนวนอัตรา
-          const colH = row.getData().สังกัดฝ่าย // ------------แก้ 6
-          const colI = row.getData().อัตราเงินเดือน
-          const colJ = row.getData().เงินเพิ่มค่าครองชีพชั่วคราว
-          const colK = row.getData().สถานที่สอบข้อเขียน
-          const colL = row.getData().วันที่สอบข้อเขียน
-          const colM = row.getData().วันที่ประกาศรับสมัคร
-          const colN = row.getData().วันที่ประกาศรับสมัครสิ้นสุด
-          const colO = row.getData().วันที่ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน
-          const colP = row.getData().วันที่ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์
-          const colQ = row.getData().วันที่ประกาศผลการคัดเลือก
-          const myFile = row.getData().ประกาศรับสมัคร
-          const myFile2 = row.getData().ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน
-          const myFile3 = row.getData().ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์
-          const myFile4 = row.getData().ประกาศผลการคัดเลือก
+          loginEdit();
+          filedatas = {};
+          const rowData = cell._cell.row.getData();
+          const custId = rowData.ไอดี;
+          const colC = rowData.หัวข้อประกาศ;
+          const colD = rowData.วันที่ปิดJob ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ปิดJob)).toFormat('yyyy-MM-dd') : '';
+          const colE = rowData.ประเภทตำแหน่ง;
+          const colF = rowData.ตำแหน่งงาน;
+          const colG = rowData.จำนวนอัตรา;
+          const colH = rowData.สังกัดฝ่าย;
+          const colI = rowData.อัตราเงินเดือน;
+          const colJ = rowData.เงินเพิ่มค่าครองชีพชั่วคราว;
+          const colK = rowData.สถานที่สอบข้อเขียน;
+          const colL = rowData.วันที่สอบข้อเขียน ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่สอบข้อเขียน)).toFormat('yyyy-MM-dd') : '';
+          const colM = rowData.วันที่ประกาศรับสมัคร ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ประกาศรับสมัคร)).toFormat('yyyy-MM-dd') : '';
+          const colN = rowData.วันที่ประกาศรับสมัครสิ้นสุด ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ประกาศรับสมัครสิ้นสุด)).toFormat('yyyy-MM-dd') : '';
+          const colO = rowData.วันที่ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน)).toFormat('yyyy-MM-dd') : '';
+          const colP = rowData.วันที่ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์ ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์)).toFormat('yyyy-MM-dd') : '';
+          const colQ = rowData.วันที่ประกาศผลการคัดเลือก ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ประกาศผลการคัดเลือก)).toFormat('yyyy-MM-dd') : '';
+          const myFile = rowData.ประกาศรับสมัคร;
+          const myFile2 = rowData.ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน;
+          const myFile3 = rowData.ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์;
+          const myFile4 = rowData.ประกาศผลการคัดเลือก;
 
-          showModalEditForm(custId, colC, colD, colE, colF, colH, colG, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, myFile, myFile2, myFile3, myFile4) // -----------แก้ 7
-
+          showModalEditForm(custId, colC, colD, colE, colF, colH, colG, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, myFile, myFile2, myFile3, myFile4);
         });
         loadingEnd()
 
@@ -314,6 +310,22 @@
     }
 
     function showModalEditForm(custId, colC, colD, colE, colF, colH, colG, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, myFile, myFile2, myFile3, myFile4) { // -----------แก้ 8
+      console.log("🚀 ~ showModalEditForm ~ custId:", custId)
+      console.log("🚀 ~ showModalEditForm ~ colC:", colC)
+      console.log("🚀 ~ showModalEditForm ~ colD:", colD)
+      console.log("🚀 ~ showModalEditForm ~ colE:", colE)
+      console.log("🚀 ~ showModalEditForm ~ colF:", colF)
+      console.log("🚀 ~ showModalEditForm ~ colH:", colH)
+      console.log("🚀 ~ showModalEditForm ~ colG:", colG)
+      console.log("🚀 ~ showModalEditForm ~ colI:", colI)
+      console.log("🚀 ~ showModalEditForm ~ colJ:", colJ)
+      console.log("🚀 ~ showModalEditForm ~ colM:", colM)
+      console.log("🚀 ~ showModalEditForm ~ colK:", colK)
+      console.log("🚀 ~ showModalEditForm ~ colL:", colL)
+      console.log("🚀 ~ showModalEditForm ~ colN:", colN)
+      console.log("🚀 ~ showModalEditForm ~ colO:", colO)
+      console.log("🚀 ~ showModalEditForm ~ colP:", colP)
+      console.log("🚀 ~ showModalEditForm ~ colQ:", colQ)
       console.log(myFile2)
       // const myModalEditForm = new bootstrap.Modal(document.getElementById('myModal-edit-form'), {keyboard: false })
       document.getElementById('customer_id_edit').value = custId
@@ -341,8 +353,7 @@
       else $('#preview-edit-3').hide()
       if (myFile4 && myFile4 != '') $('#preview-edit-4').prop('src', myFile4).show(200)
       else $('#preview-edit-4').hide()
-      myModalEditForm.show()
-
+      $('#myModal-edit-form')
     };
 
     function openFormRecord() {
@@ -608,7 +619,7 @@
       console.log("🚀 ~ searchData ~ jobNo:", jobNo)
       console.log("🚀 ~ searchData ~ searchText:", searchText)
       if (jobNo != "" && searchText != "") {
-        elements.table.setFilter(function(data) {
+        elements.table.setFilter(function (data) {
           return (
             data["JobNo"] == jobNo && (
               (data["ตำแหน่งงาน"] && data["ตำแหน่งงาน"].includes(searchText)) ||
@@ -620,7 +631,7 @@
       } else if (jobNo != "" && searchText == "") {
         elements.table.setFilter("JobNo", "=", jobNo)
       } else if (jobNo == "" && searchText != "") {
-        elements.table.setFilter(function(data) {
+        elements.table.setFilter(function (data) {
           return (
             (data["ตำแหน่งงาน"] && data["ตำแหน่งงาน"].includes(searchText)) ||
             (data["หัวข้อประกาศ"] && data["หัวข้อประกาศ"].includes(searchText)) ||
