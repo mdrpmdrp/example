@@ -11,11 +11,19 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.2/font/bootstrap-icons.css">
   <link href="https://cdn.jsdelivr.net/npm/mc-datepicker/dist/mc-calendar.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/mc-datepicker/dist/mc-calendar.min.js"></script>
+
+  <title>แก้ไขข้อมูลผู้สมัคร</title>
+  <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0v4LLanw2qksYuRlEzO+tcaEPQogQ0KaoGN26/zrn20ImR1DfuLWnOo7aBA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <?!= HtmlService.createHtmlOutputFromFile('css').getContent() ?>
 </head>
 
 <body>
-  <!-- LOADING ******************************** -->
+
+  <!-- LOADING ********************************  -->
   <div id="loading" class="d-flex flex-row justify-content-center align-items-center invisible gap-2">
     <div class="spinner-grow text-primary" role="status">
       <span class="visually-hidden">Loading...</span>
@@ -39,14 +47,14 @@
 
   <nav class="navbar bg-success text-white mb-3">
     <div class="container">
-      <h3><i class="bi bi-megaphone red-color"></i> ประกาศรับสมัคร</h3>
+      <h3><i class="bi bi-person-circle"></i> ข้อมูลของผู้สมัคร</h3>
     </div>
   </nav>
   <div class="container" id="app">
     <div class="row">
       <div class="col mt-3">
-        <label class="form-label"><i class="bi bi-search"></i> ค้นหาจาก หัวข้อประกาศ/ประเภทตำแหน่ง/ตำแหน่งงาน</label>
-        <input type="text" class="form-control" id="search-input" placeholder="พิมพ์ข้อความ">
+        <label class="form-label"><i class="bi bi-search"></i> ค้นหาจาก ชื่อ</label>
+        <input type="text" class="form-control" id="search-input" placeholder="พิมพ์ชื่อ">
       </div>
       <div class="col mt-3">
         <label class="form-label"><i class="bi bi-people-fill"></i> ค้นหาจาก JobNo</label>
@@ -57,13 +65,11 @@
       </div>
     </div>
     <section id="show">
-      <button type="button" class="btn btn-outline-primary mt-4" id="open-form-record-button"><i
-          class="bi bi-plus-circle-fill"></i> เพิ่มประกาศใหม่</button>
-      <button type="button" class="btn btn-outline-warning mt-4" id="download-excel-button"><i class="bi bi-table"></i>
-        ดาวน์โหลดไฟล์ Excel</button>
-      <div class=" mt-2" id="data-table"></div>
+      <!-- <button type="button" class="btn btn-warning mt-4" id="open-form-record-button"><i class="bi bi-plus-circle-fill"></i> เพิ่มผู้สมัครใหม่</button>
+    <button type="button" class="btn btn-success mt-4" id="download-excel-button"><i class="bi bi-table"></i> ดาวน์โหลดไฟล์ Excel</button> -->
+      <div class="mt-2" id="data-table"></div>
     </section>
-    <?!= HtmlService.createHtmlOutputFromFile('add').getContent() ?>
+    <!-- <?!= HtmlService.createHtmlOutputFromFile('add').getContent() ?> -->
     <?!= HtmlService.createHtmlOutputFromFile('edit').getContent() ?>
   </div>
 
@@ -98,17 +104,16 @@
     function pageLoad() {
       loadingStart()
       loadData()
-      $('#my-modal-add-form').on('hidden.bs.modal', function () {
+      $('#myModal-edit-form').on('hidden.bs.modal', function () {
         filedatas = {}
-        $('#preview, #preview-2, #preview-3, #preview-4').hide()
-        $('#myFile_add, #myFile_add_2, #myFile_add_3, #myFile_add_4').val('')
+        $('#preview-edit, #preview-edit-2, #preview-edit-3').hide()
+        $('#myFile_edit, #myFile_edit_2, #myFile_edit_3').val('')
       })
-      $('#my-modal-edit-form').on('hidden.bs.modal', function () {
+      $('#myModal-add-form').on('hidden.bs.modal', function () {
         filedatas = {}
-        $('#preview-edit, #preview-edit-2, #preview-edit-3, #preview-edit-4').hide()
-        $('#myFile_edit, #myFile_edit_2, #myFile_edit_3, #myFile_edit_4').val('')
+        $('#preview, #preview-2, #preview-3').hide()
+        $('#myFile_add, #myFile_add_2, #myFile_add_3').val('')
       })
-
     };
 
 
@@ -134,7 +139,8 @@
 
     function loadData() {
       google.script.run.withSuccessHandler((jsData) => {
-        jsData = JSON.parse(jsData) // แปลงข้อมูลที่ได้จาก GAS เป็น JSON Object
+        jsData = JSON.parse(jsData) //
+        console.log("🚀 ~ loadData ~ jsData:", jsData)
         getFileForUpload()
         elements.table = new Tabulator("#data-table", {
           height: "100%",
@@ -143,7 +149,7 @@
           layout: "fitDataFill",
           pagination: "local",
           paginationSize: 10,
-          // paginationSizeSelector:[ 10, 15, 20], เอาคำว่าแสดงออก
+          // paginationSizeSelector:[ 10, 15, 20],  เอาคำว่าแสดงออก
           movableColumns: true,
           paginationCounter: "rows",
           index: "ไอดี",
@@ -153,32 +159,30 @@
           columns: [
             // {title:"รหัส ID", field:"ไอดี",visible:true, download:true},  // ตรง field ตัวเลขต้องตรงกัน
             { title: "JobNo", field: "JobNo", headerFilter: true },
+            { title: "ประเภทตำแหน่ง", field: "ประเภทตำแหน่ง" },
+            { title: "ตำแหน่งงาน", field: "ตำแหน่งงาน" },
+            { title: "เลขที่", field: "เลขที่" },
+            { title: "คำนำหน้า", field: "คำนำหน้า" },
+            { title: "ชื่อ-นามสกุล", field: "ชื่อ" },
+            { title: "นามสกุล", field: "นามสกุล" },
             {
-              title: "สถานะ", field: "JobStatus", formatter: function (cell, formatterParams) {
+              title: "ตรวจคุณวุฒิ", field: "Status", hozAlign: "right", formatter: function (cell, formatterParams) {
                 var value = cell.getValue();
-                if (value.indexOf("o") > 0) {
+                if (value.indexOf("ม") > 0) {
                   return "<span style='color:#FF0000; font-weight:bold;'>" + value + "</span>";
                 } else {
-                  return "<span style='color:#3FB449; font-weight:bold;'>" + value + "</span>";
+                  return "<span style='color:#006400; font-weight:bold;'>" + value + "</span>";
                 }
               }
             },
-            { title: "หัวข้อประกาศ", field: "หัวข้อประกาศ" },
-            { title: "ประเภทตำแหน่ง", field: "ประเภทตำแหน่ง" },
-            { title: "ตำแหน่งงาน", field: "ตำแหน่งงาน" },
-            { title: "จำนวนอัตรา", field: "จำนวนอัตรา", hozAlign: "right" },
-            {
-              title: "อัตราเงินเดือน", field: "อัตราเงินเดือน", hozAlign: "right", formatter: "money", formatterParams: {
-                decimal: ",", precision: false,
-              }
-            }, // ----------------แก้ 5
-            { title: "ประกาศรับสมัคร", field: "ประกาศรับสมัคร", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
-            { title: "ข้อเขียน", field: "ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
-            { title: "สัมภาษณ์", field: "ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
-            { title: "ประกาศผล", field: "ประกาศผลการคัดเลือก", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
+            { title: "เบอร์โทร", field: "เบอร์โทรศัพท์", hozAlign: "right" }, // ----------------แก้ 5
+            { title: "รูปถ่ายหน้าตรง", field: "รูปถ่ายหน้าตรง", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
+            { title: "เอกสารหลักฐาน", field: "เอกสารหลักฐาน", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
+            { title: "หลักฐานชำระค่าสมัครสอบ", field: "หลักฐานชำระค่าสมัครสอบ", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
           ],
           addRowPos: "top",
           pagination: true, //enable.
+
           //ภาษาไทย
           locale: true,
           langs: {
@@ -241,35 +245,82 @@
         })
 
         elements.table.on("cellClick", function (e, cell) {
-          const title = cell._cell.column.definition?.title;
-          // Skip if the column is one of the file columns
-          if (["ประกาศรับสมัคร", "ข้อเขียน", "สัมภาษณ์", "ประกาศผล"].includes(title)) return;
 
-          loginEdit();
-          filedatas = {};
-          const rowData = cell._cell.row.getData();
-          const custId = rowData.ไอดี;
-          const colC = rowData.หัวข้อประกาศ;
-          const colD = rowData.วันที่ปิดJob ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ปิดJob)).toFormat('yyyy-MM-dd') : '';
-          const colE = rowData.ประเภทตำแหน่ง;
-          const colF = rowData.ตำแหน่งงาน;
-          const colG = rowData.จำนวนอัตรา;
-          const colH = rowData.สังกัดฝ่าย;
-          const colI = rowData.อัตราเงินเดือน;
-          const colJ = rowData.เงินเพิ่มค่าครองชีพชั่วคราว;
-          const colK = rowData.สถานที่สอบข้อเขียน;
-          const colL = rowData.วันที่สอบข้อเขียน ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่สอบข้อเขียน)).toFormat('yyyy-MM-dd') : '';
-          const colM = rowData.วันที่ประกาศรับสมัคร ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ประกาศรับสมัคร)).toFormat('yyyy-MM-dd') : '';
-          const colN = rowData.วันที่ประกาศรับสมัครสิ้นสุด ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ประกาศรับสมัครสิ้นสุด)).toFormat('yyyy-MM-dd') : '';
-          const colO = rowData.วันที่ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน)).toFormat('yyyy-MM-dd') : '';
-          const colP = rowData.วันที่ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์ ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์)).toFormat('yyyy-MM-dd') : '';
-          const colQ = rowData.วันที่ประกาศผลการคัดเลือก ? luxon.DateTime.fromJSDate(new Date(rowData.วันที่ประกาศผลการคัดเลือก)).toFormat('yyyy-MM-dd') : '';
-          const myFile = rowData.ประกาศรับสมัคร;
-          const myFile2 = rowData.ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน;
-          const myFile3 = rowData.ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์;
-          const myFile4 = rowData.ประกาศผลการคัดเลือก;
+          console.log(cell)
+          if (cell._cell.column.definition?.title == 'รูปถ่ายหน้าตรง') return
+          if (cell._cell.column.definition?.title == 'เอกสารหลักฐาน') return
+          if (cell._cell.column.definition?.title == 'หลักฐานชำระค่าสมัครสอบ') return
+          if (cell._cell.column.definition?.title != 'รูปถ่ายหน้าตรง' || cell._cell.column.definition?.title != 'เอกสารหลักฐาน' || cell._cell.column.definition?.title != 'หลักฐานชำระค่าสมัครสอบ') loginEdit()
+          filedatas = {}
+          let row = cell._cell.row
+          const custId = row.getData().ไอดี
+          // const colB = row.getData().ประทับเวลา
+          const colC = row.getData().คำนำหน้า
+          const colD = row.getData().ชื่อ
+          const colE = row.getData().นามสกุล
+          const colF = row.getData().สัญชาติ
+          const colG = row.getData().ศาสนา
+          const colH = row.getData().บัตรประจำตัวประชาชน // ------------แก้ 6
+          const colI = row.getData().จังหวัด
+          const colJ = row.getData().อำเภอเขต
+          const colK = row.getData().วันเกิด
+          const colL = row.getData().สถานภาพสมรส
+          const colM = row.getData().จังหวัดที่เกิด
+          const colN = row.getData().อำเภอที่เกิด
+          const colO = row.getData().ตำบลที่เกิด
+          const colP = row.getData().บ้านเลขที่
+          const colQ = row.getData().หมู่ที่
+          const colR = row.getData().ซอย
+          const colS = row.getData().ถนน
+          const colT = row.getData().แขวงตำบล
+          const colU = row.getData().เขตอำเภอ
+          const colV = row.getData().จังหวัดที่อยู่
+          const colW = row.getData().รหัสไปรษณีย์
+          const colX = row.getData().เบอร์โทรศัพท์
+          const colY = row.getData().อีเมล์
+          const colZ = row.getData().ชื่อภรรยาหรือสามี
+          const colAA = row.getData().สัญชาติภรรยาหรือสามี
+          const colAB = row.getData().ศาสนาภรรยาหรือสามี
+          const colAC = row.getData().อาชีพภรรยาหรือสามี
+          const colAD = row.getData().ชื่อบิดา
+          const colAE = row.getData().สัญชาติบิดา
+          const colAF = row.getData().ศาสนาบิดา
+          const colAG = row.getData().อาชีพบิดา
+          const colAH = row.getData().ชื่อมารดา
+          const colAI = row.getData().สัญชาติมารดา
+          const colAJ = row.getData().ศาสนามารดา
+          const colAK = row.getData().อาชีพมารดา
+          const colAL = row.getData().วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร
+          const colAM = row.getData().สาขาวิชา
+          const colAN = row.getData().วันที่ได้รับอนุมัติผลการศึกษา
+          const colAO = row.getData().สถาบัน
+          const colAP = row.getData().ตั้งอยู่จังหวัด
+          const colAQ = row.getData().GPA
+          const colAR = row.getData().วุฒิการศึกษาสูงสุด
+          const colAS = row.getData().ความรู้ความสามารถพิเศษ
+          const colAT = row.getData().รู้ภาษาต่างประเทศ
+          const colAU = row.getData().ที่ทำงานล่าสุด
+          const colAV = row.getData().ตำแหน่งสุดท้าย
+          const colAW = row.getData().ลักษณะงาน
+          const colAX = row.getData().เคยรับราชการหรือไม่
+          const colAY = row.getData().เคยรับราชการเป็นข้าราชการ
+          const colAZ = row.getData().ตำแหน่ง
+          const colBA = row.getData().แผนก
+          const colBB = row.getData().กอง
+          const colBC = row.getData().กรม
+          const colBD = row.getData().กระทรวง
+          const colBE = row.getData().ออกจากราชการเพราะ
+          const colBF = row.getData().ออกจากราชการเมื่อวันที่
+          const colBG = row.getData().ได้รับบำเหน็จบำนาญหรือเบี้ยหวัดจากกระทรวง
+          const colBH = row.getData().เป็นจำนวนเงิน
+          const colBI = row.getData().ขณะนี้ได้รับเบี้ยหวัด
+          const colBJ = row.getData().บำเหน็จบำนาญที่
+          const myFile = row.getData().รูปถ่ายหน้าตรง
+          const myFile2 = row.getData().เอกสารหลักฐาน
+          const myFile3 = row.getData().หลักฐานชำระค่าสมัครสอบ
 
-          showModalEditForm(custId, colC, colD, colE, colF, colH, colG, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, myFile, myFile2, myFile3, myFile4);
+          showModalEditForm(custId, colC, colD, colE, colF, colH, colG, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, colR, colS, colT, colU, colV, colW, colX, colY, colZ, colAA, colAB, colAC, colAD, colAE, colAF, colAG, colAH, colAI, colAJ, colAK, colAL, colAM, colAN, colAO, colAP, colAQ, colAR, colAS, colAT, colAU, colAV, colAW, colAX, colAY, colAZ, colBA, colBB, colBC, colBD, colBE, colBF, colBG, colBH, colBI, colBJ, myFile, myFile2, myFile3) // -----------แก้ 7
+
         });
         loadingEnd()
 
@@ -285,7 +336,6 @@
     //ตรวจสอบรหัสผ่านก่อนแก้ไข **************************************
     function loginEdit() {
       $('#myModal-edit-form').modal('show')
-
     }
 
     //ตรวจสอบรหัสผ่านก่อนเพิ่มข้อมูล **************************************
@@ -300,17 +350,13 @@
           const password = Swal.getPopup().querySelector('#password').value
           if (password == '1234') {
             $('#myModal-add-form').modal('show')
-            Swal.fire({
-              title: 'รหัสผ่าน',
-              text: "ถูกต้อง",
-              icon: 'success',
-            })
+            Swal.fire(`
+        รหัสผ่าน: ถูกต้อง
+      `.trim())
           } else {
-            Swal.fire({
-              title: 'รหัสผ่าน',
-              text: "ผิดพลาด",
-              icon: 'error',
-            })
+            Swal.fire(`
+            รหัสผ่าน: ผิด
+          `.trim())
           }
           if (!password) {
             Swal.showValidationMessage(`กรุณาใส่รหัสผ่าน`)
@@ -320,23 +366,7 @@
       })
     }
 
-    function showModalEditForm(custId, colC, colD, colE, colF, colH, colG, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, myFile, myFile2, myFile3, myFile4) { // -----------แก้ 8
-      console.log("🚀 ~ showModalEditForm ~ custId:", custId)
-      console.log("🚀 ~ showModalEditForm ~ colC:", colC)
-      console.log("🚀 ~ showModalEditForm ~ colD:", colD)
-      console.log("🚀 ~ showModalEditForm ~ colE:", colE)
-      console.log("🚀 ~ showModalEditForm ~ colF:", colF)
-      console.log("🚀 ~ showModalEditForm ~ colH:", colH)
-      console.log("🚀 ~ showModalEditForm ~ colG:", colG)
-      console.log("🚀 ~ showModalEditForm ~ colI:", colI)
-      console.log("🚀 ~ showModalEditForm ~ colJ:", colJ)
-      console.log("🚀 ~ showModalEditForm ~ colM:", colM)
-      console.log("🚀 ~ showModalEditForm ~ colK:", colK)
-      console.log("🚀 ~ showModalEditForm ~ colL:", colL)
-      console.log("🚀 ~ showModalEditForm ~ colN:", colN)
-      console.log("🚀 ~ showModalEditForm ~ colO:", colO)
-      console.log("🚀 ~ showModalEditForm ~ colP:", colP)
-      console.log("🚀 ~ showModalEditForm ~ colQ:", colQ)
+    function showModalEditForm(custId, colC, colD, colE, colF, colH, colG, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, colR, colS, colT, colU, colV, colW, colX, colY, colZ, colAA, colAB, colAC, colAD, colAE, colAF, colAG, colAH, colAI, colAJ, colAK, colAL, colAM, colAN, colAO, colAP, colAQ, colAR, colAS, colAT, colAU, colAV, colAW, colAX, colAY, colAZ, colBA, colBB, colBC, colBD, colBE, colBF, colBG, colBH, colBI, colBJ, myFile, myFile2, myFile3) { // -----------แก้ 8
       console.log(myFile2)
       // const myModalEditForm = new bootstrap.Modal(document.getElementById('myModal-edit-form'), {keyboard: false })
       document.getElementById('customer_id_edit').value = custId
@@ -355,6 +385,51 @@
       document.getElementById('colO_edit').value = colO
       document.getElementById('colP_edit').value = colP
       document.getElementById('colQ_edit').value = colQ
+      document.getElementById('colR_edit').value = colR
+      document.getElementById('colS_edit').value = colS
+      document.getElementById('colT_edit').value = colT
+      document.getElementById('colU_edit').value = colU
+      document.getElementById('colV_edit').value = colV
+      document.getElementById('colW_edit').value = colW
+      document.getElementById('colX_edit').value = colX
+      document.getElementById('colY_edit').value = colY
+      document.getElementById('colZ_edit').value = colZ
+      document.getElementById('colAA_edit').value = colAA
+      document.getElementById('colAB_edit').value = colAB
+      document.getElementById('colAC_edit').value = colAC
+      document.getElementById('colAD_edit').value = colAD
+      document.getElementById('colAE_edit').value = colAE
+      document.getElementById('colAF_edit').value = colAF
+      document.getElementById('colAG_edit').value = colAG
+      document.getElementById('colAH_edit').value = colAH
+      document.getElementById('colAI_edit').value = colAI
+      document.getElementById('colAJ_edit').value = colAJ
+      document.getElementById('colAK_edit').value = colAK
+      document.getElementById('colAL_edit').value = colAL
+      document.getElementById('colAM_edit').value = colAM
+      document.getElementById('colAN_edit').value = colAN
+      document.getElementById('colAO_edit').value = colAO
+      document.getElementById('colAP_edit').value = colAP
+      document.getElementById('colAQ_edit').value = colAQ
+      document.getElementById('colAR_edit').value = colAR
+      document.getElementById('colAS_edit').value = colAS
+      document.getElementById('colAT_edit').value = colAT
+      document.getElementById('colAU_edit').value = colAU
+      document.getElementById('colAV_edit').value = colAV
+      document.getElementById('colAW_edit').value = colAW
+      document.getElementById('colAX_edit').value = colAX
+      document.getElementById('colAY_edit').value = colAY
+      document.getElementById('colAZ_edit').value = colAZ
+      document.getElementById('colBA_edit').value = colBA
+      document.getElementById('colBB_edit').value = colBB
+      document.getElementById('colBC_edit').value = colBC
+      document.getElementById('colBD_edit').value = colBD
+      document.getElementById('colBE_edit').value = colBE
+      document.getElementById('colBF_edit').value = colBF
+      document.getElementById('colBG_edit').value = colBG
+      document.getElementById('colBH_edit').value = colBH
+      document.getElementById('colBI_edit').value = colBI
+      document.getElementById('colBJ_edit').value = colBJ
 
       if (myFile && myFile != '') $('#preview-edit').prop('src', myFile).show(200)
       else $('#preview-edit').hide()
@@ -362,9 +437,7 @@
       else $('#preview-edit-2').hide()
       if (myFile3 && myFile3 != '') $('#preview-edit-3').prop('src', myFile3).show(200)
       else $('#preview-edit-3').hide()
-      if (myFile4 && myFile4 != '') $('#preview-edit-4').prop('src', myFile4).show(200)
-      else $('#preview-edit-4').hide()
-      $('#myModal-edit-form')
+      $('#myModal-edit-form').modal('show')
     };
 
     function openFormRecord() {
@@ -391,7 +464,7 @@
     //get File for Upload **************************************
     var filedatas = {}
     function getFileForUpload() {
-      $('#myFile_add, #myFile_edit,#myFile_add_2, #myFile_edit_2,#myFile_add_3, #myFile_edit_3,#myFile_add_4, #myFile_edit_4').on('change', function () {
+      $('#myFile_add, #myFile_edit,#myFile_add_2, #myFile_edit_2, #myFile_add_3, #myFile_edit_3').on('change', function () {
         let id = $(this).prop('id')
         filedatas[id] = {}
         let file = $(this)[0].files[0]
@@ -402,10 +475,8 @@
           if (id == 'myFile_edit') $('#preview-edit').prop('src', filedatas[id].data).show(200)
           else if (id == 'myFile_edit_2') $('#preview-edit-2').prop('src', filedatas[id].data).show(200)
           else if (id == 'myFile_edit_3') $('#preview-edit-3').prop('src', filedatas[id].data).show(200)
-          else if (id == 'myFile_edit_4') $('#preview-edit-4').prop('src', filedatas[id].data).show(200)
           else if (id == 'myFile_add_2') $('#preview-2').prop('src', filedatas[id].data).show(200)
           else if (id == 'myFile_add_3') $('#preview-3').prop('src', filedatas[id].data).show(200)
-          else if (id == 'myFile_add_4') $('#preview-4').prop('src', filedatas[id].data).show(200)
           else $('#preview').prop('src', filedatas[id].data).show(200)
           console.log(filedatas)
         }
@@ -417,7 +488,6 @@
     // ADD RECORD **************************************
     function addRecord() {
       loadingStart()
-      getFileForUpload()
       const obj = {};
       obj.colC = document.getElementById('colC_add').value
       obj.colD = document.getElementById('colD_add').value
@@ -434,11 +504,56 @@
       obj.colO = document.getElementById('colO_add').value
       obj.colP = document.getElementById('colP_add').value
       obj.colQ = document.getElementById('colQ_add').value
+      obj.colR = document.getElementById('colR_add').value
+      obj.colS = document.getElementById('colS_add').value
+      obj.colT = document.getElementById('colT_add').value
+      obj.colU = document.getElementById('colU_add').value
+      obj.colV = document.getElementById('colV_add').value
+      obj.colW = document.getElementById('colW_add').value
+      obj.colX = document.getElementById('colX_add').value
+      obj.colY = document.getElementById('colY_add').value
+      obj.colZ = document.getElementById('colZ_add').value
+      obj.colAA = document.getElementById('colAA_add').value
+      obj.colAB = document.getElementById('colAB_add').value
+      obj.colAC = document.getElementById('colAC_add').value
+      obj.colAD = document.getElementById('colAD_add').value
+      obj.colAE = document.getElementById('colAE_add').value
+      obj.colAF = document.getElementById('colAF_add').value
+      obj.colAG = document.getElementById('colAG_add').value
+      obj.colAH = document.getElementById('colAH_add').value
+      obj.colAI = document.getElementById('colAI_add').value
+      obj.colAJ = document.getElementById('colAJ_add').value
+      obj.colAK = document.getElementById('colAK_add').value
+      obj.colAL = document.getElementById('colAL_add').value
+      obj.colAM = document.getElementById('colAM_add').value
+      obj.colAN = document.getElementById('colAN_add').value
+      obj.colAO = document.getElementById('colAO_add').value
+      obj.colAP = document.getElementById('colAP_add').value
+      obj.colAQ = document.getElementById('colAQ_add').value
+      obj.colAR = document.getElementById('colAR_add').value
+      obj.colAS = document.getElementById('colAS_add').value
+      obj.colAT = document.getElementById('colAT_add').value
+      obj.colAU = document.getElementById('colAU_add').value
+      obj.colAV = document.getElementById('colAV_add').value
+      obj.colAW = document.getElementById('colAW_add').value
+      obj.colAX = document.getElementById('colAX_add').value
+      obj.colAY = document.getElementById('colAY_add').value
+      obj.colAZ = document.getElementById('colAZ_add').value
+      obj.colBA = document.getElementById('colBA_add').value
+      obj.colBB = document.getElementById('colBB_add').value
+      obj.colBC = document.getElementById('colBC_add').value
+      obj.colBD = document.getElementById('colBD_add').value
+      obj.colBE = document.getElementById('colBE_add').value
+      obj.colBF = document.getElementById('colBF_add').value
+      obj.colBG = document.getElementById('colBG_add').value
+      obj.colBH = document.getElementById('colBH_add').value
+      obj.colBI = document.getElementById('colBI_add').value
+      obj.colBJ = document.getElementById('colBJ_add').value
       const myFiles = filedatas
 
       google.script.run
         .withSuccessHandler((result) => {
-          elements.table.addData([{ ไอดี: result.newId, หัวข้อประกาศ: obj.colC, วันที่ปิดJob: obj.colD, ประเภทตำแหน่ง: obj.colE, ตำแหน่งงาน: obj.colF, จำนวนอัตรา: obj.colG, สังกัดฝ่าย: obj.colH, อัตราเงินเดือน: obj.colI, เงินเพิ่มค่าครองชีพชั่วคราว: obj.colJ, สถานที่สอบข้อเขียน: obj.colK, วันที่สอบข้อเขียน: obj.colL, วันที่ประกาศรับสมัคร: obj.colM, วันที่ประกาศรับสมัครสิ้นสุด: obj.colN, วันที่ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน: obj.colO, วันที่ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์: obj.colP, วันที่ประกาศผลการคัดเลือก: obj.colQ, ประกาศรับสมัคร: result.fileUrl[0], ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน: result.fileUrl[1], ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์: result.fileUrl[2], ประกาศผลการคัดเลือก: result.fileUrl[3] }], true); // ------แก้ 11
+          elements.table.addData([{ ไอดี: result.newId, คำนำหน้า: obj.colC, ชื่อ: obj.colD, นามสกุล: obj.colE, สัญชาติ: obj.colF, ศาสนา: obj.colG, บัตรประจำตัวประชาชน: obj.colH, จังหวัด: obj.colI, อำเภอเขต: obj.colJ, วันเกิด: obj.colK, สถานภาพสมรส: obj.colL, จังหวัดที่เกิด: obj.colM, อำเภอที่เกิด: obj.colN, ตำบลที่เกิด: obj.colO, บ้านเลขที่: obj.colP, หมู่ที่: obj.colQ, ซอย: obj.colR, ถนน: obj.colS, แขวงตำบล: obj.colT, เขตอำเภอ: obj.colU, จังหวัดที่อยู่: obj.colV, รหัสไปรษณีย์: obj.colW, เบอร์โทรศัพท์: obj.colX, อีเมล์: obj.colY, ชื่อภรรยาหรือสามี: obj.colZ, สัญชาติภรรยาหรือสามี: obj.colAA, ศาสนาภรรยาหรือสามี: obj.colAB, อาชีพภรรยาหรือสามี: obj.colAC, ชื่อบิดา: obj.colAD, สัญชาติบิดา: obj.colAE, ศาสนาบิดา: obj.colAF, อาชีพบิดา: obj.colAG, ชื่อมารดา: obj.colAH, สัญชาติมารดา: obj.colAI, ศาสนามารดา: obj.colAJ, อาชีพมารดา: obj.colAK, วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร: obj.colAL, สาขาวิชา: obj.colAM, วันที่ได้รับอนุมัติผลการศึกษา: obj.colAN, สถาบัน: obj.colAO, ตั้งอยู่จังหวัด: obj.colAP, GPA: obj.colAQ, วุฒิการศึกษาสูงสุด: obj.colAR, ความรู้ความสามารถพิเศษ: obj.colAS, รู้ภาษาต่างประเทศ: obj.colAT, ที่ทำงานล่าสุด: obj.colAU, ตำแหน่งสุดท้าย: obj.colAV, ลักษณะงาน: obj.colAW, เคยรับราชการหรือไม่: obj.colAX, เคยรับราชการเป็นข้าราชการ: obj.colAY, ตำแหน่ง: obj.colAZ, แผนก: obj.colBA, กอง: obj.colBB, กรม: obj.colBC, กระทรวง: obj.colBD, ออกจากราชการเพราะ: obj.colBE, ออกจากราชการเมื่อวันที่: obj.colBF, ได้รับบำเหน็จบำนาญหรือเบี้ยหวัดจากกระทรวง: obj.colBG, เป็นจำนวนเงิน: obj.colBH, ขณะนี้ได้รับเบี้ยหวัด: obj.colBI, บำเหน็จบำนาญที่: obj.colBJ, รูปถ่ายหน้าตรง: result.fileUrl[0], เอกสารหลักฐาน: result.fileUrl[1], หลักฐานชำระค่าสมัครสอบ: result.fileUrl[2] }], true); // ------แก้ 11
 
           document.getElementById('colC_add').value = ""
           document.getElementById('colD_add').value = ""
@@ -455,28 +570,62 @@
           document.getElementById('colO_add').value = ""
           document.getElementById('colP_add').value = ""
           document.getElementById('colQ_add').value = ""
+          document.getElementById('colR_add').value = ""
+          document.getElementById('colS_add').value = ""
+          document.getElementById('colT_add').value = ""
+          document.getElementById('colU_add').value = ""
+          document.getElementById('colV_add').value = ""
+          document.getElementById('colW_add').value = ""
+          document.getElementById('colX_add').value = ""
+          document.getElementById('colY_add').value = ""
+          document.getElementById('colZ_add').value = ""
+          document.getElementById('colAA_add').value = ""
+          document.getElementById('colAB_add').value = ""
+          document.getElementById('colAC_add').value = ""
+          document.getElementById('colAD_add').value = ""
+          document.getElementById('colAE_add').value = ""
+          document.getElementById('colAF_add').value = ""
+          document.getElementById('colAG_add').value = ""
+          document.getElementById('colAH_add').value = ""
+          document.getElementById('colAI_add').value = ""
+          document.getElementById('colAJ_add').value = ""
+          document.getElementById('colAK_add').value = ""
+          document.getElementById('colAL_add').value = ""
+          document.getElementById('colAM_add').value = ""
+          document.getElementById('colAN_add').value = ""
+          document.getElementById('colAO_add').value = ""
+          document.getElementById('colAP_add').value = ""
+          document.getElementById('colAQ_add').value = ""
+          document.getElementById('colAR_add').value = ""
+          document.getElementById('colAS_add').value = ""
+          document.getElementById('colAT_add').value = ""
+          document.getElementById('colAU_add').value = ""
+          document.getElementById('colAV_add').value = ""
+          document.getElementById('colAW_add').value = ""
+          document.getElementById('colAX_add').value = ""
+          document.getElementById('colAY_add').value = ""
+          document.getElementById('colAZ_add').value = ""
+          document.getElementById('colBA_add').value = ""
+          document.getElementById('colBB_add').value = ""
+          document.getElementById('colBC_add').value = ""
+          document.getElementById('colBD_add').value = ""
+          document.getElementById('colBE_add').value = ""
+          document.getElementById('colBF_add').value = ""
+          document.getElementById('colBG_add').value = ""
+          document.getElementById('colBH_add').value = ""
+          document.getElementById('colBI_add').value = ""
+          document.getElementById('colBJ_add').value = ""
           document.getElementById('myFile_add').value = ""
           $("#preview").hide()
           document.getElementById('myFile_add_2').value = ""
           $("#preview-2").hide()
-          document.getElementById('myFile_add_3').value = ""
-          $("#preview-3").hide()
-          document.getElementById('myFile_add_4').value = ""
-          $("#preview-4").hide()
-
           loadingEnd()
           $('#myModal-add-form').modal('hide')
           addCompleteAlert()
 
         })
-        .withFailureHandler((err) => {
-          console.error(err)
-          loadingEnd()
-          Swal.fire({
-            title: 'Error',
-            text: err.message,
-            icon: 'error',
-          })
+        .withFailureHandler((er) => {
+          //console.log("Error Adding")
         })
         .addRecord(obj, myFiles)
 
@@ -502,6 +651,51 @@
       obj.colO = document.getElementById('colO_edit').value
       obj.colP = document.getElementById('colP_edit').value
       obj.colQ = document.getElementById('colQ_edit').value
+      obj.colR = document.getElementById('colR_edit').value
+      obj.colS = document.getElementById('colS_edit').value
+      obj.colT = document.getElementById('colT_edit').value
+      obj.colU = document.getElementById('colU_edit').value
+      obj.colV = document.getElementById('colV_edit').value
+      obj.colW = document.getElementById('colW_edit').value
+      obj.colX = document.getElementById('colX_edit').value
+      obj.colY = document.getElementById('colY_edit').value
+      obj.colZ = document.getElementById('colZ_edit').value
+      obj.colAA = document.getElementById('colAA_edit').value
+      obj.colAB = document.getElementById('colAB_edit').value
+      obj.colAC = document.getElementById('colAC_edit').value
+      obj.colAD = document.getElementById('colAD_edit').value
+      obj.colAE = document.getElementById('colAE_edit').value
+      obj.colAF = document.getElementById('colAF_edit').value
+      obj.colAG = document.getElementById('colAG_edit').value
+      obj.colAH = document.getElementById('colAH_edit').value
+      obj.colAI = document.getElementById('colAI_edit').value
+      obj.colAJ = document.getElementById('colAJ_edit').value
+      obj.colAK = document.getElementById('colAK_edit').value
+      obj.colAL = document.getElementById('colAL_edit').value
+      obj.colAM = document.getElementById('colAM_edit').value
+      obj.colAN = document.getElementById('colAN_edit').value
+      obj.colAO = document.getElementById('colAO_edit').value
+      obj.colAP = document.getElementById('colAP_edit').value
+      obj.colAQ = document.getElementById('colAQ_edit').value
+      obj.colAR = document.getElementById('colAR_edit').value
+      obj.colAS = document.getElementById('colAS_edit').value
+      obj.colAT = document.getElementById('colAT_edit').value
+      obj.colAU = document.getElementById('colAU_edit').value
+      obj.colAV = document.getElementById('colAV_edit').value
+      obj.colAW = document.getElementById('colAW_edit').value
+      obj.colAX = document.getElementById('colAX_edit').value
+      obj.colAY = document.getElementById('colAY_edit').value
+      obj.colAZ = document.getElementById('colAZ_edit').value
+      obj.colBA = document.getElementById('colBA_edit').value
+      obj.colBB = document.getElementById('colBB_edit').value
+      obj.colBC = document.getElementById('colBC_edit').value
+      obj.colBD = document.getElementById('colBD_edit').value
+      obj.colBE = document.getElementById('colBE_edit').value
+      obj.colBF = document.getElementById('colBF_edit').value
+      obj.colBG = document.getElementById('colBG_edit').value
+      obj.colBH = document.getElementById('colBH_edit').value
+      obj.colBI = document.getElementById('colBI_edit').value
+      obj.colBJ = document.getElementById('colBJ_edit').value
       obj.myFiles = filedatas
 
       const id = document.getElementById("customer_id_edit").value;
@@ -509,21 +703,11 @@
       console.log(obj)
       google.script.run.withSuccessHandler(function (result) {
         console.log(result)
-        elements.table.updateData([{ ไอดี: id, หัวข้อประกาศ: obj.colC, วันที่ปิดJob: obj.colD, ประเภทตำแหน่ง: obj.colE, ตำแหน่งงาน: obj.colF, จำนวนอัตรา: obj.colG, สังกัดฝ่าย: obj.colH, อัตราเงินเดือน: obj.colI, เงินเพิ่มค่าครองชีพชั่วคราว: obj.colJ, สถานที่สอบข้อเขียน: obj.colK, วันที่สอบข้อเขียน: obj.colL, วันที่ประกาศรับสมัคร: obj.colM, วันที่ประกาศรับสมัครสิ้นสุด: obj.colN, วันที่ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน: obj.colO, วันที่ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์: obj.colP, วันที่ประกาศผลการคัดเลือก: obj.colQ, ประกาศรับสมัคร: result.fileUrl[0], ประกาศรายชื่อผู้มีสิทธิสอบข้อเขียน: result.fileUrl[1], ประกาศรายชื่อผู้มีสิทธิ์สอบสัมภาษณ์: result.fileUrl[2], ประกาศผลการคัดเลือก: result.fileUrl[3] }]); // ----------แก้ 14
+        elements.table.updateData([{ ไอดี: id, คำนำหน้า: obj.colC, ชื่อ: obj.colD, นามสกุล: obj.colE, สัญชาติ: obj.colF, ศาสนา: obj.colG, บัตรประจำตัวประชาชน: obj.colH, จังหวัด: obj.colI, อำเภอเขต: obj.colJ, วันเกิด: obj.colK, สถานภาพสมรส: obj.colL, จังหวัดที่เกิด: obj.colM, อำเภอที่เกิด: obj.colN, ตำบลที่เกิด: obj.colO, บ้านเลขที่: obj.colP, หมู่ที่: obj.colQ, ซอย: obj.colR, ถนน: obj.colS, แขวงตำบล: obj.colT, เขตอำเภอ: obj.colU, จังหวัดที่อยู่: obj.colV, รหัสไปรษณีย์: obj.colW, เบอร์โทรศัพท์: obj.colX, อีเมล์: obj.colY, ชื่อภรรยาหรือสามี: obj.colZ, สัญชาติภรรยาหรือสามี: obj.colAA, ศาสนาภรรยาหรือสามี: obj.colAB, อาชีพภรรยาหรือสามี: obj.colAC, ชื่อบิดา: obj.colAD, สัญชาติบิดา: obj.colAE, ศาสนาบิดา: obj.colAF, อาชีพบิดา: obj.colAG, ชื่อมารดา: obj.colAH, สัญชาติมารดา: obj.colAI, ศาสนามารดา: obj.colAJ, อาชีพมารดา: obj.colAK, วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร: obj.colAL, สาขาวิชา: obj.colAM, วันที่ได้รับอนุมัติผลการศึกษา: obj.colAN, สถาบัน: obj.colAO, ตั้งอยู่จังหวัด: obj.colAP, GPA: obj.colAQ, วุฒิการศึกษาสูงสุด: obj.colAR, ความรู้ความสามารถพิเศษ: obj.colAS, รู้ภาษาต่างประเทศ: obj.colAT, ที่ทำงานล่าสุด: obj.colAU, ตำแหน่งสุดท้าย: obj.colAV, ลักษณะงาน: obj.colAW, เคยรับราชการหรือไม่: obj.colAX, เคยรับราชการเป็นข้าราชการ: obj.colAY, ตำแหน่ง: obj.colAZ, แผนก: obj.colBA, กอง: obj.colBB, กรม: obj.colBC, กระทรวง: obj.colBD, ออกจากราชการเพราะ: obj.colBE, ออกจากราชการเมื่อวันที่: obj.colBF, ได้รับบำเหน็จบำนาญหรือเบี้ยหวัดจากกระทรวง: obj.colBG, เป็นจำนวนเงิน: obj.colBH, ขณะนี้ได้รับเบี้ยหวัด: obj.colBI, บำเหน็จบำนาญที่: obj.colBJ, รูปถ่ายหน้าตรง: result.fileUrl[0], เอกสารหลักฐาน: result.fileUrl[1], หลักฐานชำระค่าสมัครสอบ: result.fileUrl[2] }]); // ----------แก้ 14
         loadingEnd()
         $('#myModal-edit-form').modal('hide')
         editCompleteAlert()
-      })
-        .withFailureHandler((err) => {
-          console.error(err)
-          loadingEnd()
-          Swal.fire({
-            title: 'Error',
-            text: err.message,
-            icon: 'error',
-          })
-        })
-        .editRecord(obj, id)
+      }).editRecord(obj, id)
     };
 
     // DELETE RECORD  **********************************
@@ -543,11 +727,10 @@
     };
 
     function deleteSuccessAlert() {
-      Swal.fire({
-        title: 'การลบข้อมูล!',
-        text: "เรียบร้อยแล้ว",
-        icon: 'success',
-      })
+      Swal.fire(
+        'การลบข้อมูล!',
+        'เรียบร้อยแล้ว'
+      )
     };
 
 
@@ -566,20 +749,18 @@
 
     function addCompleteAlert() {
       loadData()
-      Swal.fire({
-        title: 'เพิ่มข้อมูล!',
-        text: "เรียบร้อยแล้ว",
-        icon: 'success',
-      })
+      Swal.fire(
+        'เพิ่มข้อมูล!',
+        'เรียบร้อยแล้ว'
+      )
     };
 
     function editCompleteAlert() {
       // loadData()
-      Swal.fire({
-        title: 'แก้ไขข้อมูล!',
-        text: "เรียบร้อยแล้ว",
-        icon: 'success',
-      })
+      Swal.fire(
+        'แก้ไขข้อมูล!',
+        'เรียบร้อยแล้ว'
+      )
     };
 
     function clickEventHandler(e) {
@@ -624,29 +805,16 @@
           break;
       }
     }
+
     function searchData(e) {
-      let jobNo = document.getElementById("filter-diagGroup-input").value
       let searchText = document.getElementById("search-input").value.trim()
-      console.log("🚀 ~ searchData ~ jobNo:", jobNo)
       console.log("🚀 ~ searchData ~ searchText:", searchText)
-      if (jobNo != "" && searchText != "") {
+      if (searchText != "") {
         elements.table.setFilter(function (data) {
           return (
-            data["JobNo"] == jobNo && (
-              (data["ตำแหน่งงาน"] && data["ตำแหน่งงาน"].includes(searchText)) ||
-              (data["หัวข้อประกาศ"] && data["หัวข้อประกาศ"].includes(searchText)) ||
-              (data["ประเภทตำแหน่ง"] && data["ประเภทตำแหน่ง"].includes(searchText))
-            )
-          );
-        });
-      } else if (jobNo != "" && searchText == "") {
-        elements.table.setFilter("JobNo", "=", jobNo)
-      } else if (jobNo == "" && searchText != "") {
-        elements.table.setFilter(function (data) {
-          return (
-            (data["ตำแหน่งงาน"] && data["ตำแหน่งงาน"].includes(searchText)) ||
-            (data["หัวข้อประกาศ"] && data["หัวข้อประกาศ"].includes(searchText)) ||
-            (data["ประเภทตำแหน่ง"] && data["ประเภทตำแหน่ง"].includes(searchText))
+            (data["ชื่อ"].toLowerCase().includes(searchText.toLowerCase())) ||
+            (data["นามสกุล"].toLowerCase().includes(searchText.toLowerCase())) ||
+            (data["ตำแหน่ง"].toLowerCase().includes(searchText.toLowerCase()))
           );
         });
       } else {
@@ -654,13 +822,13 @@
       }
     };
 
-
     document.getElementById("app").addEventListener("click", clickEventHandler);
     document.getElementById("search-input").addEventListener("input", searchData);
-    document.getElementById("filter-diagGroup-input").addEventListener("change", searchData);
     document.addEventListener('DOMContentLoaded', pageLoad)
 
   </script>
+
+
 </body>
 
 </html>
