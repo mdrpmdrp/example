@@ -1,9 +1,9 @@
-// 01-04-2026
+// 02-04-2026 15:38
 
 // Setting
 let sheetName = 'Data'
-let header    = 'A2:AC2' // -------------แก้ 1
-let database  = 'A5:AC'  // -------------แก้ 2
+let header = 'A2:AC2' // -------------แก้ 1
+let database = 'A5:AC'  // -------------แก้ 2
 
 function getData() {
   const ws = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
@@ -17,49 +17,51 @@ function getData() {
   }));
 }
 
+
 function doGet() {
   const ws = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]  //Data
-  var list_jobno = ws.getRange(5, 19, ws.getRange("S5").getDataRegion().getLastRow(),1).getValues();
-  var htmlList_jobnoArray = list_jobno.map(function(r){ return '<option>' + r[0] + '</option>'; }).join('');
+  var list_jobno = ws.getRange(5, 19, ws.getRange("S5").getDataRegion().getLastRow(), 1).getValues();
+  var htmlList_jobnoArray = list_jobno.map(function (r) { return '<option>' + r[0] + '</option>'; }).join('');
 
   var template = HtmlService.createTemplateFromFile('index');
 
   template.list_jobno = htmlList_jobnoArray;
 
   return template.evaluate()
-      .setTitle('ประกาศรับสมัครงาน')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);   //responsive
+    .setTitle('ประกาศรับสมัครงาน')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);   //responsive
 }
 
 //เพิ่มข้อมูล
 function addRecord(obj, myFiles) {
   var currentUser = Session.getActiveUser().getEmail();  //Email User
-  var emailAdmin  = "supinya@ku.th, jariya.ph@ku.th"     //Email Address
+  var emailAdmin = "supinya@ku.th, jariya.ph@ku.th"     //Email Address
 
   const ws = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]
-  const data = ws.getRange(5,18,ws.getLastRow(),1).getValues()
+  const data = ws.getRange(5, 18, ws.getLastRow(), 1).getValues()
   let lastRow = ws.getLastRow() + 1;
   var maxNum = 0
-  data.forEach( r => {
-    maxNum = Number(r[0]) > maxNum ? Number(r[0]) : maxNum  })
+  data.forEach(r => {
+    maxNum = Number(r[0]) > maxNum ? Number(r[0]) : maxNum
+  })
 
   var jobnewId = maxNum + 1
-  if(jobnewId < 10){  
-    jobno = "Job.00"+jobnewId
-  } else if(jobnewId >= 10 && jobnewId <100){
-    jobno = "Job.0"+jobnewId
-  } else{
-    jobno = "Job."+jobnewId
+  if (jobnewId < 10) {
+    jobno = "Job.00" + jobnewId
+  } else if (jobnewId >= 10 && jobnewId < 100) {
+    jobno = "Job.0" + jobnewId
+  } else {
+    jobno = "Job." + jobnewId
   }
 
-  colY = '="'+"https://script.google.com/macros/s/AKfycby7B7V2ZVPLb2QoIdpxPN6aOeXF5TrXBiPW1kLzLDZstkyrNlLjLGAZLmOdSjJGDKS_/exec?passbk="+'"'+"&E"+lastRow+"&"+'"'+"&passbl="+'"'+"&F"+lastRow+"&"+'"'+"&passbm="+'"'+"&S"+lastRow+"&"+'""'
+  colY = '="' + "https://script.google.com/macros/s/AKfycby7B7V2ZVPLb2QoIdpxPN6aOeXF5TrXBiPW1kLzLDZstkyrNlLjLGAZLmOdSjJGDKS_/exec?passbk=" + '"' + "&E" + lastRow + "&" + '"' + "&passbl=" + '"' + "&F" + lastRow + "&" + '"' + "&passbm=" + '"' + "&S" + lastRow + "&" + '""'
 
   const newId = Utilities.getUuid();
 
   myFiles = upLoadFile(myFiles)
   while (myFiles.length < 4) myFiles.push("");
-  
+
   ws.appendRow([
     newId,
     new Date(),
@@ -71,16 +73,16 @@ function addRecord(obj, myFiles) {
     obj.colH,
     obj.colI,
     obj.colJ, // -------------แก้ 3
-    obj.colK, 
+    obj.colK,
     obj.colL,
-    obj.colM, 
-    obj.colN, 
+    obj.colM,
+    obj.colN,
     obj.colO,
-    obj.colP, 
+    obj.colP,
     obj.colQ,
     jobnewId,
     jobno,
-    '',    
+    '',
     currentUser,
     emailAdmin,
     '',      //Job Status
@@ -98,19 +100,19 @@ function editRecord(obj, id) {
   const ws = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]
   let col = ws.getLastColumn()
   const custIds = ws.getRange(5, 1, ws.getLastRow() - 4, 1).getDisplayValues().map(r => r[0].toString().toLowerCase());
-  const posIndex = custIds.indexOf(id.toString().toLowerCase());  
+  const posIndex = custIds.indexOf(id.toString().toLowerCase());
   const rowNumber = posIndex === -1 ? 0 : posIndex + 5
-  let myFile  = replaceFile(obj.myFiles.myFile_edit,   ws.getRange(rowNumber, col-3).getValue())
-  let myFile2 = replaceFile(obj.myFiles.myFile_edit_2, ws.getRange(rowNumber, col-2).getValue())
-  let myFile3 = replaceFile(obj.myFiles.myFile_edit_3, ws.getRange(rowNumber, col-1).getValue())
+  let myFile = replaceFile(obj.myFiles.myFile_edit, ws.getRange(rowNumber, col - 3).getValue())
+  let myFile2 = replaceFile(obj.myFiles.myFile_edit_2, ws.getRange(rowNumber, col - 2).getValue())
+  let myFile3 = replaceFile(obj.myFiles.myFile_edit_3, ws.getRange(rowNumber, col - 1).getValue())
   let myFile4 = replaceFile(obj.myFiles.myFile_edit_4, ws.getRange(rowNumber, col).getValue())
-  var colR = ws.getRange(rowNumber,18).getValue()
-  var colS = ws.getRange(rowNumber,19).getValue()
-  var colT = ws.getRange(rowNumber,20).getValue()
-  var colV = ws.getRange(rowNumber,22).getValue()
-  
-  colY = '="'+"https://script.google.com/macros/s/AKfycby7B7V2ZVPLb2QoIdpxPN6aOeXF5TrXBiPW1kLzLDZstkyrNlLjLGAZLmOdSjJGDKS_/exec?passbk="+'"'+"&E"+rowNumber+"&"+'"'+"&passbl="+'"'+"&F"+rowNumber+"&"+'"'+"&passbm="+'"'+"&S"+rowNumber+"&"+'""'
-Logger.log("edit:"+colY)
+  var colR = ws.getRange(rowNumber, 18).getValue()
+  var colS = ws.getRange(rowNumber, 19).getValue()
+  var colT = ws.getRange(rowNumber, 20).getValue()
+  var colV = ws.getRange(rowNumber, 22).getValue()
+
+  colY = '="' + "https://script.google.com/macros/s/AKfycby7B7V2ZVPLb2QoIdpxPN6aOeXF5TrXBiPW1kLzLDZstkyrNlLjLGAZLmOdSjJGDKS_/exec?passbk=" + '"' + "&E" + rowNumber + "&" + '"' + "&passbl=" + '"' + "&F" + rowNumber + "&" + '"' + "&passbm=" + '"' + "&S" + rowNumber + "&" + '""'
+  Logger.log("edit:" + colY)
 
   ws.getRange(rowNumber, 2, 1, col - 1).setValues([[
     new Date(),
@@ -124,16 +126,16 @@ Logger.log("edit:"+colY)
     obj.colJ, // -----------แก้ 4
     obj.colK,
     obj.colL,
-    obj.colM, 
-    obj.colN, 
+    obj.colM,
+    obj.colN,
     obj.colO,
-    obj.colP, 
-    obj.colQ,   
+    obj.colP,
+    obj.colQ,
     colR,
     colS,
-    '',    
+    '',
     currentUser,
-    colV, 
+    colV,
     '',      //Job Status
     '',      //News Show
     colY,
@@ -145,42 +147,49 @@ Logger.log("edit:"+colY)
   return { fileUrl: [myFile, myFile2, myFile3, myFile4] };
 };
 
+function getFileId(url) {
+  if (!url) return null;
+  let fileId = null;
+  if (url.includes('uc?id=')) {
+    fileId = url.split('uc?id=')[1].split('&')[0];
+  } else if (url.includes('/d/')) {
+    fileId = url.split('/d/')[1].split('/')[0];
+  }
+  return fileId;
+
+}
+
 //ลบข้อมูล
 function deleteRecord(props) {
   const ws = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]
   const idCellMatched = ws.getRange("A5:A").createTextFinder(props.id).matchEntireCell(true).matchCase(true).findNext()
   if (idCellMatched === null) throw new Error("No matching record")
   const recordRowNumber = idCellMatched.getRow()
-  let url1 = ws.getRange(recordRowNumber, ws.getLastColumn()-1).getValue()
+  let url1 = ws.getRange(recordRowNumber, ws.getLastColumn() - 1).getValue()
   let url2 = ws.getRange(recordRowNumber, ws.getLastColumn()).getValue()
-  let idFile1 = url1.split('/d/')[1].split('/')[0]
-  let idFile2 = url2.split('/d/')[1].split('/')[0]
-  if(url1 != ''){
-  DriveApp.getFileById(idFile1).setTrashed(true)
+  let idFile1 = getFileId(url1)
+  let idFile2 = getFileId(url2)
+  if (url1 != '') {
+    DriveApp.getFileById(idFile1).setTrashed(true)
   }
-  if(url2 != ''){
-  DriveApp.getFileById(idFile2).setTrashed(true)
+  if (url2 != '') {
+    DriveApp.getFileById(idFile2).setTrashed(true)
   }
-   ws.deleteRow(recordRowNumber)
+  ws.deleteRow(recordRowNumber)
   return true
 }
 
 //อัปโหลดไฟล์
 const FOLDER_ID = '1mfhAFtOd5Yj0LRAKgTTz8kbI9uq35UmH';
 function upLoadFile(filedatas) {
-  if (!filedatas || Object.keys(filedatas).length === 0) return ["","","",""];
-
-
-  let results = ["","","",""]; // fix 4 ช่อง
-
+  if (!filedatas || Object.keys(filedatas).length === 0) return ["", "", "", ""];
+  let results = ["", "", "", ""]; // fix 4 ช่อง
   const keys = Object.keys(filedatas);
-
   keys.forEach((key, index) => {
     const fileData = filedatas[key];
-    let file = SuperScript.uploadFile(FOLDER_ID,fileData.data,fileData.name)
-    results[index] = `https://lh3.googleusercontent.com/d/${file.getId()}`;
+    let file = SuperScript.uploadFile(FOLDER_ID, fileData.data, fileData.name)
+    results[index] = `https://drive.google.com/file/d/${file.getId()}`;
   });
-
   return results;
 }
 
@@ -188,103 +197,107 @@ function upLoadFile(filedatas) {
 function replaceFile(filedata, oldUrl) {
   if (!filedata || !filedata.data) return oldUrl;
 
-  if (oldUrl) {
-    let oldId = oldUrl.split('/d/')[1].split('/')[0];
-    DriveApp.getFileById(oldId).setTrashed(true);
+  if (oldUrl && oldUrl !== '') {
+    let oldId = getFileId(oldUrl);
+    try {
+      DriveApp.getFileById(oldId).setTrashed(true);
+    } catch (e) {
+      Logger.log("Error trashing file: " + e.message);
+    }
   }
 
   let file = SuperScript.uploadFile(FOLDER_ID, filedata.data, filedata.name);
 
-  return `https://lh3.googleusercontent.com/d/${file.getId()}`;
+  return `https://drive.google.com/file/d/${file.getId()}`;
 }
 
 //add
 function getDataList() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet().getSheets()[1] 
+  var ss = SpreadsheetApp.getActiveSpreadsheet().getSheets()[1]
 
-  var data = ss.getRange(1, 1, ss.getRange("A1").getDataRegion().getLastRow(),1).getValues().slice(1);
-  var obj ={}
-      data.forEach(([colA,colB,colC])=>{
-      const firstCol = obj[colA]
-      if(!firstCol){
-          obj[colA] = {}
-          obj[colA][colB] = [colC]
-      }
-    })
+  var data = ss.getRange(1, 1, ss.getRange("A1").getDataRegion().getLastRow(), 1).getValues().slice(1);
+  var obj = {}
+  data.forEach(([colA, colB, colC]) => {
+    const firstCol = obj[colA]
+    if (!firstCol) {
+      obj[colA] = {}
+      obj[colA][colB] = [colC]
+    }
+  })
 
-  var data = ss.getRange(1, 2, ss.getRange("B1").getDataRegion().getLastRow(),1).getValues().slice(1);
-  var obj2 ={}
-      data.forEach(([colA,colB,colC])=>{
-      const firstCol = obj2[colA]
-      if(!firstCol){
-          obj2[colA] = {}
-          obj2[colA][colB] = [colC]
-      }
-    })
+  var data = ss.getRange(1, 2, ss.getRange("B1").getDataRegion().getLastRow(), 1).getValues().slice(1);
+  var obj2 = {}
+  data.forEach(([colA, colB, colC]) => {
+    const firstCol = obj2[colA]
+    if (!firstCol) {
+      obj2[colA] = {}
+      obj2[colA][colB] = [colC]
+    }
+  })
 
-  var data = ss.getRange(1, 3, ss.getRange("C1").getDataRegion().getLastRow(),1).getValues().slice(1);
-  var obj3 ={}
-      data.forEach(([colA,colB,colC])=>{
-      const firstCol = obj3[colA]
-      if(!firstCol){
-          obj3[colA] = {}
-          obj3[colA][colB] = [colC]
-      }
-    })
+  var data = ss.getRange(1, 3, ss.getRange("C1").getDataRegion().getLastRow(), 1).getValues().slice(1);
+  var obj3 = {}
+  data.forEach(([colA, colB, colC]) => {
+    const firstCol = obj3[colA]
+    if (!firstCol) {
+      obj3[colA] = {}
+      obj3[colA][colB] = [colC]
+    }
+  })
 
-  var data = ss.getRange(1, 4, ss.getRange("D1").getDataRegion().getLastRow(),1).getValues().slice(1);
-  var obj4 ={}
-      data.forEach(([colA,colB,colC])=>{
-      const firstCol = obj4[colA]
-      if(!firstCol){
-          obj4[colA] = {}
-          obj4[colA][colB] = [colC]
-      }
-    })
-  return [obj,obj2,obj3,obj4]
+  var data = ss.getRange(1, 4, ss.getRange("D1").getDataRegion().getLastRow(), 1).getValues().slice(1);
+  var obj4 = {}
+  data.forEach(([colA, colB, colC]) => {
+    const firstCol = obj4[colA]
+    if (!firstCol) {
+      obj4[colA] = {}
+      obj4[colA][colB] = [colC]
+    }
+  })
+  return [obj, obj2, obj3, obj4]
 }
 // edit
 function getDataList2() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet().getSheets()[1] 
+  var ss = SpreadsheetApp.getActiveSpreadsheet().getSheets()[1]
 
-  var data = ss.getRange(1, 1, ss.getRange("A1").getDataRegion().getLastRow(),1).getValues().slice(1);
-  var obj ={}
-      data.forEach(([colA,colB,colC])=>{
-      const firstCol = obj[colA]
-      if(!firstCol){
-          obj[colA] = {}
-          obj[colA][colB] = [colC]
-      }
-    })
+  var data = ss.getRange(1, 1, ss.getRange("A1").getDataRegion().getLastRow(), 1).getValues().slice(1);
+  var obj = {}
+  data.forEach(([colA, colB, colC]) => {
+    const firstCol = obj[colA]
+    if (!firstCol) {
+      obj[colA] = {}
+      obj[colA][colB] = [colC]
+    }
+  })
 
-  var data = ss.getRange(1, 2, ss.getRange("B1").getDataRegion().getLastRow(),1).getValues().slice(1);
-  var obj2 ={}
-      data.forEach(([colA,colB,colC])=>{
-      const firstCol = obj2[colA]
-      if(!firstCol){
-          obj2[colA] = {}
-          obj2[colA][colB] = [colC]
-      }
-    })
+  var data = ss.getRange(1, 2, ss.getRange("B1").getDataRegion().getLastRow(), 1).getValues().slice(1);
+  var obj2 = {}
+  data.forEach(([colA, colB, colC]) => {
+    const firstCol = obj2[colA]
+    if (!firstCol) {
+      obj2[colA] = {}
+      obj2[colA][colB] = [colC]
+    }
+  })
 
-  var data = ss.getRange(1, 3, ss.getRange("C1").getDataRegion().getLastRow(),1).getValues().slice(1);
-  var obj3 ={}
-      data.forEach(([colA,colB,colC])=>{
-      const firstCol = obj3[colA]
-      if(!firstCol){
-          obj3[colA] = {}
-          obj3[colA][colB] = [colC]
-      }
-    })
+  var data = ss.getRange(1, 3, ss.getRange("C1").getDataRegion().getLastRow(), 1).getValues().slice(1);
+  var obj3 = {}
+  data.forEach(([colA, colB, colC]) => {
+    const firstCol = obj3[colA]
+    if (!firstCol) {
+      obj3[colA] = {}
+      obj3[colA][colB] = [colC]
+    }
+  })
 
-  var data = ss.getRange(1, 4, ss.getRange("D1").getDataRegion().getLastRow(),1).getValues().slice(1);
-  var obj4 ={}
-      data.forEach(([colA,colB,colC])=>{
-      const firstCol = obj4[colA]
-      if(!firstCol){
-          obj4[colA] = {}
-          obj4[colA][colB] = [colC]
-      }
-    })
-  return [obj,obj2,obj3,obj4]
+  var data = ss.getRange(1, 4, ss.getRange("D1").getDataRegion().getLastRow(), 1).getValues().slice(1);
+  var obj4 = {}
+  data.forEach(([colA, colB, colC]) => {
+    const firstCol = obj4[colA]
+    if (!firstCol) {
+      obj4[colA] = {}
+      obj4[colA][colB] = [colC]
+    }
+  })
+  return [obj, obj2, obj3, obj4]
 }
