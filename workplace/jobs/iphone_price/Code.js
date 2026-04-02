@@ -1,8 +1,8 @@
 var SS = SpreadsheetApp.getActiveSpreadsheet();
 
 // Column counts for known price sheets — avoids reading unused columns
-var _SHEET_COLS    = { 'ผ่อน': 8, 'มือสอง': 8, 'Freedown': 8, 'ซื้อสด': 4, 'สดvnphone': 4 };
-var _INSTALLMENT   = { 'ผ่อน': true, 'มือสอง': true, 'Freedown': true };
+var _SHEET_COLS = { 'ผ่อน': 8, 'มือสอง': 8, 'Freedown': 8, 'ซื้อสด': 4, 'สดvnphone': 4 };
+var _INSTALLMENT = { 'ผ่อน': true, 'มือสอง': true, 'Freedown': true };
 
 // ---------- Serve Web App ----------
 function getLogoBase64() {
@@ -14,12 +14,15 @@ function getLogoBase64() {
   }
 }
 
-function doGet() {
-  var html = HtmlService.createTemplateFromFile('index');
+function doGet(e) {
+  let page = e.parameter.page || 'index';
+  if (page === 'stockreq') page = 'stock_request';
+  var html = HtmlService.createTemplateFromFile(page);
   html.priceData = getPriceData();
-  html.logoB64    = getLogoBase64();
+  html.logoB64 = getLogoBase64();
+  var title = (page === 'stock_request') ? 'Stock Request System' : 'Mobile Price Checker';
   return html.evaluate()
-    .setTitle('Mobile Price Checker')
+    .setTitle(title)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .setSandboxMode(HtmlService.SandboxMode.IFRAME)
     .setFaviconUrl('https://img2.pic.in.th/LOGO-VN-PHONE--edit_1.png')
@@ -36,7 +39,7 @@ function sheetData(sheetName) {
   if (last < 2) return [];
   // Read only the columns we actually need
   var cols = _SHEET_COLS[sheetName] || sheet.getLastColumn();
-  var all  = sheet.getRange(2, 1, last - 1, cols).getValues();
+  var all = sheet.getRange(2, 1, last - 1, cols).getValues();
   var result;
   if (_INSTALLMENT[sheetName]) {
     // Avoid .some() + array literal on every row; use explicit OR checks
@@ -55,8 +58,8 @@ function sheetData(sheetName) {
   return result;
 }
 
-function jsonSuccess(data) { return JSON.stringify({ status: 'ok',    data: data }); }
-function jsonError(msg)    { return JSON.stringify({ status: 'error', message: msg }); }
+function jsonSuccess(data) { return JSON.stringify({ status: 'ok', data: data }); }
+function jsonError(msg) { return JSON.stringify({ status: 'error', message: msg }); }
 
 // ---------- Trigger ----------
 function onStatusEdit(e) {
@@ -70,13 +73,13 @@ function onStatusEdit(e) {
   // One batch read instead of 6 individual getValue() round-trips
   var vals = sheet.getRange(range.getRow(), 1, 1, 7).getValues()[0];
   var user = {
-    company:   String(vals[0]),
+    company: String(vals[0]),
     firstName: String(vals[1]),
-    lastName:  String(vals[2]),
-    nickname:  String(vals[3]),
-    email:     String(vals[4]),
-    phone:     String(vals[5]),
-    status:    status
+    lastName: String(vals[2]),
+    nickname: String(vals[3]),
+    email: String(vals[4]),
+    phone: String(vals[5]),
+    status: status
   };
   sendApprovalEmail(user);
   logEvent('Status Change to ' + status, user);
@@ -158,7 +161,8 @@ function registerUser(payload) {
       p.email,
       "'" + p.phone,
       'Pending',
-      new Date()
+      new Date(),
+      "no role"
     ]);
 
     // Log the event
@@ -172,7 +176,8 @@ function registerUser(payload) {
       email: p.email,
       phone: p.phone,
       status: 'Pending',
-      createdAt: new Date()
+      createdAt: new Date(),
+      role: 'no role'
     });
   } catch (e) {
     return jsonError(e.message);
@@ -253,25 +258,30 @@ function loginUser(payload) {
 
     var emailLower = String(p.email).toLowerCase();
     var phonStr = String(p.phone);
-    
+
     // Read only needed columns (0-6) instead of entire range
     var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
-    
+
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
       // Early exit if email doesn't match
       if (String(row[4]).toLowerCase() !== emailLower) continue;
       // Check phone after email match
       if (String(row[5]) !== phonStr) continue;
-      
+
       var status = String(row[6]);
+      var role = String(row[7] || 'User');
       if (status === 'Pending') {
         return jsonError('บัญชีผู้ใช้อยู่ระหว่างการตรวจสอบ กรุณาติดต่อเจ้าหน้าที่');
       }
       if (status === 'Blocked') {
         return jsonError('บัญชีผู้ใช้ถูกระงับ กรุณาติดต่อเจ้าหน้าที่');
       }
-      
+
+      if(role !== 'User' && role !== 'Admin') {
+        return jsonError('บัญชีนี้ ไม่มีสิทธิ์เข้าถึงระบบนี้ กรุณาติดต่อเจ้าหน้าที่');
+      }
+
       var user = {
         company: String(row[0]),
         firstName: String(row[1]),
@@ -279,7 +289,8 @@ function loginUser(payload) {
         nickname: String(row[3]),
         email: String(row[4]),
         phone: String(row[5]),
-        status: status
+        status: status,
+        role: role
       };
       logEvent('Login', user);
       return jsonSuccess(user);
@@ -300,17 +311,204 @@ function logLogout(payload) {
   }
 }
 
+// ── Stock Request sheet helper ────────────────────────────────────────────
+function getStockRequestSheet() {
+  var sheet = SS.getSheetByName('StockRequests');
+  if (!sheet) {
+    sheet = SS.insertSheet('StockRequests');
+    sheet.appendRow([
+      'DocNo', 'Date', 'Priority', 'Branch', 'Requester', 'Responsible',
+      'Items (JSON)', 'Status', 'AdminNote', 'SubmittedBy', 'CreatedAt', 'UpdatedAt'
+    ]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function generateDocNo() {
+  var sheet = getStockRequestSheet();
+  var last = sheet.getLastRow();
+  var seq = last; // rows including header
+  var prefix = 'SR' + moment_format();
+  // Use simple incrementing padded number based on total rows
+  return prefix + String(seq).padStart(4, '0');
+}
+
+function moment_format() {
+  // Returns YYYYMM string without moment.js (GAS runtime)
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  return y + '' + m;
+}
+
+// ---------- Save/Create Stock Request ----------
+function saveStockRequest(payload) {
+  try {
+    var p = JSON.parse(payload);
+    var sheet = getStockRequestSheet();
+    var docNo;
+
+    if (p.docNo) {
+      // Update existing
+      docNo = p.docNo;
+      var data = sheet.getDataRange().getValues();
+      var found = false;
+      for (var i = 1; i < data.length; i++) {
+        if (String(data[i][0]) === docNo) {
+          sheet.getRange(i + 1, 3, 1, 6).setValues([[
+            p.priority, p.branch, p.requester, p.responsible,
+            JSON.stringify(p.items), p.date
+          ]]);
+          sheet.getRange(i + 1, 12).setValue(new Date());
+          found = true;
+          break;
+        }
+      }
+      if (!found) return jsonError('ไม่พบเอกสารเลขที่ ' + docNo);
+    } else {
+      // Create new
+      docNo = generateDocNo();
+      sheet.appendRow([
+        docNo,
+        p.date,
+        p.priority,
+        p.branch,
+        p.requester,
+        p.responsible,
+        JSON.stringify(p.items),
+        'Pending',
+        '',
+        p.submittedBy,
+        new Date(),
+        new Date()
+      ]);
+    }
+
+    logEvent('StockRequest Submit: ' + docNo + ' | ' + p.branch + ' | ' + (p.items || []).length + ' items',
+      { nickname: p.nickname || '', firstName: p.firstName || p.nickname || '', email: p.submittedBy || '' });
+    return jsonSuccess({ docNo: docNo });
+  } catch (e) {
+    return jsonError(e.message);
+  }
+}
+
+// ---------- Get My Stock Requests ----------
+function getMyStockRequests(payload) {
+  try {
+    var p = JSON.parse(payload);
+    var sheet = getStockRequestSheet();
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return jsonSuccess([]);
+    var data = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
+    var email = String(p.email).toLowerCase();
+    var result = [];
+    for (var i = 0; i < data.length; i++) {
+      if (String(data[i][9]).toLowerCase() === email) {
+        result.push(rowToRequest(data[i]));
+      }
+    }
+    result.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+    return jsonSuccess(result);
+  } catch (e) {
+    return jsonError(e.message);
+  }
+}
+
+// ---------- Get All Stock Requests (Admin) ----------
+function getAllStockRequests(payload) {
+  try {
+    var p = JSON.parse(payload);
+    var sheet = getStockRequestSheet();
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return jsonSuccess([]);
+    var data = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
+    var filterStatus = (p.filterStatus || '').trim();
+    var result = [];
+    for (var i = 0; i < data.length; i++) {
+      var req = rowToRequest(data[i]);
+      if (!filterStatus || req.status === filterStatus) result.push(req);
+    }
+    result.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+    return jsonSuccess(result);
+  } catch (e) {
+    return jsonError(e.message);
+  }
+}
+
+// ---------- Get Single Request by DocNo ----------
+function getStockRequestByDocNo(payload) {
+  try {
+    var p = JSON.parse(payload);
+    var sheet = getStockRequestSheet();
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return jsonError('ไม่พบเอกสาร');
+    var data = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (String(data[i][0]) === String(p.docNo)) {
+        return jsonSuccess(rowToRequest(data[i]));
+      }
+    }
+    return jsonError('ไม่พบเอกสารเลขที่ ' + p.docNo);
+  } catch (e) {
+    return jsonError(e.message);
+  }
+}
+
+// ---------- Admin: Update Approval ----------
+function updateStockRequestApproval(payload) {
+  try {
+    var p = JSON.parse(payload);
+    var sheet = getStockRequestSheet();
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(p.docNo)) {
+        sheet.getRange(i + 1, 7).setValue(JSON.stringify(p.items));
+        sheet.getRange(i + 1, 8).setValue(p.status);
+        sheet.getRange(i + 1, 9).setValue(p.adminNote || '');
+        sheet.getRange(i + 1, 12).setValue(new Date());
+        logEvent('StockRequest Approval: ' + p.docNo + ' -> ' + p.status,
+          { nickname: p.adminNickname || '', firstName: p.adminNickname || '', email: p.adminEmail || '' });
+        return jsonSuccess({ docNo: p.docNo, status: p.status });
+      }
+    }
+    return jsonError('ไม่พบเอกสารเลขที่ ' + p.docNo);
+  } catch (e) {
+    return jsonError(e.message);
+  }
+}
+
+// ── Row → Object helper ───────────────────────────────────────────────────
+function rowToRequest(row) {
+  var items = [];
+  try { items = JSON.parse(String(row[6]) || '[]'); } catch(e) {}
+  return {
+    docNo: String(row[0]),
+    date: row[1] instanceof Date ? Utilities.formatDate(row[1], Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(row[1]),
+    priority: String(row[2]),
+    branch: String(row[3]),
+    requester: String(row[4]),
+    responsible: String(row[5]),
+    items: items,
+    status: String(row[7]),
+    adminNote: String(row[8]),
+    submittedBy: String(row[9]),
+    createdAt: row[10] instanceof Date ? row[10].toISOString() : String(row[10]),
+    updatedAt: row[11] instanceof Date ? row[11].toISOString() : String(row[11])
+  };
+}
+
 function getPriceData() {
   try {
-    var result = { 'ผ่อน': {}, 'มือสอง': {}, 'Freedown': {}, 'ซื้อสด': {}, 'สดvnphone': {} };
+    var result = { 'ผ่อน': {}, 'มือสอง': {}, 'Freedown': {}, 'ซื้อสด': {}, 'สดvnphone': {}, vn_stock: {} };
 
     // Installment sheets: brand | model | storage | down | 6mo | 8mo | 10mo | 12mo
     ['ผ่อน', 'มือสอง', 'Freedown'].forEach(function (sn) {
       var bucket = result[sn];
       sheetData(sn).forEach(function (r) {
         var b = String(r[0]), m = String(r[1]), s = String(r[2]);
-        if (!bucket[b])       bucket[b]    = {};
-        if (!bucket[b][m])    bucket[b][m] = {};
+        if (!bucket[b]) bucket[b] = {};
+        if (!bucket[b][m]) bucket[b][m] = {};
         if (!bucket[b][m][s]) bucket[b][m][s] = [];
         bucket[b][m][s].push({ down: Number(r[3]), m6: Number(r[4]), m8: Number(r[5]), m10: Number(r[6]), m12: Number(r[7]) });
       });
@@ -319,25 +517,28 @@ function getPriceData() {
     // ซื้อสด: brand | model | storage | price
     // Read H1 (MDM+service fee) and H2 (delivery fee) in one batch call
     var scSheet = SS.getSheetByName('ซื้อสด');
-    var scFees = scSheet ? scSheet.getRange(1, 8, 2, 1).getValues() : [[0],[0]];
-    result.scMdmFee      = Number(scFees[0][0]) || 0;
+    var scFees = scSheet ? scSheet.getRange(1, 8, 2, 1).getValues() : [[0], [0]];
+    result.scMdmFee = Number(scFees[0][0]) || 0;
     result.scDeliveryFee = Number(scFees[1][0]) || 0;
     var sc = result['ซื้อสด'];
     sheetData('ซื้อสด').forEach(function (r) {
       var b = String(r[0]), m = String(r[1]), s = String(r[2]), price = Number(r[3]);
       if (!price || isNaN(price)) return;
-      if (!sc[b])    sc[b]    = {};
+      if (!sc[b]) sc[b] = {};
       if (!sc[b][m]) sc[b][m] = {};
       sc[b][m][s] = price;
     });
 
-    var vn = result['สดvnphone'];
+    var vn = result['สดvnphone'], vn_stock = result['vn_stock'];
     sheetData('สดvnphone').forEach(function (r) {
-      var b = String(r[0]), m = String(r[1]), s = String(r[2]), price = Number(r[3]);
+      var b = String(r[0]), m = String(r[1]), s = String(r[2]), price = Number(r[3]), stock = Number(r[5]);
       if (!price || isNaN(price)) return;
-      if (!vn[b])    vn[b]    = {};
+      if (!vn[b]) vn[b] = {};
+      if(!vn_stock[b]) vn_stock[b] = {};
       if (!vn[b][m]) vn[b][m] = {};
+      if (!vn_stock[b][m]) vn_stock[b][m] = {};
       vn[b][m][s] = price;
+      vn_stock[b][m][s] = stock;
     });
 
     return jsonSuccess(result);
