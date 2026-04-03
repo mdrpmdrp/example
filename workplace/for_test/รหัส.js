@@ -1,4 +1,4 @@
-// 02/04/2026 22:25
+// 03/04/2026 23:38.
 
 // Setting
 let sheetName = 'Data'
@@ -161,12 +161,12 @@ function editRecord(obj, id) {
   if (obj.colBI == "" || obj.colBI == null) { var colBI = "-" } else { var colBI = obj.colBI }
   if (obj.colBJ == "" || obj.colBJ == null) { var colBJ = "-" } else { var colBJ = obj.colBJ }
 
-  var colBK = ws.getRange(ws.getLastRow(), 63).getValue()
-  var colBL = ws.getRange(ws.getLastRow(), 64).getValue()
-  var colBM = ws.getRange(ws.getLastRow(), 65).getValue()
-  var colBN = ws.getRange(ws.getLastRow(), 66).getValue()
-  var colBO = ws.getRange(ws.getLastRow(), 67).getValue()
-  var colBP = ws.getRange(ws.getLastRow(), 68).getValue()
+  var colBK = ws.getRange(rowNumber, 63).getValue()
+  var colBL = ws.getRange(rowNumber, 64).getValue()
+  var colBM = ws.getRange(rowNumber, 65).getValue()
+  var colBN = ws.getRange(rowNumber, 66).getValue()
+  var colBO = ws.getRange(rowNumber, 67).getValue()
+  var colBP = ws.getRange(rowNumber, 68).getValue()
   var colBQ = new Date(obj.colK)
   var fbq = colBQ.toLocaleDateString("th-TH", { day: "numeric" }) + " เดือน " + colBQ.toLocaleDateString("th-TH", { month: "long" }) + " " + colBQ.toLocaleDateString("th-TH", { year: "numeric" })
   //อายุ
@@ -203,15 +203,15 @@ function editRecord(obj, id) {
     var fbt = colBT.toLocaleDateString("th-TH", { day: "numeric" }) + " เดือน " + colBT.toLocaleDateString("th-TH", { month: "long" }) + " " + colBT.toLocaleDateString("th-TH", { year: "numeric" })
   }
 
-  var colBU = ws.getRange(ws.getLastRow(), 73).getValue()
-  var colBV = ws.getRange(ws.getLastRow(), 74).getValue()
-  var colBW = ws.getRange(ws.getLastRow(), 75).getValue()
-  var colBX = ws.getRange(ws.getLastRow(), 76).getValue()
-  var colBY = ws.getRange(ws.getLastRow(), 77).getValue()
-  var colBZ = ws.getRange(ws.getLastRow(), 78).getValue()
-  var colCA = ws.getRange(ws.getLastRow(), 79).getValue()
-  var colCB = ws.getRange(ws.getLastRow(), 80).getValue()
-  var colCC = ws.getRange(ws.getLastRow(), 81).getValue()
+  var colBU = ws.getRange(rowNumber, 73).getValue()
+  var colBV = ws.getRange(rowNumber, 74).getValue()
+  var colBW = ws.getRange(rowNumber, 75).getValue()
+  var colBX = ws.getRange(rowNumber, 76).getValue()
+  var colBY = ws.getRange(rowNumber, 77).getValue()
+  var colBZ = ws.getRange(rowNumber, 78).getValue()
+  var colCA = ws.getRange(rowNumber, 79).getValue()
+  var colCB = ws.getRange(rowNumber, 80).getValue()
+  var colCC = ws.getRange(rowNumber, 81).getValue()
   var colB = Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")
 
   ws.getRange(rowNumber, 2, 1, col - 1).setValues([[
