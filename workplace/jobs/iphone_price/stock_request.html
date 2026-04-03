@@ -133,6 +133,7 @@
     .swal-confirm { background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; border-radius: 0.6rem !important; font-family: 'Noto Sans Thai', sans-serif !important; }
     .swal-cancel { background: #334155 !important; color: #f1f5f9 !important; border-radius: 0.6rem !important; font-family: 'Noto Sans Thai', sans-serif !important; }
     .swal-timer { background: rgba(148,163,184,0.25) !important; }
+    .swal-close-btn { color: #94a3b8 !important; font-size: 1.2rem !important; }
 
     /* Stat card */
     .stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; padding: 1.25rem 1.5rem; }
@@ -141,6 +142,16 @@
     .nav-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 500; color: #94a3b8; cursor: pointer; transition: all 0.15s; }
     .nav-link:hover { background: #1e293b; color: #f1f5f9; }
     .nav-link.active { background: linear-gradient(135deg, #2563eb, #60a5fa); color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.45); }
+
+    /* Notification badge */
+    .notif-badge { display: inline-flex; align-items: center; justify-content: center; background: #ef4444; color: #fff; font-size: 0.65rem; font-weight: 700; border-radius: 999px; min-width: 18px; height: 18px; padding: 0 5px; line-height: 1; margin-left: 2px; }
+
+    /* Updated row highlight */
+    .row-updated { background: rgba(234, 179, 8, 0.07) !important; border-left: 3px solid #eab308; }
+
+    /* Poll countdown bar */
+    #poll-countdown-wrap { height: 1px; background: #1e293b; border-radius: 2px; margin-bottom: 1.25rem; overflow: hidden; }
+    #poll-countdown-bar { height: 100%; background: linear-gradient(90deg, #2563eb, #60a5fa); border-radius: 2px; width: 100%; transition: width 0.25s linear; }
   </style>
 </head>
 
@@ -258,16 +269,21 @@
 
     <div class="max-w-7xl mx-auto px-4 md:px-6 py-6">
       <!-- Page Nav Tabs -->
-      <div class="flex gap-2 mb-6 flex-wrap">
+      <div class="flex gap-2 mb-2 flex-wrap">
         <button id="nav-admin-panel" class="nav-link hidden" onclick="showDashTab('admin-panel')">
           <i data-lucide="shield-check" class="w-4 h-4"></i> จัดการคำขอ (Admin)
+          <span id="badge-admin" class="notif-badge hidden">0</span>
         </button>
         <button id="nav-my-requests" class="nav-link active" onclick="showDashTab('my-requests')">
           <i data-lucide="file-text" class="w-4 h-4"></i> คำขอของฉัน
+          <span id="badge-user" class="notif-badge hidden">0</span>
         </button>
         <button id="nav-new-request" class="nav-link" onclick="openNewRequestModal()">
           <i data-lucide="plus-circle" class="w-4 h-4"></i> สร้างคำขอใหม่
         </button>
+      </div>
+      <div id="poll-countdown-wrap" class="hidden">
+        <div id="poll-countdown-bar"></div>
       </div>
 
       <!-- ── MY REQUESTS TAB ── -->
@@ -576,6 +592,13 @@
   var currentUser = null;
   var _editingRequestId = null; // null = new, string = editing
 
+  // ── Background polling state ──────────────────────────────────
+  var _pollTimer = null;
+  var _pollInterval = 60 * 1000;
+  var _knownAdminDocNos = null;   // string[] baseline for admin
+  var _knownUserStatuses = null;  // { docNo: status } baseline for user
+  var _updatedUserDocNos = {};    // set of docNos that have changed status
+
   function saveSession(user) {
     var expiresAt = Date.now() + SESSION_DURATION;
     try { localStorage.setItem(SESSION_KEY, JSON.stringify({ user: user, expiresAt: expiresAt })); } catch(e){}
@@ -603,8 +626,8 @@
 
   // ── Swal / Toast ───────────────────────────────────────────────
   var _swalDef = {
-    toast: true, position: 'top', showConfirmButton: false, timer: 3000, timerProgressBar: true,
-    customClass: { popup:'swal-popup', title:'swal-title', htmlContainer:'swal-html', timerProgressBar:'swal-timer' }
+    toast: true, position: 'top-end', showConfirmButton: false, showCloseButton: true,
+    customClass: { popup:'swal-popup', title:'swal-title', htmlContainer:'swal-html', closeButton:'swal-close-btn' }
   };
   function showToast(msg, type) {
     var iconMap = { success:'success', error:'error', warning:'warning', info:'info' };
@@ -701,23 +724,33 @@
   }
 
   function afterLogin() {
+    // reset poll state on every login
+    stopPolling();
+    _knownAdminDocNos = null; _knownUserStatuses = null; _updatedUserDocNos = {};
+    $('#badge-admin').text('0').addClass('hidden');
+    $('#badge-user').text('0').addClass('hidden');
     $('#nav-username').text('คุณ' + currentUser.nickname);
     $('#nav-branch').text('(' + currentUser.company + ')');
     if (currentUser.role === 'Admin') {
       $('#nav-admin-panel').removeClass('hidden');
-      $('#nav-my-requests').addClass('hidden');                             
+      $('#nav-my-requests').addClass('hidden');    
+      showSection('sec-dashboard');
+      showDashTab('admin-panel');
+      loadAllRequests();                         
     } else {
       $('#nav-admin-panel').addClass('hidden');
       $('#nav-my-requests').removeClass('hidden');
+      showSection('sec-dashboard');
+      showDashTab('my-requests');
+      loadMyRequests();
     }
-    showSection('sec-dashboard');
-    showDashTab('my-requests');
-    loadMyRequests();
   }
 
   function doLogout() {
     showToast('ออกจากระบบแล้ว','info');
     if (currentUser) gasCall('logLogout', JSON.stringify(currentUser), function(){});
+    stopPolling();
+    _knownAdminDocNos = null; _knownUserStatuses = null; _updatedUserDocNos = {};
     clearSession(); currentUser = null;
     showSection('sec-auth');
     switchTab('login');
@@ -911,6 +944,18 @@
     gasCall('getMyStockRequests', JSON.stringify({ email: currentUser.email }), function(res) {
       if (res.status !== 'ok') { showToast(res.message,'error'); return; }
       var requests = res.data || [];
+      if (_knownUserStatuses === null) {
+        // first load after login — set baseline then start polling
+        _knownUserStatuses = {};
+        requests.forEach(function(r){ _knownUserStatuses[r.docNo] = r.status; });
+        startPolling();
+      } else {
+        // explicit refresh — update baseline and clear badge/highlights
+        _knownUserStatuses = {};
+        requests.forEach(function(r){ _knownUserStatuses[r.docNo] = r.status; });
+        _updatedUserDocNos = {};
+        $('#badge-user').text('0').addClass('hidden');
+      }
       updateUserStats(requests);
       renderMyRequests(requests);
     });
@@ -934,7 +979,7 @@
       if ((r.items||[]).length > 2) summary += ' +' + ((r.items||[]).length - 2) + ' รายการ';
       html += '<tr>'
         + '<td class="font-mono text-blue-300 text-xs">'+escHtml(r.docNo)+'</td>'
-        + '<td class="text-slate-400 text-xs whitespace-nowrap">'+moment(r.date).format('D MMM YY')+'</td>'
+        + '<td class="text-slate-400 text-xs whitespace-nowrap">'+moment(r.date).format('D MMM YY')+'<br><span style="font-size:0.68rem;color:#64748b">'+moment(r.date).fromNow()+'</span></td>'
         + '<td>'+priorityBadge(r.priority)+'</td>'
         + '<td class="text-sm">'+escHtml(r.branch)+'</td>'
         + '<td class="text-slate-300 text-xs max-w-[180px] truncate" title="'+escHtml(summary)+'">'+escHtml(summary)+'</td>'
@@ -945,6 +990,7 @@
     });
     $('#my-requests-tbody').html(html);
     lucide.createIcons({ el: document.getElementById('my-requests-tbody') });
+    highlightUpdatedRows();
   }
 
   // ── Load All Requests (Admin) ─────────────────────────────────
@@ -954,6 +1000,15 @@
     gasCall('getAllStockRequests', JSON.stringify({ filterStatus: filterStatus }), function(res) {
       if (res.status !== 'ok') { showToast(res.message,'error'); return; }
       var requests = res.data || [];
+      if (_knownAdminDocNos === null) {
+        // first load after login — set baseline then start polling
+        _knownAdminDocNos = requests.map(function(r){ return r.docNo; });
+        startPolling();
+      } else {
+        // explicit refresh — update baseline and clear badge
+        _knownAdminDocNos = requests.map(function(r){ return r.docNo; });
+        $('#badge-admin').text('0').addClass('hidden');
+      }
       updateAdminStats(requests);
       renderAllRequests(requests);
     });
@@ -977,7 +1032,7 @@
       if ((r.items||[]).length > 2) summary += ' +' + ((r.items||[]).length - 2);
       html += '<tr>'
         + '<td class="font-mono text-blue-300 text-xs">'+escHtml(r.docNo)+'</td>'
-        + '<td class="text-slate-400 text-xs whitespace-nowrap">'+moment(r.date).format('D MMM YY')+'</td>'
+        + '<td class="text-slate-400 text-xs whitespace-nowrap">'+moment(r.date).format('D MMM YY')+'<br><span style="font-size:0.68rem;color:#64748b">'+moment(r.date).fromNow()+'</span></td>'
         + '<td>'+priorityBadge(r.priority)+'</td>'
         + '<td class="text-sm">'+escHtml(r.branch)+'</td>'
         + '<td class="text-slate-300 text-xs">'+escHtml(r.requester)+'</td>'
@@ -994,6 +1049,18 @@
   // ── View / Admin Request ──────────────────────────────────────
   var _viewingRequest = null;
   function viewRequest(docNo) {
+    // Remove highlight from this row and clear from tracking set
+    $('#my-requests-tbody tr').each(function() {
+      if ($(this).find('td:first').text().trim() === docNo) {
+        $(this).removeClass('row-updated');
+      }
+    });
+    delete _updatedUserDocNos[docNo];
+    // Update badge count
+    var remaining = Object.keys(_updatedUserDocNos).length;
+    if (remaining > 0) { $('#badge-user').text(remaining); }
+    else { $('#badge-user').text('0').addClass('hidden'); }
+
     $('#view-modal-title').html('กำลังโหลด...');
     $('#view-modal-body').html(
       '<div class="flex flex-col items-center justify-center py-16 gap-4">'
@@ -1037,9 +1104,10 @@
       + '<th class="text-center">Stock สาขา</th><th class="text-center">อนุมัติ/ส่งจริง</th><th>หมายเหตุ</th>'
       + '</tr></thead><tbody>';
     (r.items||[]).forEach(function(it) {
-      console.log("🚀 ~ renderViewModal ~ it:", it)
+      var itPrice = getItemPrice(it.brand, it.model, it.storage);
+      var itPriceHtml = itPrice ? '<br><span class="text-xs text-yellow-400 font-normal">฿'+Number(itPrice).toLocaleString()+'</span>' : '';
       itemsHtml += '<tr>'
-        + '<td class="font-medium text-sm">'+escHtml(it.desc)+'</td>'
+        + '<td class="font-medium text-sm">'+escHtml(it.desc)+itPriceHtml+'</td>'
         + '<td class="text-center"><span class="'+(it.stockQty>0?'text-emerald-400':'text-slate-500')+' font-semibold text-sm">'+it.stockQty+'</span></td>'
         + '<td class="text-center font-bold text-blue-300">'+it.reqQty+'</td>'
         + '<td class="text-center text-slate-400">'+it.ownStock+'</td>'
@@ -1060,8 +1128,10 @@
       // Build approve tbody
       var tbody = '';
       (r.items||[]).forEach(function(it, idx) {
+        var itPrice = getItemPrice(it.brand, it.model, it.storage);
+        var itPriceHtml = itPrice ? '<br><span class="text-xs text-yellow-400 font-normal">฿'+Number(itPrice).toLocaleString()+'</span>' : '';
         tbody += '<tr>'
-          + '<td class="text-sm font-medium">'+escHtml(it.desc)+'</td>'
+          + '<td class="text-sm font-medium">'+escHtml(it.desc)+itPriceHtml+'</td>'
           + '<td class="text-center font-bold text-blue-300">'+it.reqQty+'</td>'
           + '<td class="text-center text-slate-400">'+it.ownStock+'</td>'
           + '<td class="text-center">'+escHtml(it.remark||'')+'</td>'
@@ -1125,9 +1195,9 @@
   // ── Print Purchase Request ────────────────────────────────────
   function getItemPrice(brand, model, storage) {
     try {
-      var p = PRICE_DATA.data;
-      if (p.prices && p.prices[brand] && p.prices[brand][model] && p.prices[brand][model][storage] !== undefined)
-        return p.prices[brand][model][storage];
+      var vn = PRICE_DATA && PRICE_DATA.data && PRICE_DATA.data['สดvnphone'];
+      if (vn && vn[brand] && vn[brand][model] && vn[brand][model][storage] !== undefined)
+        return vn[brand][model][storage];
     } catch(e){}
     return null;
   }
@@ -1145,7 +1215,8 @@
       itemRows += '<tr>'
         + '<td style="text-align:center;width:40px">'+(i+1)+'</td>'
         + '<td>'+nameTd+'</td>'
-        + '<td style="text-align:right;white-space:nowrap">'+(price !== null ? Number(price).toLocaleString() : '—')+'</td>'
+        + '<td style="text-align:center;width:70px">'+it.reqQty+'</td>'
+        + '<td style="text-align:right;white-space:nowrap;width:110px">'+(price !== null ? Number(price).toLocaleString() : '—')+'</td>'
         + '<td>'+escHtml(it.adminRemark||'')+'</td>'
         + '</tr>';
     });
@@ -1156,7 +1227,7 @@
       + '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">'
       + '<style>'
       + '* { font-family: "Noto Sans Thai", sans-serif; box-sizing: border-box; }'
-      + 'body { margin: 0; padding: 28px 36px; color: #1e293b; font-size: 13px; }'
+      + 'body { margin: 0; padding: 48px 36px; color: #1e293b; font-size: 13px; }'
       + '.header { display: flex; align-items: center; gap: 18px; border-bottom: 2px solid #1e40af; padding-bottom: 14px; margin-bottom: 18px; }'
       + '.header-text h1 { margin: 0; font-size: 20px; font-weight: 700; color: #1e3a8a; }'
       + '.header-text p { margin: 4px 0 0; font-size: 12px; color: #64748b; }'
@@ -1168,11 +1239,16 @@
       + 'thead th { padding: 8px 10px; text-align: left; font-size: 12px; font-weight: 600; }'
       + 'tbody tr:nth-child(even) { background: #f8fafc; }'
       + 'tbody td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }'
-      + '.footer { margin-top: 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }'
+      + '.footer { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }'
       + '.sign-block { text-align: center; }'
       + '.sign-block .line { border-top: 1px solid #94a3b8; margin: 44px 16px 6px; }'
       + '.sign-block p { font-size: 11px; color: #475569; margin: 0; }'
-      + '@media print { body { padding: 20px 28px; } }'
+      + '.page-num { position: fixed; bottom: 18px; right: 36px; font-size: 11px; color: #94a3b8; }'
+      + '@media print {'
+      + '  @page { margin: 18mm 14mm; }'
+      + '  body { padding: 0; }'
+      + '  .page-num { position: fixed; bottom: 0; right: 0; }'
+      + '}'
       + '</style></head><body>'
       + '<div class="header">'
       + (logoHtml ? '<div>'+logoHtml+'</div>' : '')
@@ -1190,6 +1266,7 @@
       + '<thead><tr>'
       + '<th style="text-align:center">ลำดับ</th>'
       + '<th>ชื่อและรายละเอียดสินค้า</th>'
+      + '<th style="text-align:center">จำนวน</th>'
       + '<th style="text-align:right">ราคา/หน่วย</th>'
       + '<th>หมายเหตุ (Admin)</th>'
       + '</tr></thead>'
@@ -1200,6 +1277,8 @@
       + '<div class="sign-block"><div class="line"></div><p>ผู้ขอซื้อ / '+escHtml(r.requester||'')+'</p></div>'
       + '<div class="sign-block"><div class="line"></div><p>ผู้อนุมัติ</p></div>'
       + '</div>'
+      + '<div class="page-num" id="page-num"></div>'
+      + '<script>document.getElementById("page-num").textContent = "หน้า 1 / " + document.querySelectorAll(".page-num").length;<\/script>'
       + '</body></html>';
 
     var w = window.open('', '_blank', 'width=900,height=700');
@@ -1207,6 +1286,100 @@
     w.document.write(html);
     w.document.close();
     w.onload = function() { w.print(); };
+  }
+
+  // ── Background polling ─────────────────────────────────────────
+  var _countdownTimer = null;
+  var _countdownStart = 0;
+
+  function startCountdown() {
+    stopCountdown();
+    _countdownStart = Date.now();
+    $('#poll-countdown-wrap').removeClass('hidden');
+    $('#poll-countdown-bar').css('width', '100%');
+    _countdownTimer = setInterval(function() {
+      var pct = Math.max(0, 100 - (Date.now() - _countdownStart) / _pollInterval * 100);
+      $('#poll-countdown-bar').css('width', pct + '%');
+    }, 250);
+  }
+  function stopCountdown() {
+    if (_countdownTimer) { clearInterval(_countdownTimer); _countdownTimer = null; }
+    $('#poll-countdown-wrap').addClass('hidden');
+  }
+
+  function startPolling() {
+    stopPolling();
+    _pollTimer = setInterval(runPoll, _pollInterval);
+    startCountdown();
+  }
+  function stopPolling() {
+    if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+    stopCountdown();
+  }
+  function runPoll() {
+    if (!currentUser) return;
+    if (currentUser.role === 'Admin') pollAdmin(); else pollUser();
+    startCountdown();
+  }
+
+  function pollAdmin() {
+    gasCall('getAllStockRequests', JSON.stringify({ filterStatus: '' }), function(res) {
+      if (res.status !== 'ok') return;
+      var requests = res.data || [];
+      var docNos = requests.map(function(r){ return r.docNo; });
+      if (_knownAdminDocNos === null) { _knownAdminDocNos = docNos.slice(); return; }
+      var knownSet = {};
+      _knownAdminDocNos.forEach(function(d){ knownSet[d] = true; });
+      var newCount = docNos.filter(function(d){ return !knownSet[d]; }).length;
+      _knownAdminDocNos = docNos.slice();
+      // Always re-render table with latest data
+      updateAdminStats(requests);
+      renderAllRequests(requests);
+      if (newCount > 0) {
+        var prev = parseInt($('#badge-admin').text()) || 0;
+        var total = prev + newCount;
+        $('#badge-admin').text(total).removeClass('hidden');
+        showToast('มีคำขอใหม่รอดำเนินการ ' + total + ' รายการ', 'info');
+      }
+    });
+  }
+
+  function pollUser() {
+    gasCall('getMyStockRequests', JSON.stringify({ email: currentUser.email }), function(res) {
+      if (res.status !== 'ok') return;
+      var requests = res.data || [];
+      if (_knownUserStatuses === null) {
+        _knownUserStatuses = {};
+        requests.forEach(function(r){ _knownUserStatuses[r.docNo] = r.status; });
+        return;
+      }
+      var changedCount = 0;
+      requests.forEach(function(r) {
+        if (_knownUserStatuses[r.docNo] !== undefined && _knownUserStatuses[r.docNo] !== r.status) {
+          changedCount++;
+          _updatedUserDocNos[r.docNo] = true;
+        }
+        _knownUserStatuses[r.docNo] = r.status;
+      });
+      // Always re-render table with latest data
+      updateUserStats(requests);
+      renderMyRequests(requests);
+      if (changedCount > 0) {
+        var prev = parseInt($('#badge-user').text()) || 0;
+        var total = prev + changedCount;
+        $('#badge-user').text(total).removeClass('hidden');
+        showToast('คำขอ ' + total + ' รายการมีการอัพเดตสถานะ', 'info');
+      }
+    });
+  }
+
+  function highlightUpdatedRows() {
+    $('#my-requests-tbody tr').each(function() {
+      var docNo = $(this).find('td:first').text().trim();
+      if (docNo && _updatedUserDocNos[docNo]) {
+        $(this).addClass('row-updated');
+      }
+    });
   }
 
   // ── Badge helpers ─────────────────────────────────────────────
@@ -1232,6 +1405,13 @@
     // Close modal on overlay click
     $('.modal-overlay').on('click', function(e) {
       if ($(e.target).hasClass('modal-overlay')) closeModal($(this).attr('id'));
+    });
+
+    // Close toast on any page click (but not on the toast popup itself)
+    $(document).on('click', function(e) {
+      if (Swal.isVisible() && !$(e.target).closest('.swal2-popup').length) {
+        Swal.close();
+      }
     });
 
     var session = loadSession();
