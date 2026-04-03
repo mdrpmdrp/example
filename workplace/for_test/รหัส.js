@@ -485,6 +485,7 @@ function getFileId(fileUrl) {
 //แก้ไขไฟล์
 function replaceFile(filedata, oldUrl) {
   if (!filedata || !filedata.data) return oldUrl
+  Logger.log("Old URL: " + oldUrl)
   if (oldUrl && oldUrl != '') {
     let oldFileid = getFileId(oldUrl)
     DriveApp.getFileById(oldFileid).setTrashed(true)
