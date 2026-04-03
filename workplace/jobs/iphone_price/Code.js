@@ -260,7 +260,7 @@ function loginUser(payload) {
     var phonStr = String(p.phone);
 
     // Read only needed columns (0-6) instead of entire range
-    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
 
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
@@ -270,7 +270,7 @@ function loginUser(payload) {
       if (String(row[5]) !== phonStr) continue;
 
       var status = String(row[6]);
-      var role = String(row[7] || 'User');
+      var role = row[8] || 'User';
       if (status === 'Pending') {
         return jsonError('บัญชีผู้ใช้อยู่ระหว่างการตรวจสอบ กรุณาติดต่อเจ้าหน้าที่');
       }

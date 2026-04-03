@@ -106,6 +106,7 @@
       box-shadow: 0 25px 50px -12px rgba(0,0,0,0.85);
       animation: slideUp 0.35s cubic-bezier(0.16,1,0.3,1) forwards;
     }
+    .modal-box.modal-box-wide { max-width: 1140px; }
 
     /* Status badges */
     .badge { padding: 0.2rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
@@ -115,8 +116,8 @@
     .badge-rejected { background: #7f1d1d; color: #fca5a5; }
 
     /* Priority badges */
-    .badge-normal { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
-    .badge-urgent { background: #7f1d1d; color: #fca5a5; }
+    .badge-normal { background: #14532d; color: #86efac; border: 1px solid #16a34a; }
+    .badge-urgent { background: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; }
 
     /* Table */
     .tbl { width: 100%; border-collapse: collapse; }
@@ -139,7 +140,7 @@
     /* Nav link */
     .nav-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 500; color: #94a3b8; cursor: pointer; transition: all 0.15s; }
     .nav-link:hover { background: #1e293b; color: #f1f5f9; }
-    .nav-link.active { background: linear-gradient(135deg, #1e3a8a, #1d4ed8); color: #fff; }
+    .nav-link.active { background: linear-gradient(135deg, #2563eb, #60a5fa); color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.45); }
   </style>
 </head>
 
@@ -258,14 +259,14 @@
     <div class="max-w-7xl mx-auto px-4 md:px-6 py-6">
       <!-- Page Nav Tabs -->
       <div class="flex gap-2 mb-6 flex-wrap">
+        <button id="nav-admin-panel" class="nav-link hidden" onclick="showDashTab('admin-panel')">
+          <i data-lucide="shield-check" class="w-4 h-4"></i> จัดการคำขอ (Admin)
+        </button>
         <button id="nav-my-requests" class="nav-link active" onclick="showDashTab('my-requests')">
           <i data-lucide="file-text" class="w-4 h-4"></i> คำขอของฉัน
         </button>
         <button id="nav-new-request" class="nav-link" onclick="openNewRequestModal()">
           <i data-lucide="plus-circle" class="w-4 h-4"></i> สร้างคำขอใหม่
-        </button>
-        <button id="nav-admin-panel" class="nav-link hidden" onclick="showDashTab('admin-panel')">
-          <i data-lucide="shield-check" class="w-4 h-4"></i> จัดการคำขอ (Admin)
         </button>
       </div>
 
@@ -518,6 +519,8 @@
               <tr>
                 <th>รายการสินค้า</th>
                 <th class="text-center">ขอ</th>
+                <th class="text-center">Stock สาขา</th>
+                <th class="text-center">หมายเหตุ</th>
                 <th class="text-center">Stock กลาง</th>
                 <th class="text-center min-w-[110px]">อนุมัติ/ส่งจริง</th>
                 <th>หมายเหตุ (Admin)</th>
@@ -543,6 +546,9 @@
         </div>
         <div class="flex gap-3 justify-end">
           <button onclick="closeModal('modal-view')" class="btn-secondary px-5">ปิด</button>
+          <button onclick="printPurchaseRequest()" class="btn-secondary px-5 flex items-center gap-2">
+            <i data-lucide="printer" class="w-4 h-4"></i> พิมพ์ใบขอซื้อ
+          </button>
           <button onclick="saveAdminApproval()" class="btn-primary px-6 flex items-center gap-2">
             <i data-lucide="save" class="w-4 h-4"></i>
             <span id="save-approval-text">บันทึกการอนุมัติ</span>
@@ -699,8 +705,10 @@
     $('#nav-branch').text('(' + currentUser.company + ')');
     if (currentUser.role === 'Admin') {
       $('#nav-admin-panel').removeClass('hidden');
+      $('#nav-my-requests').addClass('hidden');                             
     } else {
       $('#nav-admin-panel').addClass('hidden');
+      $('#nav-my-requests').removeClass('hidden');
     }
     showSection('sec-dashboard');
     showDashTab('my-requests');
@@ -1010,12 +1018,13 @@
 
   function renderViewModal(r) {
     var isAdmin = currentUser && currentUser.role === 'Admin';
+    $('#modal-view .modal-box').toggleClass('modal-box-wide', isAdmin);
     $('#view-modal-title').html('คำขอ <span class="font-mono text-blue-300">'+escHtml(r.docNo)+'</span> '+statusBadge(r.status));
     var infoHtml =
       '<div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">'
       + infoItem('เลขที่เอกสาร', r.docNo)
       + infoItem('วันที่', moment(r.date).format('D MMMM YYYY'))
-      + infoItem('ความสำคัญ', r.priority === 'ด่วน' ? '<span class="badge badge-urgent">ด่วน ⚡</span>' : '<span class="badge badge-normal">ปกติ</span>')
+      + infoItem('ความสำคัญ', r.priority === 'ด่วน' ? '<span class="badge badge-urgent">ด่วน <i data-lucide="zap" class="w-3 h-3"></i></span>' : '<span class="badge badge-normal">ปกติ</span>')
       + infoItem('สาขา', r.branch)
       + infoItem('ผู้ขอเบิก', r.requester)
       + infoItem('ผู้รับผิดชอบ', r.responsible)
@@ -1025,9 +1034,10 @@
     var itemsHtml = '<div class="overflow-x-auto rounded-xl border border-slate-700 mb-3">'
       + '<table class="tbl"><thead><tr>'
       + '<th>รายการสินค้า</th><th class="text-center">Stock กลาง</th><th class="text-center">ขอ</th>'
-      + '<th class="text-center">Stock ของตัวเอง</th><th class="text-center">อนุมัติ/ส่งจริง</th><th>หมายเหตุ</th>'
+      + '<th class="text-center">Stock สาขา</th><th class="text-center">อนุมัติ/ส่งจริง</th><th>หมายเหตุ</th>'
       + '</tr></thead><tbody>';
     (r.items||[]).forEach(function(it) {
+      console.log("🚀 ~ renderViewModal ~ it:", it)
       itemsHtml += '<tr>'
         + '<td class="font-medium text-sm">'+escHtml(it.desc)+'</td>'
         + '<td class="text-center"><span class="'+(it.stockQty>0?'text-emerald-400':'text-slate-500')+' font-semibold text-sm">'+it.stockQty+'</span></td>'
@@ -1041,7 +1051,7 @@
     if (r.adminNote) {
       itemsHtml += '<div class="p-3 rounded-xl bg-slate-800 border border-slate-600 text-sm text-slate-300 mb-2"><span class="text-slate-400 font-semibold">หมายเหตุ Admin: </span>'+escHtml(r.adminNote)+'</div>';
     }
-    $('#view-modal-body').html(infoHtml + itemsHtml);
+    $('#view-modal-body').html(infoHtml + (isAdmin ? '' : itemsHtml));
 
     // Admin actions
     if (isAdmin) {
@@ -1053,6 +1063,8 @@
         tbody += '<tr>'
           + '<td class="text-sm font-medium">'+escHtml(it.desc)+'</td>'
           + '<td class="text-center font-bold text-blue-300">'+it.reqQty+'</td>'
+          + '<td class="text-center text-slate-400">'+it.ownStock+'</td>'
+          + '<td class="text-center">'+escHtml(it.remark||'')+'</td>'
           + '<td class="text-center"><span class="'+(it.stockQty>0?'text-emerald-400':'text-slate-500')+' font-semibold">'+it.stockQty+'</span></td>'
           + '<td><input type="number" class="inp item-approved-qty text-center" data-idx="'+idx+'" min="0" placeholder="0" value="'+(it.approvedQty||0)+'" /></td>'
           + '<td><input type="text" class="inp item-admin-remark" data-idx="'+idx+'" placeholder="หมายเหตุ" value="'+escHtml(it.adminRemark||'')+'" /></td>'
@@ -1108,6 +1120,93 @@
         showToast(res.message, 'error');
       }
     });
+  }
+
+  // ── Print Purchase Request ────────────────────────────────────
+  function getItemPrice(brand, model, storage) {
+    try {
+      var p = PRICE_DATA.data;
+      if (p.prices && p.prices[brand] && p.prices[brand][model] && p.prices[brand][model][storage] !== undefined)
+        return p.prices[brand][model][storage];
+    } catch(e){}
+    return null;
+  }
+
+  function printPurchaseRequest() {
+    var r = _viewingRequest;
+    if (!r) return;
+    var logoEl = document.querySelector('nav img');
+    var logoHtml = logoEl ? '<img src="'+logoEl.src+'" style="height:56px;border-radius:6px;" />' : '';
+
+    var itemRows = '';
+    (r.items||[]).forEach(function(it, i) {
+      var price = getItemPrice(it.brand, it.model, it.storage);
+      var nameTd = escHtml(it.desc) + (it.remark ? '<br><small style="color:#555;">'+escHtml(it.remark)+'</small>' : '');
+      itemRows += '<tr>'
+        + '<td style="text-align:center;width:40px">'+(i+1)+'</td>'
+        + '<td>'+nameTd+'</td>'
+        + '<td style="text-align:right;white-space:nowrap">'+(price !== null ? Number(price).toLocaleString() : '—')+'</td>'
+        + '<td>'+escHtml(it.adminRemark||'')+'</td>'
+        + '</tr>';
+    });
+
+    var html = '<!DOCTYPE html><html lang="th"><head>'
+      + '<meta charset="UTF-8">'
+      + '<title>ใบขอซื้อ '+escHtml(r.docNo)+'</title>'
+      + '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">'
+      + '<style>'
+      + '* { font-family: "Noto Sans Thai", sans-serif; box-sizing: border-box; }'
+      + 'body { margin: 0; padding: 28px 36px; color: #1e293b; font-size: 13px; }'
+      + '.header { display: flex; align-items: center; gap: 18px; border-bottom: 2px solid #1e40af; padding-bottom: 14px; margin-bottom: 18px; }'
+      + '.header-text h1 { margin: 0; font-size: 20px; font-weight: 700; color: #1e3a8a; }'
+      + '.header-text p { margin: 4px 0 0; font-size: 12px; color: #64748b; }'
+      + '.meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 24px; margin-bottom: 20px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }'
+      + '.meta-item label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; display: block; margin-bottom: 2px; }'
+      + '.meta-item span { font-weight: 600; color: #0f172a; font-size: 13px; }'
+      + 'table { width: 100%; border-collapse: collapse; }'
+      + 'thead tr { background: #1e3a8a; color: #fff; }'
+      + 'thead th { padding: 8px 10px; text-align: left; font-size: 12px; font-weight: 600; }'
+      + 'tbody tr:nth-child(even) { background: #f8fafc; }'
+      + 'tbody td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }'
+      + '.footer { margin-top: 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }'
+      + '.sign-block { text-align: center; }'
+      + '.sign-block .line { border-top: 1px solid #94a3b8; margin: 44px 16px 6px; }'
+      + '.sign-block p { font-size: 11px; color: #475569; margin: 0; }'
+      + '@media print { body { padding: 20px 28px; } }'
+      + '</style></head><body>'
+      + '<div class="header">'
+      + (logoHtml ? '<div>'+logoHtml+'</div>' : '')
+      + '<div class="header-text"><h1>ใบขอซื้อ (Purchase Request)</h1><p>Stock Request System</p></div>'
+      + '</div>'
+      + '<div class="meta-grid">'
+      + '<div class="meta-item"><label>เลขที่เอกสาร</label><span>'+escHtml(r.docNo)+'</span></div>'
+      + '<div class="meta-item"><label>วันที่ขอซื้อ</label><span>'+moment(r.date).format('D MMMM YYYY')+'</span></div>'
+      + '<div class="meta-item"><label>ความสำคัญ</label><span>'+(r.priority||'ปกติ')+'</span></div>'
+      + '<div class="meta-item"><label>สาขา</label><span>'+escHtml(r.branch||'')+'</span></div>'
+      + '<div class="meta-item"><label>ผู้ขอซื้อ</label><span>'+escHtml(r.requester||'')+'</span></div>'
+      + '<div class="meta-item"><label>ผู้รับผิดชอบ</label><span>'+escHtml(r.responsible||'')+'</span></div>'
+      + '</div>'
+      + '<table>'
+      + '<thead><tr>'
+      + '<th style="text-align:center">ลำดับ</th>'
+      + '<th>ชื่อและรายละเอียดสินค้า</th>'
+      + '<th style="text-align:right">ราคา/หน่วย</th>'
+      + '<th>หมายเหตุ (Admin)</th>'
+      + '</tr></thead>'
+      + '<tbody>'+itemRows+'</tbody>'
+      + '</table>'
+      + (r.adminNote ? '<div style="margin-top:12px;padding:10px 14px;background:#f1f5f9;border-radius:6px;border:1px solid #e2e8f0;font-size:12px;"><strong>หมายเหตุรวม: </strong>'+escHtml(r.adminNote)+'</div>' : '')
+      + '<div class="footer">'
+      + '<div class="sign-block"><div class="line"></div><p>ผู้ขอซื้อ / '+escHtml(r.requester||'')+'</p></div>'
+      + '<div class="sign-block"><div class="line"></div><p>ผู้อนุมัติ</p></div>'
+      + '</div>'
+      + '</body></html>';
+
+    var w = window.open('', '_blank', 'width=900,height=700');
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.onload = function() { w.print(); };
   }
 
   // ── Badge helpers ─────────────────────────────────────────────
