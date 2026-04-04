@@ -625,12 +625,14 @@
   }
 
   // ── Swal / Toast ───────────────────────────────────────────────
+  var _lastToastShownAt = 0;
   var _swalDef = {
     toast: true, position: 'top-end', showConfirmButton: false, showCloseButton: true,
     customClass: { popup:'swal-popup', title:'swal-title', htmlContainer:'swal-html', closeButton:'swal-close-btn' }
   };
   function showToast(msg, type, timeout) {
     var iconMap = { success:'success', error:'error', warning:'warning', info:'info' };
+    _lastToastShownAt = Date.now();
     Swal.fire(Object.assign({}, _swalDef, { icon: iconMap[type||'success']||'success', title: msg, timer: timeout || undefined }));
   }
 
@@ -931,11 +933,39 @@
     $('#item-storage-sel').html(opts).prop('disabled', false);
   }
 
+  function ensurePreviousItemCompleted() {
+    var $rows = $('#items-tbody tr').not('#items-empty-row');
+    if ($rows.length === 0) return true;
+
+    var $lastRow = $rows.last();
+    var desc = $lastRow.find('.item-desc').val().trim();
+    var reqQtyRaw = $lastRow.find('.item-req-qty').val().trim();
+    var ownStockRaw = $lastRow.find('.item-own-stock').val().trim();
+
+    if (!desc) {
+      showToast('กรุณากรอกรายการสินค้าแถวก่อนหน้าให้ครบก่อนเพิ่มรายการใหม่','warning', 3000);
+      $lastRow.find('.item-desc').focus();
+      return false;
+    }
+    if (!reqQtyRaw || parseInt(reqQtyRaw, 10) <= 0) {
+      showToast('กรุณาระบุจำนวนที่ขอของแถวก่อนหน้าให้ครบก่อนเพิ่มรายการใหม่','warning', 3000);
+      $lastRow.find('.item-req-qty').focus();
+      return false;
+    }
+    if (ownStockRaw === '') {
+      showToast('กรุณาระบุ Stock ของฉันในแถวก่อนหน้าให้ครบก่อนเพิ่มรายการใหม่','warning', 3000);
+      $lastRow.find('.item-own-stock').focus();
+      return false;
+    }
+    return true;
+  }
+
   function pickItemFromDropdown() {
     var brand = $('#item-brand-sel').val();
     var model = $('#item-model-sel').val();
     var storage = $('#item-storage-sel').val();
-    if (!brand || !model || !storage) { showToast('กรุณาเลือกสินค้าให้ครบ','warning', 3000); return; }
+    if (!brand || !model || !storage) { showToast('กรุณากรอกข้อมูลสินค้าให้ครบ','warning', 3000); return; }
+    if (!ensurePreviousItemCompleted()) return;
     var qty = getStockQty(brand, model, storage);
     var desc = brand + ' ' + model + ' ' + storage;
     addItemRowWithData(desc, qty, brand, model, storage);
@@ -947,6 +977,7 @@
 
   var _itemRowIdx = 0;
   function addItemRow() {
+    if (!ensurePreviousItemCompleted()) return;
     addItemRowWithData('', 0, '', '', '');
   }
   function addItemRowWithData(desc, stockQty, brand, model, storage) {
@@ -1528,6 +1559,7 @@
 
     // Close toast on any page click (but not on the toast popup itself)
     $(document).on('click', function(e) {
+      if (Date.now() - _lastToastShownAt < 250) return;
       if (Swal.isVisible() && Swal.getPopup() && Swal.getPopup().classList.contains('swal2-toast') && !$(e.target).closest('.swal2-popup').length) {
         Swal.close();
       }

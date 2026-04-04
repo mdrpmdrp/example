@@ -432,20 +432,30 @@ function createPDF(colA, colB, colC, colD, colE, colF, colG, colH, colI, colJ, c
 function formatDateTimeForPdf(value) {
   const date = value ? new Date(value) : new Date()
   const safeDate = isNaN(date.getTime()) ? new Date() : date
-  return Utilities.formatDate(safeDate, 'GMT+7', 'dd/MM/yyyy HH:mm:ss')
+  let d = Utilities.formatDate(safeDate, 'GMT+7', 'dd/MM/yyyy HH:mm:ss')
+  return d
 }
 
 function formatThaiDateForPdf(value) {
-  if (!value) return '-'
+  if (!value) {
+    return '-'
+  }
   const date = new Date(value)
-  if (isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('th-TH', { day: 'numeric' }) + ' เดือน ' + date.toLocaleDateString('th-TH', { month: 'long' }) + ' ' + date.toLocaleDateString('th-TH', { year: 'numeric' })
+  if (isNaN(date.getTime())) {
+    return '-'
+  }
+  let d = date.toLocaleDateString('th-TH', { day: 'numeric' }) + ' เดือน ' + date.toLocaleDateString('th-TH', { month: 'long' }) + ' ' + date.toLocaleDateString('th-TH', { year: 'numeric' })
+  return d
 }
 
 function calculateAgeForPdf(value) {
-  if (!value) return '-'
+  if (!value) {
+    return '-'
+  }
   const birthDate = new Date(value)
-  if (isNaN(birthDate.getTime())) return '-'
+  if (isNaN(birthDate.getTime())) {
+    return '-'
+  }
 
   var y1 = birthDate.getFullYear()
   var m1 = 1 + birthDate.getMonth()
@@ -468,26 +478,27 @@ function calculateAgeForPdf(value) {
   var d = d2 - d1
   var m = m2 - m1
   var y = y2 - y1
-
-  return y + ' ปี ' + m + ' เดือน ' + d + ' วัน'
+  let age = y + ' ปี ' + m + ' เดือน ' + d + ' วัน'
+  return age
 }
 
 function buildPdfArgsFromRow(row) {
+  
   return [
-    row[0],
-    formatDateTimeForPdf(row[1]),
-    ...row.slice(2, 68),
-    formatThaiDateForPdf(row[10]),
-    calculateAgeForPdf(row[10]),
-    formatThaiDateForPdf(row[38]),
-    row[57] ? formatThaiDateForPdf(row[57]) : '-',
-    row[72] || row[66] || '',
-    row[73] || formatDateTimeForPdf(row[1]),
-    row[81] || row[row.length - 3] || ''
+    row[0], // cal A
+    formatDateTimeForPdf(row[1]), // cal B
+    ...row.slice(2, 68), // cal C to BP
+    formatThaiDateForPdf(row[10]), // col K - วันเกิด
+    calculateAgeForPdf(row[10]), // col BR - อายุ
+    formatThaiDateForPdf(row[39]), // col AN - วันที่ได้รับอนุมัติผลการศึกษา
+    row[57] ? formatThaiDateForPdf(row[57]) : '-', // col BF - ออกจากราชการเมื่อวันที่
+    row[72] || row[66] || '', // col BK - ประเภทตำแหน่ง
+    row[73] || formatDateTimeForPdf(row[1]), // col BL - ตำแหน่งงาน (ใช้วันที่กรอกใบสมัครแทนถ้าไม่มีข้อมูล)
+    row[81] || row[row.length - 3] || '' // col CD - รูปถ่ายหน้าตรง (ใช้ข้อมูลจากคอลัมน์สุดท้ายแทนถ้า col CD ไม่มีข้อมูล)
   ]
 }
 
-function createPDFById(id) {
+function createPDFById(id="8350debd-2c80-4493-bef4-f5af65241db3") {
   const ws = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]
   const custIds = ws.getRange(5, 1, ws.getLastRow() - 4, 1).getDisplayValues().map(r => r[0].toString().toLowerCase())
   const posIndex = custIds.indexOf(id.toString().toLowerCase())
