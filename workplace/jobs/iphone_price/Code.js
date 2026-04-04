@@ -3,6 +3,11 @@ var SS = SpreadsheetApp.getActiveSpreadsheet();
 // Column counts for known price sheets — avoids reading unused columns
 var _SHEET_COLS = { 'ผ่อน': 8, 'มือสอง': 8, 'Freedown': 8, 'ซื้อสด': 4, 'สดvnphone': 4 };
 var _INSTALLMENT = { 'ผ่อน': true, 'มือสอง': true, 'Freedown': true };
+var _USERS_HEADERS = ['Company', 'First Name', 'Last Name', 'Nickname', 'Email', 'Phone', 'Status', 'Created At', 'Role', 'Branch'];
+var _STOCK_REQUEST_HEADERS = [
+  'DocNo', 'Date', 'Priority', 'Branch', 'Requester', 'Responsible',
+  'Items (JSON)', 'Status', 'AdminNote', 'SubmittedBy', 'CreatedAt', 'UpdatedAt', 'SubmittedBranch'
+];
 
 // ---------- Serve Web App ----------
 function getLogoBase64() {
@@ -61,6 +66,74 @@ function sheetData(sheetName) {
 function jsonSuccess(data) { return JSON.stringify({ status: 'ok', data: data }); }
 function jsonError(msg) { return JSON.stringify({ status: 'error', message: msg }); }
 
+function getUsersSheet() {
+  var sheet = SS.getSheetByName('Users');
+  if (!sheet) {
+    sheet = SS.insertSheet('Users');
+  }
+  ensureSheetHeaders(sheet, _USERS_HEADERS);
+  return sheet;
+}
+
+function ensureSheetHeaders(sheet, headers) {
+  for (var i = 0; i < headers.length; i++) {
+    var cell = sheet.getRange(1, i + 1);
+    if (String(cell.getValue()).trim() !== headers[i]) {
+      cell.setValue(headers[i]);
+    }
+  }
+}
+
+function getBranchOptions_() {
+  var sheet = SS.getSheetByName('DW สาขา');
+  if (!sheet) return [];
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  var seen = {};
+  var result = [];
+  for (var i = 0; i < values.length; i++) {
+    var branch = String(values[i][0] || '').trim();
+    if (!branch || seen[branch]) continue;
+    seen[branch] = true;
+    result.push(branch);
+  }
+  return result;
+}
+
+function findUserRowByEmail_(sheet, email) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  var data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+  var emailLower = String(email || '').toLowerCase();
+  for (var i = 0; i < data.length; i++) {
+    if (String(data[i][4] || '').toLowerCase() === emailLower) {
+      return { rowIndex: i + 2, values: data[i] };
+    }
+  }
+  return null;
+}
+
+function getUserBranchByEmail_(email) {
+  if (!email) return '';
+  var found = findUserRowByEmail_(getUsersSheet(), email);
+  return found ? String(found.values[9] || '').trim() : '';
+}
+
+function normalizeUserForLog_(user) {
+  user = user || {};
+  var branch = String(user.branch || '').trim();
+  if (!branch && user.email) {
+    branch = getUserBranchByEmail_(user.email);
+  }
+  return {
+    nickname: String(user.nickname || '').trim(),
+    firstName: String(user.firstName || '').trim(),
+    email: String(user.email || '').trim(),
+    branch: branch
+  };
+}
+
 // ---------- Trigger ----------
 function onStatusEdit(e) {
   var sheet = e.source.getActiveSheet();
@@ -71,7 +144,7 @@ function onStatusEdit(e) {
   var status = String(range.getValue()).trim();
   if (status !== 'Approved' && status !== 'Blocked') return;
   // One batch read instead of 6 individual getValue() round-trips
-  var vals = sheet.getRange(range.getRow(), 1, 1, 7).getValues()[0];
+  var vals = sheet.getRange(range.getRow(), 1, 1, 10).getValues()[0];
   var user = {
     company: String(vals[0]),
     firstName: String(vals[1]),
@@ -79,7 +152,8 @@ function onStatusEdit(e) {
     nickname: String(vals[3]),
     email: String(vals[4]),
     phone: String(vals[5]),
-    status: status
+    status: status,
+    branch: String(vals[9] || '')
   };
   sendApprovalEmail(user);
   logEvent('Status Change to ' + status, user);
@@ -91,9 +165,14 @@ function logEvent(event, user) {
     var sheet = SS.getSheetByName('Log Event');
     if (!sheet) {
       sheet = SS.insertSheet('Log Event');
-      sheet.appendRow(['Timestamp', 'Event', 'User', 'Email']);
     }
-    sheet.appendRow([new Date(), event, user.nickname + ' (' + user.firstName + ')', user.email]);
+    ensureSheetHeaders(sheet, ['Timestamp', 'Event', 'User', 'Email', 'Branch']);
+    var actor = normalizeUserForLog_(user);
+    var displayName = actor.nickname;
+    if (actor.firstName) {
+      displayName = actor.nickname ? actor.nickname + ' (' + actor.firstName + ')' : actor.firstName;
+    }
+    sheet.appendRow([new Date(), event, displayName, actor.email, actor.branch]);
   } catch (e) {
     console.error('Log error: ' + e.message);
   }
@@ -114,7 +193,12 @@ function logSearch(payload) {
       eventStr = 'Search ซื้อสด: ' + p.brand + ' ' + p.model + ' ' + p.storage
         + ' | ' + p.price + ' บาท';
     }
-    logEvent(eventStr, { nickname: p.nickname, firstName: p.firstName || p.nickname, email: p.email || '' });
+    logEvent(eventStr, {
+      nickname: p.nickname,
+      firstName: p.firstName || p.nickname,
+      email: p.email || '',
+      branch: p.branch || ''
+    });
     return jsonSuccess('logged');
   } catch (e) {
     return jsonError(e.message);
@@ -130,7 +214,12 @@ function logVnCalInterest(payload) {
       + ' | ดาวน์ ' + p.down
       + ' | งวด ' + p.installment + 'x' + p.periods
       + ' | rate ' + (Number(p.interestRate) || 0).toFixed(2) + '%';
-    logEvent(eventStr, { nickname: p.nickname || '', firstName: p.firstName || p.nickname || '', email: p.email || '' });
+    logEvent(eventStr, {
+      nickname: p.nickname || '',
+      firstName: p.firstName || p.nickname || '',
+      email: p.email || '',
+      branch: p.branch || ''
+    });
     return jsonSuccess('logged');
   } catch (e) {
     return jsonError(e.message);
@@ -141,11 +230,7 @@ function logVnCalInterest(payload) {
 function registerUser(payload) {
   var p = JSON.parse(payload);
   try {
-    var sheet = SS.getSheetByName('Users');
-    if (!sheet) {
-      sheet = SS.insertSheet('Users');
-      sheet.appendRow(['Company', 'First Name', 'Last Name', 'Nickname', 'Email', 'Phone', 'Status', 'Created At']);
-    }
+    var sheet = getUsersSheet();
 
     var data = sheet.getDataRange().getValues();
     var emailLower = String(p.email).toLowerCase();
@@ -162,7 +247,8 @@ function registerUser(payload) {
       "'" + p.phone,
       'Pending',
       new Date(),
-      "no role"
+      'no role',
+      ''
     ]);
 
     // Log the event
@@ -177,7 +263,8 @@ function registerUser(payload) {
       phone: p.phone,
       status: 'Pending',
       createdAt: new Date(),
-      role: 'no role'
+      role: 'no role',
+      branch: ''
     });
   } catch (e) {
     return jsonError(e.message);
@@ -253,14 +340,16 @@ function sendApprovalEmail(payload) {
 function loginUser(payload) {
   try {
     var p = JSON.parse(payload);
-    var sheet = SS.getSheetByName('Users');
+    var sheet = getUsersSheet();
     if (!sheet) return jsonError('ไม่พบฐานข้อมูลผู้ใช้');
+    var requestedPage = String(p.page || '').trim();
 
     var emailLower = String(p.email).toLowerCase();
     var phonStr = String(p.phone);
 
     // Read only needed columns (0-6) instead of entire range
-    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
+    if (sheet.getLastRow() < 2) return jsonError('ไม่พบบัญชีผู้ใช้ กรุณาตรวจสอบอีเมลและเบอร์โทร');
+    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
 
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
@@ -271,6 +360,7 @@ function loginUser(payload) {
 
       var status = String(row[6]);
       var role = row[8] || 'User';
+      var branch = String(row[9] || '').trim();
       if (status === 'Pending') {
         return jsonError('บัญชีผู้ใช้อยู่ระหว่างการตรวจสอบ กรุณาติดต่อเจ้าหน้าที่');
       }
@@ -282,6 +372,10 @@ function loginUser(payload) {
         return jsonError('บัญชีนี้ ไม่มีสิทธิ์เข้าถึงระบบนี้ กรุณาติดต่อเจ้าหน้าที่');
       }
 
+      if (requestedPage === 'stock_request' && String(row[0]) !== 'VN Phone') {
+        return jsonError('เฉพาะผู้ใช้จากบริษัท VN Phone เท่านั้นที่เข้าใช้ระบบขอเบิกสต๊อกได้');
+      }
+
       var user = {
         company: String(row[0]),
         firstName: String(row[1]),
@@ -290,7 +384,8 @@ function loginUser(payload) {
         email: String(row[4]),
         phone: String(row[5]),
         status: status,
-        role: role
+        role: role,
+        branch: branch
       };
       logEvent('Login', user);
       return jsonSuccess(user);
@@ -311,17 +406,58 @@ function logLogout(payload) {
   }
 }
 
+function getBranchOptions() {
+  try {
+    return jsonSuccess(getBranchOptions_());
+  } catch (e) {
+    return jsonError(e.message);
+  }
+}
+
+function updateUserBranch(payload) {
+  try {
+    var p = JSON.parse(payload);
+    var branch = String(p.branch || '').trim();
+    if (!branch) return jsonError('กรุณาเลือกสาขา');
+
+    var allowedBranches = getBranchOptions_();
+    if (allowedBranches.indexOf(branch) === -1) {
+      return jsonError('ไม่พบสาขาที่เลือกในข้อมูลอ้างอิง');
+    }
+
+    var sheet = getUsersSheet();
+    var found = findUserRowByEmail_(sheet, p.email);
+    if (!found) return jsonError('ไม่พบบัญชีผู้ใช้');
+
+    sheet.getRange(found.rowIndex, 10).setValue(branch);
+
+    var user = {
+      company: String(found.values[0]),
+      firstName: String(found.values[1]),
+      lastName: String(found.values[2]),
+      nickname: String(found.values[3]),
+      email: String(found.values[4]),
+      phone: String(found.values[5]),
+      status: String(found.values[6]),
+      role: String(found.values[8] || 'User'),
+      branch: branch
+    };
+
+    logEvent('Update Branch', user);
+    return jsonSuccess(user);
+  } catch (e) {
+    return jsonError(e.message);
+  }
+}
+
 // ── Stock Request sheet helper ────────────────────────────────────────────
 function getStockRequestSheet() {
   var sheet = SS.getSheetByName('StockRequests');
   if (!sheet) {
     sheet = SS.insertSheet('StockRequests');
-    sheet.appendRow([
-      'DocNo', 'Date', 'Priority', 'Branch', 'Requester', 'Responsible',
-      'Items (JSON)', 'Status', 'AdminNote', 'SubmittedBy', 'CreatedAt', 'UpdatedAt'
-    ]);
     sheet.setFrozenRows(1);
   }
+  ensureSheetHeaders(sheet, _STOCK_REQUEST_HEADERS);
   return sheet;
 }
 
@@ -356,10 +492,11 @@ function saveStockRequest(payload) {
       var found = false;
       for (var i = 1; i < data.length; i++) {
         if (String(data[i][0]) === docNo) {
-          sheet.getRange(i + 1, 3, 1, 6).setValues([[
-            p.priority, p.branch, p.requester, p.responsible,
-            JSON.stringify(p.items), p.date
+          sheet.getRange(i + 1, 2, 1, 6).setValues([[
+            p.date, p.priority, p.branch, p.requester,
+            p.responsible, JSON.stringify(p.items)
           ]]);
+          sheet.getRange(i + 1, 13).setValue(p.submittedBranch || '');
           sheet.getRange(i + 1, 12).setValue(new Date());
           found = true;
           break;
@@ -381,12 +518,18 @@ function saveStockRequest(payload) {
         '',
         p.submittedBy,
         new Date(),
-        new Date()
+        new Date(),
+        p.submittedBranch || ''
       ]);
     }
 
     logEvent('StockRequest Submit: ' + docNo + ' | ' + p.branch + ' | ' + (p.items || []).length + ' items',
-      { nickname: p.nickname || '', firstName: p.firstName || p.nickname || '', email: p.submittedBy || '' });
+      {
+        nickname: p.nickname || '',
+        firstName: p.firstName || p.nickname || '',
+        email: p.submittedBy || '',
+        branch: p.submittedBranch || p.branch || ''
+      });
     return jsonSuccess({ docNo: docNo });
   } catch (e) {
     return jsonError(e.message);
@@ -400,7 +543,7 @@ function getMyStockRequests(payload) {
     var sheet = getStockRequestSheet();
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return jsonSuccess([]);
-    var data = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
     var email = String(p.email).toLowerCase();
     var result = [];
     for (var i = 0; i < data.length; i++) {
@@ -422,7 +565,7 @@ function getAllStockRequests(payload) {
     var sheet = getStockRequestSheet();
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return jsonSuccess([]);
-    var data = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
     var filterStatus = (p.filterStatus || '').trim();
     var result = [];
     for (var i = 0; i < data.length; i++) {
@@ -443,7 +586,7 @@ function getStockRequestByDocNo(payload) {
     var sheet = getStockRequestSheet();
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return jsonError('ไม่พบเอกสาร');
-    var data = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
     for (var i = 0; i < data.length; i++) {
       if (String(data[i][0]) === String(p.docNo)) {
         return jsonSuccess(rowToRequest(data[i]));
@@ -468,7 +611,12 @@ function updateStockRequestApproval(payload) {
         sheet.getRange(i + 1, 9).setValue(p.adminNote || '');
         sheet.getRange(i + 1, 12).setValue(new Date());
         logEvent('StockRequest Approval: ' + p.docNo + ' -> ' + p.status,
-          { nickname: p.adminNickname || '', firstName: p.adminNickname || '', email: p.adminEmail || '' });
+          {
+            nickname: p.adminNickname || '',
+            firstName: p.adminNickname || '',
+            email: p.adminEmail || '',
+            branch: p.adminBranch || ''
+          });
         return jsonSuccess({ docNo: p.docNo, status: p.status });
       }
     }
@@ -494,7 +642,8 @@ function rowToRequest(row) {
     adminNote: String(row[8]),
     submittedBy: String(row[9]),
     createdAt: row[10] instanceof Date ? row[10].toISOString() : String(row[10]),
-    updatedAt: row[11] instanceof Date ? row[11].toISOString() : String(row[11])
+    updatedAt: row[11] instanceof Date ? row[11].toISOString() : String(row[11]),
+    submittedBranch: String(row[12] || '')
   };
 }
 

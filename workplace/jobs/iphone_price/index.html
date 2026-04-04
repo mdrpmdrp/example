@@ -826,6 +826,7 @@
         popup: 'swal-mpc-popup',
         title: 'swal-mpc-title',
         htmlContainer: 'swal-mpc-html',
+        confirmButton: 'swal-mpc-confirm',
         timerProgressBar: 'swal-mpc-timer-bar'
       }
     };
@@ -855,6 +856,18 @@
           cb({ status: 'error', message: e.message });
         })
       [func](payload);
+    }
+
+    function gasCallPromise(func, payload) {
+      return new Promise(function (resolve, reject) {
+        gasCall(func, payload, function (res) {
+          if (res && res.status === 'ok') {
+            resolve(res);
+            return;
+          }
+          reject(new Error((res && res.message) || 'เกิดข้อผิดพลาดจากระบบ'));
+        });
+      });
     }
 
     function setLoading(btnTextId, loading) {
@@ -909,10 +922,7 @@
         setLoading('login-btn-text', false);
         if (res.status === 'ok') {
           currentUser = res.data;
-          var expiresAt = saveSession(currentUser);
-          startAutoLogout(expiresAt);
-          showToast('ยินดีต้อนรับ คุณ' + currentUser.nickname + ' 👋');
-          afterLogin();
+          startAuthenticatedSession(true);
         } else {
           showToast(res.message, 'error');
         }
@@ -946,13 +956,112 @@
       });
     }
 
+    function renderBranchSelectOptions(branches) {
+      var html = '<option value="">-- เลือกสาขา --</option>';
+      branches.forEach(function (branch) {
+        html += '<option value="' + branch + '">' + branch + '</option>';
+      });
+      return html;
+    }
+
+    function ensureCurrentUserBranch() {
+      return new Promise(function (resolve, reject) {
+        if (!currentUser) {
+          resolve(null);
+          return;
+        }
+        if (String(currentUser.company || '').trim() !== 'VN Phone') {
+          resolve(currentUser);
+          return;
+        }
+        if (String(currentUser.branch || '').trim()) {
+          resolve(currentUser);
+          return;
+        }
+
+        gasCall('getBranchOptions', '', function (res) {
+          if (res.status !== 'ok') {
+            reject(new Error(res.message));
+            return;
+          }
+
+          var branches = res.data || [];
+          if (!branches.length) {
+            reject(new Error('ไม่พบรายการสาขาในชีท DW สาขา'));
+            return;
+          }
+
+          Swal.fire({
+            title: 'เลือกสาขาของคุณ',
+            html: [
+              '<div class="text-left space-y-3">',
+              '<p class="text-sm text-slate-400">กรุณาเลือกสาขาก่อนเข้าใช้งานระบบ</p>',
+              '<select id="branch-select" class="inp">',
+              renderBranchSelectOptions(branches),
+              '</select>',
+              '</div>'
+            ].join(''),
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showCancelButton: false,
+            confirmButtonText: 'บันทึกสาขา',
+            customClass: {
+              popup: 'swal-mpc-popup',
+              title: 'swal-mpc-title',
+              htmlContainer: 'swal-mpc-html',
+              confirmButton: 'swal-mpc-confirm'
+            },
+            focusConfirm: false,
+            preConfirm: function () {
+              var branch = $('#branch-select').val();
+              if (!branch) {
+                Swal.showValidationMessage('กรุณาเลือกสาขา');
+                return false;
+              }
+              return gasCallPromise('updateUserBranch', JSON.stringify({
+                email: currentUser.email,
+                branch: branch
+              })).then(function (saveRes) {
+                return saveRes.data;
+              }).catch(function (err) {
+                Swal.showValidationMessage(err.message || 'บันทึกสาขาไม่สำเร็จ');
+              });
+            }
+          }).then(function (result) {
+            if (!result.isConfirmed || !result.value) {
+              reject(new Error('ไม่สามารถยืนยันสาขาได้'));
+              return;
+            }
+            currentUser = result.value;
+            resolve(currentUser);
+          });
+        });
+      });
+    }
+
+    function startAuthenticatedSession(showWelcome) {
+      ensureCurrentUserBranch().then(function () {
+        var expiresAt = saveSession(currentUser);
+        startAutoLogout(expiresAt);
+        if (showWelcome) {
+          showToast('ยินดีต้อนรับ คุณ' + currentUser.nickname + ' 👋');
+        }
+        afterLogin();
+      }).catch(function (err) {
+        clearSession();
+        currentUser = null;
+        showSection('sec-auth');
+        showToast(err.message || 'ไม่สามารถโหลดข้อมูลสาขาได้', 'error');
+      });
+    }
+
     function afterLogin() {
       if (currentUser.company === 'VN Phone') {
-        $('#vn-welcome').text('คุณ' + currentUser.nickname + ' (' + currentUser.firstName + ')');
+        $('#vn-welcome').text('คุณ' + currentUser.nickname + ' (' + currentUser.firstName + ') • ' + (currentUser.branch || '-'));
         showSection('sec-vn');
         vnInit();
       } else {
-        $('#sc-welcome').text('คุณ' + currentUser.nickname + ' (' + currentUser.firstName + ')');
+        $('#sc-welcome').text('คุณ' + currentUser.nickname + ' (' + currentUser.firstName + ') • ' + (currentUser.branch || '-'));
         showSection('sec-sc');
         scInit();
       }
@@ -1092,6 +1201,7 @@
           nickname: currentUser.nickname,
           firstName: currentUser.firstName,
           email: currentUser.email,
+          branch: currentUser.branch,
           cashPrice: cashPrice,
           down: down,
           installment: installment,
@@ -1328,6 +1438,7 @@
       var total = Number(down) + installment * Number(months);
       var html = [
         row(icon('store') + ' ร้าน', currentUser.company || '-'),
+        row(icon('map-pinned') + ' สาขา', currentUser.branch || '-'),
         row(icon('user') + ' พนักงาน', 'คุณ' + (currentUser.nickname || currentUser.firstName || '-')),
         row(icon('smartphone') + ' ยี่ห้อ / รุ่น', brand + ' ' + model),
         row(icon('hard-drive') + ' ความจุ', storage),
@@ -1345,7 +1456,7 @@
       $('#vn-result')[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
       gasCall('logSearch', JSON.stringify({
         type: _vnLogType(), company: currentUser.company, nickname: currentUser.nickname,
-        firstName: currentUser.firstName, email: currentUser.email,
+        firstName: currentUser.firstName, email: currentUser.email, branch: currentUser.branch,
         brand: brand, model: model, storage: storage,
         down: Number(down), months: Number(months), installment: installment, total: total
       }), function () { });
@@ -1365,6 +1476,7 @@
       if (deliveryFee) feeRows.push(row(icon('truck') + ' ค่าจัดส่ง', fmt(deliveryFee) + ' บาท'));
       var html = [
         row(icon('store') + ' ร้าน', currentUser.company || '-'),
+        row(icon('map-pinned') + ' สาขา', currentUser.branch || '-'),
         row(icon('user') + ' พนักงาน', 'คุณ' + (currentUser.nickname || currentUser.firstName || '-')),
         row(icon('smartphone') + ' ยี่ห้อ / รุ่น', brand + ' ' + model),
         row(icon('hard-drive') + ' ความจุ', storage),
@@ -1380,7 +1492,7 @@
       $('#vn-result')[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
       gasCall('logSearch', JSON.stringify({
         type: 'สดvnphone', company: currentUser.company, nickname: currentUser.nickname,
-        firstName: currentUser.firstName, email: currentUser.email,
+        firstName: currentUser.firstName, email: currentUser.email, branch: currentUser.branch,
         brand: brand, model: model, storage: storage, price: price
       }), function () { });
     }
@@ -1436,6 +1548,7 @@
       if (deliveryFee) feeRows.push(row(icon('truck') + ' ค่าจัดส่ง', fmt(deliveryFee) + ' บาท'));
       var html = [
         row(icon('store') + ' ร้าน', currentUser.company || '-'),
+        row(icon('map-pinned') + ' สาขา', currentUser.branch || '-'),
         row(icon('user') + ' พนักงาน', 'คุณ' + (currentUser.nickname || currentUser.firstName || '-')),
         row(icon('smartphone') + ' ยี่ห้อ / รุ่น', brand + ' ' + model),
         row(icon('hard-drive') + ' ความจุ', storage),
@@ -1451,7 +1564,7 @@
       $('#sc-result')[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
       gasCall('logSearch', JSON.stringify({
         type: 'ซื้อสด', company: currentUser.company, nickname: currentUser.nickname,
-        firstName: currentUser.firstName, email: currentUser.email,
+        firstName: currentUser.firstName, email: currentUser.email, branch: currentUser.branch,
         brand: brand, model: model, storage: storage, price: price
       }), function () { });
     }
@@ -1542,7 +1655,7 @@
           : { brand: $('#sc-brand').val(), model: $('#sc-model').val(), storage: $('#sc-storage').val() };
         gasCall('logSearch', JSON.stringify(Object.assign({
           type: 'ดาวน์โหลด ' + type,
-          nickname: currentUser.nickname, firstName: currentUser.firstName, email: currentUser.email
+          nickname: currentUser.nickname, firstName: currentUser.firstName, email: currentUser.email, branch: currentUser.branch
         }, extra)), function () { });
       }).catch(function () {
         showToast('ดาวน์โหลดรูปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง', 'error');
@@ -1571,8 +1684,7 @@
       var session = loadSession();
       if (session) {
         currentUser = session.user;
-        startAutoLogout(session.expiresAt);
-        afterLogin();
+        startAuthenticatedSession(false);
       }
     });
   </script>
