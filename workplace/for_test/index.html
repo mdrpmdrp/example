@@ -93,6 +93,9 @@
   <script>
     // $('#show').hide()
     const elements = {}
+    const PDF_PENDING_VALUE = '__PDF_PENDING__'
+    const pendingPdfRows = {}
+
     function loadingStart() {
       document.getElementById("loading").classList.remove("invisible");
     };
@@ -129,9 +132,20 @@
 
     }
 
+    var applicationPdfFormatter = function (cell, formatterParams) {
+      var cellValue = cell.getValue()
+      if (cellValue == PDF_PENDING_VALUE) {
+        return `<span>กำลังสร้าง...</span>`
+      }
+      if (!cellValue) {
+        return `<span>ไม่มีใบสมัคร</span>`
+      }
+      return printIcon(cell, formatterParams)
+    }
+
     function openLink(e, cell) {
       var cellValue = cell.getValue()
-      if (cellValue != '') {
+      if (cellValue != '' && cellValue != PDF_PENDING_VALUE) {
         window.open(cell.getValue())
       }
     }
@@ -140,6 +154,12 @@
     function loadData() {
       google.script.run.withSuccessHandler((jsData) => {
         jsData = JSON.parse(jsData) //
+        jsData = jsData.map(row => {
+          if (pendingPdfRows[row.ไอดี] && !row.ใบสมัครPDF) {
+            row.ใบสมัครPDF = PDF_PENDING_VALUE
+          }
+          return row
+        })
         console.log("🚀 ~ loadData ~ jsData:", jsData)
         getFileForUpload()
         elements.table = new Tabulator("#data-table", {
@@ -179,6 +199,9 @@
             { title: "รูปถ่ายหน้าตรง", field: "รูปถ่ายหน้าตรง", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
             { title: "เอกสารหลักฐาน", field: "เอกสารหลักฐาน", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
             { title: "หลักฐานชำระค่าสมัครสอบ", field: "หลักฐานชำระค่าสมัครสอบ", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
+            {
+              title: "ใบสมัคร PDF", field: "ใบสมัครPDF", hozAlign: "center", vertAlign: "middle", print: false, formatter: applicationPdfFormatter, cellClick: openLink
+            }
           ],
           addRowPos: "top",
           pagination: true, //enable.
@@ -247,10 +270,10 @@
         elements.table.on("cellClick", function (e, cell) {
 
           console.log(cell)
-          if (cell._cell.column.definition?.title == 'รูปถ่ายหน้าตรง') return
-          if (cell._cell.column.definition?.title == 'เอกสารหลักฐาน') return
-          if (cell._cell.column.definition?.title == 'หลักฐานชำระค่าสมัครสอบ') return
-          if (cell._cell.column.definition?.title != 'รูปถ่ายหน้าตรง' || cell._cell.column.definition?.title != 'เอกสารหลักฐาน' || cell._cell.column.definition?.title != 'หลักฐานชำระค่าสมัครสอบ') loginEdit()
+          const clickedTitle = cell._cell.column.definition?.title
+          const fileColumnTitles = ['รูปถ่ายหน้าตรง', 'เอกสารหลักฐาน', 'หลักฐานชำระค่าสมัครสอบ', 'ใบสมัคร PDF']
+          if (fileColumnTitles.includes(clickedTitle)) return
+          loginEdit()
           filedatas = {}
           let row = cell._cell.row
           const custId = row.getData().ไอดี
@@ -554,7 +577,8 @@
 
       google.script.run
         .withSuccessHandler((result) => {
-          elements.table.addData([{ ไอดี: result.newId, คำนำหน้า: obj.colC, ชื่อ: obj.colD, นามสกุล: obj.colE, สัญชาติ: obj.colF, ศาสนา: obj.colG, บัตรประจำตัวประชาชน: obj.colH, จังหวัด: obj.colI, อำเภอเขต: obj.colJ, วันเกิด: obj.colK, สถานภาพสมรส: obj.colL, จังหวัดที่เกิด: obj.colM, อำเภอที่เกิด: obj.colN, ตำบลที่เกิด: obj.colO, บ้านเลขที่: obj.colP, หมู่ที่: obj.colQ, ซอย: obj.colR, ถนน: obj.colS, แขวงตำบล: obj.colT, เขตอำเภอ: obj.colU, จังหวัดที่อยู่: obj.colV, รหัสไปรษณีย์: obj.colW, เบอร์โทรศัพท์: obj.colX, อีเมล์: obj.colY, ชื่อภรรยาหรือสามี: obj.colZ, สัญชาติภรรยาหรือสามี: obj.colAA, ศาสนาภรรยาหรือสามี: obj.colAB, อาชีพภรรยาหรือสามี: obj.colAC, ชื่อบิดา: obj.colAD, สัญชาติบิดา: obj.colAE, ศาสนาบิดา: obj.colAF, อาชีพบิดา: obj.colAG, ชื่อมารดา: obj.colAH, สัญชาติมารดา: obj.colAI, ศาสนามารดา: obj.colAJ, อาชีพมารดา: obj.colAK, วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร: obj.colAL, สาขาวิชา: obj.colAM, วันที่ได้รับอนุมัติผลการศึกษา: obj.colAN, สถาบัน: obj.colAO, ตั้งอยู่จังหวัด: obj.colAP, GPA: obj.colAQ, วุฒิการศึกษาสูงสุด: obj.colAR, ความรู้ความสามารถพิเศษ: obj.colAS, รู้ภาษาต่างประเทศ: obj.colAT, ที่ทำงานล่าสุด: obj.colAU, ตำแหน่งสุดท้าย: obj.colAV, ลักษณะงาน: obj.colAW, เคยรับราชการหรือไม่: obj.colAX, เคยรับราชการเป็นข้าราชการ: obj.colAY, ตำแหน่ง: obj.colAZ, แผนก: obj.colBA, กอง: obj.colBB, กรม: obj.colBC, กระทรวง: obj.colBD, ออกจากราชการเพราะ: obj.colBE, ออกจากราชการเมื่อวันที่: obj.colBF, ได้รับบำเหน็จบำนาญหรือเบี้ยหวัดจากกระทรวง: obj.colBG, เป็นจำนวนเงิน: obj.colBH, ขณะนี้ได้รับเบี้ยหวัด: obj.colBI, บำเหน็จบำนาญที่: obj.colBJ, รูปถ่ายหน้าตรง: result.fileUrl[0], เอกสารหลักฐาน: result.fileUrl[1], หลักฐานชำระค่าสมัครสอบ: result.fileUrl[2] }], true); // ------แก้ 11
+          pendingPdfRows[result.newId] = true
+          elements.table.addData([{ ไอดี: result.newId, คำนำหน้า: obj.colC, ชื่อ: obj.colD, นามสกุล: obj.colE, สัญชาติ: obj.colF, ศาสนา: obj.colG, บัตรประจำตัวประชาชน: obj.colH, จังหวัด: obj.colI, อำเภอเขต: obj.colJ, วันเกิด: obj.colK, สถานภาพสมรส: obj.colL, จังหวัดที่เกิด: obj.colM, อำเภอที่เกิด: obj.colN, ตำบลที่เกิด: obj.colO, บ้านเลขที่: obj.colP, หมู่ที่: obj.colQ, ซอย: obj.colR, ถนน: obj.colS, แขวงตำบล: obj.colT, เขตอำเภอ: obj.colU, จังหวัดที่อยู่: obj.colV, รหัสไปรษณีย์: obj.colW, เบอร์โทรศัพท์: obj.colX, อีเมล์: obj.colY, ชื่อภรรยาหรือสามี: obj.colZ, สัญชาติภรรยาหรือสามี: obj.colAA, ศาสนาภรรยาหรือสามี: obj.colAB, อาชีพภรรยาหรือสามี: obj.colAC, ชื่อบิดา: obj.colAD, สัญชาติบิดา: obj.colAE, ศาสนาบิดา: obj.colAF, อาชีพบิดา: obj.colAG, ชื่อมารดา: obj.colAH, สัญชาติมารดา: obj.colAI, ศาสนามารดา: obj.colAJ, อาชีพมารดา: obj.colAK, วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร: obj.colAL, สาขาวิชา: obj.colAM, วันที่ได้รับอนุมัติผลการศึกษา: obj.colAN, สถาบัน: obj.colAO, ตั้งอยู่จังหวัด: obj.colAP, GPA: obj.colAQ, วุฒิการศึกษาสูงสุด: obj.colAR, ความรู้ความสามารถพิเศษ: obj.colAS, รู้ภาษาต่างประเทศ: obj.colAT, ที่ทำงานล่าสุด: obj.colAU, ตำแหน่งสุดท้าย: obj.colAV, ลักษณะงาน: obj.colAW, เคยรับราชการหรือไม่: obj.colAX, เคยรับราชการเป็นข้าราชการ: obj.colAY, ตำแหน่ง: obj.colAZ, แผนก: obj.colBA, กอง: obj.colBB, กรม: obj.colBC, กระทรวง: obj.colBD, ออกจากราชการเพราะ: obj.colBE, ออกจากราชการเมื่อวันที่: obj.colBF, ได้รับบำเหน็จบำนาญหรือเบี้ยหวัดจากกระทรวง: obj.colBG, เป็นจำนวนเงิน: obj.colBH, ขณะนี้ได้รับเบี้ยหวัด: obj.colBI, บำเหน็จบำนาญที่: obj.colBJ, รูปถ่ายหน้าตรง: result.fileUrl[0], เอกสารหลักฐาน: result.fileUrl[1], หลักฐานชำระค่าสมัครสอบ: result.fileUrl[2], ใบสมัครPDF: PDF_PENDING_VALUE }], true); // ------แก้ 11
 
           document.getElementById('colC_add').value = ""
           document.getElementById('colD_add').value = ""
@@ -622,6 +646,16 @@
           $("#preview-2").hide()
           loadingEnd()
           $('#myModal-add-form').modal('hide')
+          google.script.run
+            .withSuccessHandler((pdfResult) => {
+              delete pendingPdfRows[result.newId]
+              elements.table.updateData([{ ไอดี: result.newId, ใบสมัครPDF: pdfResult.url || '' }])
+            })
+            .withFailureHandler(() => {
+              delete pendingPdfRows[result.newId]
+              elements.table.updateData([{ ไอดี: result.newId, ใบสมัครPDF: '' }])
+            })
+            .createPDFById(result.newId)
           addCompleteAlert()
 
         })
@@ -704,9 +738,20 @@
       console.log(obj)
       google.script.run.withSuccessHandler(function (result) {
         console.log(result)
-        elements.table.updateData([{ ไอดี: id, คำนำหน้า: obj.colC, ชื่อ: obj.colD, นามสกุล: obj.colE, สัญชาติ: obj.colF, ศาสนา: obj.colG, บัตรประจำตัวประชาชน: obj.colH, จังหวัด: obj.colI, อำเภอเขต: obj.colJ, วันเกิด: obj.colK, สถานภาพสมรส: obj.colL, จังหวัดที่เกิด: obj.colM, อำเภอที่เกิด: obj.colN, ตำบลที่เกิด: obj.colO, บ้านเลขที่: obj.colP, หมู่ที่: obj.colQ, ซอย: obj.colR, ถนน: obj.colS, แขวงตำบล: obj.colT, เขตอำเภอ: obj.colU, จังหวัดที่อยู่: obj.colV, รหัสไปรษณีย์: obj.colW, เบอร์โทรศัพท์: obj.colX, อีเมล์: obj.colY, ชื่อภรรยาหรือสามี: obj.colZ, สัญชาติภรรยาหรือสามี: obj.colAA, ศาสนาภรรยาหรือสามี: obj.colAB, อาชีพภรรยาหรือสามี: obj.colAC, ชื่อบิดา: obj.colAD, สัญชาติบิดา: obj.colAE, ศาสนาบิดา: obj.colAF, อาชีพบิดา: obj.colAG, ชื่อมารดา: obj.colAH, สัญชาติมารดา: obj.colAI, ศาสนามารดา: obj.colAJ, อาชีพมารดา: obj.colAK, วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร: obj.colAL, สาขาวิชา: obj.colAM, วันที่ได้รับอนุมัติผลการศึกษา: obj.colAN, สถาบัน: obj.colAO, ตั้งอยู่จังหวัด: obj.colAP, GPA: obj.colAQ, วุฒิการศึกษาสูงสุด: obj.colAR, ความรู้ความสามารถพิเศษ: obj.colAS, รู้ภาษาต่างประเทศ: obj.colAT, ที่ทำงานล่าสุด: obj.colAU, ตำแหน่งสุดท้าย: obj.colAV, ลักษณะงาน: obj.colAW, เคยรับราชการหรือไม่: obj.colAX, เคยรับราชการเป็นข้าราชการ: obj.colAY, ตำแหน่ง: obj.colAZ, แผนก: obj.colBA, กอง: obj.colBB, กรม: obj.colBC, กระทรวง: obj.colBD, ออกจากราชการเพราะ: obj.colBE, ออกจากราชการเมื่อวันที่: obj.colBF, ได้รับบำเหน็จบำนาญหรือเบี้ยหวัดจากกระทรวง: obj.colBG, เป็นจำนวนเงิน: obj.colBH, ขณะนี้ได้รับเบี้ยหวัด: obj.colBI, บำเหน็จบำนาญที่: obj.colBJ, รูปถ่ายหน้าตรง: result.fileUrl[0], เอกสารหลักฐาน: result.fileUrl[1], หลักฐานชำระค่าสมัครสอบ: result.fileUrl[2] }]); // ----------แก้ 14
+        pendingPdfRows[id] = true
+        elements.table.updateData([{ ไอดี: id, คำนำหน้า: obj.colC, ชื่อ: obj.colD, นามสกุล: obj.colE, สัญชาติ: obj.colF, ศาสนา: obj.colG, บัตรประจำตัวประชาชน: obj.colH, จังหวัด: obj.colI, อำเภอเขต: obj.colJ, วันเกิด: obj.colK, สถานภาพสมรส: obj.colL, จังหวัดที่เกิด: obj.colM, อำเภอที่เกิด: obj.colN, ตำบลที่เกิด: obj.colO, บ้านเลขที่: obj.colP, หมู่ที่: obj.colQ, ซอย: obj.colR, ถนน: obj.colS, แขวงตำบล: obj.colT, เขตอำเภอ: obj.colU, จังหวัดที่อยู่: obj.colV, รหัสไปรษณีย์: obj.colW, เบอร์โทรศัพท์: obj.colX, อีเมล์: obj.colY, ชื่อภรรยาหรือสามี: obj.colZ, สัญชาติภรรยาหรือสามี: obj.colAA, ศาสนาภรรยาหรือสามี: obj.colAB, อาชีพภรรยาหรือสามี: obj.colAC, ชื่อบิดา: obj.colAD, สัญชาติบิดา: obj.colAE, ศาสนาบิดา: obj.colAF, อาชีพบิดา: obj.colAG, ชื่อมารดา: obj.colAH, สัญชาติมารดา: obj.colAI, ศาสนามารดา: obj.colAJ, อาชีพมารดา: obj.colAK, วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร: obj.colAL, สาขาวิชา: obj.colAM, วันที่ได้รับอนุมัติผลการศึกษา: obj.colAN, สถาบัน: obj.colAO, ตั้งอยู่จังหวัด: obj.colAP, GPA: obj.colAQ, วุฒิการศึกษาสูงสุด: obj.colAR, ความรู้ความสามารถพิเศษ: obj.colAS, รู้ภาษาต่างประเทศ: obj.colAT, ที่ทำงานล่าสุด: obj.colAU, ตำแหน่งสุดท้าย: obj.colAV, ลักษณะงาน: obj.colAW, เคยรับราชการหรือไม่: obj.colAX, เคยรับราชการเป็นข้าราชการ: obj.colAY, ตำแหน่ง: obj.colAZ, แผนก: obj.colBA, กอง: obj.colBB, กรม: obj.colBC, กระทรวง: obj.colBD, ออกจากราชการเพราะ: obj.colBE, ออกจากราชการเมื่อวันที่: obj.colBF, ได้รับบำเหน็จบำนาญหรือเบี้ยหวัดจากกระทรวง: obj.colBG, เป็นจำนวนเงิน: obj.colBH, ขณะนี้ได้รับเบี้ยหวัด: obj.colBI, บำเหน็จบำนาญที่: obj.colBJ, รูปถ่ายหน้าตรง: result.fileUrl[0], เอกสารหลักฐาน: result.fileUrl[1], หลักฐานชำระค่าสมัครสอบ: result.fileUrl[2], ใบสมัครPDF: PDF_PENDING_VALUE }]); // ----------แก้ 14
         loadingEnd()
         $('#myModal-edit-form').modal('hide')
+        google.script.run
+          .withSuccessHandler((pdfResult) => {
+            delete pendingPdfRows[id]
+            elements.table.updateData([{ ไอดี: id, ใบสมัครPDF: pdfResult.url || '' }])
+          })
+          .withFailureHandler(() => {
+            delete pendingPdfRows[id]
+            elements.table.updateData([{ ไอดี: id, ใบสมัครPDF: '' }])
+          })
+          .createPDFById(id)
         editCompleteAlert()
       }).editRecord(obj, id)
     };

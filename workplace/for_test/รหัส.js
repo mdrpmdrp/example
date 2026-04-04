@@ -1,4 +1,4 @@
-// 03/04/2026 23:38.
+// 04/04/2026 15:55.
 
 // Setting
 let sheetName = 'Data'
@@ -299,24 +299,19 @@ function editRecord(obj, id) {
     myFile2,
     myFile3
   ]])
-  const pdfFile = createPDF(obj.colA, colB, obj.colC, obj.colD, obj.colE, obj.colF, obj.colG, obj.colH, obj.colI, obj.colJ, obj.colK, obj.colL, obj.colM, obj.colN, obj.colO, obj.colP, colQ, colR, colS, obj.colT, obj.colU, obj.colV, obj.colW, obj.colX, obj.colY, colZ, colAA, colAB, colAC, obj.colAD, obj.colAE, obj.colAF, obj.colAG, obj.colAH, obj.colAI, obj.colAJ, obj.colAK, obj.colAL, obj.colAM, obj.colAN, obj.colAO, obj.colAP, obj.colAQ, obj.colAR, obj.colAS, obj.colAT, obj.colAU, obj.colAV, obj.colAW, obj.colAX, colAY, colAZ, colBA, colBB, colBC, colBD, colBE, obj.colBF, colBG, colBH, colBI, colBJ, colBK, colBL, colBM, colBN, colBO, colBP, fbq, fbr, fbs, fbt, colBU, colBV, myFile)
-  if (colBN !== "") { //เลขที่ form อื่น จะได้ไม่ error
-    ws.getRange(rowNumber, 76).setValue(pdfFile.getUrl())
-    ws.getRange(rowNumber, 77).setValue(pdfFile.getName())
-  }
   return { fileUrl: [myFile, myFile2, myFile3] };
 };
 
 function createPDF(colA, colB, colC, colD, colE, colF, colG, colH, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, colR, colS, colT, colU, colV, colW, colX, colY, colZ, colAA, colAB, colAC, colAD, colAE, colAF, colAG, colAH, colAI, colAJ, colAK, colAL, colAM, colAN, colAO, colAP, colAQ, colAR, colAS, colAT, colAU, colAV, colAW, colAX, colAY, colAZ, colBA, colBB, colBC, colBD, colBE, colBF, colBG, colBH, colBI, colBJ, colBK, colBL, colBM, colBN, colBO, colBP, colBQ, colBR, colBS, colBT, colBU, colBV, colCD) {
 
   if (colBK == "พนักงานมหาวิทยาลัยเงินแผ่นดิน") {
-    var templateDoc = DriveApp.getFileById('YYYYY')
+    var templateDoc = DriveApp.getFileById('1kxyyBX4jslsvc7-itgUOmMbngnvMxsiIX7XF2XZVjPY')
   } else {
-    var templateDoc = DriveApp.getFileById('ZZZZZ')
+    var templateDoc = DriveApp.getFileById('1a3sFq13SEIb4XaGuZCY9NyTcMUinP911h4tx4TYIknE')
   }
   // const templateDoc = DriveApp.getFileById('1kxyyBX4jslsvc7-itgUOmMbngnvMxsiIX7XF2XZVjPY')  //slide
-  const tempFolder = DriveApp.getFolderById('AAAAA')            //Temp
-  const pdfFolder = DriveApp.getFolderById('AAAAA')             //PDF
+  const tempFolder = DriveApp.getFolderById('1OLKvqSA0u0njZyWAI7il7RgLKsg4wJ2Q')            //Temp
+  const pdfFolder = DriveApp.getFolderById('14ReFs1On34j_Z05Ghxjgwv--e7yGfHMI')             //PDF
 
   var newTempFile = templateDoc.makeCopy(tempFolder);
   var openSlide = SlidesApp.openById(newTempFile.getId());
@@ -434,6 +429,87 @@ function createPDF(colA, colB, colC, colD, colE, colF, colG, colH, colI, colJ, c
   return pdfFile
 }
 
+function formatDateTimeForPdf(value) {
+  const date = value ? new Date(value) : new Date()
+  const safeDate = isNaN(date.getTime()) ? new Date() : date
+  return Utilities.formatDate(safeDate, 'GMT+7', 'dd/MM/yyyy HH:mm:ss')
+}
+
+function formatThaiDateForPdf(value) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString('th-TH', { day: 'numeric' }) + ' เดือน ' + date.toLocaleDateString('th-TH', { month: 'long' }) + ' ' + date.toLocaleDateString('th-TH', { year: 'numeric' })
+}
+
+function calculateAgeForPdf(value) {
+  if (!value) return '-'
+  const birthDate = new Date(value)
+  if (isNaN(birthDate.getTime())) return '-'
+
+  var y1 = birthDate.getFullYear()
+  var m1 = 1 + birthDate.getMonth()
+  var d1 = birthDate.getDate()
+  var curdate = new Date()
+  var d2 = curdate.getDate()
+  var m2 = 1 + curdate.getMonth()
+  var y2 = curdate.getFullYear()
+
+  var month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  if (d1 > d2) {
+    d2 = d2 + month[m2 - 1]
+    m2 = m2 - 1
+  }
+  if (m1 > m2) {
+    m2 = m2 + 12
+    y2 = y2 - 1
+  }
+
+  var d = d2 - d1
+  var m = m2 - m1
+  var y = y2 - y1
+
+  return y + ' ปี ' + m + ' เดือน ' + d + ' วัน'
+}
+
+function buildPdfArgsFromRow(row) {
+  return [
+    row[0],
+    formatDateTimeForPdf(row[1]),
+    ...row.slice(2, 68),
+    formatThaiDateForPdf(row[10]),
+    calculateAgeForPdf(row[10]),
+    formatThaiDateForPdf(row[38]),
+    row[57] ? formatThaiDateForPdf(row[57]) : '-',
+    row[72] || row[66] || '',
+    row[73] || formatDateTimeForPdf(row[1]),
+    row[81] || row[row.length - 3] || ''
+  ]
+}
+
+function createPDFById(id) {
+  const ws = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]
+  const custIds = ws.getRange(5, 1, ws.getLastRow() - 4, 1).getDisplayValues().map(r => r[0].toString().toLowerCase())
+  const posIndex = custIds.indexOf(id.toString().toLowerCase())
+  if (posIndex === -1) throw new Error('No matching record')
+
+  const rowNumber = posIndex + 5
+  const row = ws.getRange(rowNumber, 1, 1, ws.getLastColumn()).getValues()[0]
+  const formNumber = row[65] || row[66]
+  const imageUrl = row[81] || row[row.length - 3]
+
+  if (!formNumber || !imageUrl) {
+    return { url: '', name: '' }
+  }
+
+  const pdfFile = createPDF(...buildPdfArgsFromRow(row))
+
+  ws.getRange(rowNumber, 76).setValue(pdfFile.getUrl())
+  ws.getRange(rowNumber, 77).setValue(pdfFile.getName())
+
+  return { url: pdfFile.getUrl(), name: pdfFile.getName() }
+}
+
 //ลบข้อมูล
 function deleteRecord(props) {
   const ws = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]
@@ -462,7 +538,7 @@ function deleteRecord(props) {
 }
 
 //อัปโหลดไฟล์
-const FOLDER_ID = 'XXXX'
+const FOLDER_ID = '1MWsmo84D7gro7Um2JQX1Fo4miCttguvN'
 function upLoadFile(filedatas) {
   if (!filedatas || Object.keys(filedatas).length == 0) return ''
   let imgs = Object.keys(filedatas).map(key => {
@@ -474,9 +550,9 @@ function upLoadFile(filedatas) {
 
 function getFileId(fileUrl) {
   if (!fileUrl || fileUrl == '') return undefined
-  if(fileUrl.includes('id=')) {
+  if (fileUrl.includes('id=')) {
     return fileUrl.split('id=')[1]
-  } else if(fileUrl.includes('/d/')) {
+  } else if (fileUrl.includes('/d/')) {
     return fileUrl.split('/d/')[1].split('/')[0]
   }
   return undefined
@@ -499,7 +575,7 @@ function replaceFile(filedata, oldUrl) {
 function getDataList2() {
   const ss = SpreadsheetApp.getActiveSpreadsheet().getSheets()[2];
   const columns = [1, 2, 4, 2, 4, 2, 4, 2, 4, 7, 8];
-  
+
   return columns.map(col => {
     const data = ss.getRange(1, col, ss.getRange(String.fromCharCode(64 + col) + "1").getDataRegion().getLastRow(), 1).getValues().slice(1);
     const obj = {};
