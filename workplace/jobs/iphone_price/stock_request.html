@@ -109,7 +109,9 @@
     .modal-box.modal-box-wide { max-width: 1140px; }
 
     /* Status badges */
-    .badge { padding: 0.2rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+      .badge { padding: 0.2rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; display: inline-flex !important; align-items: center; justify-content: center; gap: 0.35rem; flex-wrap: nowrap; white-space: nowrap; vertical-align: middle; }
+      .badge > * { white-space: nowrap; flex-shrink: 0; }
+      .badge svg { display: inline-block; vertical-align: middle; }
     .badge-pending { background: #78350f; color: #fde68a; }
     .badge-approved { background: #064e3b; color: #6ee7b7; }
     .badge-partial { background: #1e3a5f; color: #93c5fd; }
@@ -145,7 +147,7 @@
     .nav-link.active { background: linear-gradient(135deg, #2563eb, #60a5fa); color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.45); }
 
     /* Notification badge */
-    .notif-badge { display: inline-flex; align-items: center; justify-content: center; background: #ef4444; color: #fff; font-size: 0.65rem; font-weight: 700; border-radius: 999px; min-width: 18px; height: 18px; padding: 0 5px; line-height: 1; margin-left: 2px; }
+      .notif-badge { display: inline-flex; align-items: center; justify-content: center; background: #ef4444; color: #fff; font-size: 0.65rem; font-weight: 700; border-radius: 999px; min-width: 18px; height: 18px; padding: 0 5px; line-height: 1; margin-left: 2px; white-space: nowrap; }
 
     /* Updated row highlight */
     .row-updated { background: rgba(234, 179, 8, 0.07) !important; border-left: 3px solid #eab308; }
@@ -339,11 +341,12 @@
                   <th>สาขา</th>
                   <th>รายการสินค้า</th>
                   <th>สถานะ</th>
+                  <th>ผู้อนุมัติ/ปฏิเสธ</th>
                   <th>ดำเนินการ</th>
                 </tr>
               </thead>
               <tbody id="my-requests-tbody">
-                <tr><td colspan="7" class="text-center text-slate-500 py-10"><span class="spinner mr-2"></span>กำลังโหลด...</td></tr>
+                <tr><td colspan="8" class="text-center text-slate-500 py-10"><span class="spinner mr-2"></span>กำลังโหลด...</td></tr>
               </tbody>
             </table>
           </div>
@@ -397,11 +400,12 @@
                   <th>ผู้ขอ</th>
                   <th>รายการสินค้า</th>
                   <th>สถานะ</th>
+                  <th>ผู้อนุมัติ/ปฏิเสธ</th>
                   <th>ดำเนินการ</th>
                 </tr>
               </thead>
               <tbody id="all-requests-tbody">
-                <tr><td colspan="8" class="text-center text-slate-500 py-10">กรุณารอโหลด...</td></tr>
+                <tr><td colspan="9" class="text-center text-slate-500 py-10">กรุณารอโหลด...</td></tr>
               </tbody>
             </table>
           </div>
@@ -1160,7 +1164,7 @@
 
   function renderMyRequests(requests) {
     if (requests.length === 0) {
-      $('#my-requests-tbody').html('<tr><td colspan="7" class="text-center text-slate-500 py-10">ยังไม่มีคำขอ</td></tr>');
+      $('#my-requests-tbody').html('<tr><td colspan="8" class="text-center text-slate-500 py-10">ยังไม่มีคำขอ</td></tr>');
       return;
     }
     var html = '';
@@ -1170,10 +1174,11 @@
       html += '<tr>'
         + '<td class="font-mono text-blue-300 text-xs">'+escHtml(r.docNo)+'</td>'
         + '<td class="text-slate-400 text-xs whitespace-nowrap">'+moment(r.date).format('D MMM YY')+'<br><span style="font-size:0.68rem;color:#64748b">'+moment(r.date).fromNow()+'</span></td>'
-        + '<td>'+priorityBadge(r.priority)+'</td>'
+        + '<td class="whitespace-nowrap">'+priorityBadge(r.priority)+'</td>'
         + '<td class="text-sm">'+escHtml(r.branch)+'</td>'
         + '<td class="text-slate-300 text-xs max-w-[180px] truncate" title="'+escHtml(summary)+'">'+escHtml(summary)+'</td>'
         + '<td>'+statusBadge(r.status)+'</td>'
+        + '<td class="text-slate-300 text-xs whitespace-nowrap">'+decisionByText(r)+'</td>'
         + '<td><button onclick="viewRequest(\''+escHtml(r.docNo)+'\')" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-blue-800 text-slate-300 hover:text-white transition text-xs font-medium">'
         + '<i data-lucide="eye" class="w-3 h-3"></i> ดู</button></td>'
         + '</tr>';
@@ -1215,7 +1220,7 @@
 
   function renderAllRequests(requests) {
     if (requests.length === 0) {
-      $('#all-requests-tbody').html('<tr><td colspan="8" class="text-center text-slate-500 py-10">ยังไม่มีคำขอ</td></tr>');
+      $('#all-requests-tbody').html('<tr><td colspan="9" class="text-center text-slate-500 py-10">ยังไม่มีคำขอ</td></tr>');
       return;
     }
     var html = '';
@@ -1225,11 +1230,12 @@
       html += '<tr>'
         + '<td class="font-mono text-blue-300 text-xs">'+escHtml(r.docNo)+'</td>'
         + '<td class="text-slate-400 text-xs whitespace-nowrap">'+moment(r.date).format('D MMM YY')+'<br><span style="font-size:0.68rem;color:#64748b">'+moment(r.date).fromNow()+'</span></td>'
-        + '<td>'+priorityBadge(r.priority)+'</td>'
+        + '<td class="whitespace-nowrap">'+priorityBadge(r.priority)+'</td>'
         + '<td class="text-sm">'+escHtml(r.branch)+'</td>'
         + '<td class="text-slate-300 text-xs">'+escHtml(r.requester)+'</td>'
         + '<td class="text-slate-300 text-xs max-w-[160px] truncate" title="'+escHtml(summary)+'">'+escHtml(summary)+'</td>'
         + '<td>'+statusBadge(r.status)+'</td>'
+        + '<td class="text-slate-300 text-xs whitespace-nowrap">'+decisionByText(r)+'</td>'
         + '<td><button onclick="viewRequest(\''+escHtml(r.docNo)+'\')" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-blue-800 text-slate-300 hover:text-white transition text-xs font-medium">'
         + '<i data-lucide="edit-3" class="w-3 h-3"></i> จัดการ</button></td>'
         + '</tr>';
@@ -1277,16 +1283,20 @@
 
   function renderViewModal(r) {
     var isAdmin = currentUser && currentUser.role === 'Admin';
+    if (isAdmin && r.status === 'Pending' && !r.decisionBy) {
+      r.decisionBy = currentAdminDisplayName();
+    }
     $('#modal-view .modal-box').toggleClass('modal-box-wide', isAdmin);
     $('#view-modal-title').html('คำขอ <span class="font-mono text-blue-300">'+escHtml(r.docNo)+'</span> '+statusBadge(r.status));
     var infoHtml =
       '<div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">'
       + infoItem('เลขที่เอกสาร', r.docNo)
       + infoItem('วันที่', moment(r.date).format('D MMMM YYYY'))
-      + infoItem('ความสำคัญ', r.priority === 'ด่วน' ? '<span class="badge badge-urgent">ด่วน <i data-lucide="zap" class="w-3 h-3"></i></span>' : '<span class="badge badge-normal">ปกติ</span>')
+      + infoItem('ความสำคัญ', r.priority === 'ด่วน' ? '<span class="badge badge-urgent">ด่วน<i data-lucide="zap" class="w-3 h-3 shrink-0"></i></span>' : '<span class="badge badge-normal">ปกติ</span>')
       + infoItem('สาขา', r.branch)
       + infoItem('สาขาผู้บันทึก', r.submittedBranch || r.branch)
       + infoItem('ผู้ขอเบิก', r.requester)
+      + infoItem(decisionLabel(r.status), decisionInfoText(r))
       + '</div>';
 
     // Items table (read-only view)
@@ -1372,6 +1382,8 @@
       items: items,
       adminEmail: currentUser.email,
       adminNickname: currentUser.nickname,
+      adminFirstName: currentUser.firstName,
+      adminLastName: currentUser.lastName,
       adminBranch: currentUser.branch
     }), function(res) {
       setLoading('save-approval-text', false, 'บันทึกการอนุมัติ');
@@ -1454,6 +1466,7 @@
       + '<div class="meta-item"><label>สาขา</label><span>'+escHtml(r.branch||'')+'</span></div>'
       + '<div class="meta-item"><label>สาขาผู้บันทึก</label><span>'+escHtml(r.submittedBranch || r.branch || '')+'</span></div>'
       + '<div class="meta-item"><label>ผู้ขอซื้อ</label><span>'+escHtml(r.requester||'')+'</span></div>'
+      + '<div class="meta-item"><label>'+escHtml(decisionLabel(r.status))+'</label><span>'+escHtml(decisionInfoText(r, true))+'</span></div>'
       + '</div>'
       + '<table>'
       + '<thead><tr>'
@@ -1468,7 +1481,7 @@
       + (r.adminNote ? '<div style="margin-top:12px;padding:10px 14px;background:#f1f5f9;border-radius:6px;border:1px solid #e2e8f0;font-size:12px;"><strong>หมายเหตุรวม: </strong>'+escHtml(r.adminNote)+'</div>' : '')
       + '<div class="footer">'
       + '<div class="sign-block"><div class="line"></div><p>ผู้ขอซื้อ / '+escHtml(r.requester||'')+'</p></div>'
-      + '<div class="sign-block"><div class="line"></div><p>ผู้อนุมัติ</p></div>'
+      + '<div class="sign-block"><div class="line"></div><p>'+escHtml(decisionSignatureText(r))+'</p></div>'
       + '</div>'
       + '<div class="page-num" id="page-num"></div>'
       + '<script>document.getElementById("page-num").textContent = "หน้า 1 / " + document.querySelectorAll(".page-num").length;<\/script>'
@@ -1579,6 +1592,38 @@
     });
   }
 
+  function decisionLabel(status) {
+    return status === 'Rejected' ? 'ผู้ปฏิเสธ' : 'ผู้อนุมัติ';
+  }
+
+  function currentAdminDisplayName() {
+    if (!currentUser) return '';
+    var nickname = String(currentUser.nickname || '').trim();
+    var fullName = [currentUser.firstName, currentUser.lastName].filter(function(part) {
+      return String(part || '').trim() !== '';
+    }).join(' ').trim();
+    if (nickname && fullName) return nickname + ' (' + fullName + ')';
+    return nickname || fullName;
+  }
+
+  function decisionByText(r) {
+    return escHtml(r && r.decisionBy ? r.decisionBy : '-');
+  }
+
+  function decisionInfoText(r, plainTextOnly) {
+    if (!r || !r.decisionBy) return '-';
+    var text = r.decisionBy;
+    if (r.decisionAt) {
+      text += ' • ' + moment(r.decisionAt).format('D MMM YY HH:mm');
+    }
+    return plainTextOnly ? text : escHtml(text);
+  }
+
+  function decisionSignatureText(r) {
+    if (!r || !r.decisionBy) return decisionLabel(r && r.status);
+    return decisionLabel(r.status) + ' / ' + r.decisionBy;
+  }
+
   // ── Badge helpers ─────────────────────────────────────────────
   function statusBadge(status) {
     var map = { Pending:'badge-pending', Approved:'badge-approved', Partial:'badge-partial', Rejected:'badge-rejected' };
@@ -1587,7 +1632,7 @@
   }
   function priorityBadge(p) {
     return p === 'ด่วน'
-      ? '<span class="badge badge-urgent">ด่วน ⚡</span>'
+      ? '<span class="badge badge-urgent">ด่วน<i data-lucide="zap" class="w-3 h-3 shrink-0"></i></span>'
       : '<span class="badge badge-normal">ปกติ</span>';
   }
 
