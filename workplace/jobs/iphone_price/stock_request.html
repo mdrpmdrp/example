@@ -114,6 +114,7 @@
     .badge-approved { background: #064e3b; color: #6ee7b7; }
     .badge-partial { background: #1e3a5f; color: #93c5fd; }
     .badge-rejected { background: #7f1d1d; color: #fca5a5; }
+    .badge-all { background: #334155; color: #cbd5e1; }
 
     /* Priority badges */
     .badge-normal { background: #14532d; color: #86efac; border: 1px solid #16a34a; }
@@ -259,6 +260,11 @@
           <span id="nav-username">—</span>
           <span id="nav-branch" class="text-xs text-slate-500"></span>
         </div>
+        <button onclick="refreshActiveTab()" title="รีเฟรชข้อมูล"
+          class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 text-slate-400 hover:bg-blue-900/20 hover:text-blue-300 transition text-sm border border-slate-700">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          <span class="hidden md:inline">รีเฟรช</span>
+        </button>
         <button onclick="doLogout()" title="ออกจากระบบ"
           class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition text-sm border border-slate-700">
           <i data-lucide="log-out" class="w-4 h-4"></i>
@@ -310,11 +316,18 @@
 
         <!-- Table -->
         <div class="glass rounded-2xl overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-4 border-b border-slate-700">
+          <div class="flex items-center justify-between px-5 py-4 border-b border-slate-700 flex-wrap gap-3">
             <h2 class="font-bold text-slate-100 text-base flex items-center gap-2"><i data-lucide="list" class="w-4 h-4 text-blue-400"></i> รายการคำขอของฉัน</h2>
-            <button class="btn-primary py-2 px-4 text-sm" onclick="loadMyRequests()">
-              <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline-block -translate-y-px mr-1"></i> รีเฟรช
-            </button>
+            <div class="flex items-center gap-2">
+              <select id="user-filter-status" class="inp py-2 text-sm" style="width:auto" onchange="loadMyRequests()">
+                <option value="">ทุกสถานะ</option>
+                <option value="Pending" selected>รอดำเนินการ</option>
+                <option value="Approved">อนุมัติแล้ว</option>
+                <option value="Partial">อนุมัติบางส่วน</option>
+                <option value="Rejected">ปฏิเสธ</option>
+              </select>
+              <span id="user-filter-count" class="badge badge-partial">0 รายการ</span>
+            </div>
           </div>
           <div class="overflow-x-auto">
             <table class="tbl" id="my-requests-table">
@@ -365,14 +378,12 @@
             <div class="flex items-center gap-2">
               <select id="adm-filter-status" class="inp py-2 text-sm" style="width:auto" onchange="loadAllRequests()">
                 <option value="">ทุกสถานะ</option>
-                <option value="Pending">รอดำเนินการ</option>
+                <option value="Pending" selected>รอดำเนินการ</option>
                 <option value="Approved">อนุมัติแล้ว</option>
                 <option value="Partial">อนุมัติบางส่วน</option>
                 <option value="Rejected">ปฏิเสธ</option>
               </select>
-              <button class="btn-primary py-2 px-4 text-sm" onclick="loadAllRequests()">
-                <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline-block -translate-y-px mr-1"></i> รีเฟรช
-              </button>
+              <span id="adm-filter-count" class="badge badge-partial">0 รายการ</span>
             </div>
           </div>
           <div class="overflow-x-auto">
@@ -435,7 +446,7 @@
       </div>
 
       <!-- Branch Info -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">สาขาต้นทาง</label>
           <input id="req-branch" type="text" class="inp" placeholder="เช่น สาขาเซ็นทรัล" readonly />
@@ -444,19 +455,15 @@
           <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">ชื่อผู้ขอเบิก</label>
           <input id="req-requester" type="text" class="inp" placeholder="ชื่อผู้ขอ" />
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">ผู้รับผิดชอบสาขา</label>
-          <input id="req-responsible" type="text" class="inp" placeholder="ชื่อผู้รับผิดชอบ" />
-        </div>
       </div>
 
       <!-- Items Table -->
       <div class="mb-4">
         <div class="flex items-center justify-between mb-3">
           <label class="text-sm font-semibold text-slate-300 flex items-center gap-1.5"><i data-lucide="package" class="w-4 h-4 text-blue-400"></i> รายการสินค้า</label>
-          <button onclick="addItemRow()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-800/50 text-blue-300 hover:bg-blue-700/60 transition text-sm font-medium border border-blue-700/50">
+          <!-- <button onclick="addItemRow()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-800/50 text-blue-300 hover:bg-blue-700/60 transition text-sm font-medium border border-blue-700/50">
             <i data-lucide="plus" class="w-3.5 h-3.5"></i> เพิ่มรายการ
-          </button>
+          </button> -->
         </div>
 
         <!-- Stock search row -->
@@ -681,6 +688,31 @@
   function openModal(id) { $('#'+id).removeClass('hidden'); $('body').css('overflow','hidden'); }
   function closeModal(id) { $('#'+id).addClass('hidden'); $('body').css('overflow',''); }
 
+  function getStatusFilterValue(selectId) {
+    return $('#'+selectId).val() || '';
+  }
+
+  function filterRequestsByStatus(requests, filterStatus) {
+    if (!filterStatus) return requests;
+    return (requests || []).filter(function(r) { return r.status === filterStatus; });
+  }
+
+  function updateFilterCount(selectId, countId, requests) {
+    var filterStatus = getStatusFilterValue(selectId);
+    var filtered = filterRequestsByStatus(requests || [], getStatusFilterValue(selectId));
+    var badgeClass = {
+      '': 'badge-all',
+      Pending: 'badge-pending',
+      Approved: 'badge-approved',
+      Partial: 'badge-partial',
+      Rejected: 'badge-rejected'
+    }[filterStatus] || 'badge-all';
+    $('#'+countId)
+      .removeClass('badge-all badge-pending badge-approved badge-partial badge-rejected')
+      .addClass(badgeClass)
+      .text(filtered.length + ' รายการ');
+  }
+
   // ── Auth tabs ─────────────────────────────────────────────────
   function switchTab(tab) {
     if (tab === 'login') {
@@ -844,6 +876,8 @@
     // reset poll state on every login
     stopPolling();
     _knownAdminDocNos = null; _knownUserStatuses = null; _updatedUserDocNos = {};
+    $('#user-filter-status').val('Pending');
+    $('#adm-filter-status').val('Pending');
     $('#badge-admin').text('0').addClass('hidden');
     $('#badge-user').text('0').addClass('hidden');
     $('#nav-username').text('คุณ' + currentUser.nickname);
@@ -883,6 +917,15 @@
     if (tab === 'my-requests') loadMyRequests();
     if (tab === 'admin-panel') loadAllRequests();
     lucide.createIcons();
+  }
+
+  function refreshActiveTab() {
+    if (!currentUser) return;
+    if ($('#tab-admin-panel').is(':visible')) {
+      loadAllRequests();
+      return;
+    }
+    loadMyRequests();
   }
 
   // ── Stock data helpers ────────────────────────────────────────
@@ -1015,7 +1058,6 @@
     $('#req-priority').val('ปกติ');
     $('#req-branch').val(currentUser ? currentUser.branch : '');
     $('#req-requester').val(currentUser ? (currentUser.firstName + ' ' + currentUser.lastName) : '');
-    $('#req-responsible').val('');
     $('#items-tbody').html('<tr id="items-empty-row"><td colspan="6" class="text-center text-slate-500 py-6 text-sm">ยังไม่มีรายการ กรุณาเพิ่มสินค้าด้านบน</td></tr>');
     _itemRowIdx = 0;
     initItemBrands();
@@ -1047,10 +1089,9 @@
   function submitRequest() {
     var branch = $('#req-branch').val().trim();
     var requester = $('#req-requester').val().trim();
-    var responsible = $('#req-responsible').val().trim();
     var priority = $('#req-priority').val();
     var date = $('#req-date').val();
-    if (!branch || !requester || !responsible) { showToast('กรุณากรอกข้อมูลสาขาให้ครบ','error', 3000); return; }
+    if (!branch || !requester) { showToast('กรุณากรอกข้อมูลสาขาให้ครบ','error', 3000); return; }
     if (!date) { showToast('กรุณาเลือกวันที่','error', 3000); return; }
     var items = collectItems();
     if (items.length === 0) { showToast('กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ','warning', 3000); return; }
@@ -1064,7 +1105,6 @@
       priority: priority,
       branch: branch,
       requester: requester,
-      responsible: responsible,
       items: items,
       submittedBy: currentUser ? currentUser.email : '',
       nickname: currentUser ? currentUser.nickname : '',
@@ -1087,23 +1127,26 @@
   // ── Load My Requests ──────────────────────────────────────────
   function loadMyRequests() {
     if (!currentUser) return;
+    var filterStatus = getStatusFilterValue('user-filter-status');
     $('#my-requests-tbody').html('<tr><td colspan="7" class="text-center text-slate-500 py-8"><span class="spinner mr-2"></span>กำลังโหลด...</td></tr>');
     gasCall('getMyStockRequests', JSON.stringify({ email: currentUser.email }), function(res) {
       if (res.status !== 'ok') { showToast(res.message,'error'); return; }
-      var requests = res.data || [];
+      var allRequests = res.data || [];
       if (_knownUserStatuses === null) {
         // first load after login — set baseline then start polling
         _knownUserStatuses = {};
-        requests.forEach(function(r){ _knownUserStatuses[r.docNo] = r.status; });
+        allRequests.forEach(function(r){ _knownUserStatuses[r.docNo] = r.status; });
         startPolling();
       } else {
         // explicit refresh — update baseline and clear badge/highlights
         _knownUserStatuses = {};
-        requests.forEach(function(r){ _knownUserStatuses[r.docNo] = r.status; });
+        allRequests.forEach(function(r){ _knownUserStatuses[r.docNo] = r.status; });
         _updatedUserDocNos = {};
         $('#badge-user').text('0').addClass('hidden');
       }
-      updateUserStats(requests);
+      var requests = filterRequestsByStatus(allRequests, filterStatus);
+      updateUserStats(allRequests);
+      updateFilterCount('user-filter-status', 'user-filter-count', allRequests);
       renderMyRequests(requests);
     });
   }
@@ -1142,21 +1185,23 @@
 
   // ── Load All Requests (Admin) ─────────────────────────────────
   function loadAllRequests() {
-    var filterStatus = $('#adm-filter-status').val() || '';
+    var filterStatus = getStatusFilterValue('adm-filter-status');
     $('#all-requests-tbody').html('<tr><td colspan="8" class="text-center text-slate-500 py-8"><span class="spinner mr-2"></span>กำลังโหลด...</td></tr>');
-    gasCall('getAllStockRequests', JSON.stringify({ filterStatus: filterStatus }), function(res) {
+    gasCall('getAllStockRequests', JSON.stringify({ filterStatus: '' }), function(res) {
       if (res.status !== 'ok') { showToast(res.message,'error'); return; }
-      var requests = res.data || [];
+      var allRequests = res.data || [];
       if (_knownAdminDocNos === null) {
         // first load after login — set baseline then start polling
-        _knownAdminDocNos = requests.map(function(r){ return r.docNo; });
+        _knownAdminDocNos = allRequests.map(function(r){ return r.docNo; });
         startPolling();
       } else {
         // explicit refresh — update baseline and clear badge
-        _knownAdminDocNos = requests.map(function(r){ return r.docNo; });
+        _knownAdminDocNos = allRequests.map(function(r){ return r.docNo; });
         $('#badge-admin').text('0').addClass('hidden');
       }
-      updateAdminStats(requests);
+      var requests = filterRequestsByStatus(allRequests, filterStatus);
+      updateAdminStats(allRequests);
+      updateFilterCount('adm-filter-status', 'adm-filter-count', allRequests);
       renderAllRequests(requests);
     });
   }
@@ -1242,7 +1287,6 @@
       + infoItem('สาขา', r.branch)
       + infoItem('สาขาผู้บันทึก', r.submittedBranch || r.branch)
       + infoItem('ผู้ขอเบิก', r.requester)
-      + infoItem('ผู้รับผิดชอบ', r.responsible)
       + '</div>';
 
     // Items table (read-only view)
@@ -1410,7 +1454,6 @@
       + '<div class="meta-item"><label>สาขา</label><span>'+escHtml(r.branch||'')+'</span></div>'
       + '<div class="meta-item"><label>สาขาผู้บันทึก</label><span>'+escHtml(r.submittedBranch || r.branch || '')+'</span></div>'
       + '<div class="meta-item"><label>ผู้ขอซื้อ</label><span>'+escHtml(r.requester||'')+'</span></div>'
-      + '<div class="meta-item"><label>ผู้รับผิดชอบ</label><span>'+escHtml(r.responsible||'')+'</span></div>'
       + '</div>'
       + '<table>'
       + '<thead><tr>'
@@ -1475,15 +1518,17 @@
   function pollAdmin() {
     gasCall('getAllStockRequests', JSON.stringify({ filterStatus: '' }), function(res) {
       if (res.status !== 'ok') return;
-      var requests = res.data || [];
-      var docNos = requests.map(function(r){ return r.docNo; });
+      var allRequests = res.data || [];
+      var docNos = allRequests.map(function(r){ return r.docNo; });
       if (_knownAdminDocNos === null) { _knownAdminDocNos = docNos.slice(); return; }
       var knownSet = {};
       _knownAdminDocNos.forEach(function(d){ knownSet[d] = true; });
       var newCount = docNos.filter(function(d){ return !knownSet[d]; }).length;
       _knownAdminDocNos = docNos.slice();
+      var requests = filterRequestsByStatus(allRequests, getStatusFilterValue('adm-filter-status'));
       // Always re-render table with latest data
-      updateAdminStats(requests);
+      updateAdminStats(allRequests);
+      updateFilterCount('adm-filter-status', 'adm-filter-count', allRequests);
       renderAllRequests(requests);
       if (newCount > 0) {
         var prev = parseInt($('#badge-admin').text()) || 0;
@@ -1497,22 +1542,24 @@
   function pollUser() {
     gasCall('getMyStockRequests', JSON.stringify({ email: currentUser.email }), function(res) {
       if (res.status !== 'ok') return;
-      var requests = res.data || [];
+      var allRequests = res.data || [];
       if (_knownUserStatuses === null) {
         _knownUserStatuses = {};
-        requests.forEach(function(r){ _knownUserStatuses[r.docNo] = r.status; });
+        allRequests.forEach(function(r){ _knownUserStatuses[r.docNo] = r.status; });
         return;
       }
       var changedCount = 0;
-      requests.forEach(function(r) {
+      allRequests.forEach(function(r) {
         if (_knownUserStatuses[r.docNo] !== undefined && _knownUserStatuses[r.docNo] !== r.status) {
           changedCount++;
           _updatedUserDocNos[r.docNo] = true;
         }
         _knownUserStatuses[r.docNo] = r.status;
       });
+      var requests = filterRequestsByStatus(allRequests, getStatusFilterValue('user-filter-status'));
       // Always re-render table with latest data
-      updateUserStats(requests);
+      updateUserStats(allRequests);
+      updateFilterCount('user-filter-status', 'user-filter-count', allRequests);
       renderMyRequests(requests);
       if (changedCount > 0) {
         var prev = parseInt($('#badge-user').text()) || 0;

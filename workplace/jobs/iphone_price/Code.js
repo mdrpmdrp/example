@@ -1,3 +1,5 @@
+// 5/4/2026 13:15
+
 var SS = SpreadsheetApp.getActiveSpreadsheet();
 
 // Column counts for known price sheets — avoids reading unused columns
@@ -5,7 +7,7 @@ var _SHEET_COLS = { 'ผ่อน': 8, 'มือสอง': 8, 'Freedown': 8, '
 var _INSTALLMENT = { 'ผ่อน': true, 'มือสอง': true, 'Freedown': true };
 var _USERS_HEADERS = ['Company', 'First Name', 'Last Name', 'Nickname', 'Email', 'Phone', 'Status', 'Created At', 'Role', 'Branch'];
 var _STOCK_REQUEST_HEADERS = [
-  'DocNo', 'Date', 'Priority', 'Branch', 'Requester', 'Responsible',
+  'DocNo', 'Date', 'Priority', 'Branch', 'Requester',
   'Items (JSON)', 'Status', 'AdminNote', 'SubmittedBy', 'CreatedAt', 'UpdatedAt', 'SubmittedBranch'
 ];
 
@@ -61,6 +63,10 @@ function sheetData(sheetName) {
   }
   _sheetCache[sheetName] = result;
   return result;
+}
+
+function resetCache(){
+  _sheetCache = {};
 }
 
 function jsonSuccess(data) { return JSON.stringify({ status: 'ok', data: data }); }
@@ -492,12 +498,12 @@ function saveStockRequest(payload) {
       var found = false;
       for (var i = 1; i < data.length; i++) {
         if (String(data[i][0]) === docNo) {
-          sheet.getRange(i + 1, 2, 1, 6).setValues([[
+          sheet.getRange(i + 1, 2, 1, 5).setValues([[
             p.date, p.priority, p.branch, p.requester,
-            p.responsible, JSON.stringify(p.items)
+            JSON.stringify(p.items)
           ]]);
-          sheet.getRange(i + 1, 13).setValue(p.submittedBranch || '');
-          sheet.getRange(i + 1, 12).setValue(new Date());
+          sheet.getRange(i + 1, 12).setValue(p.submittedBranch || '');
+          sheet.getRange(i + 1, 11).setValue(new Date());
           found = true;
           break;
         }
@@ -512,7 +518,6 @@ function saveStockRequest(payload) {
         p.priority,
         p.branch,
         p.requester,
-        p.responsible,
         JSON.stringify(p.items),
         'Pending',
         '',
@@ -543,11 +548,11 @@ function getMyStockRequests(payload) {
     var sheet = getStockRequestSheet();
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return jsonSuccess([]);
-    var data = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
-    var email = String(p.email).toLowerCase();
+    var data = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
+    var email = String(p.email || '').toLowerCase();
     var result = [];
     for (var i = 0; i < data.length; i++) {
-      if (String(data[i][9]).toLowerCase() === email) {
+      if (String(data[i][8]).toLowerCase() === email) {
         result.push(rowToRequest(data[i]));
       }
     }
@@ -565,7 +570,7 @@ function getAllStockRequests(payload) {
     var sheet = getStockRequestSheet();
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return jsonSuccess([]);
-    var data = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
     var filterStatus = (p.filterStatus || '').trim();
     var result = [];
     for (var i = 0; i < data.length; i++) {
@@ -586,7 +591,7 @@ function getStockRequestByDocNo(payload) {
     var sheet = getStockRequestSheet();
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return jsonError('ไม่พบเอกสาร');
-    var data = sheet.getRange(2, 1, lastRow - 1, 13).getValues();
+    var data = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
     for (var i = 0; i < data.length; i++) {
       if (String(data[i][0]) === String(p.docNo)) {
         return jsonSuccess(rowToRequest(data[i]));
@@ -606,10 +611,10 @@ function updateStockRequestApproval(payload) {
     var data = sheet.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]) === String(p.docNo)) {
-        sheet.getRange(i + 1, 7).setValue(JSON.stringify(p.items));
-        sheet.getRange(i + 1, 8).setValue(p.status);
-        sheet.getRange(i + 1, 9).setValue(p.adminNote || '');
-        sheet.getRange(i + 1, 12).setValue(new Date());
+        sheet.getRange(i + 1, 6).setValue(JSON.stringify(p.items));
+        sheet.getRange(i + 1, 7).setValue(p.status);
+        sheet.getRange(i + 1, 8).setValue(p.adminNote || '');
+        sheet.getRange(i + 1, 11).setValue(new Date());
         logEvent('StockRequest Approval: ' + p.docNo + ' -> ' + p.status,
           {
             nickname: p.adminNickname || '',
@@ -629,21 +634,20 @@ function updateStockRequestApproval(payload) {
 // ── Row → Object helper ───────────────────────────────────────────────────
 function rowToRequest(row) {
   var items = [];
-  try { items = JSON.parse(String(row[6]) || '[]'); } catch(e) {}
+  try { items = JSON.parse(String(row[5]) || '[]'); } catch(e) {}
   return {
     docNo: String(row[0]),
     date: row[1] instanceof Date ? Utilities.formatDate(row[1], Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(row[1]),
     priority: String(row[2]),
     branch: String(row[3]),
     requester: String(row[4]),
-    responsible: String(row[5]),
     items: items,
-    status: String(row[7]),
-    adminNote: String(row[8]),
-    submittedBy: String(row[9]),
-    createdAt: row[10] instanceof Date ? row[10].toISOString() : String(row[10]),
-    updatedAt: row[11] instanceof Date ? row[11].toISOString() : String(row[11]),
-    submittedBranch: String(row[12] || '')
+    status: String(row[6]),
+    adminNote: String(row[7]),
+    submittedBy: String(row[8]),
+    createdAt: row[9] instanceof Date ? row[9].toISOString() : String(row[9]),
+    updatedAt: row[10] instanceof Date ? row[10].toISOString() : String(row[10]),
+    submittedBranch: String(row[11] || '')
   };
 }
 
