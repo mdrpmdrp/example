@@ -6,8 +6,7 @@ const SHEET_NAME_TO_DROPDOWN_OPTIONS = "Options";
 const SHEET_NAME_TO_DROPDOWN_LOCATIONS = "Locations";
 const CHANNEL_ACCESS_TOKEN = 'XXXXXXXXXXXXXXXXXXXXXXX';
 const GROUP_ID = 'XXXXXXXXXXXXXXXX';
-// const FOLDER_ID = "XXXXXXXXXXXXXXXXX"; //รูปและเอกสารสมัครงาน
-const FOLDER_ID = "1CEWlvFURW0X6uRa_uAAPDjyczE5cr329"; // for test
+const FOLDER_ID = "XXXXXXXXXXXXXXXXX"; //รูปและเอกสารสมัครงาน
 
 function getOptionValues(sheet, column) {
   var lastRow = sheet.getRange(1, column).getDataRegion().getLastRow();
