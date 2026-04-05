@@ -1,880 +1,1568 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 
 <head>
-  <base target="_top">
-  <script src="https://code.jquery.com/jquery-3.6.1.slim.js"
-    integrity="sha256-tXm+sa1uzsbFnbXt8GJqsgi2Tw+m4BLGDof6eUPjbtk=" crossorigin="anonymous"></script>
-  <link href="https://unpkg.com/tabulator-tables@5.2.3/dist/css/tabulator.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
-    integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.2/font/bootstrap-icons.css">
-  <link href="https://cdn.jsdelivr.net/npm/mc-datepicker/dist/mc-calendar.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/mc-datepicker/dist/mc-calendar.min.js"></script>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>กรอกใบสมัคร</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
-  <title>แก้ไขข้อมูลผู้สมัคร</title>
-  <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-    integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0v4LLanw2qksYuRlEzO+tcaEPQogQ0KaoGN26/zrn20ImR1DfuLWnOo7aBA=="
-    crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript"
+        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dependencies/JQL.min.js"></script>
+    <script type="text/javascript"
+        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dependencies/typeahead.bundle.js"></script>
 
-  <?!= HtmlService.createHtmlOutputFromFile('css').getContent() ?>
+    <link rel="stylesheet"
+        href="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dist/jquery.Thailand.min.css">
+    <script type="text/javascript"
+        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dist/jquery.Thailand.min.js"></script>
+
+    <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
 </head>
 
 <body>
+    <main class="page-shell">
+        <div class="page-background"></div>
+        <div class="container py-4 py-lg-5">
+            <div class="form-layout">
+                <aside class="hero-panel">
+                    <div class="hero-content">
+                        <h1 class="hero-title">ใบสมัครสอบแข่งขัน หรือคัดเลือกเข้าเป็นพนักงานมหาวิทยาลัยเกษตรศาสตร์</h1>
+                        <p class="hero-copy">กรุณากรอกข้อมูลให้ครบถ้วน</p>
+                    </div>
 
-  <!-- LOADING ********************************  -->
-  <div id="loading" class="d-flex flex-row justify-content-center align-items-center invisible gap-2">
-    <div class="spinner-grow text-primary" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-grow text-secondary" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-grow text-success" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-grow text-danger" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-grow text-warning" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="spinner-grow text-info" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-  </div>
+                    <div class="hero-position-card">
+                        <div>
+                            <div class="eyebrow">ประเภท</div>
+                            <div id="titleOfForm" class="position-title">
+                                <?!= passbk ?>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="eyebrow">ตำแหน่ง</div>
+                            <div id="titleOfForm" class="position-title">
+                                <?!= passbl ?>
+                            </div>
+                        </div>
 
-  <nav class="navbar bg-success text-white mb-3">
-    <div class="container">
-      <h3><i class="bi bi-person-circle"></i> ข้อมูลของผู้สมัคร</h3>
-    </div>
-  </nav>
-  <div class="container" id="app">
-    <div class="row">
-      <div class="col mt-3">
-        <label class="form-label"><i class="bi bi-search"></i> ค้นหาจาก ชื่อ</label>
-        <input type="text" class="form-control" id="search-input" placeholder="พิมพ์ชื่อ">
-      </div>
-      <div class="col mt-3">
-        <label class="form-label"><i class="bi bi-people-fill"></i> ค้นหาจาก JobNo</label>
-        <select class="form-select" id="filter-diagGroup-input">
-          <option value="" selected>ทั้งหมด</option>
-          <?!= list_jobno; ?>
-        </select>
-      </div>
-    </div>
-    <section id="show">
-      <!-- <button type="button" class="btn btn-warning mt-4" id="open-form-record-button"><i class="bi bi-plus-circle-fill"></i> เพิ่มผู้สมัครใหม่</button>
-    <button type="button" class="btn btn-success mt-4" id="download-excel-button"><i class="bi bi-table"></i> ดาวน์โหลดไฟล์ Excel</button> -->
-      <div class="mt-2" id="data-table"></div>
-    </section>
-    <!-- <?!= HtmlService.createHtmlOutputFromFile('add').getContent() ?> -->
-    <?!= HtmlService.createHtmlOutputFromFile('edit').getContent() ?>
-  </div>
+                    </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2" crossorigin="anonymous">
-    </script>
-  <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.2.3/dist/js/tabulator.min.js"></script>
-  <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script type="text/javascript" src="https://oss.sheetjs.com/sheetjs/xlsx.full.min.js"></script>
-  <script type="text/javascript"
-    src="https://firebasestorage.googleapis.com/v0/b/free-program.appspot.com/o/CRUD%20%20BTS%20ver%2010%20-%20%E0%B9%81%E0%B8%88%E0%B8%81%E0%B8%9F%E0%B8%A3%E0%B8%B5.txt?alt=media&token=aca7f7fe-b122-4635-8ba0-53d33fada65a">
-    </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.1.1/luxon.min.js"
-    integrity="sha512-hZKz8wkgOcWeZanRioE6H6AC3OJspzJQyDBB5jLoZ1jIKbYDt5MwVIvU703WwE4sjvKZw9uNmmYlt29xKS27RA=="
-    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
-  <!-- <script>
-    // VConsole will be exported to `window.VConsole` by default.
-  var vConsole = new window.VConsole();
-  </script> -->
-  <script>
-    // $('#show').hide()
-    const elements = {}
-    const PDF_PENDING_VALUE = '__PDF_PENDING__'
-    const pendingPdfRows = {}
+                    <div id="msgToUsr" class="status-banner" role="status" aria-live="polite"></div>
+                </aside>
 
-    function loadingStart() {
-      document.getElementById("loading").classList.remove("invisible");
-    };
+                <section class="form-panel">
+                    <div id="formView">
+                        <div class="form-panel-header">
+                            <div>
+                                <div class="section-kicker">Application</div>
+                                <h2 class="panel-title">ข้อมูลผู้สมัคร</h2>
+                            </div>
+                            <div class="form-panel-actions">
+                                <button type="button" class="btn btn-outline-secondary btn-mock-fill" id="btnMockFill">
+                                    <i class="bi bi-magic"></i>
+                                    <span>กรอกข้อมูลทดสอบ</span>
+                                </button>
+                                <div class="required-note"><span class="text-danger">*</span> จำเป็นต้องกรอก</div>
+                            </div>
+                        </div>
 
-    function loadingEnd() {
-      document.getElementById("loading").classList.add("invisible");
-    };
+                        <form id="myForm" novalidate>
+                        <input type="hidden" name="passbk" value="<?!= passbk ?>">
+                        <input type="hidden" name="position" value="<?!= passbl ?>">
+                        <input type="hidden" name="passbm" value="<?!= passbm ?>">
+                        <input type="hidden" name="passbn" value="<?!= passbn ?>">
 
-    function pageLoad() {
-      loadingStart()
-      loadData()
-      $('#myModal-edit-form').on('hidden.bs.modal', function () {
-        filedatas = {}
-        $('#preview-edit, #preview-edit-2, #preview-edit-3').hide()
-        $('#myFile_edit, #myFile_edit_2, #myFile_edit_3').val('')
-      })
-      $('#myModal-add-form').on('hidden.bs.modal', function () {
-        filedatas = {}
-        $('#preview, #preview-2, #preview-3').hide()
-        $('#myFile_add, #myFile_add_2, #myFile_add_3').val('')
-      })
-    };
+                        <section class="form-section">
+                            <div class="section-heading">
+                                <div class="section-number">1</div>
+                                <div>
+                                    <h3>ข้อมูลส่วนบุคคล</h3>
+                                    <p>กรอกข้อมูลพื้นฐานตามบัตรประชาชนและข้อมูลวันเกิด</p>
+                                </div>
+                            </div>
 
+                            <div class="row g-3">
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">คำนำหน้า <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="prefix" name="prefix" required>
+                                        <option selected disabled value="">เลือก...</option>
+                                        <?!= list_prefix; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">ชื่อ <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="firstname" name="firstname"
+                                        placeholder="ชื่อ" required>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">นามสกุล <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="lastname" name="lastname"
+                                        placeholder="นามสกุล" required>
+                                </div>
 
-    // **********************************************************************
-    // START LOAD TABULATOR *************************************************
-    var printIcon = function (cell, formatterParams) { //plain text value
-      var cellValue = cell.getValue()
-      if (cellValue == '') {
-        return `<img src = "https://www.freeiconspng.com/uploads/error-icon-4.png" width="28" height="25"> `
-      } else {
-        return `<img src = "https://cdn-icons-png.flaticon.com/512/3767/3767084.png" width="28" height="25"> `
-      }
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">สัญชาติ <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="nation" name="nation" required>
+                                        <option selected disabled value="">เลือก...</option>
+                                        <?!= list_nation; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">ศาสนา <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="religion" name="religion" required>
+                                        <option selected disabled value="">เลือก...</option>
+                                        <?!= list_religion; ?>
+                                    </select>
+                                </div>
 
-    }
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">เลขประจำตัวประชาชน <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="uid" name="uid"
+                                        placeholder="เลขประจำตัว 13 หลัก" maxlength="13" pattern="^\d{13}$"
+                                        inputmode="numeric" required>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">วัน เดือน ปี เกิด (ค.ศ.) <span
+                                            class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="birth" name="birth" min="1974-01-01"
+                                        lang="en-GB" required>
+                                </div>
 
-    var applicationPdfFormatter = function (cell, formatterParams) {
-      var cellValue = cell.getValue()
-      if (cellValue == PDF_PENDING_VALUE) {
-        return `<span>กำลังสร้าง...</span>`
-      }
-      if (!cellValue) {
-        return `<span>ไม่มีใบสมัคร</span>`
-      }
-      return printIcon(cell, formatterParams)
-    }
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">อำเภอ/เขต ตามบัตรประชาชน <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="amphoecard" name="amphoecard"
+                                        placeholder="อำเภอ/เขต" required>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">จังหวัดที่ออกบัตร <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="provincecard" name="provincecard"
+                                        placeholder="จังหวัด" required>
+                                </div>
 
-    function openLink(e, cell) {
-      var cellValue = cell.getValue()
-      if (cellValue != '' && cellValue != PDF_PENDING_VALUE) {
-        window.open(cell.getValue())
-      }
-    }
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">ตำบลที่เกิด <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="districtbirth" name="districtbirth"
+                                        placeholder="ตำบลที่เกิด" required>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">อำเภอที่เกิด <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="amphoebirth" name="amphoebirth"
+                                        placeholder="อำเภอที่เกิด" required>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">จังหวัดที่เกิด <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="provincebirth" name="provincebirth"
+                                        placeholder="จังหวัดที่เกิด" required>
+                                </div>
+                            </div>
+                        </section>
 
+                        <section class="form-section">
+                            <div class="section-heading">
+                                <div class="section-number">2</div>
+                                <div>
+                                    <h3>ที่อยู่ปัจจุบัน</h3>
+                                    <p>ใช้ที่อยู่ที่สามารถติดต่อกลับได้จริง</p>
+                                </div>
+                            </div>
 
-    function loadData() {
-      google.script.run.withSuccessHandler((jsData) => {
-        jsData = JSON.parse(jsData) //
-        jsData = jsData.map(row => {
-          if (pendingPdfRows[row.ไอดี] && !row.ใบสมัครPDF) {
-            row.ใบสมัครPDF = PDF_PENDING_VALUE
-          }
-          return row
-        })
-        console.log("🚀 ~ loadData ~ jsData:", jsData)
-        getFileForUpload()
-        elements.table = new Tabulator("#data-table", {
-          height: "100%",
-          data: jsData,
-          reactiveData: true,
-          layout: "fitDataFill",
-          pagination: "local",
-          paginationSize: 10,
-          // paginationSizeSelector:[ 10, 15, 20],  เอาคำว่าแสดงออก
-          movableColumns: true,
-          paginationCounter: "rows",
-          index: "ไอดี",
-          initialSort: [{ column: "JobNo", dir: "desc" },
-          ],
+                            <div class="row g-3">
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">บ้านเลขที่ <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="address" name="address"
+                                        placeholder="บ้านเลขที่" required>
+                                </div>
+                                <div class="col-12 col-sm-6 col-md-4">
+                                    <label class="form-label">หมู่ที่</label>
+                                    <input type="text" class="form-control" id="moo" name="moo" placeholder="หมู่ที่">
+                                </div>
+                                <div class="col-12 col-sm-6 col-md-4">
+                                    <label class="form-label">ซอย</label>
+                                    <input type="text" class="form-control" id="soi" name="soi" placeholder="ซอย">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">ถนน</label>
+                                    <input type="text" class="form-control" id="road" name="road" placeholder="ถนน">
+                                </div>
 
-          columns: [
-            // {title:"รหัส ID", field:"ไอดี",visible:true, download:true},  // ตรง field ตัวเลขต้องตรงกัน
-            { title: "JobNo", field: "JobNo", headerFilter: true },
-            { title: "ประเภทตำแหน่ง", field: "ประเภทตำแหน่ง" },
-            { title: "ตำแหน่งงาน", field: "ตำแหน่งงาน" },
-            { title: "เลขที่", field: "เลขที่" },
-            { title: "คำนำหน้า", field: "คำนำหน้า" },
-            { title: "ชื่อ-นามสกุล", field: "ชื่อ" },
-            { title: "นามสกุล", field: "นามสกุล" },
-            {
-              title: "ตรวจคุณวุฒิ", field: "Status", hozAlign: "right", formatter: function (cell, formatterParams) {
-                var value = cell.getValue();
-                if (value.indexOf("ม") > 0) {
-                  return "<span style='color:#FF0000; font-weight:bold;'>" + value + "</span>";
-                } else {
-                  return "<span style='color:#006400; font-weight:bold;'>" + value + "</span>";
-                }
-              }
-            },
-            { title: "เบอร์โทร", field: "เบอร์โทรศัพท์", hozAlign: "right" }, // ----------------แก้ 5
-            { title: "รูปถ่ายหน้าตรง", field: "รูปถ่ายหน้าตรง", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
-            { title: "เอกสารหลักฐาน", field: "เอกสารหลักฐาน", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
-            { title: "หลักฐานชำระค่าสมัครสอบ", field: "หลักฐานชำระค่าสมัครสอบ", hozAlign: "center", vertAlign: "middle", print: false, formatter: printIcon, cellClick: openLink },
-            {
-              title: "ใบสมัคร PDF", field: "ใบสมัครPDF", hozAlign: "center", vertAlign: "middle", print: false, formatter: applicationPdfFormatter, cellClick: openLink
-            }
-          ],
-          addRowPos: "top",
-          pagination: true, //enable.
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">ตำบล/แขวง <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="district" name="district"
+                                        placeholder="ตำบล/แขวง" required>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">อำเภอ/เขต <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="amphoe" name="amphoe"
+                                        placeholder="อำเภอ/เขต" required>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">จังหวัด <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="province" name="province"
+                                        placeholder="จังหวัด" required>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">รหัสไปรษณีย์ <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="zipcode" name="zipcode"
+                                        placeholder="รหัสไปรษณีย์" inputmode="numeric" required>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">เบอร์โทรศัพท์ <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="telephone" name="telephone"
+                                        placeholder="0xxxxxxxxx" maxlength="10" pattern="^\d{10}$" inputmode="tel"
+                                        required>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">Email <span class="text-danger">*</span></label>
+                                    <input type="email" class="form-control" id="email" name="email"
+                                        placeholder="example@domain.com"
+                                        pattern="[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$" required>
+                                </div>
+                            </div>
+                        </section>
 
-          //ภาษาไทย
-          locale: true,
-          langs: {
-            "th-th": {
-              "columns": {
-                "name": "Name",
-              },
-              "data": {
-                "loading": "Loading",
-                "error": "Error",
-              },
-              "groups": {
-                "item": "รายการ",
-                "items": "รายการ",
-              },
-              "pagination": {
-                "page_size": 'แสดง',
-                "page_title": "Show Page",
-                "first": 'หน้าแรก',
-                "first_title": "First Page",
-                "last": 'หน้าสุดท้าย',
-                "last_title": "Last Page",
-                "prev": 'ก่อนหน้า',
-                "prev_title": "Prev Page",
-                "next": 'ถัดไป',
-                "next_title": "Next Page",
-                "all": "ทั้งหมด",
-                "counter": {
-                  "showing": "แสดง",
-                  "of": "จาก",
-                  "rows": "แถว",
-                  "pages": "หน้า",
-                }
-              },
-              "headerFilters": {
-                "default": "กรองข้อมูล...",
-                "columns": {
-                  "รายการ": "กรองรายการ...",
-                }
-              }
-            }
-          },
-        })
+                        <section class="form-section">
+                            <div class="section-heading">
+                                <div class="section-number">3</div>
+                                <div>
+                                    <h3>ข้อมูลครอบครัว</h3>
+                                    <p>กรอกข้อมูลบิดา มารดา และคู่สมรสถ้ามี</p>
+                                </div>
+                            </div>
 
+                            <div class="subsection-title">ข้อมูลบิดา</div>
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">ชื่อ-นามสกุล (บิดา) <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="namedad" name="namedad"
+                                        placeholder="ชื่อ-นามสกุล (บิดา)" required>
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label">สัญชาติ (บิดา) <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="nationdad" name="nationdad" required>
+                                        <option selected disabled value="">เลือก...</option>
+                                        <?!= list_nation; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label">ศาสนา (บิดา) <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="religiondad" name="religiondad" required>
+                                        <option selected disabled value="">เลือก...</option>
+                                        <?!= list_religion; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">อาชีพ (บิดา) <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="careerdad" name="careerdad"
+                                        placeholder="อาชีพ" required>
+                                </div>
+                            </div>
 
-        // DELETE RECORD 
-        elements.table.on("rowDeleted", function (row) {
-          //row - row component
-          //console.log(row)
-          //console.log(row._row.data.ไอดี) // id ที่ต้องการเข้าถึง
-          const id = row._row.data.ไอดี
-          google.script.run
-            .withSuccessHandler(() => {
-              loadingEnd()
-              deleteSuccessAlert()
-            })
-            .withFailureHandler((er) => {
-            })
-            .deleteRecord({ id: id })
-        })
+                            <div class="subsection-title mt-4">ข้อมูลมารดา</div>
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">ชื่อ-นามสกุล (มารดา) <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="namemom" name="namemom"
+                                        placeholder="ชื่อ-นามสกุล (มารดา)" required>
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label">สัญชาติ (มารดา) <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="nationmom" name="nationmom" required>
+                                        <option selected disabled value="">เลือก...</option>
+                                        <?!= list_nation; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label">ศาสนา (มารดา) <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="religionmom" name="religionmom" required>
+                                        <option selected disabled value="">เลือก...</option>
+                                        <?!= list_religion; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">อาชีพ (มารดา) <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="careermom" name="careermom"
+                                        placeholder="อาชีพ" required>
+                                </div>
+                            </div>
 
-        elements.table.on("cellClick", function (e, cell) {
+                            <div class="subsection-title mt-4">คู่สมรส (ถ้ามี)</div>
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">ชื่อ-นามสกุล (ภรรยาหรือสามี)</label>
+                                    <input type="text" class="form-control" id="namespouse" name="namespouse"
+                                        placeholder="ชื่อ-นามสกุล">
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label">สัญชาติ</label>
+                                    <select class="form-select" id="nationspouse" name="nationspouse">
+                                        <option selected disabled value="">เลือก...</option>
+                                        <?!= list_nation; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label">ศาสนา</label>
+                                    <select class="form-select" id="religionspouse" name="religionspouse">
+                                        <option selected disabled value="">เลือก...</option>
+                                        <?!= list_religion; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">อาชีพ</label>
+                                    <input type="text" class="form-control" id="careerspouse" name="careerspouse"
+                                        placeholder="อาชีพ">
+                                </div>
+                            </div>
+                        </section>
 
-          console.log(cell)
-          const clickedTitle = cell._cell.column.definition?.title
-          const fileColumnTitles = ['รูปถ่ายหน้าตรง', 'เอกสารหลักฐาน', 'หลักฐานชำระค่าสมัครสอบ', 'ใบสมัคร PDF']
-          if (fileColumnTitles.includes(clickedTitle)) return
-          loginEdit()
-          filedatas = {}
-          let row = cell._cell.row
-          const custId = row.getData().ไอดี
-          // const colB = row.getData().ประทับเวลา
-          const colC = row.getData().คำนำหน้า
-          const colD = row.getData().ชื่อ
-          const colE = row.getData().นามสกุล
-          const colF = row.getData().สัญชาติ
-          const colG = row.getData().ศาสนา
-          const colH = row.getData().บัตรประจำตัวประชาชน // ------------แก้ 6
-          const colI = row.getData().จังหวัด
-          const colJ = row.getData().อำเภอเขต
-          const colK = row.getData().วันเกิด
-          const colL = row.getData().สถานภาพสมรส
-          const colM = row.getData().จังหวัดที่เกิด
-          const colN = row.getData().อำเภอที่เกิด
-          const colO = row.getData().ตำบลที่เกิด
-          const colP = row.getData().บ้านเลขที่
-          const colQ = row.getData().หมู่ที่
-          const colR = row.getData().ซอย
-          const colS = row.getData().ถนน
-          const colT = row.getData().แขวงตำบล
-          const colU = row.getData().เขตอำเภอ
-          const colV = row.getData().จังหวัดที่อยู่
-          const colW = row.getData().รหัสไปรษณีย์
-          const colX = row.getData().เบอร์โทรศัพท์
-          const colY = row.getData().อีเมล์
-          const colZ = row.getData().ชื่อภรรยาหรือสามี
-          const colAA = row.getData().สัญชาติภรรยาหรือสามี
-          const colAB = row.getData().ศาสนาภรรยาหรือสามี
-          const colAC = row.getData().อาชีพภรรยาหรือสามี
-          const colAD = row.getData().ชื่อบิดา
-          const colAE = row.getData().สัญชาติบิดา
-          const colAF = row.getData().ศาสนาบิดา
-          const colAG = row.getData().อาชีพบิดา
-          const colAH = row.getData().ชื่อมารดา
-          const colAI = row.getData().สัญชาติมารดา
-          const colAJ = row.getData().ศาสนามารดา
-          const colAK = row.getData().อาชีพมารดา
-          const colAL = row.getData().วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร
-          const colAM = row.getData().สาขาวิชา
-          const colAN = row.getData().วันที่ได้รับอนุมัติผลการศึกษา
-          const colAO = row.getData().สถาบัน
-          const colAP = row.getData().ตั้งอยู่จังหวัด
-          const colAQ = row.getData().GPA
-          const colAR = row.getData().วุฒิการศึกษาสูงสุด
-          const colAS = row.getData().ความรู้ความสามารถพิเศษ
-          const colAT = row.getData().รู้ภาษาต่างประเทศ
-          const colAU = row.getData().ที่ทำงานล่าสุด
-          const colAV = row.getData().ตำแหน่งสุดท้าย
-          const colAW = row.getData().ลักษณะงาน
-          const colAX = row.getData().เคยรับราชการหรือไม่
-          const colAY = row.getData().เคยรับราชการเป็นข้าราชการ
-          const colAZ = row.getData().ตำแหน่ง
-          const colBA = row.getData().แผนก
-          const colBB = row.getData().กอง
-          const colBC = row.getData().กรม
-          const colBD = row.getData().กระทรวง
-          const colBE = row.getData().ออกจากราชการเพราะ
-          const colBF = row.getData().ออกจากราชการเมื่อวันที่
-          const colBG = row.getData().ได้รับบำเหน็จบำนาญหรือเบี้ยหวัดจากกระทรวง
-          const colBH = row.getData().เป็นจำนวนเงิน
-          const colBI = row.getData().ขณะนี้ได้รับเบี้ยหวัด
-          const colBJ = row.getData().บำเหน็จบำนาญที่
-          const myFile = row.getData().รูปถ่ายหน้าตรง
-          const myFile2 = row.getData().เอกสารหลักฐาน
-          const myFile3 = row.getData().หลักฐานชำระค่าสมัครสอบ
+                        <section class="form-section">
+                            <div class="section-heading">
+                                <div class="section-number">4</div>
+                                <div>
+                                    <h3>ประวัติการศึกษา</h3>
+                                    <p>ระบุวุฒิที่ใช้สมัครและรายละเอียดการศึกษา</p>
+                                </div>
+                            </div>
 
-          showModalEditForm(custId, colC, colD, colE, colF, colH, colG, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, colR, colS, colT, colU, colV, colW, colX, colY, colZ, colAA, colAB, colAC, colAD, colAE, colAF, colAG, colAH, colAI, colAJ, colAK, colAL, colAM, colAN, colAO, colAP, colAQ, colAR, colAS, colAT, colAU, colAV, colAW, colAX, colAY, colAZ, colBA, colBB, colBC, colBD, colBE, colBF, colBG, colBH, colBI, colBJ, myFile, myFile2, myFile3) // -----------แก้ 7
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="degree" name="degree"
+                                        placeholder="วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร" required>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">สาขาวิชา <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="major" name="major"
+                                        placeholder="สาขาวิชา" required>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">วันที่ได้รับอนุมัติผลการศึกษา (ค.ศ.) <span
+                                            class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="edubirth" name="edubirth" lang="en-GB"
+                                        required>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">สถาบันการศึกษา <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="university" name="university"
+                                        placeholder="ชื่อสถาบันการศึกษา" required>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">จังหวัดที่ตั้งสถาบัน <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" id="uniprovince" name="uniprovince" required>
+                                        <option selected disabled value="">เลือก...</option>
+                                        <?!= list_province; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">คะแนนเฉลี่ยสะสม <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="grade" name="grade" placeholder="1.0"
+                                        step="0.01" min="2" max="4" required>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">วุฒิการศึกษาสูงสุด <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" id="highest" name="highest" required>
+                                        <option selected disabled value="">เลือก...</option>
+                                        <?!= list_highest; ?>
+                                    </select>
+                                </div>
+                            </div>
+                        </section>
 
+                        <section class="form-section">
+                            <div class="section-heading">
+                                <div class="section-number">5</div>
+                                <div>
+                                    <h3>ความรู้ความสามารถพิเศษ</h3>
+                                    <p>กรอกทักษะที่ช่วยสนับสนุนการทำงานในตำแหน่งนี้</p>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">ความรู้ความสามารถพิเศษ</label>
+                                    <input type="text" class="form-control" id="special" name="special"
+                                        placeholder="เช่น โปรแกรมที่ใช้ได้ ใบรับรอง หรือทักษะเฉพาะ">
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">รู้ภาษาต่างประเทศ ภาษาใด เพียงใด</label>
+                                    <input type="text" class="form-control" id="language" name="language"
+                                        placeholder="เช่น English - intermediate">
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="form-section">
+                            <div class="section-heading">
+                                <div class="section-number">6</div>
+                                <div>
+                                    <h3>ประวัติการทำงาน</h3>
+                                    <p>หากเคยทำงานมาก่อน ให้ระบุรายละเอียดล่าสุดและประวัติราชการถ้ามี</p>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">ที่ทำงานล่าสุด</label>
+                                    <input type="text" class="form-control" id="work1" name="work1"
+                                        placeholder="ที่ทำงานล่าสุด">
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">ตำแหน่งสุดท้าย</label>
+                                    <input type="text" class="form-control" id="work2" name="work2"
+                                        placeholder="ตำแหน่งสุดท้าย">
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">ลักษณะงาน</label>
+                                    <input type="text" class="form-control" id="work3" name="work3"
+                                        placeholder="ลักษณะงาน">
+                                </div>
+                            </div>
+
+                            <div class="radio-group mt-4">
+                                <label class="form-label d-block">เคยรับราชการหรือไม่ <span
+                                        class="text-danger">*</span></label>
+                                <div class="radio-card-wrap">
+                                    <label class="radio-card" for="yesCheck">
+                                        <input type="radio" id="yesCheck" name="military1" value="เคย" required>
+                                        <span>เคย</span>
+                                    </label>
+                                    <label class="radio-card" for="noCheck">
+                                        <input type="radio" id="noCheck" name="military1" value="ไม่เคย" required>
+                                        <span>ไม่เคย</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="ifYes" class="conditional-panel d-none mt-4">
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label">เคยรับราชการเป็นข้าราชการ</label>
+                                        <input type="text" class="form-control" name="military2">
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label">ตำแหน่ง</label>
+                                        <input type="text" class="form-control" name="military3">
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label">แผนก</label>
+                                        <input type="text" class="form-control" name="military4">
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label">กอง</label>
+                                        <input type="text" class="form-control" name="military5">
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label">กรม</label>
+                                        <input type="text" class="form-control" name="military6">
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label">กระทรวง</label>
+                                        <input type="text" class="form-control" name="military7">
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label">ออกจากราชการเพราะ</label>
+                                        <input type="text" class="form-control" name="military8">
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label">ออกจากราชการเมื่อวันที่ (ค.ศ.)</label>
+                                        <input type="date" class="form-control" id="military9" name="military9"
+                                            lang="en-GB">
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label">ได้รับบำเหน็จ บำนาญ หรือเบี้ยหวัดจากกระทรวง</label>
+                                        <input type="text" class="form-control" name="military10">
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label">เป็นจำนวนเงิน (บาท)</label>
+                                        <input type="text" class="form-control" name="military11">
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label">ขณะนี้ได้รับเบี้ยหวัด</label>
+                                        <input type="text" class="form-control" name="military12">
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label">บำเหน็จบำนาญที่</label>
+                                        <input type="text" class="form-control" name="military13">
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="form-section">
+                            <div class="section-heading">
+                                <div class="section-number">7</div>
+                                <div>
+                                    <h3>แนบไฟล์</h3>
+                                    <p>อัปโหลดรูปถ่ายและเอกสารการสมัครในรูปแบบที่กำหนด</p>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="upload-card upload-card-photo" id="file1Card">
+                                        <label class="form-label" for="file1">รูปถ่ายหน้าตรง (.jpg) <span
+                                                class="text-danger">*</span></label>
+                                        <input class="file-input-native" type="file" id="file1" name="file1"
+                                            accept="image/jpg,.jpg" required>
+                                        <div class="upload-card-body">
+                                              <div class="upload-content">
+                                                <div class="upload-actions">
+                                                    <button type="button" class="btn upload-select-btn" data-file-trigger="file1">
+                                                        <i class="bi bi-image"></i>
+                                                        <span>เลือกรูปผู้สมัคร</span>
+                                                    </button>
+                                                    <span class="upload-file-name" id="file1Name">ยังไม่ได้เลือกไฟล์</span>
+                                                </div>
+                                                <div class="field-help">รองรับไฟล์ .jpg สำหรับรูปถ่ายหน้าตรงของผู้สมัคร</div>
+                                            </div>
+                                            <div class="upload-preview is-empty" id="file1PreviewWrap">
+                                                <img id="file1Preview" class="upload-preview-image" alt="ตัวอย่างรูปผู้สมัคร">
+                                                <div class="upload-preview-placeholder">
+                                                    <i class="bi bi-person-badge"></i>
+                                                    <span>ยังไม่ได้เลือกรูปผู้สมัคร</span>
+                                                </div>
+                                            </div>
+                                          
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="upload-card" id="file2Card">
+                                        <label class="form-label" for="file2">หลักฐานที่ใช้ในการสมัครสอบ (.pdf) <span
+                                                class="text-danger">*</span></label>
+                                        <input class="file-input-native" type="file" id="file2" name="file2"
+                                            accept="application/pdf,.pdf" required>
+                                        <div class="upload-card-body">
+                                            <div class="upload-content upload-content-full">
+                                                <div class="upload-actions">
+                                                    <button type="button" class="btn upload-select-btn" data-file-trigger="file2">
+                                                        <i class="bi bi-file-earmark-pdf"></i>
+                                                        <span>เลือกไฟล์หลักฐาน</span>
+                                                    </button>
+                                                    <span class="upload-file-name" id="file2Name">ยังไม่ได้เลือกไฟล์</span>
+                                                </div>
+                                                <div class="field-help">รองรับไฟล์ .pdf สำหรับเอกสารประกอบการสมัคร</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <input id="file1data" name="file1data" type="hidden">
+                            <input id="file2data" name="file2data" type="hidden">
+                            <input id="file1url" name="file1url" type="hidden">
+                            <input id="file2url" name="file2url" type="hidden">
+
+                            <div class="submit-bar">
+                                <div>
+                                    <div class="submit-title">ตรวจสอบข้อมูลก่อนส่ง</div>
+                                    <div class="field-help">กรุณาตรวจสอบข้อมูลให้ครบถ้วนก่อนบันทึก</div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-submit" id="btnSubmit">
+                                    <i class="bi bi-cloud-arrow-up-fill"></i>
+                                    <span>บันทึกข้อมูล</span>
+                                </button>
+                            </div>
+                        </section>
+                        </form>
+                    </div>
+
+                    <div id="successView" class="success-view d-none" aria-live="polite">
+                        <div class="success-hero">
+                            <div class="success-icon">
+                                <i class="bi bi-check2-circle"></i>
+                            </div>
+                            <div class="section-kicker">Application Saved</div>
+                            <h2 class="success-title">บันทึกข้อมูลเรียบร้อยแล้ว</h2>
+                            <p class="success-copy" id="successMessage">ระบบกำลังสร้างไฟล์ใบสมัครของท่าน</p>
+                        </div>
+
+                        <div class="success-meta-grid">
+                            <div class="success-meta-card">
+                                <span class="success-meta-label">ผู้สมัคร</span>
+                                <strong class="success-meta-value" id="successApplicantName">-</strong>
+                            </div>
+                            <div class="success-meta-card">
+                                <span class="success-meta-label">ประเภท</span>
+                                <strong class="success-meta-value" id="successApplicationType">-</strong>
+                            </div>
+                            <div class="success-meta-card">
+                                <span class="success-meta-label">ตำแหน่ง</span>
+                                <strong class="success-meta-value" id="successPosition">-</strong>
+                            </div>
+                            <div class="success-meta-card">
+                                <span class="success-meta-label">เลขที่สมัคร</span>
+                                <strong class="success-meta-value" id="successPassbn">-</strong>
+                            </div>
+                        </div>
+
+                        <div class="success-actions">
+                            <a id="successPdfButton" class="btn btn-primary btn-submit success-pdf-button disabled" href="#"
+                                target="_blank" rel="noopener noreferrer" aria-disabled="true">
+                                <i class="bi bi-hourglass-split"></i>
+                                <span id="successPdfButtonText">กำลังสร้างไฟล์ใบสมัคร</span>
+                            </a>
+                            <button type="button" class="btn btn-outline-secondary btn-mock-fill" id="btnStartNewApplication">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                                <span>กรอกใบสมัครใหม่</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        const form = document.getElementById('myForm');
+        const formView = document.getElementById('formView');
+        const successView = document.getElementById('successView');
+        const submitButton = document.getElementById('btnSubmit');
+        const mockFillButton = document.getElementById('btnMockFill');
+        const startNewApplicationButton = document.getElementById('btnStartNewApplication');
+        const fileTriggerButtons = document.querySelectorAll('[data-file-trigger]');
+        const militaryInputs = document.querySelectorAll('input[name="military1"]');
+        const conditionalPanel = document.getElementById('ifYes');
+        const successMessage = document.getElementById('successMessage');
+        const successApplicantName = document.getElementById('successApplicantName');
+        const successApplicationType = document.getElementById('successApplicationType');
+        const successPosition = document.getElementById('successPosition');
+        const successPassbn = document.getElementById('successPassbn');
+        const successPdfButton = document.getElementById('successPdfButton');
+        const successPdfButtonText = document.getElementById('successPdfButtonText');
+        const validationElements = Array.from(form.querySelectorAll('input, select, textarea')).filter((element) => {
+            return element.name && element.type !== 'hidden' && !element.disabled;
         });
-        loadingEnd()
+        const uploadStatusConfig = {
+            file1: 'รูปถ่ายหน้าตรง',
+            file2: 'เอกสารประกอบการสมัคร',
+            save: 'บันทึกข้อมูลลงระบบ'
+        };
+        const swalCustomClass = {
+            popup: 'rounded rounded-4'
+        };
 
-      }).withFailureHandler((er) => { }).getData()
-
-    };
-
-    function setHeaderFilterDiagGroup(e) {
-      elements.table.setHeaderFilterValue("JobNo", e.target.value)
-
-    };
-
-    //ตรวจสอบรหัสผ่านก่อนแก้ไข **************************************
-    function loginEdit() {
-      $('#myModal-edit-form').modal('show')
-    }
-
-    //ตรวจสอบรหัสผ่านก่อนเพิ่มข้อมูล **************************************
-    function loginAdd() {
-      $('#myModal-add-form').modal('hide')
-      Swal.fire({
-        title: 'รหัสผ่าน',
-        html: ` <input type="password" id="password" class="swal2-input" placeholder="รหัสผ่าน">`,
-        confirmButtonText: 'ตกลง',
-        focusConfirm: false,
-        preConfirm: () => {
-          const password = Swal.getPopup().querySelector('#password').value
-          if (password == '1234') {
-            $('#myModal-add-form').modal('show')
-            Swal.fire(`
-        รหัสผ่าน: ถูกต้อง
-      `.trim())
-          } else {
-            Swal.fire(`
-            รหัสผ่าน: ผิด
-          `.trim())
-          }
-          if (!password) {
-            Swal.showValidationMessage(`กรุณาใส่รหัสผ่าน`)
-          }
-          return { password: password }
+        function toggleMilitaryHistory() {
+            const selected = document.querySelector('input[name="military1"]:checked');
+            const shouldShow = selected && selected.value === 'เคย';
+            conditionalPanel.classList.toggle('d-none', !shouldShow);
         }
-      })
-    }
 
-    function showModalEditForm(custId, colC, colD, colE, colF, colH, colG, colI, colJ, colK, colL, colM, colN, colO, colP, colQ, colR, colS, colT, colU, colV, colW, colX, colY, colZ, colAA, colAB, colAC, colAD, colAE, colAF, colAG, colAH, colAI, colAJ, colAK, colAL, colAM, colAN, colAO, colAP, colAQ, colAR, colAS, colAT, colAU, colAV, colAW, colAX, colAY, colAZ, colBA, colBB, colBC, colBD, colBE, colBF, colBG, colBH, colBI, colBJ, myFile, myFile2, myFile3) { // -----------แก้ 8
-      console.log(myFile2)
-      // const myModalEditForm = new bootstrap.Modal(document.getElementById('myModal-edit-form'), {keyboard: false })
-      document.getElementById('customer_id_edit').value = custId
-      document.getElementById('colC_edit').value = colC
-      document.getElementById('colD_edit').value = colD
-      document.getElementById('colE_edit').value = colE
-      document.getElementById('colF_edit').value = colF
-      document.getElementById('colG_edit').value = colG
-      document.getElementById('colH_edit').value = colH
-      document.getElementById('colI_edit').value = colI
-      document.getElementById('colJ_edit').value = colJ // -------------แก้ 9
-      document.getElementById('colK_edit').value = colK
-      document.getElementById('colL_edit').value = colL
-      document.getElementById('colM_edit').value = colM
-      document.getElementById('colN_edit').value = colN
-      document.getElementById('colO_edit').value = colO
-      document.getElementById('colP_edit').value = colP
-      document.getElementById('colQ_edit').value = colQ
-      document.getElementById('colR_edit').value = colR
-      document.getElementById('colS_edit').value = colS
-      document.getElementById('colT_edit').value = colT
-      document.getElementById('colU_edit').value = colU
-      document.getElementById('colV_edit').value = colV
-      document.getElementById('colW_edit').value = colW
-      document.getElementById('colX_edit').value = colX
-      document.getElementById('colY_edit').value = colY
-      document.getElementById('colZ_edit').value = colZ
-      document.getElementById('colAA_edit').value = colAA
-      document.getElementById('colAB_edit').value = colAB
-      document.getElementById('colAC_edit').value = colAC
-      document.getElementById('colAD_edit').value = colAD
-      document.getElementById('colAE_edit').value = colAE
-      document.getElementById('colAF_edit').value = colAF
-      document.getElementById('colAG_edit').value = colAG
-      document.getElementById('colAH_edit').value = colAH
-      document.getElementById('colAI_edit').value = colAI
-      document.getElementById('colAJ_edit').value = colAJ
-      document.getElementById('colAK_edit').value = colAK
-      document.getElementById('colAL_edit').value = colAL
-      document.getElementById('colAM_edit').value = colAM
-      document.getElementById('colAN_edit').value = colAN
-      document.getElementById('colAO_edit').value = colAO
-      document.getElementById('colAP_edit').value = colAP
-      document.getElementById('colAQ_edit').value = colAQ
-      document.getElementById('colAR_edit').value = colAR
-      document.getElementById('colAS_edit').value = colAS
-      document.getElementById('colAT_edit').value = colAT
-      document.getElementById('colAU_edit').value = colAU
-      document.getElementById('colAV_edit').value = colAV
-      document.getElementById('colAW_edit').value = colAW
-      document.getElementById('colAX_edit').value = colAX
-      document.getElementById('colAY_edit').value = colAY
-      document.getElementById('colAZ_edit').value = colAZ
-      document.getElementById('colBA_edit').value = colBA
-      document.getElementById('colBB_edit').value = colBB
-      document.getElementById('colBC_edit').value = colBC
-      document.getElementById('colBD_edit').value = colBD
-      document.getElementById('colBE_edit').value = colBE
-      document.getElementById('colBF_edit').value = colBF
-      document.getElementById('colBG_edit').value = colBG
-      document.getElementById('colBH_edit').value = colBH
-      document.getElementById('colBI_edit').value = colBI
-      document.getElementById('colBJ_edit').value = colBJ
-
-      if (myFile && myFile != '') $('#preview-edit').prop('src', myFile).show(200)
-      else $('#preview-edit').hide()
-      if (myFile2 && myFile2 != '') $('#preview-edit-2').prop('src', myFile2).show(200)
-      else $('#preview-edit-2').hide()
-      if (myFile3 && myFile3 != '') $('#preview-edit-3').prop('src', myFile3).show(200)
-      else $('#preview-edit-3').hide()
-      $('#myModal-edit-form').modal('show')
-    };
-
-    function openFormRecord() {
-      // const myModalRegist = new bootstrap.Modal(document.getElementById('myModal-add-form'), {keyboard: false })
-      // myModalRegist.show()
-      //loginAdd()
-      $('#myModal-add-form').modal('show')
-    };
-
-    function downloadExcel() {
-      // loadingStart()
-      elements.table.download("xlsx", "data.xlsx", { sheetName: "รายการ" }, {
-        documentProcessing: function (workbook) {
-          workbook.Props = {
-            Title: "SheetJS Tutorial",
-            Subject: "Test",
-            CreatedDate: new Date(2022, 12, 19)
-          };
-          return workbook;
+        async function fileToDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = (loadEvent) => resolve(loadEvent.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
         }
-      })
-    };
 
-    //get File for Upload **************************************
-    var filedatas = {}
-    function getFileForUpload() {
-      $('#myFile_add, #myFile_edit,#myFile_add_2, #myFile_edit_2, #myFile_add_3, #myFile_edit_3').on('change', function () {
-        let id = $(this).prop('id')
-        filedatas[id] = {}
-        let file = $(this)[0].files[0]
-        let fs = new FileReader()
-        fs.onloadend = (e) => {
-          filedatas[id].data = e.target.result
-          filedatas[id].name = file.name
-          if (id == 'myFile_edit') $('#preview-edit').prop('src', filedatas[id].data).show(200)
-          else if (id == 'myFile_edit_2') $('#preview-edit-2').prop('src', filedatas[id].data).show(200)
-          else if (id == 'myFile_edit_3') $('#preview-edit-3').prop('src', filedatas[id].data).show(200)
-          else if (id == 'myFile_add_2') $('#preview-2').prop('src', filedatas[id].data).show(200)
-          else if (id == 'myFile_add_3') $('#preview-3').prop('src', filedatas[id].data).show(200)
-          else $('#preview').prop('src', filedatas[id].data).show(200)
-          console.log(filedatas)
+        async function imageFileToDataUrl(file) {
+            const objectUrl = URL.createObjectURL(file);
+            try {
+                const image = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = objectUrl;
+                });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                const maxWidth = 800;
+                const ratio = image.naturalWidth / image.naturalHeight;
+
+                canvas.width = image.naturalWidth > maxWidth ? maxWidth : image.naturalWidth;
+                canvas.height = image.naturalWidth > maxWidth ? Math.floor(canvas.width / ratio) : image.naturalHeight;
+                context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                return canvas.toDataURL('image/jpeg', 1);
+            } finally {
+                URL.revokeObjectURL(objectUrl);
+            }
         }
-        fs.readAsDataURL(file)
-      })
 
-    }
+        async function handleFileChange(event) {
+            const input = event.target;
+            const file = input.files && input.files[0];
+            if (!file) {
+                document.getElementById(input.id + 'data').value = '';
+                updateFileSelectionUI(input.id, null, '');
+                return;
+            }
 
-    // ADD RECORD **************************************
-    function addRecord() {
-      loadingStart()
-      getFileForUpload()
-      const obj = {};
-      obj.colC = document.getElementById('colC_add').value
-      obj.colD = document.getElementById('colD_add').value
-      obj.colE = document.getElementById('colE_add').value
-      obj.colF = document.getElementById('colF_add').value
-      obj.colG = document.getElementById('colG_add').value
-      obj.colH = document.getElementById('colH_add').value
-      obj.colI = document.getElementById('colI_add').value
-      obj.colJ = document.getElementById('colJ_add').value // -----------------แก้ 10
-      obj.colK = document.getElementById('colK_add').value
-      obj.colL = document.getElementById('colL_add').value
-      obj.colM = document.getElementById('colM_add').value
-      obj.colN = document.getElementById('colN_add').value
-      obj.colO = document.getElementById('colO_add').value
-      obj.colP = document.getElementById('colP_add').value
-      obj.colQ = document.getElementById('colQ_add').value
-      obj.colR = document.getElementById('colR_add').value
-      obj.colS = document.getElementById('colS_add').value
-      obj.colT = document.getElementById('colT_add').value
-      obj.colU = document.getElementById('colU_add').value
-      obj.colV = document.getElementById('colV_add').value
-      obj.colW = document.getElementById('colW_add').value
-      obj.colX = document.getElementById('colX_add').value
-      obj.colY = document.getElementById('colY_add').value
-      obj.colZ = document.getElementById('colZ_add').value
-      obj.colAA = document.getElementById('colAA_add').value
-      obj.colAB = document.getElementById('colAB_add').value
-      obj.colAC = document.getElementById('colAC_add').value
-      obj.colAD = document.getElementById('colAD_add').value
-      obj.colAE = document.getElementById('colAE_add').value
-      obj.colAF = document.getElementById('colAF_add').value
-      obj.colAG = document.getElementById('colAG_add').value
-      obj.colAH = document.getElementById('colAH_add').value
-      obj.colAI = document.getElementById('colAI_add').value
-      obj.colAJ = document.getElementById('colAJ_add').value
-      obj.colAK = document.getElementById('colAK_add').value
-      obj.colAL = document.getElementById('colAL_add').value
-      obj.colAM = document.getElementById('colAM_add').value
-      obj.colAN = document.getElementById('colAN_add').value
-      obj.colAO = document.getElementById('colAO_add').value
-      obj.colAP = document.getElementById('colAP_add').value
-      obj.colAQ = document.getElementById('colAQ_add').value
-      obj.colAR = document.getElementById('colAR_add').value
-      obj.colAS = document.getElementById('colAS_add').value
-      obj.colAT = document.getElementById('colAT_add').value
-      obj.colAU = document.getElementById('colAU_add').value
-      obj.colAV = document.getElementById('colAV_add').value
-      obj.colAW = document.getElementById('colAW_add').value
-      obj.colAX = document.getElementById('colAX_add').value
-      obj.colAY = document.getElementById('colAY_add').value
-      obj.colAZ = document.getElementById('colAZ_add').value
-      obj.colBA = document.getElementById('colBA_add').value
-      obj.colBB = document.getElementById('colBB_add').value
-      obj.colBC = document.getElementById('colBC_add').value
-      obj.colBD = document.getElementById('colBD_add').value
-      obj.colBE = document.getElementById('colBE_add').value
-      obj.colBF = document.getElementById('colBF_add').value
-      obj.colBG = document.getElementById('colBG_add').value
-      obj.colBH = document.getElementById('colBH_add').value
-      obj.colBI = document.getElementById('colBI_add').value
-      obj.colBJ = document.getElementById('colBJ_add').value
-      const myFiles = filedatas
+            const dataUrl = file.type.indexOf('image') >= 0
+                ? await imageFileToDataUrl(file)
+                : await fileToDataUrl(file);
 
-      google.script.run
-        .withSuccessHandler((result) => {
-          pendingPdfRows[result.newId] = true
-          elements.table.addData([{ ไอดี: result.newId, คำนำหน้า: obj.colC, ชื่อ: obj.colD, นามสกุล: obj.colE, สัญชาติ: obj.colF, ศาสนา: obj.colG, บัตรประจำตัวประชาชน: obj.colH, จังหวัด: obj.colI, อำเภอเขต: obj.colJ, วันเกิด: obj.colK, สถานภาพสมรส: obj.colL, จังหวัดที่เกิด: obj.colM, อำเภอที่เกิด: obj.colN, ตำบลที่เกิด: obj.colO, บ้านเลขที่: obj.colP, หมู่ที่: obj.colQ, ซอย: obj.colR, ถนน: obj.colS, แขวงตำบล: obj.colT, เขตอำเภอ: obj.colU, จังหวัดที่อยู่: obj.colV, รหัสไปรษณีย์: obj.colW, เบอร์โทรศัพท์: obj.colX, อีเมล์: obj.colY, ชื่อภรรยาหรือสามี: obj.colZ, สัญชาติภรรยาหรือสามี: obj.colAA, ศาสนาภรรยาหรือสามี: obj.colAB, อาชีพภรรยาหรือสามี: obj.colAC, ชื่อบิดา: obj.colAD, สัญชาติบิดา: obj.colAE, ศาสนาบิดา: obj.colAF, อาชีพบิดา: obj.colAG, ชื่อมารดา: obj.colAH, สัญชาติมารดา: obj.colAI, ศาสนามารดา: obj.colAJ, อาชีพมารดา: obj.colAK, วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร: obj.colAL, สาขาวิชา: obj.colAM, วันที่ได้รับอนุมัติผลการศึกษา: obj.colAN, สถาบัน: obj.colAO, ตั้งอยู่จังหวัด: obj.colAP, GPA: obj.colAQ, วุฒิการศึกษาสูงสุด: obj.colAR, ความรู้ความสามารถพิเศษ: obj.colAS, รู้ภาษาต่างประเทศ: obj.colAT, ที่ทำงานล่าสุด: obj.colAU, ตำแหน่งสุดท้าย: obj.colAV, ลักษณะงาน: obj.colAW, เคยรับราชการหรือไม่: obj.colAX, เคยรับราชการเป็นข้าราชการ: obj.colAY, ตำแหน่ง: obj.colAZ, แผนก: obj.colBA, กอง: obj.colBB, กรม: obj.colBC, กระทรวง: obj.colBD, ออกจากราชการเพราะ: obj.colBE, ออกจากราชการเมื่อวันที่: obj.colBF, ได้รับบำเหน็จบำนาญหรือเบี้ยหวัดจากกระทรวง: obj.colBG, เป็นจำนวนเงิน: obj.colBH, ขณะนี้ได้รับเบี้ยหวัด: obj.colBI, บำเหน็จบำนาญที่: obj.colBJ, รูปถ่ายหน้าตรง: result.fileUrl[0], เอกสารหลักฐาน: result.fileUrl[1], หลักฐานชำระค่าสมัครสอบ: result.fileUrl[2], ใบสมัครPDF: PDF_PENDING_VALUE }], true); // ------แก้ 11
-
-          document.getElementById('colC_add').value = ""
-          document.getElementById('colD_add').value = ""
-          document.getElementById('colE_add').value = ""
-          document.getElementById('colF_add').value = ""
-          document.getElementById('colG_add').value = ""
-          document.getElementById('colH_add').value = ""
-          document.getElementById('colI_add').value = ""
-          document.getElementById('colJ_add').value = "" // ------------แก้ 12
-          document.getElementById('colK_add').value = ""
-          document.getElementById('colL_add').value = ""
-          document.getElementById('colM_add').value = ""
-          document.getElementById('colN_add').value = ""
-          document.getElementById('colO_add').value = ""
-          document.getElementById('colP_add').value = ""
-          document.getElementById('colQ_add').value = ""
-          document.getElementById('colR_add').value = ""
-          document.getElementById('colS_add').value = ""
-          document.getElementById('colT_add').value = ""
-          document.getElementById('colU_add').value = ""
-          document.getElementById('colV_add').value = ""
-          document.getElementById('colW_add').value = ""
-          document.getElementById('colX_add').value = ""
-          document.getElementById('colY_add').value = ""
-          document.getElementById('colZ_add').value = ""
-          document.getElementById('colAA_add').value = ""
-          document.getElementById('colAB_add').value = ""
-          document.getElementById('colAC_add').value = ""
-          document.getElementById('colAD_add').value = ""
-          document.getElementById('colAE_add').value = ""
-          document.getElementById('colAF_add').value = ""
-          document.getElementById('colAG_add').value = ""
-          document.getElementById('colAH_add').value = ""
-          document.getElementById('colAI_add').value = ""
-          document.getElementById('colAJ_add').value = ""
-          document.getElementById('colAK_add').value = ""
-          document.getElementById('colAL_add').value = ""
-          document.getElementById('colAM_add').value = ""
-          document.getElementById('colAN_add').value = ""
-          document.getElementById('colAO_add').value = ""
-          document.getElementById('colAP_add').value = ""
-          document.getElementById('colAQ_add').value = ""
-          document.getElementById('colAR_add').value = ""
-          document.getElementById('colAS_add').value = ""
-          document.getElementById('colAT_add').value = ""
-          document.getElementById('colAU_add').value = ""
-          document.getElementById('colAV_add').value = ""
-          document.getElementById('colAW_add').value = ""
-          document.getElementById('colAX_add').value = ""
-          document.getElementById('colAY_add').value = ""
-          document.getElementById('colAZ_add').value = ""
-          document.getElementById('colBA_add').value = ""
-          document.getElementById('colBB_add').value = ""
-          document.getElementById('colBC_add').value = ""
-          document.getElementById('colBD_add').value = ""
-          document.getElementById('colBE_add').value = ""
-          document.getElementById('colBF_add').value = ""
-          document.getElementById('colBG_add').value = ""
-          document.getElementById('colBH_add').value = ""
-          document.getElementById('colBI_add').value = ""
-          document.getElementById('colBJ_add').value = ""
-          document.getElementById('myFile_add').value = ""
-          $("#preview").hide()
-          document.getElementById('myFile_add_2').value = ""
-          $("#preview-2").hide()
-          loadingEnd()
-          $('#myModal-add-form').modal('hide')
-          google.script.run
-            .withSuccessHandler((pdfResult) => {
-              delete pendingPdfRows[result.newId]
-              elements.table.updateData([{ ไอดี: result.newId, ใบสมัครPDF: pdfResult.url || '' }])
-            })
-            .withFailureHandler(() => {
-              delete pendingPdfRows[result.newId]
-              elements.table.updateData([{ ไอดี: result.newId, ใบสมัครPDF: '' }])
-            })
-            .createPDFById(result.newId)
-          addCompleteAlert()
-
-        })
-        .withFailureHandler((er) => {
-          //console.log("Error Adding")
-        })
-        .addRecord(obj, myFiles)
-
-    };
-
-
-    // EDIT RECORD  **********************************
-    function editRecord() {
-      loadingStart()
-      const obj = {};
-      obj.colC = document.getElementById("colC_edit").value;
-      obj.colD = document.getElementById("colD_edit").value;
-      obj.colE = document.getElementById("colE_edit").value;
-      obj.colF = document.getElementById('colF_edit').value
-      obj.colG = document.getElementById('colG_edit').value
-      obj.colH = document.getElementById('colH_edit').value
-      obj.colI = document.getElementById('colI_edit').value
-      obj.colJ = document.getElementById('colJ_edit').value  // --------------แก้ 13
-      obj.colK = document.getElementById('colK_edit').value
-      obj.colL = document.getElementById('colL_edit').value
-      obj.colM = document.getElementById('colM_edit').value
-      obj.colN = document.getElementById('colN_edit').value
-      obj.colO = document.getElementById('colO_edit').value
-      obj.colP = document.getElementById('colP_edit').value
-      obj.colQ = document.getElementById('colQ_edit').value
-      obj.colR = document.getElementById('colR_edit').value
-      obj.colS = document.getElementById('colS_edit').value
-      obj.colT = document.getElementById('colT_edit').value
-      obj.colU = document.getElementById('colU_edit').value
-      obj.colV = document.getElementById('colV_edit').value
-      obj.colW = document.getElementById('colW_edit').value
-      obj.colX = document.getElementById('colX_edit').value
-      obj.colY = document.getElementById('colY_edit').value
-      obj.colZ = document.getElementById('colZ_edit').value
-      obj.colAA = document.getElementById('colAA_edit').value
-      obj.colAB = document.getElementById('colAB_edit').value
-      obj.colAC = document.getElementById('colAC_edit').value
-      obj.colAD = document.getElementById('colAD_edit').value
-      obj.colAE = document.getElementById('colAE_edit').value
-      obj.colAF = document.getElementById('colAF_edit').value
-      obj.colAG = document.getElementById('colAG_edit').value
-      obj.colAH = document.getElementById('colAH_edit').value
-      obj.colAI = document.getElementById('colAI_edit').value
-      obj.colAJ = document.getElementById('colAJ_edit').value
-      obj.colAK = document.getElementById('colAK_edit').value
-      obj.colAL = document.getElementById('colAL_edit').value
-      obj.colAM = document.getElementById('colAM_edit').value
-      obj.colAN = document.getElementById('colAN_edit').value
-      obj.colAO = document.getElementById('colAO_edit').value
-      obj.colAP = document.getElementById('colAP_edit').value
-      obj.colAQ = document.getElementById('colAQ_edit').value
-      obj.colAR = document.getElementById('colAR_edit').value
-      obj.colAS = document.getElementById('colAS_edit').value
-      obj.colAT = document.getElementById('colAT_edit').value
-      obj.colAU = document.getElementById('colAU_edit').value
-      obj.colAV = document.getElementById('colAV_edit').value
-      obj.colAW = document.getElementById('colAW_edit').value
-      obj.colAX = document.getElementById('colAX_edit').value
-      obj.colAY = document.getElementById('colAY_edit').value
-      obj.colAZ = document.getElementById('colAZ_edit').value
-      obj.colBA = document.getElementById('colBA_edit').value
-      obj.colBB = document.getElementById('colBB_edit').value
-      obj.colBC = document.getElementById('colBC_edit').value
-      obj.colBD = document.getElementById('colBD_edit').value
-      obj.colBE = document.getElementById('colBE_edit').value
-      obj.colBF = document.getElementById('colBF_edit').value
-      obj.colBG = document.getElementById('colBG_edit').value
-      obj.colBH = document.getElementById('colBH_edit').value
-      obj.colBI = document.getElementById('colBI_edit').value
-      obj.colBJ = document.getElementById('colBJ_edit').value
-      obj.myFiles = filedatas
-
-      const id = document.getElementById("customer_id_edit").value;
-
-      console.log(obj)
-      google.script.run.withSuccessHandler(function (result) {
-        console.log(result)
-        pendingPdfRows[id] = true
-        elements.table.updateData([{ ไอดี: id, คำนำหน้า: obj.colC, ชื่อ: obj.colD, นามสกุล: obj.colE, สัญชาติ: obj.colF, ศาสนา: obj.colG, บัตรประจำตัวประชาชน: obj.colH, จังหวัด: obj.colI, อำเภอเขต: obj.colJ, วันเกิด: obj.colK, สถานภาพสมรส: obj.colL, จังหวัดที่เกิด: obj.colM, อำเภอที่เกิด: obj.colN, ตำบลที่เกิด: obj.colO, บ้านเลขที่: obj.colP, หมู่ที่: obj.colQ, ซอย: obj.colR, ถนน: obj.colS, แขวงตำบล: obj.colT, เขตอำเภอ: obj.colU, จังหวัดที่อยู่: obj.colV, รหัสไปรษณีย์: obj.colW, เบอร์โทรศัพท์: obj.colX, อีเมล์: obj.colY, ชื่อภรรยาหรือสามี: obj.colZ, สัญชาติภรรยาหรือสามี: obj.colAA, ศาสนาภรรยาหรือสามี: obj.colAB, อาชีพภรรยาหรือสามี: obj.colAC, ชื่อบิดา: obj.colAD, สัญชาติบิดา: obj.colAE, ศาสนาบิดา: obj.colAF, อาชีพบิดา: obj.colAG, ชื่อมารดา: obj.colAH, สัญชาติมารดา: obj.colAI, ศาสนามารดา: obj.colAJ, อาชีพมารดา: obj.colAK, วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร: obj.colAL, สาขาวิชา: obj.colAM, วันที่ได้รับอนุมัติผลการศึกษา: obj.colAN, สถาบัน: obj.colAO, ตั้งอยู่จังหวัด: obj.colAP, GPA: obj.colAQ, วุฒิการศึกษาสูงสุด: obj.colAR, ความรู้ความสามารถพิเศษ: obj.colAS, รู้ภาษาต่างประเทศ: obj.colAT, ที่ทำงานล่าสุด: obj.colAU, ตำแหน่งสุดท้าย: obj.colAV, ลักษณะงาน: obj.colAW, เคยรับราชการหรือไม่: obj.colAX, เคยรับราชการเป็นข้าราชการ: obj.colAY, ตำแหน่ง: obj.colAZ, แผนก: obj.colBA, กอง: obj.colBB, กรม: obj.colBC, กระทรวง: obj.colBD, ออกจากราชการเพราะ: obj.colBE, ออกจากราชการเมื่อวันที่: obj.colBF, ได้รับบำเหน็จบำนาญหรือเบี้ยหวัดจากกระทรวง: obj.colBG, เป็นจำนวนเงิน: obj.colBH, ขณะนี้ได้รับเบี้ยหวัด: obj.colBI, บำเหน็จบำนาญที่: obj.colBJ, รูปถ่ายหน้าตรง: result.fileUrl[0], เอกสารหลักฐาน: result.fileUrl[1], หลักฐานชำระค่าสมัครสอบ: result.fileUrl[2], ใบสมัครPDF: PDF_PENDING_VALUE }]); // ----------แก้ 14
-        loadingEnd()
-        $('#myModal-edit-form').modal('hide')
-        google.script.run
-          .withSuccessHandler((pdfResult) => {
-            delete pendingPdfRows[id]
-            elements.table.updateData([{ ไอดี: id, ใบสมัครPDF: pdfResult.url || '' }])
-          })
-          .withFailureHandler(() => {
-            delete pendingPdfRows[id]
-            elements.table.updateData([{ ไอดี: id, ใบสมัครPDF: '' }])
-          })
-          .createPDFById(id)
-        editCompleteAlert()
-      }).editRecord(obj, id)
-    };
-
-    // DELETE RECORD  **********************************
-    function deleteRecord() {
-      loadingStart()
-      const id = document.getElementById('customer_id_edit').value
-      elements.table.deleteRow(id)
-    };
-
-    // ALERT ***********************************
-    function emptyAlert() {
-      Swal.fire({
-        icon: 'error',
-        title: 'Oops...',
-        text: 'กรุณากรอกให้ครบทุกช่อง',
-      })
-    };
-
-    function deleteSuccessAlert() {
-      Swal.fire(
-        'การลบข้อมูล!',
-        'เรียบร้อยแล้ว'
-      )
-    };
-
-
-    function confirmDeleteAlert() {
-      Swal.fire({
-        title: 'คุณแน่ใจที่จะลบ?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes!'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          deleteRecord();
+            document.getElementById(input.id + 'data').value = dataUrl;
+            updateFileSelectionUI(input.id, file, dataUrl);
         }
-      })
-    };
 
-    function addCompleteAlert() {
-      loadData()
-      Swal.fire(
-        'เพิ่มข้อมูล!',
-        'เรียบร้อยแล้ว'
-      )
-    };
+        function updateFileSelectionUI(inputId, file, previewSource) {
+            const fileNameNode = document.getElementById(inputId + 'Name');
+            const card = document.getElementById(inputId + 'Card');
 
-    function editCompleteAlert() {
-      // loadData()
-      Swal.fire(
-        'แก้ไขข้อมูล!',
-        'เรียบร้อยแล้ว'
-      )
-    };
+            if (fileNameNode) {
+                fileNameNode.textContent = file ? file.name : 'ยังไม่ได้เลือกไฟล์';
+            }
 
-    function clickEventHandler(e) {
-      const target = e.target;
-      // Prevent click event for input, select, textarea inside #app
-      if (["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) {
-        return;
-      }
-      switch (true) {
-        case target.matches("#open-form-record-button"):
-          filedatas = {};
-          openFormRecord();
-          break;
-        case target.matches("#add-record-button"):
-          const requiredFields = [
-            "colC_add",
-            "colD_add",
-            "colE_add",
-            "colF_add",
-            "colG_add",
-            "colH_add",
-            "colI_add",
-            "colK_add"
-          ];
-          const isEmpty = requiredFields.some(id => !document.getElementById(id).value);
-          if (isEmpty) {
-            emptyAlert();
-          } else {
-            addRecord(e);
-          }
-          break;
-        case target.matches("#edit-record-button"):
-          editRecord(e);
-          break;
-        case target.matches("#delete-record-button"):
-          confirmDeleteAlert();
-          break;
-        case target.matches("#download-excel-button"):
-          downloadExcel(e);
-          break;
-        default:
-          break;
-      }
-    }
+            if (card) {
+                card.classList.toggle('has-file', Boolean(file));
+            }
 
-    function searchData(e) {
-      let searchText = document.getElementById("search-input").value.trim()
-      console.log("🚀 ~ searchData ~ searchText:", searchText)
-      if (searchText != "") {
-        elements.table.setFilter(function (data) {
-          return (
-            (data["ชื่อ"].toLowerCase().includes(searchText.toLowerCase())) ||
-            (data["นามสกุล"].toLowerCase().includes(searchText.toLowerCase())) ||
-            (data["ตำแหน่ง"].toLowerCase().includes(searchText.toLowerCase()))
-          );
+            if (inputId !== 'file1') {
+                return;
+            }
+
+            const previewWrap = document.getElementById('file1PreviewWrap');
+            const previewImage = document.getElementById('file1Preview');
+            if (!previewWrap || !previewImage) {
+                return;
+            }
+
+            const hasPreview = Boolean(file && previewSource);
+            previewWrap.classList.toggle('is-empty', !hasPreview);
+            previewImage.src = hasPreview ? previewSource : '';
+        }
+
+        function resetFileSelectionUI() {
+            updateFileSelectionUI('file1', null, '');
+            updateFileSelectionUI('file2', null, '');
+        }
+
+        function getFieldFocusTarget(element) {
+            if (element.type === 'file') {
+                return element.closest('.upload-card')?.querySelector('[data-file-trigger="' + element.id + '"]') || element;
+            }
+
+            return element;
+        }
+
+        function sanitizeLabelText(text) {
+            return (text || '').replace(/\*/g, '').replace(/\s+/g, ' ').trim();
+        }
+
+        function getFieldLabelText(element) {
+            if (element.type === 'radio') {
+                return sanitizeLabelText(element.closest('.radio-group')?.querySelector('.form-label')?.textContent || 'ข้อมูลนี้');
+            }
+
+            const container = element.closest('.upload-card') || element.parentElement;
+            return sanitizeLabelText(container?.querySelector('.form-label')?.textContent || element.name || 'ข้อมูลนี้');
+        }
+
+        function getValidationAnchor(element) {
+            if (element.type === 'radio') {
+                return element.closest('.radio-group');
+            }
+            return element.closest('.upload-card') || element.parentElement;
+        }
+
+        function getValidationKey(element) {
+            return element.type === 'radio' ? 'radio-' + element.name : (element.id || element.name);
+        }
+
+        function ensureErrorElement(element) {
+            const anchor = getValidationAnchor(element);
+            const validationKey = getValidationKey(element);
+            let errorElement = anchor.querySelector('.field-error[data-for="' + validationKey + '"]');
+
+            if (!errorElement) {
+                errorElement = document.createElement('div');
+                errorElement.className = 'field-error';
+                errorElement.dataset.for = validationKey;
+                errorElement.setAttribute('role', 'alert');
+                anchor.appendChild(errorElement);
+            }
+
+            return errorElement;
+        }
+
+        function buildValidationMessage(element) {
+            const label = getFieldLabelText(element);
+            const validity = element.validity;
+
+            if (validity.valueMissing) {
+                if (element.type === 'radio' || element.tagName === 'SELECT') {
+                    return 'โปรดเลือก' + label;
+                }
+                if (element.type === 'file') {
+                    return 'โปรดแนบ' + label;
+                }
+                return 'โปรดกรอก' + label;
+            }
+
+            if (validity.typeMismatch && element.type === 'email') {
+                return 'โปรดระบุอีเมลให้ถูกต้อง';
+            }
+
+            if (validity.patternMismatch) {
+                if (element.name === 'uid') {
+                    return 'โปรดระบุเลขประจำตัวประชาชน 13 หลัก';
+                }
+                if (element.name === 'telephone') {
+                    return 'โปรดระบุหมายเลขโทรศัพท์ 10 หลัก';
+                }
+                if (element.name === 'email') {
+                    return 'โปรดระบุอีเมลให้ถูกต้อง';
+                }
+                return 'รูปแบบ' + label + 'ไม่ถูกต้อง';
+            }
+
+            if (validity.rangeUnderflow || validity.rangeOverflow) {
+                if (element.name === 'grade') {
+                    return 'โปรดระบุคะแนนเฉลี่ยสะสมระหว่าง 2.00-4.00';
+                }
+                return 'โปรดตรวจสอบค่าของ' + label;
+            }
+
+            if (validity.badInput) {
+                return 'โปรดระบุ' + label + 'ให้ถูกต้อง';
+            }
+
+            return 'โปรดตรวจสอบ' + label;
+        }
+
+        function setFieldErrorState(element, message) {
+            const errorElement = ensureErrorElement(element);
+            const isInvalid = Boolean(message);
+
+            errorElement.textContent = message || '';
+            errorElement.classList.toggle('is-visible', isInvalid);
+
+            if (element.type === 'radio') {
+                const group = element.closest('.radio-group');
+                if (group) {
+                    group.classList.toggle('is-invalid', isInvalid);
+                }
+                return;
+            }
+
+            if (element.type === 'file') {
+                const card = element.closest('.upload-card');
+                if (card) {
+                    card.classList.toggle('is-invalid', isInvalid);
+                }
+            }
+        }
+
+        function shouldShowFieldError(element) {
+            if (form.classList.contains('was-validated')) {
+                return true;
+            }
+
+            if (element.type === 'radio') {
+                return Array.from(form.querySelectorAll('input[name="' + element.name + '"]')).some((radio) => radio.dataset.touched === 'true');
+            }
+
+            return element.dataset.touched === 'true';
+        }
+
+        function updateFieldValidation(element) {
+            if (element.type === 'radio') {
+                const radioGroup = form.querySelectorAll('input[name="' + element.name + '"]');
+                const checkedRadio = Array.from(radioGroup).find((radio) => radio.checked);
+                const message = !checkedRadio && shouldShowFieldError(radioGroup[0]) ? buildValidationMessage(radioGroup[0]) : '';
+                setFieldErrorState(radioGroup[0], message);
+                return;
+            }
+
+            const message = !element.checkValidity() && shouldShowFieldError(element) ? buildValidationMessage(element) : '';
+            setFieldErrorState(element, message);
+        }
+
+        function updateAllValidationMessages() {
+            const processedRadioNames = new Set();
+
+            validationElements.forEach((element) => {
+                if (element.type === 'radio') {
+                    if (processedRadioNames.has(element.name)) {
+                        return;
+                    }
+                    processedRadioNames.add(element.name);
+                }
+                updateFieldValidation(element);
+            });
+        }
+
+        function isElementVisible(element) {
+            return Boolean(element.offsetParent || element.getClientRects().length);
+        }
+
+        function focusFirstInvalidField() {
+            const firstInvalidElement = validationElements.find((element) => {
+                if (element.checkValidity()) {
+                    return false;
+                }
+
+                const target = element.type === 'radio'
+                    ? element.closest('.radio-group') || element
+                    : getFieldFocusTarget(element);
+
+                return isElementVisible(target);
+            });
+            if (!firstInvalidElement) {
+                return;
+            }
+
+            const target = firstInvalidElement.type === 'radio'
+                ? firstInvalidElement.closest('.radio-group') || firstInvalidElement
+                : getFieldFocusTarget(firstInvalidElement);
+
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            window.setTimeout(() => {
+                getFieldFocusTarget(firstInvalidElement).focus({ preventScroll: true });
+            }, 250);
+        }
+
+        function bindValidationEvents() {
+            validationElements.forEach((element) => {
+                const handler = () => {
+                    element.dataset.touched = 'true';
+                    updateFieldValidation(element);
+                };
+                element.addEventListener('change', handler);
+
+                if (!['select-one', 'radio', 'file', 'date'].includes(element.type)) {
+                    element.addEventListener('input', handler);
+                }
+            });
+        }
+
+        function setFieldValue(id, value) {
+            const element = document.getElementById(id);
+            if (!element) {
+                return;
+            }
+            element.value = value;
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function setSelectValue(id, preferredText) {
+            const element = document.getElementById(id);
+            if (!element) {
+                return;
+            }
+
+            const options = Array.from(element.options).filter((option) => option.value && !option.disabled);
+            if (!options.length) {
+                return;
+            }
+
+            const matchedOption = preferredText
+                ? options.find((option) => option.text.trim() === preferredText || option.value.trim() === preferredText)
+                : null;
+
+            element.value = (matchedOption || options[0]).value;
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function generateMockDigits(length) {
+            let value = '';
+            while (value.length < length) {
+                value += Math.floor(Math.random() * 10);
+            }
+            return value.slice(0, length);
+        }
+
+        function fillMockupData() {
+            form.classList.remove('was-validated');
+
+            setSelectValue('prefix', 'นาย');
+            setFieldValue('firstname', 'สมชาย');
+            setFieldValue('lastname', 'ทดสอบระบบ');
+            setSelectValue('nation', 'ไทย');
+            setSelectValue('religion', 'พุทธ');
+            setFieldValue('uid', '1101700203451');
+            setFieldValue('birth', '1995-05-15');
+            setFieldValue('amphoecard', 'เมืองนนทบุรี');
+            setFieldValue('provincecard', 'นนทบุรี');
+            setFieldValue('districtbirth', 'บางกระสอ');
+            setFieldValue('amphoebirth', 'เมืองนนทบุรี');
+            setFieldValue('provincebirth', 'นนทบุรี');
+
+            setFieldValue('address', '99/9');
+            setFieldValue('moo', '5');
+            setFieldValue('soi', 'งามวงศ์วาน 23');
+            setFieldValue('road', 'งามวงศ์วาน');
+            setFieldValue('district', 'บางเขน');
+            setFieldValue('amphoe', 'เมืองนนทบุรี');
+            setFieldValue('province', 'นนทบุรี');
+            setFieldValue('zipcode', '11000');
+            setFieldValue('telephone', '08' + generateMockDigits(8));
+            setFieldValue('email', 'test.' + generateMockDigits(4) + '@example.com');
+
+            setFieldValue('namedad', 'สมปอง ทดสอบ');
+            setSelectValue('nationdad', 'ไทย');
+            setSelectValue('religiondad', 'พุทธ');
+            setFieldValue('careerdad', 'รับราชการ');
+            setFieldValue('namemom', 'สมหญิง ทดสอบ');
+            setSelectValue('nationmom', 'ไทย');
+            setSelectValue('religionmom', 'พุทธ');
+            setFieldValue('careermom', 'ค้าขาย');
+            setFieldValue('namespouse', '');
+            setFieldValue('careerspouse', '');
+
+            setFieldValue('degree', 'วิทยาศาสตรบัณฑิต');
+            setFieldValue('major', 'วิทยาการคอมพิวเตอร์');
+            setFieldValue('edubirth', '2018-03-20');
+            setFieldValue('university', 'มหาวิทยาลัยเกษตรศาสตร์');
+            setSelectValue('uniprovince', 'กรุงเทพมหานคร');
+            setFieldValue('grade', '3.45');
+            setSelectValue('highest');
+
+            setFieldValue('special', 'Microsoft Office, Google Workspace, Canva');
+            setFieldValue('language', 'English - intermediate');
+            setFieldValue('work1', 'บริษัทตัวอย่าง จำกัด');
+            setFieldValue('work2', 'เจ้าหน้าที่ธุรการ');
+            setFieldValue('work3', 'ประสานงานและจัดทำเอกสาร');
+
+            document.getElementById('noCheck').checked = true;
+            document.getElementById('noCheck').dispatchEvent(new Event('change', { bubbles: true }));
+
+            setFieldValue('military2', '');
+            setFieldValue('military3', '');
+            setFieldValue('military4', '');
+            setFieldValue('military5', '');
+            setFieldValue('military6', '');
+            setFieldValue('military7', '');
+            setFieldValue('military8', '');
+            setFieldValue('military9', '');
+            setFieldValue('military10', '');
+            setFieldValue('military11', '');
+            setFieldValue('military12', '');
+            setFieldValue('military13', '');
+
+            document.getElementById('file1data').value = '';
+            document.getElementById('file2data').value = '';
+            document.getElementById('file1url').value = '';
+            document.getElementById('file2url').value = '';
+            document.getElementById('file1').value = '';
+            document.getElementById('file2').value = '';
+            resetFileSelectionUI();
+
+            Swal.fire({
+                icon: 'success',
+                title: 'กรอกข้อมูลทดสอบแล้ว',
+                text: 'ระบบเติมข้อมูลตัวอย่างให้แล้ว ยกเว้นส่วนไฟล์แนบ',
+                customClass: swalCustomClass
+            });
+
+            updateAllValidationMessages();
+        }
+
+        function runServer(functionName, ...args) {
+            return new Promise((resolve, reject) => {
+                const runner = google.script.run
+                    .withSuccessHandler(resolve)
+                    .withFailureHandler(reject);
+                runner[functionName](...args);
+            });
+        }
+
+        function escapeHtml(value) {
+            return String(value || '-')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getSelectedText(id) {
+            const element = document.getElementById(id);
+            if (!element) {
+                return '-';
+            }
+
+            if (element.tagName === 'SELECT') {
+                const option = element.options[element.selectedIndex];
+                return option && option.value ? option.text.trim() : '-';
+            }
+
+            return element.value ? element.value.trim() : '-';
+        }
+
+        function getFieldDisplayValue(element) {
+            if (!element) {
+                return '-';
+            }
+
+            if (element.type === 'radio') {
+                const checked = form.querySelector('input[name="' + element.name + '"]:checked');
+                return checked ? checked.value : '-';
+            }
+
+            if (element.type === 'file') {
+                return element.files && element.files[0] ? element.files[0].name : '-';
+            }
+
+            if (element.tagName === 'SELECT') {
+                const option = element.options[element.selectedIndex];
+                return option && option.value ? option.text.trim() : '-';
+            }
+
+            return element.value ? element.value.trim() : '-';
+        }
+
+        function shouldIncludeReviewField(element, processedRadioNames) {
+            if (!element.name || element.type === 'hidden' || element.disabled) {
+                return false;
+            }
+
+            if (element.type === 'radio') {
+                if (processedRadioNames.has(element.name)) {
+                    return false;
+                }
+                processedRadioNames.add(element.name);
+                return true;
+            }
+
+            if (element.closest('.conditional-panel.d-none') && getFieldDisplayValue(element) === '-') {
+                return false;
+            }
+
+            return true;
+        }
+
+        function getReviewPhotoHtml() {
+            const photoSource = document.getElementById('file1data')?.value || '';
+            if (!photoSource) {
+                return '';
+            }
+
+            return [
+                '<div class="review-photo-card">',
+                '<span class="review-label">รูปผู้สมัคร</span>',
+                '<div class="review-photo-frame">',
+                '<img src="',
+                photoSource,
+                '" alt="รูปผู้สมัคร" class="review-photo-image">',
+                '</div>',
+                '</div>'
+            ].join('');
+        }
+
+        function getReviewSectionHtml(title, items, extraContent) {
+            return [
+                '<section class="review-section">',
+                '<h4 class="review-section-title">',
+                escapeHtml(title),
+                '</h4>',
+                extraContent || '',
+                '<div class="review-grid">',
+                items.map((item) => {
+                    return [
+                        '<div class="review-item">',
+                        '<span class="review-label">',
+                        escapeHtml(item.label),
+                        '</span>',
+                        '<strong class="review-value">',
+                        escapeHtml(item.value),
+                        '</strong>',
+                        '</div>'
+                    ].join('');
+                }).join(''),
+                '</div>',
+                '</section>'
+            ].join('');
+        }
+
+        function buildReviewSummaryHtml() {
+            const applicationType = form.querySelector('input[name="passbk"]')?.value || '-';
+            const applicationPosition = form.querySelector('input[name="position"]')?.value || '-';
+            const sectionHtml = Array.from(form.querySelectorAll('.form-section')).map((section) => {
+                const sectionTitle = section.querySelector('.section-heading h3')?.textContent?.trim() || 'ข้อมูล';
+                const processedRadioNames = new Set();
+                const items = Array.from(section.querySelectorAll('input, select, textarea'))
+                    .filter((element) => shouldIncludeReviewField(element, processedRadioNames))
+                    .map((element) => ({
+                        label: getFieldLabelText(element),
+                        value: getFieldDisplayValue(element)
+                    }));
+
+                const extraContent = section.querySelector('#file1') ? getReviewPhotoHtml() : '';
+                return getReviewSectionHtml(sectionTitle, items, extraContent);
+            }).join('');
+
+            return [
+                '<div class="review-summary">',
+                '<p class="review-intro">กรุณาตรวจสอบข้อมูลสำคัญก่อนยืนยันการบันทึก ระบบจะเริ่มอัปโหลดไฟล์หลังจากกดยืนยัน</p>',
+                getReviewSectionHtml('ข้อมูลการสมัคร', [
+                    { label: 'ประเภท', value: applicationType },
+                    { label: 'ตำแหน่ง', value: applicationPosition }
+                ]),
+                sectionHtml,
+                '</div>'
+            ].join('');
+        }
+
+        async function confirmBeforeSubmit() {
+            const result = await Swal.fire({
+                title: 'ยืนยันข้อมูลก่อนบันทึก',
+                html: buildReviewSummaryHtml(),
+                width: 960,
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยันและบันทึก',
+                cancelButtonText: 'กลับไปแก้ไข',
+                focusCancel: true,
+                customClass: swalCustomClass,
+                confirmButtonColor: '#1f6b45',
+                cancelButtonColor: '#8b9a8b'
+            });
+
+            return result.isConfirmed;
+        }
+
+        function getProgressStepHtml(step, label) {
+            return [
+                '<div class="upload-progress-row" data-step="',
+                step,
+                '">',
+                '<div class="upload-progress-row-head">',
+                '<div class="upload-progress-meta">',
+                '<span class="upload-progress-dot" data-role="dot"></span>',
+                '<span class="upload-progress-label">',
+                label,
+                '</span>',
+                '</div>',
+                '<strong data-role="status">รอเริ่ม</strong>',
+                '</div>',
+                '</div>'
+            ].join('');
+        }
+
+        function getProgressPercent(state) {
+            const progressByState = {
+                waiting: 6,
+                active: 58,
+                complete: 100,
+                error: 100
+            };
+            return progressByState[state] || 0;
+        }
+
+        function updateProgressOverview() {
+            const container = Swal.getHtmlContainer();
+            if (!container) {
+                return;
+            }
+
+            const rows = Array.from(container.querySelectorAll('.upload-progress-row'));
+            if (!rows.length) {
+                return;
+            }
+
+            const total = rows.reduce((sum, row) => {
+                const state = row.dataset.state || 'waiting';
+                return sum + getProgressPercent(state);
+            }, 0);
+            const percent = Math.round(total / rows.length);
+            const overviewFill = container.querySelector('[data-role="overall-fill"]');
+            const overviewPercent = container.querySelector('[data-role="overall-percent"]');
+            const overviewCaption = container.querySelector('[data-role="overall-caption"]');
+            const hasError = rows.some((row) => row.dataset.state === 'error');
+            const isFinished = rows.every((row) => row.dataset.state === 'complete');
+
+            if (overviewFill) {
+                overviewFill.style.width = percent + '%';
+                overviewFill.dataset.state = hasError ? 'error' : (isFinished ? 'complete' : 'active');
+            }
+
+            if (overviewPercent) {
+                overviewPercent.textContent = percent + '%';
+            }
+
+            if (overviewCaption) {
+                overviewCaption.textContent = hasError
+                    ? 'พบปัญหาระหว่างดำเนินการ'
+                    : (isFinished ? 'ดำเนินการครบทุกขั้นตอนแล้ว' : 'ระบบกำลังประมวลผล');
+            }
+        }
+
+        function openUploadProgressModal() {
+            Swal.fire({
+                title: 'กำลังดำเนินการ',
+                html: [
+                    '<div class="upload-progress-overview">',
+                    '<div class="upload-progress-overview-head">',
+                    '<strong>ความคืบหน้า</strong>',
+                    '<span data-role="overall-percent">0%</span>',
+                    '</div>',
+                    '<div class="upload-progress-track upload-progress-track-overall">',
+                    '<span class="upload-progress-fill" data-role="overall-fill" style="width: 0%"></span>',
+                    '</div>',
+                    '<p class="upload-progress-caption" data-role="overall-caption">ระบบกำลังเตรียมรายการสำหรับอัปโหลด</p>',
+                    '</div>',
+                    '<div class="upload-progress-list">',
+                    getProgressStepHtml('file1', uploadStatusConfig.file1),
+                    getProgressStepHtml('file2', uploadStatusConfig.file2),
+                    getProgressStepHtml('save', uploadStatusConfig.save),
+                    '</div>'
+                ].join(''),
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                customClass: swalCustomClass,
+                didOpen: () => {
+                    Swal.showLoading();
+                    updateProgressOverview();
+                }
+            });
+        }
+
+        function updateProgressStep(step, text, state) {
+            const container = Swal.getHtmlContainer();
+            if (!container) {
+                return;
+            }
+
+            const row = container.querySelector('[data-step="' + step + '"]');
+            const statusNode = row?.querySelector('[data-role="status"]');
+            if (row) {
+                row.dataset.state = state || 'waiting';
+            }
+            if (statusNode) {
+                statusNode.textContent = text;
+            }
+            updateProgressOverview();
+        }
+
+        function resetApplicationForm() {
+            form.reset();
+            document.getElementById('file1data').value = '';
+            document.getElementById('file2data').value = '';
+            document.getElementById('file1url').value = '';
+            document.getElementById('file2url').value = '';
+            resetFileSelectionUI();
+            form.classList.remove('was-validated');
+            updateAllValidationMessages();
+            toggleMilitaryHistory();
+        }
+
+        function updateSuccessPdfButton(state, url) {
+            const icon = successPdfButton.querySelector('i');
+
+            successPdfButton.classList.remove('disabled', 'is-ready', 'is-error');
+            successPdfButton.setAttribute('aria-disabled', state === 'ready' ? 'false' : 'true');
+            successPdfButton.removeAttribute('download');
+
+            if (state === 'ready') {
+                successPdfButton.href = url;
+                successPdfButtonText.textContent = 'ดาวน์โหลดใบสมัคร PDF';
+                successPdfButton.classList.add('is-ready');
+                if (icon) {
+                    icon.className = 'bi bi-download';
+                }
+                return;
+            }
+
+            successPdfButton.href = '#';
+            successPdfButton.classList.add('disabled');
+
+            if (state === 'error') {
+                successPdfButtonText.textContent = 'ยังไม่สามารถสร้าง PDF ได้';
+                successPdfButton.classList.add('is-error');
+                if (icon) {
+                    icon.className = 'bi bi-exclamation-circle';
+                }
+                return;
+            }
+
+            successPdfButtonText.textContent = 'กำลังสร้างไฟล์ใบสมัคร';
+            if (icon) {
+                icon.className = 'bi bi-hourglass-split';
+            }
+        }
+
+        function showSuccessView(savedResult) {
+            successApplicantName.textContent = savedResult.applicantName || '-';
+            successApplicationType.textContent = savedResult.applicationType || '-';
+            successPosition.textContent = savedResult.position || '-';
+            successPassbn.textContent = savedResult.passbn || '-';
+            successMessage.textContent = 'ระบบกำลังสร้างไฟล์ใบสมัครของท่าน';
+            updateSuccessPdfButton('generating');
+
+            formView.classList.add('d-none');
+            successView.classList.remove('d-none');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function showFormView() {
+            successView.classList.add('d-none');
+            formView.classList.remove('d-none');
+            updateSuccessPdfButton('generating');
+            successMessage.textContent = 'ระบบกำลังสร้างไฟล์ใบสมัครของท่าน';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function generatePdfAfterSave(savedResult) {
+            try {
+                const pdfResult = await runServer('createPdfForSavedApplication', savedResult.applicationId);
+                updateSuccessPdfButton('ready', pdfResult.url);
+                successMessage.textContent = 'ไฟล์ใบสมัครพร้อมดาวน์โหลดแล้ว';
+            } catch (error) {
+                console.error(error);
+                updateSuccessPdfButton('error');
+                successMessage.textContent = 'บันทึกข้อมูลเรียบร้อยแล้ว แต่ยังไม่สามารถสร้าง PDF ได้ในขณะนี้';
+            }
+        }
+
+        function buildPayload() {
+            const payload = {};
+            Array.from(form.elements).forEach((element) => {
+                if (!element.name || element.disabled || element.type === 'file') {
+                    return;
+                }
+                if (element.name === 'file1data' || element.name === 'file2data') {
+                    return;
+                }
+                if ((element.type === 'radio' || element.type === 'checkbox') && !element.checked) {
+                    return;
+                }
+                payload[element.name] = element.value;
+            });
+            return payload;
+        }
+
+        async function uploadFileWithProgress(inputId, index) {
+            const fileInput = document.getElementById(inputId);
+            const file = fileInput.files && fileInput.files[0];
+            const fileData = document.getElementById(inputId + 'data').value;
+            const applicantName = [
+                document.getElementById('firstname').value.trim(),
+                document.getElementById('lastname').value.trim()
+            ].filter(Boolean).join(' ') || 'ผู้สมัคร';
+
+            updateProgressStep(inputId, 'กำลังอัปโหลด', 'active');
+            try {
+                const result = await runServer('uploadApplicantFile', fileData, applicantName, index, file ? file.name : '');
+                document.getElementById(inputId + 'url').value = result.url;
+                updateProgressStep(inputId, 'อัปโหลดเสร็จแล้ว', 'complete');
+                return result;
+            } catch (error) {
+                updateProgressStep(inputId, 'อัปโหลดไม่สำเร็จ', 'error');
+                throw error;
+            }
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                updateAllValidationMessages();
+                focusFirstInvalidField();
+                return;
+            }
+
+            const isConfirmed = await confirmBeforeSubmit();
+            if (!isConfirmed) {
+                return;
+            }
+
+            submitButton.disabled = true;
+            openUploadProgressModal();
+
+            try {
+                const [file1Result, file2Result] = await Promise.all([
+                    uploadFileWithProgress('file1', 1),
+                    uploadFileWithProgress('file2', 2)
+                ]);
+
+                updateProgressStep('save', 'กำลังบันทึกข้อมูล', 'active');
+                const payload = buildPayload();
+                payload.file1url = file1Result.url;
+                payload.file2url = file2Result.url;
+
+                const saveResult = await runServer('saveData', payload);
+                submitButton.disabled = false;
+                if(saveResult.error) {
+                    updateProgressStep('save', 'บันทึกไม่สำเร็จ', 'error');
+                    return Swal.fire({
+                        icon: 'error',
+                        title: 'บันทึกไม่สำเร็จ',
+                        text: saveResult.error,
+                        customClass: swalCustomClass
+                    });
+                }
+                updateProgressStep('save', 'บันทึกเรียบร้อย', 'complete');
+                Swal.close();
+                resetApplicationForm();
+                showSuccessView(saveResult);
+                generatePdfAfterSave(saveResult);
+            } catch (error) {
+                console.error(error);
+                updateProgressStep('save', 'บันทึกไม่สำเร็จ', 'error');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกไม่สำเร็จ',
+                    text: 'เกิดข้อผิดพลาดระหว่างอัปโหลดไฟล์หรือบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง',
+                    customClass: swalCustomClass
+                });
+                submitButton.disabled = false;
+            }
+        }
+
+        function initThailandAddressAutocomplete() {
+            $.Thailand({
+                $district: $('#district'),
+                $amphoe: $('#amphoe'),
+                $province: $('#province'),
+                $zipcode: $('#zipcode')
+            });
+
+            $.Thailand({
+                $district: $('#districtbirth'),
+                $amphoe: $('#amphoebirth'),
+                $province: $('#provincebirth')
+            });
+
+            $.Thailand({
+                $amphoe: $('#amphoecard'),
+                $province: $('#provincecard')
+            });
+        }
+
+        document.getElementById('file1').addEventListener('change', handleFileChange);
+        document.getElementById('file2').addEventListener('change', handleFileChange);
+        fileTriggerButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const input = document.getElementById(button.dataset.fileTrigger);
+                input?.click();
+            });
         });
-      } else {
-        elements.table.clearFilter()
-      }
-    };
+        successPdfButton.addEventListener('click', (event) => {
+            if (successPdfButton.getAttribute('aria-disabled') === 'true') {
+                event.preventDefault();
+            }
+        });
+        form.addEventListener('submit', handleSubmit);
+        militaryInputs.forEach((input) => input.addEventListener('change', toggleMilitaryHistory));
+        mockFillButton.addEventListener('click', fillMockupData);
+        startNewApplicationButton.addEventListener('click', showFormView);
+        bindValidationEvents();
+        updateAllValidationMessages();
+        resetFileSelectionUI();
 
-    document.getElementById("app").addEventListener("click", clickEventHandler);
-    document.getElementById("search-input").addEventListener("input", searchData);
-    document.addEventListener('DOMContentLoaded', pageLoad)
-
-  </script>
-
-
+        toggleMilitaryHistory();
+        initThailandAddressAutocomplete();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
+        crossorigin="anonymous"></script>
 </body>
 
 </html>
