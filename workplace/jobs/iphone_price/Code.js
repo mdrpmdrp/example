@@ -1,4 +1,4 @@
-// 5/4/2026 18:37
+// 6/4/2026 16:53
 
 var SS = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -8,7 +8,7 @@ var _INSTALLMENT = { 'ผ่อน': true, 'มือสอง': true, 'Freedown
 var _USERS_HEADERS = ['Company', 'First Name', 'Last Name', 'Nickname', 'Email', 'Phone', 'Status', 'Created At', 'Role', 'Branch'];
 var _STOCK_REQUEST_HEADERS = [
   'DocNo', 'Date', 'Priority', 'Branch', 'Requester',
-  'Items (JSON)', 'Status', 'AdminNote', 'SubmittedBy', 'CreatedAt', 'UpdatedAt', 'SubmittedBranch', 'DecisionBy', 'DecisionAt'
+  'Items (JSON)', 'Status', 'AdminNote', 'SubmittedBy', 'CreatedAt', 'UpdatedAt', 'DecisionBy', 'DecisionAt'
 ];
 
 // ---------- Serve Web App ----------
@@ -63,10 +63,6 @@ function sheetData(sheetName) {
   }
   _sheetCache[sheetName] = result;
   return result;
-}
-
-function resetCache(){
-  _sheetCache = {};
 }
 
 function jsonSuccess(data) { return JSON.stringify({ status: 'ok', data: data }); }
@@ -479,18 +475,42 @@ function getStockRequestSheet() {
   return sheet;
 }
 
-function generateDocNo() {
-  var sheet = getStockRequestSheet();
-  var last = sheet.getLastRow();
-  var seq = last; // rows including header
-  var prefix = 'SR' + moment_format();
-  // Use simple incrementing padded number based on total rows
-  return prefix + String(seq).padStart(4, '0');
+function generateDocNoForSheet_(sheet, referenceDate, usedDocNos) {
+  var docNos = usedDocNos || getExistingDocNoMap_(sheet);
+  var prefix = 'SR' + moment_format(referenceDate);
+  var maxSeq = 0;
+
+  for (var docNo in docNos) {
+    if (!docNos.hasOwnProperty(docNo) || docNo.indexOf(prefix) !== 0) continue;
+    var seq = parseInt(docNo.substring(prefix.length), 10);
+    if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+  }
+
+  var candidate;
+  do {
+    maxSeq++;
+    candidate = prefix + String(maxSeq).padStart(4, '0');
+  } while (docNos[candidate]);
+
+  return candidate;
 }
 
-function moment_format() {
+function getExistingDocNoMap_(sheet) {
+  var map = {};
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return map;
+
+  var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  for (var i = 0; i < values.length; i++) {
+    var docNo = String(values[i][0] || '').trim();
+    if (docNo) map[docNo] = true;
+  }
+  return map;
+}
+
+function moment_format(referenceDate) {
   // Returns YYYYMM string without moment.js (GAS runtime)
-  var d = new Date();
+  var d = referenceDate instanceof Date && !isNaN(referenceDate.getTime()) ? referenceDate : new Date();
   var y = d.getFullYear();
   var m = String(d.getMonth() + 1).padStart(2, '0');
   return y + '' + m;
@@ -498,7 +518,9 @@ function moment_format() {
 
 // ---------- Save/Create Stock Request ----------
 function saveStockRequest(payload) {
+  var lock = LockService.getDocumentLock();
   try {
+    lock.waitLock(30000);
     var p = JSON.parse(payload);
     var sheet = getStockRequestSheet();
     var docNo;
@@ -514,8 +536,7 @@ function saveStockRequest(payload) {
             p.date, p.priority, p.branch, p.requester,
             JSON.stringify(p.items)
           ]]);
-          sheet.getRange(i + 1, 12).setValue(p.submittedBranch || '');
-          sheet.getRange(i + 1, 13, 1, 2).setValues([['', '']]);
+          sheet.getRange(i + 1, 12, 1, 2).setValues([['', '']]);
           sheet.getRange(i + 1, 11).setValue(new Date());
           found = true;
           break;
@@ -524,7 +545,7 @@ function saveStockRequest(payload) {
       if (!found) return jsonError('ไม่พบเอกสารเลขที่ ' + docNo);
     } else {
       // Create new
-      docNo = generateDocNo();
+      docNo = generateDocNoForSheet_(sheet, new Date());
       sheet.appendRow([
         docNo,
         p.date,
@@ -537,7 +558,6 @@ function saveStockRequest(payload) {
         p.submittedBy,
         new Date(),
         new Date(),
-        p.submittedBranch || '',
         '',
         ''
       ]);
@@ -548,11 +568,13 @@ function saveStockRequest(payload) {
         nickname: p.nickname || '',
         firstName: p.firstName || p.nickname || '',
         email: p.submittedBy || '',
-        branch: p.submittedBranch || p.branch || ''
+        branch: p.branch || ''
       });
     return jsonSuccess({ docNo: docNo });
   } catch (e) {
     return jsonError(e.message);
+  } finally {
+    try { lock.releaseLock(); } catch (lockError) {}
   }
 }
 
@@ -635,8 +657,8 @@ function updateStockRequestApproval(payload) {
         sheet.getRange(i + 1, 6).setValue(JSON.stringify(p.items));
         sheet.getRange(i + 1, 7).setValue(p.status);
         sheet.getRange(i + 1, 8).setValue(p.adminNote || '');
-        sheet.getRange(i + 1, 13).setValue(decisionBy);
-        sheet.getRange(i + 1, 14).setValue(decisionAt);
+        sheet.getRange(i + 1, 12).setValue(decisionBy);
+        sheet.getRange(i + 1, 13).setValue(decisionAt);
         sheet.getRange(i + 1, 11).setValue(new Date());
         logEvent('StockRequest Approval: ' + p.docNo + ' -> ' + p.status,
           {
@@ -658,7 +680,7 @@ function updateStockRequestApproval(payload) {
 function rowToRequest(row) {
   var items = [];
   try { items = JSON.parse(String(row[5]) || '[]'); } catch(e) {}
-  var decisionAt = row[13];
+  var decisionAt = row[12];
   return {
     docNo: String(row[0]),
     date: row[1] instanceof Date ? Utilities.formatDate(row[1], Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(row[1]),
@@ -671,8 +693,7 @@ function rowToRequest(row) {
     submittedBy: String(row[8]),
     createdAt: row[9] instanceof Date ? row[9].toISOString() : String(row[9]),
     updatedAt: row[10] instanceof Date ? row[10].toISOString() : String(row[10]),
-    submittedBranch: String(row[11] || ''),
-    decisionBy: String(row[12] || ''),
+    decisionBy: String(row[11] || ''),
     decisionAt: decisionAt instanceof Date ? decisionAt.toISOString() : String(decisionAt || '')
   };
 }
