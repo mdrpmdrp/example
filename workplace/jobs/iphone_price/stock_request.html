@@ -471,7 +471,7 @@
         </div>
 
         <!-- Stock search row -->
-        <div class="flex gap-2 mb-3 p-3 bg-slate-800/60 rounded-xl border border-slate-700">
+        <div class="flex gap-2 mb-3 p-3 bg-slate-800/60 rounded-xl border border-slate-700 items-center flex-wrap">
           <div class="flex-1">
             <select id="item-brand-sel" class="inp py-2 text-sm" onchange="loadItemModels()">
               <option value="">-- ยี่ห้อ --</option>
@@ -483,11 +483,14 @@
             </select>
           </div>
           <div class="flex-1">
-            <select id="item-storage-sel" class="inp py-2 text-sm" disabled>
+            <select id="item-storage-sel" class="inp py-2 text-sm" onchange="updateSelectedStockBadge()" disabled>
               <option value="">-- ความจุ --</option>
             </select>
           </div>
-          <button onclick="pickItemFromDropdown()" class="btn-primary py-2 px-3 text-sm whitespace-nowrap flex items-center gap-1">
+          <div id="selected-stock-badge" class="hidden px-3 py-2 rounded-xl border text-sm font-semibold whitespace-nowrap bg-slate-900 text-slate-300 border-slate-600">
+            Stock กลาง 0
+          </div>
+          <button id="btn-add-item" onclick="pickItemFromDropdown()" class="btn-primary py-2 px-3 text-sm whitespace-nowrap flex items-center gap-1" disabled>
             <i data-lucide="plus" class="w-3.5 h-3.5"></i> เพิ่ม
           </button>
         </div>
@@ -940,6 +943,35 @@
     var st = getVnStock();
     return ((st[brand]||{})[model]||{})[storage] || 0;
   }
+  function updateAddItemButtonState() {
+    var brand = $('#item-brand-sel').val();
+    var model = $('#item-model-sel').val();
+    var storage = $('#item-storage-sel').val();
+    $('#btn-add-item').prop('disabled', !(brand && model && storage));
+  }
+  function updateSelectedStockBadge() {
+    var brand = $('#item-brand-sel').val();
+    var model = $('#item-model-sel').val();
+    var storage = $('#item-storage-sel').val();
+    var $badge = $('#selected-stock-badge');
+
+    updateAddItemButtonState();
+
+    if (!brand || !model || !storage) {
+      $badge.addClass('hidden');
+      return;
+    }
+
+    var qty = getStockQty(brand, model, storage);
+    var toneClass = qty > 0
+      ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/70'
+      : 'bg-red-950/40 text-red-300 border-red-800/70';
+
+    $badge
+      .removeClass('hidden bg-slate-900 text-slate-300 border-slate-600 bg-emerald-950/60 text-emerald-300 border-emerald-700/70 bg-red-950/40 text-red-300 border-red-800/70')
+      .addClass(toneClass)
+      .text('Stock กลาง ' + qty + ' เครื่อง');
+  }
   function getAllStockItems() {
     var items = [];
     var st = getVnStock();
@@ -961,11 +993,13 @@
     $('#item-brand-sel').html(opts);
     $('#item-model-sel').html('<option value="">-- รุ่น --</option>').prop('disabled', true);
     $('#item-storage-sel').html('<option value="">-- ความจุ --</option>').prop('disabled', true);
+    updateSelectedStockBadge();
   }
   function loadItemModels() {
     var brand = $('#item-brand-sel').val(), st = getVnStock();
     $('#item-model-sel').html('<option value="">-- รุ่น --</option>').prop('disabled', true);
     $('#item-storage-sel').html('<option value="">-- ความจุ --</option>').prop('disabled', true);
+    updateSelectedStockBadge();
     if (!brand) return;
     var opts = '<option value="">-- รุ่น --</option>';
     Object.keys((st[brand])||{}).sort().forEach(function(m){ opts += '<option value="'+m+'">'+m+'</option>'; });
@@ -974,6 +1008,7 @@
   function loadItemStorages() {
     var brand = $('#item-brand-sel').val(), model = $('#item-model-sel').val(), st = getVnStock();
     $('#item-storage-sel').html('<option value="">-- ความจุ --</option>').prop('disabled', true);
+    updateSelectedStockBadge();
     if (!brand || !model) return;
     var opts = '<option value="">-- ความจุ --</option>';
     Object.keys(((st[brand]||{})[model])||{}).sort().forEach(function(s){ opts += '<option value="'+s+'">'+s+'</option>'; });
@@ -1020,6 +1055,7 @@
     $('#item-brand-sel').val('');
     $('#item-model-sel').html('<option value="">-- รุ่น --</option>').prop('disabled', true);
     $('#item-storage-sel').html('<option value="">-- ความจุ --</option>').prop('disabled', true);
+    updateSelectedStockBadge();
   }
 
   var _itemRowIdx = 0;

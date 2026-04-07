@@ -1,9 +1,9 @@
-// 6/4/2026 16:53
+// 7/4/2026 18:35
 
 var SS = SpreadsheetApp.getActiveSpreadsheet();
 
 // Column counts for known price sheets — avoids reading unused columns
-var _SHEET_COLS = { 'ผ่อน': 8, 'มือสอง': 8, 'Freedown': 8, 'ซื้อสด': 4, 'สดvnphone': 4 };
+var _SHEET_COLS = { 'ผ่อน': 8, 'มือสอง': 8, 'Freedown': 8, 'ซื้อสด': 4, 'สดvnphone': 6 };
 var _INSTALLMENT = { 'ผ่อน': true, 'มือสอง': true, 'Freedown': true };
 var _USERS_HEADERS = ['Company', 'First Name', 'Last Name', 'Nickname', 'Email', 'Phone', 'Status', 'Created At', 'Role', 'Branch'];
 var _STOCK_REQUEST_HEADERS = [
@@ -731,7 +731,10 @@ function getPriceData() {
 
     var vn = result['สดvnphone'], vn_stock = result['vn_stock'];
     sheetData('สดvnphone').forEach(function (r) {
-      var b = String(r[0]), m = String(r[1]), s = String(r[2]), price = Number(r[3]), stock = Number(r[5]);
+      var b = String(r[0]), m = String(r[1]), s = String(r[2]), price = Number(r[3]);
+      var stock = Number(r[5]);
+      if (isNaN(stock) && r.length > 4) stock = Number(r[4]);
+      if (isNaN(stock)) stock = 0;
       if (!price || isNaN(price)) return;
       if (!vn[b]) vn[b] = {};
       if(!vn_stock[b]) vn_stock[b] = {};
