@@ -1,1568 +1,175 @@
 <!DOCTYPE html>
-<html lang="th">
-
-<head>
-    <base target="_top">
+<html>
+  <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>กรอกใบสมัคร</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <base target="_top">
+    <style>
+      body{
+        font-family:"Segoe UI",Tahoma,sans-serif;
+        background:#f5f5f5;
+        margin:0;
+        padding:16px;
+      }
+      h1{
+        text-align:center;
+        margin-top:0;
+      }
 
-    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
-    <script type="text/javascript"
-        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dependencies/JQL.min.js"></script>
-    <script type="text/javascript"
-        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dependencies/typeahead.bundle.js"></script>
+      .toolbar{
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        gap:8px;
+        margin-bottom:12px;
+        flex-wrap:wrap;
+      }
 
-    <link rel="stylesheet"
-        href="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dist/jquery.Thailand.min.css">
-    <script type="text/javascript"
-        src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dist/jquery.Thailand.min.js"></script>
+      .cards{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+        gap:10px;
+      }
 
-    <?!= HtmlService.createHtmlOutputFromFile('css').getContent(); ?>
-</head>
+      .card{
+        background:#fff;
+        border-radius:10px;
+        padding:12px;
+        box-shadow:0 2px 5px rgba(0,0,0,.08);
+        font-size:13px;
+      }
 
-<body>
-    <main class="page-shell">
-        <div class="page-background"></div>
-        <div class="container py-4 py-lg-5">
-            <div class="form-layout">
-                <aside class="hero-panel">
-                    <div class="hero-content">
-                        <h1 class="hero-title">ใบสมัครสอบแข่งขัน หรือคัดเลือกเข้าเป็นพนักงานมหาวิทยาลัยเกษตรศาสตร์</h1>
-                        <p class="hero-copy">กรุณากรอกข้อมูลให้ครบถ้วน</p>
-                    </div>
+      .card-header{
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        margin-bottom:4px;
+      }
 
-                    <div class="hero-position-card">
-                        <div>
-                            <div class="eyebrow">ประเภท</div>
-                            <div id="titleOfForm" class="position-title">
-                                <?!= passbk ?>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="eyebrow">ตำแหน่ง</div>
-                            <div id="titleOfForm" class="position-title">
-                                <?!= passbl ?>
-                            </div>
-                        </div>
+      .name{
+        font-weight:bold;
+        font-size:15px;
+      }
 
-                    </div>
+      .badge{
+        padding:2px 8px;
+        border-radius:20px;
+        font-size:11px;
+      }
+      .wait{background:#fff3cd;color:#856404;}
+      .ok  {background:#d4edda;color:#155724;}
+      .no  {background:#f8d7da;color:#721c24;}
 
-                    <div id="msgToUsr" class="status-banner" role="status" aria-live="polite"></div>
-                </aside>
+      .row span.label{
+        font-weight:600;
+      }
 
-                <section class="form-panel">
-                    <div id="formView">
-                        <div class="form-panel-header">
-                            <div>
-                                <div class="section-kicker">Application</div>
-                                <h2 class="panel-title">ข้อมูลผู้สมัคร</h2>
-                            </div>
-                            <div class="form-panel-actions">
-                                <!-- <button type="button" class="btn btn-outline-secondary btn-mock-fill" id="btnMockFill">
-                                    <i class="bi bi-magic"></i>
-                                    <span>กรอกข้อมูลทดสอบ</span>
-                                </button> -->
-                                <div class="required-note"><span class="text-danger">*</span> จำเป็นต้องกรอก</div>
-                            </div>
-                        </div>
+      .actions{
+        margin-top:8px;
+        display:flex;
+        gap:6px;
+      }
 
-                        <form id="myForm" novalidate>
-                        <input type="hidden" name="passbk" value="<?!= passbk ?>">
-                        <input type="hidden" name="position" value="<?!= passbl ?>">
-                        <input type="hidden" name="passbm" value="<?!= passbm ?>">
-                        <input type="hidden" name="passbn" value="<?!= passbn ?>">
+      .btn{
+        flex:1;
+        padding:6px;
+        border:none;
+        border-radius:6px;
+        font-weight:bold;
+        color:#fff;
+        cursor:pointer;
+      }
+      .approve{background:#2e7d32;}  /* ปุ่มอนุมัติ สีเขียว */
+      .reject {background:#c62828;}  /* ปุ่มไม่อนุมัติ สีแดง */
 
-                        <section class="form-section">
-                            <div class="section-heading">
-                                <div class="section-number">1</div>
-                                <div>
-                                    <h3>ข้อมูลส่วนบุคคล</h3>
-                                    <p>กรอกข้อมูลพื้นฐานตามบัตรประชาชนและข้อมูลวันเกิด</p>
-                                </div>
-                            </div>
+      .btn:disabled{
+        opacity:.6;
+        cursor:default;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>การอนุมัติการลางานพนักงานขับรถ LACO</h1>
 
-                            <div class="row g-3">
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">คำนำหน้า <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="prefix" name="prefix" required>
-                                        <option selected disabled value="">เลือก...</option>
-                                        <?!= list_prefix; ?>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">ชื่อ <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="firstname" name="firstname"
-                                        placeholder="ชื่อ" required>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">นามสกุล <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="lastname" name="lastname"
-                                        placeholder="นามสกุล" required>
-                                </div>
+    <div class="toolbar">
+      <label>สถานะการอนุมัติ:</label>
+      <select id="filter">
+        <option value="ALL">ทั้งหมด</option>
+        <option value="WAIT">รออนุมัติ</option>
+        <option value="OK">อนุมัติ</option>
+        <option value="NO">ไม่อนุมัติ</option>
+      </select>
+    </div>
 
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">สัญชาติ <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="nation" name="nation" required>
-                                        <option selected disabled value="">เลือก...</option>
-                                        <?!= list_nation; ?>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">ศาสนา <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="religion" name="religion" required>
-                                        <option selected disabled value="">เลือก...</option>
-                                        <?!= list_religion; ?>
-                                    </select>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">เลขประจำตัวประชาชน <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="uid" name="uid"
-                                        placeholder="เลขประจำตัว 13 หลัก" maxlength="13" pattern="^\d{13}$"
-                                        inputmode="numeric" required>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">วัน เดือน ปี เกิด (ค.ศ.) <span
-                                            class="text-danger">*</span></label>
-                                    <input type="date" class="form-control" id="birth" name="birth" min="1974-01-01"
-                                        lang="en-GB" required>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">อำเภอ/เขต ตามบัตรประชาชน <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="amphoecard" name="amphoecard"
-                                        placeholder="อำเภอ/เขต" required>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">จังหวัดที่ออกบัตร <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="provincecard" name="provincecard"
-                                        placeholder="จังหวัด" required>
-                                </div>
-
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">ตำบลที่เกิด <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="districtbirth" name="districtbirth"
-                                        placeholder="ตำบลที่เกิด" required>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">อำเภอที่เกิด <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="amphoebirth" name="amphoebirth"
-                                        placeholder="อำเภอที่เกิด" required>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">จังหวัดที่เกิด <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="provincebirth" name="provincebirth"
-                                        placeholder="จังหวัดที่เกิด" required>
-                                </div>
-                            </div>
-                        </section>
-
-                        <section class="form-section">
-                            <div class="section-heading">
-                                <div class="section-number">2</div>
-                                <div>
-                                    <h3>ที่อยู่ปัจจุบัน</h3>
-                                    <p>ใช้ที่อยู่ที่สามารถติดต่อกลับได้จริง</p>
-                                </div>
-                            </div>
-
-                            <div class="row g-3">
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">บ้านเลขที่ <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="address" name="address"
-                                        placeholder="บ้านเลขที่" required>
-                                </div>
-                                <div class="col-12 col-sm-6 col-md-4">
-                                    <label class="form-label">หมู่ที่</label>
-                                    <input type="text" class="form-control" id="moo" name="moo" placeholder="หมู่ที่">
-                                </div>
-                                <div class="col-12 col-sm-6 col-md-4">
-                                    <label class="form-label">ซอย</label>
-                                    <input type="text" class="form-control" id="soi" name="soi" placeholder="ซอย">
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">ถนน</label>
-                                    <input type="text" class="form-control" id="road" name="road" placeholder="ถนน">
-                                </div>
-
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">ตำบล/แขวง <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="district" name="district"
-                                        placeholder="ตำบล/แขวง" required>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">อำเภอ/เขต <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="amphoe" name="amphoe"
-                                        placeholder="อำเภอ/เขต" required>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">จังหวัด <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="province" name="province"
-                                        placeholder="จังหวัด" required>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">รหัสไปรษณีย์ <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="zipcode" name="zipcode"
-                                        placeholder="รหัสไปรษณีย์" inputmode="numeric" required>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">เบอร์โทรศัพท์ <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="telephone" name="telephone"
-                                        placeholder="0xxxxxxxxx" maxlength="10" pattern="^\d{10}$" inputmode="tel"
-                                        required>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">Email <span class="text-danger">*</span></label>
-                                    <input type="email" class="form-control" id="email" name="email"
-                                        placeholder="example@domain.com"
-                                        pattern="[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$" required>
-                                </div>
-                            </div>
-                        </section>
-
-                        <section class="form-section">
-                            <div class="section-heading">
-                                <div class="section-number">3</div>
-                                <div>
-                                    <h3>ข้อมูลครอบครัว</h3>
-                                    <p>กรอกข้อมูลบิดา มารดา และคู่สมรสถ้ามี</p>
-                                </div>
-                            </div>
-
-                            <div class="subsection-title">ข้อมูลบิดา</div>
-                            <div class="row g-3">
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">ชื่อ-นามสกุล (บิดา) <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="namedad" name="namedad"
-                                        placeholder="ชื่อ-นามสกุล (บิดา)" required>
-                                </div>
-                                <div class="col-12 col-md-3">
-                                    <label class="form-label">สัญชาติ (บิดา) <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="nationdad" name="nationdad" required>
-                                        <option selected disabled value="">เลือก...</option>
-                                        <?!= list_nation; ?>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-3">
-                                    <label class="form-label">ศาสนา (บิดา) <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="religiondad" name="religiondad" required>
-                                        <option selected disabled value="">เลือก...</option>
-                                        <?!= list_religion; ?>
-                                    </select>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">อาชีพ (บิดา) <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="careerdad" name="careerdad"
-                                        placeholder="อาชีพ" required>
-                                </div>
-                            </div>
-
-                            <div class="subsection-title mt-4">ข้อมูลมารดา</div>
-                            <div class="row g-3">
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">ชื่อ-นามสกุล (มารดา) <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="namemom" name="namemom"
-                                        placeholder="ชื่อ-นามสกุล (มารดา)" required>
-                                </div>
-                                <div class="col-12 col-md-3">
-                                    <label class="form-label">สัญชาติ (มารดา) <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="nationmom" name="nationmom" required>
-                                        <option selected disabled value="">เลือก...</option>
-                                        <?!= list_nation; ?>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-3">
-                                    <label class="form-label">ศาสนา (มารดา) <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="religionmom" name="religionmom" required>
-                                        <option selected disabled value="">เลือก...</option>
-                                        <?!= list_religion; ?>
-                                    </select>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">อาชีพ (มารดา) <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="careermom" name="careermom"
-                                        placeholder="อาชีพ" required>
-                                </div>
-                            </div>
-
-                            <div class="subsection-title mt-4">คู่สมรส (ถ้ามี)</div>
-                            <div class="row g-3">
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">ชื่อ-นามสกุล (ภรรยาหรือสามี)</label>
-                                    <input type="text" class="form-control" id="namespouse" name="namespouse"
-                                        placeholder="ชื่อ-นามสกุล">
-                                </div>
-                                <div class="col-12 col-md-3">
-                                    <label class="form-label">สัญชาติ</label>
-                                    <select class="form-select" id="nationspouse" name="nationspouse">
-                                        <option selected disabled value="">เลือก...</option>
-                                        <?!= list_nation; ?>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-3">
-                                    <label class="form-label">ศาสนา</label>
-                                    <select class="form-select" id="religionspouse" name="religionspouse">
-                                        <option selected disabled value="">เลือก...</option>
-                                        <?!= list_religion; ?>
-                                    </select>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">อาชีพ</label>
-                                    <input type="text" class="form-control" id="careerspouse" name="careerspouse"
-                                        placeholder="อาชีพ">
-                                </div>
-                            </div>
-                        </section>
-
-                        <section class="form-section">
-                            <div class="section-heading">
-                                <div class="section-number">4</div>
-                                <div>
-                                    <h3>ประวัติการศึกษา</h3>
-                                    <p>ระบุวุฒิที่ใช้สมัครและรายละเอียดการศึกษา</p>
-                                </div>
-                            </div>
-
-                            <div class="row g-3">
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="degree" name="degree"
-                                        placeholder="วุฒิการศึกษาตรงตามตำแหน่งที่สมัคร" required>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">สาขาวิชา <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="major" name="major"
-                                        placeholder="สาขาวิชา" required>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">วันที่ได้รับอนุมัติผลการศึกษา (ค.ศ.) <span
-                                            class="text-danger">*</span></label>
-                                    <input type="date" class="form-control" id="edubirth" name="edubirth" lang="en-GB"
-                                        required>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">สถาบันการศึกษา <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="university" name="university"
-                                        placeholder="ชื่อสถาบันการศึกษา" required>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">จังหวัดที่ตั้งสถาบัน <span
-                                            class="text-danger">*</span></label>
-                                    <select class="form-select" id="uniprovince" name="uniprovince" required>
-                                        <option selected disabled value="">เลือก...</option>
-                                        <?!= list_province; ?>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">คะแนนเฉลี่ยสะสม <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="grade" name="grade" placeholder="1.0"
-                                        step="0.01" min="2" max="4" required>
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">วุฒิการศึกษาสูงสุด <span
-                                            class="text-danger">*</span></label>
-                                    <select class="form-select" id="highest" name="highest" required>
-                                        <option selected disabled value="">เลือก...</option>
-                                        <?!= list_highest; ?>
-                                    </select>
-                                </div>
-                            </div>
-                        </section>
-
-                        <section class="form-section">
-                            <div class="section-heading">
-                                <div class="section-number">5</div>
-                                <div>
-                                    <h3>ความรู้ความสามารถพิเศษ</h3>
-                                    <p>กรอกทักษะที่ช่วยสนับสนุนการทำงานในตำแหน่งนี้</p>
-                                </div>
-                            </div>
-
-                            <div class="row g-3">
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">ความรู้ความสามารถพิเศษ</label>
-                                    <input type="text" class="form-control" id="special" name="special"
-                                        placeholder="เช่น โปรแกรมที่ใช้ได้ ใบรับรอง หรือทักษะเฉพาะ">
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">รู้ภาษาต่างประเทศ ภาษาใด เพียงใด</label>
-                                    <input type="text" class="form-control" id="language" name="language"
-                                        placeholder="เช่น English - intermediate">
-                                </div>
-                            </div>
-                        </section>
-
-                        <section class="form-section">
-                            <div class="section-heading">
-                                <div class="section-number">6</div>
-                                <div>
-                                    <h3>ประวัติการทำงาน</h3>
-                                    <p>หากเคยทำงานมาก่อน ให้ระบุรายละเอียดล่าสุดและประวัติราชการถ้ามี</p>
-                                </div>
-                            </div>
-
-                            <div class="row g-3">
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">ที่ทำงานล่าสุด</label>
-                                    <input type="text" class="form-control" id="work1" name="work1"
-                                        placeholder="ที่ทำงานล่าสุด">
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">ตำแหน่งสุดท้าย</label>
-                                    <input type="text" class="form-control" id="work2" name="work2"
-                                        placeholder="ตำแหน่งสุดท้าย">
-                                </div>
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label">ลักษณะงาน</label>
-                                    <input type="text" class="form-control" id="work3" name="work3"
-                                        placeholder="ลักษณะงาน">
-                                </div>
-                            </div>
-
-                            <div class="radio-group mt-4">
-                                <label class="form-label d-block">เคยรับราชการหรือไม่ <span
-                                        class="text-danger">*</span></label>
-                                <div class="radio-card-wrap">
-                                    <label class="radio-card" for="yesCheck">
-                                        <input type="radio" id="yesCheck" name="military1" value="เคย" required>
-                                        <span>เคย</span>
-                                    </label>
-                                    <label class="radio-card" for="noCheck">
-                                        <input type="radio" id="noCheck" name="military1" value="ไม่เคย" required>
-                                        <span>ไม่เคย</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div id="ifYes" class="conditional-panel d-none mt-4">
-                                <div class="row g-3">
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label">เคยรับราชการเป็นข้าราชการ</label>
-                                        <input type="text" class="form-control" name="military2">
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label">ตำแหน่ง</label>
-                                        <input type="text" class="form-control" name="military3">
-                                    </div>
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label">แผนก</label>
-                                        <input type="text" class="form-control" name="military4">
-                                    </div>
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label">กอง</label>
-                                        <input type="text" class="form-control" name="military5">
-                                    </div>
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label">กรม</label>
-                                        <input type="text" class="form-control" name="military6">
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label">กระทรวง</label>
-                                        <input type="text" class="form-control" name="military7">
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label">ออกจากราชการเพราะ</label>
-                                        <input type="text" class="form-control" name="military8">
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label">ออกจากราชการเมื่อวันที่ (ค.ศ.)</label>
-                                        <input type="date" class="form-control" id="military9" name="military9"
-                                            lang="en-GB">
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label">ได้รับบำเหน็จ บำนาญ หรือเบี้ยหวัดจากกระทรวง</label>
-                                        <input type="text" class="form-control" name="military10">
-                                    </div>
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label">เป็นจำนวนเงิน (บาท)</label>
-                                        <input type="text" class="form-control" name="military11">
-                                    </div>
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label">ขณะนี้ได้รับเบี้ยหวัด</label>
-                                        <input type="text" class="form-control" name="military12">
-                                    </div>
-                                    <div class="col-12 col-md-4">
-                                        <label class="form-label">บำเหน็จบำนาญที่</label>
-                                        <input type="text" class="form-control" name="military13">
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
-                        <section class="form-section">
-                            <div class="section-heading">
-                                <div class="section-number">7</div>
-                                <div>
-                                    <h3>แนบไฟล์</h3>
-                                    <p>อัปโหลดรูปถ่ายและเอกสารการสมัครในรูปแบบที่กำหนด</p>
-                                </div>
-                            </div>
-
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <div class="upload-card upload-card-photo" id="file1Card">
-                                        <label class="form-label" for="file1">รูปถ่ายหน้าตรง (.jpg) <span
-                                                class="text-danger">*</span></label>
-                                        <input class="file-input-native" type="file" id="file1" name="file1"
-                                            accept="image/jpg,.jpg" required>
-                                        <div class="upload-card-body">
-                                              <div class="upload-content">
-                                                <div class="upload-actions">
-                                                    <button type="button" class="btn upload-select-btn" data-file-trigger="file1">
-                                                        <i class="bi bi-image"></i>
-                                                        <span>เลือกรูปผู้สมัคร</span>
-                                                    </button>
-                                                    <span class="upload-file-name" id="file1Name">ยังไม่ได้เลือกไฟล์</span>
-                                                </div>
-                                                <div class="field-help">รองรับไฟล์ .jpg สำหรับรูปถ่ายหน้าตรงของผู้สมัคร</div>
-                                            </div>
-                                            <div class="upload-preview is-empty" id="file1PreviewWrap">
-                                                <img id="file1Preview" class="upload-preview-image" alt="ตัวอย่างรูปผู้สมัคร">
-                                                <div class="upload-preview-placeholder">
-                                                    <i class="bi bi-person-badge"></i>
-                                                    <span>ยังไม่ได้เลือกรูปผู้สมัคร</span>
-                                                </div>
-                                            </div>
-                                          
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="upload-card" id="file2Card">
-                                        <label class="form-label" for="file2">หลักฐานที่ใช้ในการสมัครสอบ (.pdf) <span
-                                                class="text-danger">*</span></label>
-                                        <input class="file-input-native" type="file" id="file2" name="file2"
-                                            accept="application/pdf,.pdf" required>
-                                        <div class="upload-card-body">
-                                            <div class="upload-content upload-content-full">
-                                                <div class="upload-actions">
-                                                    <button type="button" class="btn upload-select-btn" data-file-trigger="file2">
-                                                        <i class="bi bi-file-earmark-pdf"></i>
-                                                        <span>เลือกไฟล์หลักฐาน</span>
-                                                    </button>
-                                                    <span class="upload-file-name" id="file2Name">ยังไม่ได้เลือกไฟล์</span>
-                                                </div>
-                                                <div class="field-help">รองรับไฟล์ .pdf สำหรับเอกสารประกอบการสมัคร</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <input id="file1data" name="file1data" type="hidden">
-                            <input id="file2data" name="file2data" type="hidden">
-                            <input id="file1url" name="file1url" type="hidden">
-                            <input id="file2url" name="file2url" type="hidden">
-
-                            <div class="submit-bar">
-                                <div>
-                                    <div class="submit-title">ตรวจสอบข้อมูลก่อนส่ง</div>
-                                    <div class="field-help">กรุณาตรวจสอบข้อมูลให้ครบถ้วนก่อนบันทึก</div>
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-submit" id="btnSubmit">
-                                    <i class="bi bi-cloud-arrow-up-fill"></i>
-                                    <span>บันทึกข้อมูล</span>
-                                </button>
-                            </div>
-                        </section>
-                        </form>
-                    </div>
-
-                    <div id="successView" class="success-view d-none" aria-live="polite">
-                        <div class="success-hero">
-                            <div class="success-icon">
-                                <i class="bi bi-check2-circle"></i>
-                            </div>
-                            <div class="section-kicker">Application Saved</div>
-                            <h2 class="success-title">บันทึกข้อมูลเรียบร้อยแล้ว</h2>
-                            <p class="success-copy" id="successMessage">ระบบกำลังสร้างไฟล์ใบสมัครของท่าน</p>
-                        </div>
-
-                        <div class="success-meta-grid">
-                            <div class="success-meta-card">
-                                <span class="success-meta-label">ผู้สมัคร</span>
-                                <strong class="success-meta-value" id="successApplicantName">-</strong>
-                            </div>
-                            <div class="success-meta-card">
-                                <span class="success-meta-label">ประเภท</span>
-                                <strong class="success-meta-value" id="successApplicationType">-</strong>
-                            </div>
-                            <div class="success-meta-card">
-                                <span class="success-meta-label">ตำแหน่ง</span>
-                                <strong class="success-meta-value" id="successPosition">-</strong>
-                            </div>
-                            <div class="success-meta-card">
-                                <span class="success-meta-label">เลขที่สมัคร</span>
-                                <strong class="success-meta-value" id="successPassbn">-</strong>
-                            </div>
-                        </div>
-
-                        <div class="success-actions">
-                            <a id="successPdfButton" class="btn btn-primary btn-submit success-pdf-button disabled" href="#"
-                                target="_blank" rel="noopener noreferrer" aria-disabled="true">
-                                <i class="bi bi-hourglass-split"></i>
-                                <span id="successPdfButtonText">กำลังสร้างไฟล์ใบสมัคร</span>
-                            </a>
-                            <!-- <button type="button" class="btn btn-outline-secondary btn-mock-fill" id="btnStartNewApplication">
-                                <i class="bi bi-arrow-counterclockwise"></i>
-                                <span>กรอกใบสมัครใหม่</span>
-                            </button> -->
-                        </div>
-                    </div>
-                </section>
-            </div>
+    <div id="cards" class="cards">
+      <? var list = rows || []; ?>
+      <? for (var i = 0; i < list.length; i++) {
+           var item = list[i];
+           var status = item.status || '';
+           var textStatus = status || 'รออนุมัติ';
+           var cls = 'wait';
+           if (status === 'อนุมัติ') cls = 'ok';
+           else if (status === 'ไม่อนุมัติ') cls = 'no';
+      ?>
+        <div class="card"
+             data-status="<?= status ? (status === 'อนุมัติ' ? 'OK' : 'NO') : 'WAIT' ?>"
+             data-row="<?= item.row ?>">
+          <div class="card-header">
+            <div class="name"><?= item.name || '-' ?></div>
+            <div class="badge <?= cls ?>"><?= textStatus ?></div>
+          </div>
+          <div class="row"><span class="label">ทะเบียน:</span> <?= item.plate || '-' ?></div>
+          <div class="row"><span class="label">ประเภทการลา:</span> <?= item.type || '-' ?></div>
+          <div class="row"><span class="label">เริ่ม:</span> <?= item.start || '-' ?></div>
+          <div class="row"><span class="label">สิ้นสุด:</span> <?= item.end || '-' ?></div>
+          <div class="row"><span class="label">จำนวนวัน:</span> <?= item.days || '-' ?></div>
+          <div class="actions">
+            <button class="btn approve">อนุมัติ</button>
+            <button class="btn reject">ไม่อนุมัติ</button>
+          </div>
         </div>
-    </main>
+      <? } ?>
+    </div>
 
-    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        const form = document.getElementById('myForm');
-        const formView = document.getElementById('formView');
-        const successView = document.getElementById('successView');
-        const submitButton = document.getElementById('btnSubmit');
-        const mockFillButton = document.getElementById('btnMockFill');
-        const startNewApplicationButton = document.getElementById('btnStartNewApplication');
-        const fileTriggerButtons = document.querySelectorAll('[data-file-trigger]');
-        const militaryInputs = document.querySelectorAll('input[name="military1"]');
-        const conditionalPanel = document.getElementById('ifYes');
-        const successMessage = document.getElementById('successMessage');
-        const successApplicantName = document.getElementById('successApplicantName');
-        const successApplicationType = document.getElementById('successApplicationType');
-        const successPosition = document.getElementById('successPosition');
-        const successPassbn = document.getElementById('successPassbn');
-        const successPdfButton = document.getElementById('successPdfButton');
-        const successPdfButtonText = document.getElementById('successPdfButtonText');
-        const validationElements = Array.from(form.querySelectorAll('input, select, textarea')).filter((element) => {
-            return element.name && element.type !== 'hidden' && !element.disabled;
+      // ฟังก์ชันกรองการ์ดตาม dropdown
+      const filterSelect = document.getElementById('filter');
+      const cards = document.querySelectorAll('.card');
+
+      function applyFilter(){
+        const v = filterSelect.value; // ALL / WAIT / OK / NO
+        cards.forEach(c=>{
+          const st = c.getAttribute('data-status');
+          if (v === 'ALL' || v === st) {
+            c.style.display = '';
+          } else {
+            c.style.display = 'none';
+          }
         });
-        const uploadStatusConfig = {
-            file1: 'รูปถ่ายหน้าตรง',
-            file2: 'เอกสารประกอบการสมัคร',
-            save: 'บันทึกข้อมูลลงระบบ'
-        };
-        const swalCustomClass = {
-            popup: 'rounded rounded-4'
-        };
-
-        function toggleMilitaryHistory() {
-            const selected = document.querySelector('input[name="military1"]:checked');
-            const shouldShow = selected && selected.value === 'เคย';
-            conditionalPanel.classList.toggle('d-none', !shouldShow);
-        }
-
-        async function fileToDataUrl(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = (loadEvent) => resolve(loadEvent.target.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-
-        async function imageFileToDataUrl(file) {
-            const objectUrl = URL.createObjectURL(file);
-            try {
-                const image = await new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.onload = () => resolve(img);
-                    img.onerror = reject;
-                    img.src = objectUrl;
-                });
-
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                const maxWidth = 800;
-                const ratio = image.naturalWidth / image.naturalHeight;
-
-                canvas.width = image.naturalWidth > maxWidth ? maxWidth : image.naturalWidth;
-                canvas.height = image.naturalWidth > maxWidth ? Math.floor(canvas.width / ratio) : image.naturalHeight;
-                context.drawImage(image, 0, 0, canvas.width, canvas.height);
-                return canvas.toDataURL('image/jpeg', 1);
-            } finally {
-                URL.revokeObjectURL(objectUrl);
-            }
-        }
-
-        async function handleFileChange(event) {
-            const input = event.target;
-            const file = input.files && input.files[0];
-            if (!file) {
-                document.getElementById(input.id + 'data').value = '';
-                updateFileSelectionUI(input.id, null, '');
-                return;
-            }
-
-            const dataUrl = file.type.indexOf('image') >= 0
-                ? await imageFileToDataUrl(file)
-                : await fileToDataUrl(file);
-
-            document.getElementById(input.id + 'data').value = dataUrl;
-            updateFileSelectionUI(input.id, file, dataUrl);
-        }
-
-        function updateFileSelectionUI(inputId, file, previewSource) {
-            const fileNameNode = document.getElementById(inputId + 'Name');
-            const card = document.getElementById(inputId + 'Card');
-
-            if (fileNameNode) {
-                fileNameNode.textContent = file ? file.name : 'ยังไม่ได้เลือกไฟล์';
-            }
-
-            if (card) {
-                card.classList.toggle('has-file', Boolean(file));
-            }
-
-            if (inputId !== 'file1') {
-                return;
-            }
-
-            const previewWrap = document.getElementById('file1PreviewWrap');
-            const previewImage = document.getElementById('file1Preview');
-            if (!previewWrap || !previewImage) {
-                return;
-            }
-
-            const hasPreview = Boolean(file && previewSource);
-            previewWrap.classList.toggle('is-empty', !hasPreview);
-            previewImage.src = hasPreview ? previewSource : '';
-        }
-
-        function resetFileSelectionUI() {
-            updateFileSelectionUI('file1', null, '');
-            updateFileSelectionUI('file2', null, '');
-        }
-
-        function getFieldFocusTarget(element) {
-            if (element.type === 'file') {
-                return element.closest('.upload-card')?.querySelector('[data-file-trigger="' + element.id + '"]') || element;
-            }
-
-            return element;
-        }
-
-        function sanitizeLabelText(text) {
-            return (text || '').replace(/\*/g, '').replace(/\s+/g, ' ').trim();
-        }
-
-        function getFieldLabelText(element) {
-            if (element.type === 'radio') {
-                return sanitizeLabelText(element.closest('.radio-group')?.querySelector('.form-label')?.textContent || 'ข้อมูลนี้');
-            }
-
-            const container = element.closest('.upload-card') || element.parentElement;
-            return sanitizeLabelText(container?.querySelector('.form-label')?.textContent || element.name || 'ข้อมูลนี้');
-        }
-
-        function getValidationAnchor(element) {
-            if (element.type === 'radio') {
-                return element.closest('.radio-group');
-            }
-            return element.closest('.upload-card') || element.parentElement;
-        }
-
-        function getValidationKey(element) {
-            return element.type === 'radio' ? 'radio-' + element.name : (element.id || element.name);
-        }
-
-        function ensureErrorElement(element) {
-            const anchor = getValidationAnchor(element);
-            const validationKey = getValidationKey(element);
-            let errorElement = anchor.querySelector('.field-error[data-for="' + validationKey + '"]');
-
-            if (!errorElement) {
-                errorElement = document.createElement('div');
-                errorElement.className = 'field-error';
-                errorElement.dataset.for = validationKey;
-                errorElement.setAttribute('role', 'alert');
-                anchor.appendChild(errorElement);
-            }
-
-            return errorElement;
-        }
-
-        function buildValidationMessage(element) {
-            const label = getFieldLabelText(element);
-            const validity = element.validity;
-
-            if (validity.valueMissing) {
-                if (element.type === 'radio' || element.tagName === 'SELECT') {
-                    return 'โปรดเลือก' + label;
-                }
-                if (element.type === 'file') {
-                    return 'โปรดแนบ' + label;
-                }
-                return 'โปรดกรอก' + label;
-            }
-
-            if (validity.typeMismatch && element.type === 'email') {
-                return 'โปรดระบุอีเมลให้ถูกต้อง';
-            }
-
-            if (validity.patternMismatch) {
-                if (element.name === 'uid') {
-                    return 'โปรดระบุเลขประจำตัวประชาชน 13 หลัก';
-                }
-                if (element.name === 'telephone') {
-                    return 'โปรดระบุหมายเลขโทรศัพท์ 10 หลัก';
-                }
-                if (element.name === 'email') {
-                    return 'โปรดระบุอีเมลให้ถูกต้อง';
-                }
-                return 'รูปแบบ' + label + 'ไม่ถูกต้อง';
-            }
-
-            if (validity.rangeUnderflow || validity.rangeOverflow) {
-                if (element.name === 'grade') {
-                    return 'โปรดระบุคะแนนเฉลี่ยสะสมระหว่าง 2.00-4.00';
-                }
-                return 'โปรดตรวจสอบค่าของ' + label;
-            }
-
-            if (validity.badInput) {
-                return 'โปรดระบุ' + label + 'ให้ถูกต้อง';
-            }
-
-            return 'โปรดตรวจสอบ' + label;
-        }
-
-        function setFieldErrorState(element, message) {
-            const errorElement = ensureErrorElement(element);
-            const isInvalid = Boolean(message);
-
-            errorElement.textContent = message || '';
-            errorElement.classList.toggle('is-visible', isInvalid);
-
-            if (element.type === 'radio') {
-                const group = element.closest('.radio-group');
-                if (group) {
-                    group.classList.toggle('is-invalid', isInvalid);
-                }
-                return;
-            }
-
-            if (element.type === 'file') {
-                const card = element.closest('.upload-card');
-                if (card) {
-                    card.classList.toggle('is-invalid', isInvalid);
-                }
-            }
-        }
-
-        function shouldShowFieldError(element) {
-            if (form.classList.contains('was-validated')) {
-                return true;
-            }
-
-            if (element.type === 'radio') {
-                return Array.from(form.querySelectorAll('input[name="' + element.name + '"]')).some((radio) => radio.dataset.touched === 'true');
-            }
-
-            return element.dataset.touched === 'true';
-        }
-
-        function updateFieldValidation(element) {
-            if (element.type === 'radio') {
-                const radioGroup = form.querySelectorAll('input[name="' + element.name + '"]');
-                const checkedRadio = Array.from(radioGroup).find((radio) => radio.checked);
-                const message = !checkedRadio && shouldShowFieldError(radioGroup[0]) ? buildValidationMessage(radioGroup[0]) : '';
-                setFieldErrorState(radioGroup[0], message);
-                return;
-            }
-
-            const message = !element.checkValidity() && shouldShowFieldError(element) ? buildValidationMessage(element) : '';
-            setFieldErrorState(element, message);
-        }
-
-        function updateAllValidationMessages() {
-            const processedRadioNames = new Set();
-
-            validationElements.forEach((element) => {
-                if (element.type === 'radio') {
-                    if (processedRadioNames.has(element.name)) {
-                        return;
-                    }
-                    processedRadioNames.add(element.name);
-                }
-                updateFieldValidation(element);
-            });
-        }
-
-        function isElementVisible(element) {
-            return Boolean(element.offsetParent || element.getClientRects().length);
-        }
-
-        function focusFirstInvalidField() {
-            const firstInvalidElement = validationElements.find((element) => {
-                if (element.checkValidity()) {
-                    return false;
-                }
-
-                const target = element.type === 'radio'
-                    ? element.closest('.radio-group') || element
-                    : getFieldFocusTarget(element);
-
-                return isElementVisible(target);
-            });
-            if (!firstInvalidElement) {
-                return;
-            }
-
-            const target = firstInvalidElement.type === 'radio'
-                ? firstInvalidElement.closest('.radio-group') || firstInvalidElement
-                : getFieldFocusTarget(firstInvalidElement);
-
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            window.setTimeout(() => {
-                getFieldFocusTarget(firstInvalidElement).focus({ preventScroll: true });
-            }, 250);
-        }
-
-        function bindValidationEvents() {
-            validationElements.forEach((element) => {
-                const handler = () => {
-                    element.dataset.touched = 'true';
-                    updateFieldValidation(element);
-                };
-                element.addEventListener('change', handler);
-
-                if (!['select-one', 'radio', 'file', 'date'].includes(element.type)) {
-                    element.addEventListener('input', handler);
-                }
-            });
-        }
-
-        function setFieldValue(id, value) {
-            const element = document.getElementById(id);
-            if (!element) {
-                return;
-            }
-            element.value = value;
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-
-        function setSelectValue(id, preferredText) {
-            const element = document.getElementById(id);
-            if (!element) {
-                return;
-            }
-
-            const options = Array.from(element.options).filter((option) => option.value && !option.disabled);
-            if (!options.length) {
-                return;
-            }
-
-            const matchedOption = preferredText
-                ? options.find((option) => option.text.trim() === preferredText || option.value.trim() === preferredText)
-                : null;
-
-            element.value = (matchedOption || options[0]).value;
-            element.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-
-        function generateMockDigits(length) {
-            let value = '';
-            while (value.length < length) {
-                value += Math.floor(Math.random() * 10);
-            }
-            return value.slice(0, length);
-        }
-
-        function fillMockupData() {
-            form.classList.remove('was-validated');
-
-            setSelectValue('prefix', 'นาย');
-            setFieldValue('firstname', 'สมชาย');
-            setFieldValue('lastname', 'ทดสอบระบบ');
-            setSelectValue('nation', 'ไทย');
-            setSelectValue('religion', 'พุทธ');
-            setFieldValue('uid', '1101700203451');
-            setFieldValue('birth', '1995-05-15');
-            setFieldValue('amphoecard', 'เมืองนนทบุรี');
-            setFieldValue('provincecard', 'นนทบุรี');
-            setFieldValue('districtbirth', 'บางกระสอ');
-            setFieldValue('amphoebirth', 'เมืองนนทบุรี');
-            setFieldValue('provincebirth', 'นนทบุรี');
-
-            setFieldValue('address', '99/9');
-            setFieldValue('moo', '5');
-            setFieldValue('soi', 'งามวงศ์วาน 23');
-            setFieldValue('road', 'งามวงศ์วาน');
-            setFieldValue('district', 'บางเขน');
-            setFieldValue('amphoe', 'เมืองนนทบุรี');
-            setFieldValue('province', 'นนทบุรี');
-            setFieldValue('zipcode', '11000');
-            setFieldValue('telephone', '08' + generateMockDigits(8));
-            setFieldValue('email', 'test.' + generateMockDigits(4) + '@example.com');
-
-            setFieldValue('namedad', 'สมปอง ทดสอบ');
-            setSelectValue('nationdad', 'ไทย');
-            setSelectValue('religiondad', 'พุทธ');
-            setFieldValue('careerdad', 'รับราชการ');
-            setFieldValue('namemom', 'สมหญิง ทดสอบ');
-            setSelectValue('nationmom', 'ไทย');
-            setSelectValue('religionmom', 'พุทธ');
-            setFieldValue('careermom', 'ค้าขาย');
-            setFieldValue('namespouse', '');
-            setFieldValue('careerspouse', '');
-
-            setFieldValue('degree', 'วิทยาศาสตรบัณฑิต');
-            setFieldValue('major', 'วิทยาการคอมพิวเตอร์');
-            setFieldValue('edubirth', '2018-03-20');
-            setFieldValue('university', 'มหาวิทยาลัยเกษตรศาสตร์');
-            setSelectValue('uniprovince', 'กรุงเทพมหานคร');
-            setFieldValue('grade', '3.45');
-            setSelectValue('highest');
-
-            setFieldValue('special', 'Microsoft Office, Google Workspace, Canva');
-            setFieldValue('language', 'English - intermediate');
-            setFieldValue('work1', 'บริษัทตัวอย่าง จำกัด');
-            setFieldValue('work2', 'เจ้าหน้าที่ธุรการ');
-            setFieldValue('work3', 'ประสานงานและจัดทำเอกสาร');
-
-            document.getElementById('noCheck').checked = true;
-            document.getElementById('noCheck').dispatchEvent(new Event('change', { bubbles: true }));
-
-            setFieldValue('military2', '');
-            setFieldValue('military3', '');
-            setFieldValue('military4', '');
-            setFieldValue('military5', '');
-            setFieldValue('military6', '');
-            setFieldValue('military7', '');
-            setFieldValue('military8', '');
-            setFieldValue('military9', '');
-            setFieldValue('military10', '');
-            setFieldValue('military11', '');
-            setFieldValue('military12', '');
-            setFieldValue('military13', '');
-
-            document.getElementById('file1data').value = '';
-            document.getElementById('file2data').value = '';
-            document.getElementById('file1url').value = '';
-            document.getElementById('file2url').value = '';
-            document.getElementById('file1').value = '';
-            document.getElementById('file2').value = '';
-            resetFileSelectionUI();
-
-            Swal.fire({
-                icon: 'success',
-                title: 'กรอกข้อมูลทดสอบแล้ว',
-                text: 'ระบบเติมข้อมูลตัวอย่างให้แล้ว ยกเว้นส่วนไฟล์แนบ',
-                customClass: swalCustomClass
-            });
-
-            updateAllValidationMessages();
-        }
-
-        function runServer(functionName, ...args) {
-            return new Promise((resolve, reject) => {
-                const runner = google.script.run
-                    .withSuccessHandler(resolve)
-                    .withFailureHandler(reject);
-                runner[functionName](...args);
-            });
-        }
-
-        function escapeHtml(value) {
-            return String(value || '-')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        function getSelectedText(id) {
-            const element = document.getElementById(id);
-            if (!element) {
-                return '-';
-            }
-
-            if (element.tagName === 'SELECT') {
-                const option = element.options[element.selectedIndex];
-                return option && option.value ? option.text.trim() : '-';
-            }
-
-            return element.value ? element.value.trim() : '-';
-        }
-
-        function getFieldDisplayValue(element) {
-            if (!element) {
-                return '-';
-            }
-
-            if (element.type === 'radio') {
-                const checked = form.querySelector('input[name="' + element.name + '"]:checked');
-                return checked ? checked.value : '-';
-            }
-
-            if (element.type === 'file') {
-                return element.files && element.files[0] ? element.files[0].name : '-';
-            }
-
-            if (element.tagName === 'SELECT') {
-                const option = element.options[element.selectedIndex];
-                return option && option.value ? option.text.trim() : '-';
-            }
-
-            return element.value ? element.value.trim() : '-';
-        }
-
-        function shouldIncludeReviewField(element, processedRadioNames) {
-            if (!element.name || element.type === 'hidden' || element.disabled) {
-                return false;
-            }
-
-            if (element.type === 'radio') {
-                if (processedRadioNames.has(element.name)) {
-                    return false;
-                }
-                processedRadioNames.add(element.name);
-                return true;
-            }
-
-            if (element.closest('.conditional-panel.d-none') && getFieldDisplayValue(element) === '-') {
-                return false;
-            }
-
-            return true;
-        }
-
-        function getReviewPhotoHtml() {
-            const photoSource = document.getElementById('file1data')?.value || '';
-            if (!photoSource) {
-                return '';
-            }
-
-            return [
-                '<div class="review-photo-card">',
-                '<span class="review-label">รูปผู้สมัคร</span>',
-                '<div class="review-photo-frame">',
-                '<img src="',
-                photoSource,
-                '" alt="รูปผู้สมัคร" class="review-photo-image">',
-                '</div>',
-                '</div>'
-            ].join('');
-        }
-
-        function getReviewSectionHtml(title, items, extraContent) {
-            return [
-                '<section class="review-section">',
-                '<h4 class="review-section-title">',
-                escapeHtml(title),
-                '</h4>',
-                extraContent || '',
-                '<div class="review-grid">',
-                items.map((item) => {
-                    return [
-                        '<div class="review-item">',
-                        '<span class="review-label">',
-                        escapeHtml(item.label),
-                        '</span>',
-                        '<strong class="review-value">',
-                        escapeHtml(item.value),
-                        '</strong>',
-                        '</div>'
-                    ].join('');
-                }).join(''),
-                '</div>',
-                '</section>'
-            ].join('');
-        }
-
-        function buildReviewSummaryHtml() {
-            const applicationType = form.querySelector('input[name="passbk"]')?.value || '-';
-            const applicationPosition = form.querySelector('input[name="position"]')?.value || '-';
-            const sectionHtml = Array.from(form.querySelectorAll('.form-section')).map((section) => {
-                const sectionTitle = section.querySelector('.section-heading h3')?.textContent?.trim() || 'ข้อมูล';
-                const processedRadioNames = new Set();
-                const items = Array.from(section.querySelectorAll('input, select, textarea'))
-                    .filter((element) => shouldIncludeReviewField(element, processedRadioNames))
-                    .map((element) => ({
-                        label: getFieldLabelText(element),
-                        value: getFieldDisplayValue(element)
-                    }));
-
-                const extraContent = section.querySelector('#file1') ? getReviewPhotoHtml() : '';
-                return getReviewSectionHtml(sectionTitle, items, extraContent);
-            }).join('');
-
-            return [
-                '<div class="review-summary">',
-                '<p class="review-intro">กรุณาตรวจสอบข้อมูลสำคัญก่อนยืนยันการบันทึก ระบบจะเริ่มอัปโหลดไฟล์หลังจากกดยืนยัน</p>',
-                getReviewSectionHtml('ข้อมูลการสมัคร', [
-                    { label: 'ประเภท', value: applicationType },
-                    { label: 'ตำแหน่ง', value: applicationPosition }
-                ]),
-                sectionHtml,
-                '</div>'
-            ].join('');
-        }
-
-        async function confirmBeforeSubmit() {
-            const result = await Swal.fire({
-                title: 'ยืนยันข้อมูลก่อนบันทึก',
-                html: buildReviewSummaryHtml(),
-                width: 960,
-                showCancelButton: true,
-                confirmButtonText: 'ยืนยันและบันทึก',
-                cancelButtonText: 'กลับไปแก้ไข',
-                focusCancel: true,
-                customClass: swalCustomClass,
-                confirmButtonColor: '#1f6b45',
-                cancelButtonColor: '#8b9a8b'
-            });
-
-            return result.isConfirmed;
-        }
-
-        function getProgressStepHtml(step, label) {
-            return [
-                '<div class="upload-progress-row" data-step="',
-                step,
-                '">',
-                '<div class="upload-progress-row-head">',
-                '<div class="upload-progress-meta">',
-                '<span class="upload-progress-dot" data-role="dot"></span>',
-                '<span class="upload-progress-label">',
-                label,
-                '</span>',
-                '</div>',
-                '<strong data-role="status">รอเริ่ม</strong>',
-                '</div>',
-                '</div>'
-            ].join('');
-        }
-
-        function getProgressPercent(state) {
-            const progressByState = {
-                waiting: 6,
-                active: 58,
-                complete: 100,
-                error: 100
-            };
-            return progressByState[state] || 0;
-        }
-
-        function updateProgressOverview() {
-            const container = Swal.getHtmlContainer();
-            if (!container) {
-                return;
-            }
-
-            const rows = Array.from(container.querySelectorAll('.upload-progress-row'));
-            if (!rows.length) {
-                return;
-            }
-
-            const total = rows.reduce((sum, row) => {
-                const state = row.dataset.state || 'waiting';
-                return sum + getProgressPercent(state);
-            }, 0);
-            const percent = Math.round(total / rows.length);
-            const overviewFill = container.querySelector('[data-role="overall-fill"]');
-            const overviewPercent = container.querySelector('[data-role="overall-percent"]');
-            const overviewCaption = container.querySelector('[data-role="overall-caption"]');
-            const hasError = rows.some((row) => row.dataset.state === 'error');
-            const isFinished = rows.every((row) => row.dataset.state === 'complete');
-
-            if (overviewFill) {
-                overviewFill.style.width = percent + '%';
-                overviewFill.dataset.state = hasError ? 'error' : (isFinished ? 'complete' : 'active');
-            }
-
-            if (overviewPercent) {
-                overviewPercent.textContent = percent + '%';
-            }
-
-            if (overviewCaption) {
-                overviewCaption.textContent = hasError
-                    ? 'พบปัญหาระหว่างดำเนินการ'
-                    : (isFinished ? 'ดำเนินการครบทุกขั้นตอนแล้ว' : 'ระบบกำลังประมวลผล');
-            }
-        }
-
-        function openUploadProgressModal() {
-            Swal.fire({
-                title: 'กำลังดำเนินการ',
-                html: [
-                    '<div class="upload-progress-overview">',
-                    '<div class="upload-progress-overview-head">',
-                    '<strong>ความคืบหน้า</strong>',
-                    '<span data-role="overall-percent">0%</span>',
-                    '</div>',
-                    '<div class="upload-progress-track upload-progress-track-overall">',
-                    '<span class="upload-progress-fill" data-role="overall-fill" style="width: 0%"></span>',
-                    '</div>',
-                    '<p class="upload-progress-caption" data-role="overall-caption">ระบบกำลังเตรียมรายการสำหรับอัปโหลด</p>',
-                    '</div>',
-                    '<div class="upload-progress-list">',
-                    getProgressStepHtml('file1', uploadStatusConfig.file1),
-                    getProgressStepHtml('file2', uploadStatusConfig.file2),
-                    getProgressStepHtml('save', uploadStatusConfig.save),
-                    '</div>'
-                ].join(''),
-                allowOutsideClick: false,
-                showConfirmButton: false,
-                customClass: swalCustomClass,
-                didOpen: () => {
-                    Swal.showLoading();
-                    updateProgressOverview();
-                }
-            });
-        }
-
-        function updateProgressStep(step, text, state) {
-            const container = Swal.getHtmlContainer();
-            if (!container) {
-                return;
-            }
-
-            const row = container.querySelector('[data-step="' + step + '"]');
-            const statusNode = row?.querySelector('[data-role="status"]');
-            if (row) {
-                row.dataset.state = state || 'waiting';
-            }
-            if (statusNode) {
-                statusNode.textContent = text;
-            }
-            updateProgressOverview();
-        }
-
-        function resetApplicationForm() {
-            form.reset();
-            document.getElementById('file1data').value = '';
-            document.getElementById('file2data').value = '';
-            document.getElementById('file1url').value = '';
-            document.getElementById('file2url').value = '';
-            resetFileSelectionUI();
-            form.classList.remove('was-validated');
-            updateAllValidationMessages();
-            toggleMilitaryHistory();
-        }
-
-        function updateSuccessPdfButton(state, url) {
-            const icon = successPdfButton.querySelector('i');
-
-            successPdfButton.classList.remove('disabled', 'is-ready', 'is-error');
-            successPdfButton.setAttribute('aria-disabled', state === 'ready' ? 'false' : 'true');
-            successPdfButton.removeAttribute('download');
-
-            if (state === 'ready') {
-                successPdfButton.href = url;
-                successPdfButtonText.textContent = 'ดาวน์โหลดใบสมัคร PDF';
-                successPdfButton.classList.add('is-ready');
-                if (icon) {
-                    icon.className = 'bi bi-download';
-                }
-                return;
-            }
-
-            successPdfButton.href = '#';
-            successPdfButton.classList.add('disabled');
-
-            if (state === 'error') {
-                successPdfButtonText.textContent = 'ยังไม่สามารถสร้าง PDF ได้';
-                successPdfButton.classList.add('is-error');
-                if (icon) {
-                    icon.className = 'bi bi-exclamation-circle';
-                }
-                return;
-            }
-
-            successPdfButtonText.textContent = 'กำลังสร้างไฟล์ใบสมัคร';
-            if (icon) {
-                icon.className = 'bi bi-hourglass-split';
-            }
-        }
-
-        function showSuccessView(savedResult) {
-            successApplicantName.textContent = savedResult.applicantName || '-';
-            successApplicationType.textContent = savedResult.applicationType || '-';
-            successPosition.textContent = savedResult.position || '-';
-            successPassbn.textContent = savedResult.passbn || '-';
-            successMessage.textContent = 'ระบบกำลังสร้างไฟล์ใบสมัครของท่าน';
-            updateSuccessPdfButton('generating');
-
-            formView.classList.add('d-none');
-            successView.classList.remove('d-none');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function showFormView() {
-            successView.classList.add('d-none');
-            formView.classList.remove('d-none');
-            updateSuccessPdfButton('generating');
-            successMessage.textContent = 'ระบบกำลังสร้างไฟล์ใบสมัครของท่าน';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        async function generatePdfAfterSave(savedResult) {
-            try {
-                const pdfResult = await runServer('createPdfForSavedApplication', savedResult.applicationId);
-                updateSuccessPdfButton('ready', pdfResult.url);
-                successMessage.textContent = 'ไฟล์ใบสมัครพร้อมดาวน์โหลดแล้ว';
-            } catch (error) {
-                console.error(error);
-                updateSuccessPdfButton('error');
-                successMessage.textContent = 'บันทึกข้อมูลเรียบร้อยแล้ว แต่ยังไม่สามารถสร้าง PDF ได้ในขณะนี้';
-            }
-        }
-
-        function buildPayload() {
-            const payload = {};
-            Array.from(form.elements).forEach((element) => {
-                if (!element.name || element.disabled || element.type === 'file') {
-                    return;
-                }
-                if (element.name === 'file1data' || element.name === 'file2data') {
-                    return;
-                }
-                if ((element.type === 'radio' || element.type === 'checkbox') && !element.checked) {
-                    return;
-                }
-                payload[element.name] = element.value;
-            });
-            return payload;
-        }
-
-        async function uploadFileWithProgress(inputId, index) {
-            const fileInput = document.getElementById(inputId);
-            const file = fileInput.files && fileInput.files[0];
-            const fileData = document.getElementById(inputId + 'data').value;
-            const applicantName = [
-                document.getElementById('firstname').value.trim(),
-                document.getElementById('lastname').value.trim()
-            ].filter(Boolean).join(' ') || 'ผู้สมัคร';
-
-            updateProgressStep(inputId, 'กำลังอัปโหลด', 'active');
-            try {
-                const result = await runServer('uploadApplicantFile', fileData, applicantName, index, file ? file.name : '');
-                document.getElementById(inputId + 'url').value = result.url;
-                updateProgressStep(inputId, 'อัปโหลดเสร็จแล้ว', 'complete');
-                return result;
-            } catch (error) {
-                updateProgressStep(inputId, 'อัปโหลดไม่สำเร็จ', 'error');
-                throw error;
-            }
-        }
-
-        async function handleSubmit(event) {
-            event.preventDefault();
-
-            if (!form.checkValidity()) {
-                form.classList.add('was-validated');
-                updateAllValidationMessages();
-                focusFirstInvalidField();
-                return;
-            }
-
-            const isConfirmed = await confirmBeforeSubmit();
-            if (!isConfirmed) {
-                return;
-            }
-
-            submitButton.disabled = true;
-            openUploadProgressModal();
-
-            try {
-                const [file1Result, file2Result] = await Promise.all([
-                    uploadFileWithProgress('file1', 1),
-                    uploadFileWithProgress('file2', 2)
-                ]);
-
-                updateProgressStep('save', 'กำลังบันทึกข้อมูล', 'active');
-                const payload = buildPayload();
-                payload.file1url = file1Result.url;
-                payload.file2url = file2Result.url;
-
-                const saveResult = await runServer('saveData', payload);
-                submitButton.disabled = false;
-                if(saveResult.error) {
-                    updateProgressStep('save', 'บันทึกไม่สำเร็จ', 'error');
-                    return Swal.fire({
-                        icon: 'error',
-                        title: 'บันทึกไม่สำเร็จ',
-                        text: saveResult.error,
-                        customClass: swalCustomClass
-                    });
-                }
-                updateProgressStep('save', 'บันทึกเรียบร้อย', 'complete');
-                Swal.close();
-                resetApplicationForm();
-                showSuccessView(saveResult);
-                generatePdfAfterSave(saveResult);
-            } catch (error) {
-                console.error(error);
-                updateProgressStep('save', 'บันทึกไม่สำเร็จ', 'error');
-                Swal.fire({
-                    icon: 'error',
-                    title: 'บันทึกไม่สำเร็จ',
-                    text: 'เกิดข้อผิดพลาดระหว่างอัปโหลดไฟล์หรือบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง',
-                    customClass: swalCustomClass
-                });
-                submitButton.disabled = false;
-            }
-        }
-
-        function initThailandAddressAutocomplete() {
-            $.Thailand({
-                $district: $('#district'),
-                $amphoe: $('#amphoe'),
-                $province: $('#province'),
-                $zipcode: $('#zipcode')
-            });
-
-            $.Thailand({
-                $district: $('#districtbirth'),
-                $amphoe: $('#amphoebirth'),
-                $province: $('#provincebirth')
-            });
-
-            $.Thailand({
-                $amphoe: $('#amphoecard'),
-                $province: $('#provincecard')
-            });
-        }
-
-        document.getElementById('file1').addEventListener('change', handleFileChange);
-        document.getElementById('file2').addEventListener('change', handleFileChange);
-        fileTriggerButtons.forEach((button) => {
-            button.addEventListener('click', () => {
-                const input = document.getElementById(button.dataset.fileTrigger);
-                input?.click();
-            });
+      }
+
+      filterSelect.addEventListener('change', applyFilter);
+      applyFilter();
+
+      // คลิกอนุมัติ/ไม่อนุมัติ
+      cards.forEach(c=>{
+        const row = Number(c.getAttribute('data-row'));
+        const approveBtn = c.querySelector('.approve');
+        const rejectBtn  = c.querySelector('.reject');
+
+        approveBtn.addEventListener('click', ()=>{
+          approveBtn.disabled = true;
+          rejectBtn.disabled = true;
+          google.script.run.withSuccessHandler(()=>location.reload())
+            .updateStatus(row,'อนุมัติ');
         });
-        successPdfButton.addEventListener('click', (event) => {
-            if (successPdfButton.getAttribute('aria-disabled') === 'true') {
-                event.preventDefault();
-            }
-        });
-        form.addEventListener('submit', handleSubmit);
-        militaryInputs.forEach((input) => input.addEventListener('change', toggleMilitaryHistory));
-        mockFillButton.addEventListener('click', fillMockupData);
-        startNewApplicationButton.addEventListener('click', showFormView);
-        bindValidationEvents();
-        updateAllValidationMessages();
-        resetFileSelectionUI();
 
-        toggleMilitaryHistory();
-        initThailandAddressAutocomplete();
+        rejectBtn.addEventListener('click', ()=>{
+          approveBtn.disabled = true;
+          rejectBtn.disabled = true;
+          google.script.run.withSuccessHandler(()=>location.reload())
+            .updateStatus(row,'ไม่อนุมัติ');
+        });
+      });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
-        crossorigin="anonymous"></script>
-</body>
-
+  </body>
 </html>
