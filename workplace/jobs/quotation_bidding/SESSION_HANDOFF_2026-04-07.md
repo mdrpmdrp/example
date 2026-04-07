@@ -1,55 +1,64 @@
-# Session Handoff - 2026-04-07
+# Session Handoff - 2026-04-08
 
 ## Current State
 
 - Google Apps Script quotation bidding app in `workplace/jobs/quotation_bidding`.
-- Main backend is in `Code.js`, UI is in `Index.html`, batch Drive helper is in `BatchRequests.js`.
-- Recent work focused on performance, upload UX, persisted folder IDs, persisted quotation counts, and edit-form date normalization.
-- Current upload path uses the CDN version of `ResumableUploadForGoogleDrive_js` and requests Drive upload auth only when a user actually selects files to upload.
+- Main backend is in `Code.js`, UI is in `Index.html`, and Drive batch helper remains in `BatchRequests.js`.
+- Vendor quotation data is now vendor-sheet-first: yearly sheets named `Quotation yyyy` are the primary source.
+- The main spreadsheet now uses `WorkOrders.Quotations` as the stored list of QT numbers for each work order and `WorkOrders.quotationCount` as the aggregate count.
+- Vendor detail records are resolved from the vendor's own quotation sheets by quotation number lookup instead of loading from the legacy main `Quotations` sheet.
+- Vendor page loading should now go through `syncCurrentVendorSheet` directly instead of `getBootstrapData` first.
+- Vendor session restore now persists the client-side role so a browser reload can still route vendor users into the direct sync path.
 
-## Completed In This Session
+## Completed Recently
 
-- Added upload UX behavior so chooser hides at file limit, shows `File limit reached`, and exposes `Remove all` for both quotation and work order uploads.
-- Verified `Index.html` had no diagnostics errors after the upload UX changes.
-- Added one-time Apps Script utility `backfillWorkOrderQuotationCounts()` in `Code.js` to backfill legacy `WorkOrders.quotationCount` values.
-- Verified `Code.js` had no diagnostics errors after adding the backfill utility.
-- Switched uploads to the CDN version of Tanaike's resumable upload library and added `getDriveUploadAuthContext()` so the Drive access token is only requested when upload starts.
-- Upload list now renders immediately with `Preparing upload` before auth context returns, then transitions into per-file progress updates.
-- Removed unused temp-upload code paths and deleted the unused local `ResumableUploadForGoogleDrive2.html` file.
+- Moved the vendor quotation form into a dedicated modal and wired work order actions for `Add QT` and quotation editing.
+- Restyled the quotation upload area to match the work order upload behavior, including immediate preview cards, visible progress, file limits, and `Remove all`.
+- Added a read-only work order detail modal and moved the `View` action into the first work order column.
+- Implemented multiple quotations per vendor per work order, including `Manage QT` and per-work-order quotation counts in the vendor UI.
+- Changed vendor sheet persistence to yearly `Quotation yyyy` sheets with the requested A-R style schema and `=IMAGE()` for the first product image.
+- Changed quotation save/finalize flow so vendor sheet is written first, then the quotation number is added to `WorkOrders.Quotations` and `WorkOrders.quotationCount` is updated in the main spreadsheet.
+- Added `getVendorQuotationsForWorkOrder()` so `Manage QT` first reads QT numbers from the main `WorkOrders` row and then resolves those rows from the vendor sheet.
+- Optimized vendor loading so vendor refresh no longer does bootstrap first and then sync; `syncCurrentVendorSheet()` now returns vendor bootstrap directly from synced rows.
+- Removed the per-row quotation-count update bottleneck inside `syncVendorSheetInternal_()` and replaced it with batched count updates.
+- Fixed vendor session restore so a page reload no longer falls back to `getBootstrapData` just because `state.role` was empty on startup.
+- Moved admin comparison and Thai price/admin note persistence to read and write vendor-sheet rows directly by quotation number.
 
-## Important Runtime Behavior Already In Place
+## Important Runtime Behavior
 
 - Work orders persist `workOrderFolderId`.
 - Quotations persist `quotationFolderId`.
-- Work orders persist `quotationCount`.
-- Quotation save and work order save both use immediate response plus deferred finalize.
+- Work orders persist both `quotationCount` and comma-separated QT ids in `Quotations`.
+- Work order and quotation saves both use immediate response plus deferred finalize.
 - Drive move and trash operations use batch requests first, with DriveApp fallback.
-- Login page no longer fetches and base64-encodes the logo on every `doGet()`.
+- `doGet()` no longer base64-encodes the logo on each request.
 - Date fields are normalized for HTML `type="date"` inputs.
-- File uploads are resumable, show per-file progress, and render selected files immediately even while auth context is still loading.
+- Upload auth is requested on demand when files are selected, and selected files render immediately in a `Preparing upload` state.
+- Vendor refresh path in the client should use `loadVendorWorkspaceData()` / `syncCurrentVendorSheet()` rather than `getBootstrapData()`.
+- The legacy main `Quotations` sheet should no longer be treated as the runtime source of truth for vendor flows.
 
-## Manual Action Pending
+## Known Bottlenecks / Risks
 
-- Run `backfillWorkOrderQuotationCounts()` once from the Apps Script editor to populate `quotationCount` for old work orders that existed before the new persisted field was added.
+- `getVendorQuotationsForWorkOrder()` still scans all yearly `Quotation yyyy` sheets for the current vendor while resolving the QT ids listed in `WorkOrders.Quotations`.
+- `syncVendorSheetInternal_()` still reads every yearly vendor quotation sheet during a vendor sync so it can refresh `WorkOrders.Quotations` / `quotationCount` aggregates.
+- There is still no automatic purge path if a vendor manually deletes a QT row from their spreadsheet; stale QT ids may remain in `WorkOrders.Quotations` until a purge flow is added.
+- End-to-end browser testing is still unverified from this environment because the deployed web app requires a signed-in Google session.
 
 ## Browser Testing Status
 
-- I attempted to open the deployed web app using deployment id `AKfycbz9UUFj7H5aYwkT_ymPF5L7hROSO0l6CP-6AI3p8co`.
-- Integrated browser was redirected to Google sign-in before the web app loaded.
-- Because of that sign-in gate, I could not complete an end-to-end runtime smoke test of add/remove/edit flows from this environment without a real signed-in Google session.
+- Diagnostics were clean for the latest `Index.html` and `Code.js` changes.
+- I could not complete a real browser smoke test because the deployed Apps Script web app redirects to Google sign-in in this environment.
 
 ## Continue From Here
 
-1. Open the Apps Script project and run `backfillWorkOrderQuotationCounts()` once.
-2. Open the deployed web app while already signed in to the correct Google account.
-3. Smoke test these flows:
-   - Vendor quotation add image, remove image, over-limit selection, `Remove all`, edit quotation.
-   - Admin work order add attachment, remove attachment, over-limit selection, `Remove all`, edit work order.
-   - Admin compare button shows `Waiting for QT` at zero and `Compare (n)` when quotations exist.
-   - Upload auth-on-demand flow: selected files should appear immediately as `Preparing upload`, then switch into live per-file progress.
+1. Open the deployed web app while signed in to the correct Google account and confirm that vendor login and browser reload both load through the direct vendor sync path.
+2. Smoke test vendor flows: `Add QT`, `Manage QT`, edit quotation, file upload progress, work order `View` modal, and browser reload after vendor login.
+3. Validate that each save updates the main `WorkOrders` row correctly: `Quotations` should contain the QT ids and `quotationCount` should match the number of ids.
+4. If vendor quotation loading is still slow, implement an index or metadata sheet keyed by quotation number and/or work order number so `Manage QT` and vendor sync do not scan every `Quotation yyyy` sheet.
+5. Add a purge/delete flow so removed vendor-sheet rows are also removed from `WorkOrders.Quotations`.
 
 ## Useful References
 
-- Deployment listing showed one deployment at `@HEAD`.
+- Session restore and direct vendor load logic are in `Index.html`.
+- Vendor save/load/aggregate logic is in `Code.js` around `saveVendorQuotation()`, `finalizeVendorQuotationSave()`, `getVendorQuotationsForWorkOrder()`, `getVendorBootstrap_()`, `syncCurrentVendorSheet()`, and the helper functions for `WorkOrders.Quotations`.
 - Local project metadata is in `.clasp.json`.
-- The new backfill utility is in `Code.js` near the end of the file.

@@ -53,7 +53,8 @@ const APP_CONFIG = {
                 'closedAt',
                 'attachmentJson',
                 'workOrderFolderId',
-                'quotationCount'
+                'quotationCount',
+                'Quotations'
             ]
         },
         quotations: {
@@ -121,26 +122,28 @@ const APP_CONFIG = {
         }
     },
     vendorSheet: {
-        sheetName: 'VendorQuotations',
+        sheetNamePrefix: 'Quotation ',
         headers: [
-            'quotationId',
-            'workOrderId',
-            'workOrderNumber',
-            'category',
-            'priceRange',
-            'customerProject',
-            'productImageJson',
-            'description',
-            'quantityPcs',
-            'cifBkk',
-            'targetPrice',
-            'leadTime',
-            'quotationDate',
-            'remark',
-            'sample',
-            'status',
-            'comment',
-            'updatedAt'
+            'Category',
+            'Price Range',
+            'Customer/Project',
+            'Product pic',
+            'Description',
+            'Quantity(pcs)',
+            'CIF BKK',
+            'Target price',
+            'Lead time',
+            'Quotation Date',
+            'Remark',
+            'Sample',
+            'Status',
+            'Comment',
+            'Quotation number',
+            'work order number',
+            'attachmentJson',
+            'quotationFolderId',
+            'Thai Price',
+            'Admin Note'
         ]
     }
 };
@@ -668,9 +671,20 @@ function saveUserAccess(token, payload) {
 function getQuotationComparison(token, workOrderId) {
     requireAdmin_(token);
     const workOrder = findRequiredByField_(APP_CONFIG.sheets.workOrders.name, 'workOrderId', workOrderId);
-    const quotations = getTable_(APP_CONFIG.sheets.quotations.name).rows
-        .filter(function (row) { return row.workOrderId === workOrderId; })
-        .map(function (row) { return mapQuotationForUi_(row, workOrder); });
+    const quotationIds = getWorkOrderQuotationRefs_(workOrder);
+    const quotations = [];
+
+    getVendorUsersWithSheets_().forEach(function (vendorUser) {
+        getVendorQuotationRowsByWorkOrder_(vendorUser, workOrder.workOrderNumber, quotationIds).forEach(function (row) {
+            quotations.push(mapVendorSheetQuotationForUi_(row, workOrder, vendorUser));
+        });
+    });
+
+    quotations.sort(function (left, right) {
+        return String(left.vendorName || '').localeCompare(String(right.vendorName || ''))
+            || String(right.quotationDate || '').localeCompare(String(left.quotationDate || ''))
+            || String(right.quotationId || '').localeCompare(String(left.quotationId || ''));
+    });
 
     return {
         ok: true,
@@ -684,17 +698,17 @@ function saveQuotationThaiPrice(token, payload) {
     const input = sanitizeObject_(payload);
     validateRequired_(input, ['quotationId']);
 
-    const table = getTable_(APP_CONFIG.sheets.quotations.name);
-    const rowInfo = findRowByField_(table, 'quotationId', input.quotationId);
-    if (!rowInfo) {
+    const quotationRecord = findVendorQuotationRecordAcrossUsers_(input.quotationId);
+    if (!quotationRecord) {
         throw new Error('Quotation not found.');
     }
 
-    updateRowByIndex_(APP_CONFIG.sheets.quotations.name, rowInfo.rowIndex, {
+    const updatedRow = Object.assign({}, quotationRecord.row, {
         thaiPrice: normalizeNumber_(input.thaiPrice),
         adminNote: String(input.adminNote || '').trim(),
         updatedAt: nowIso_()
     });
+    syncQuotationToVendorSheet_(quotationRecord.user, updatedRow);
 
     appendActivity_({
         actorUserId: session.userId,
@@ -717,13 +731,9 @@ function saveVendorQuotation(token, payload) {
     validateRequired_(input, ['workOrderId', 'category', 'customerProject']);
 
     const workOrder = findRequiredByField_(APP_CONFIG.sheets.workOrders.name, 'workOrderId', input.workOrderId);
-    const table = getTable_(APP_CONFIG.sheets.quotations.name);
     const now = nowIso_();
-    const rowInfo = input.quotationId ? findRowByField_(table, 'quotationId', input.quotationId) : null;
+    const rowInfo = input.quotationId ? findVendorQuotationRecordById_(session.userId, input.quotationId) : null;
     const quotationId = input.quotationId || generateId_('QTN');
-    if (rowInfo && rowInfo.row.vendorUserId !== session.userId) {
-        throw new Error('You can edit only your own quotations.');
-    }
 
     const existingImages = normalizeStoredFiles_(input.existingImages);
     const uploadedImages = normalizeStoredFiles_(input.newImages);
@@ -764,13 +774,16 @@ function saveVendorQuotation(token, payload) {
         syncedAt: ''
     };
 
-    if (rowInfo) {
-        updateRowByIndex_(APP_CONFIG.sheets.quotations.name, rowInfo.rowIndex, row);
-    } else {
-        appendRows_(APP_CONFIG.sheets.quotations.name, [row]);
+    const user = getUserById_(session.userId);
+    if (!user || !String(user.vendorSheetUrl || '').trim()) {
+        throw new Error('Vendor Google Sheet is not configured. Please contact admin.');
     }
-
-    syncWorkOrderQuotationCount_(row.workOrderId);
+    const syncResult = syncQuotationToVendorSheet_(user, row);
+    if (syncResult && syncResult.rowId) {
+        row.vendorSheetRowId = syncResult.rowId;
+        row.syncedAt = now;
+    }
+    updateWorkOrderQuotationReference_(workOrder.workOrderId, row.quotationId);
 
     return {
         ok: true,
@@ -789,13 +802,9 @@ function finalizeVendorQuotationSave(token, payload) {
     const input = sanitizeObject_(payload);
     validateRequired_(input, ['quotationId']);
 
-    const table = getTable_(APP_CONFIG.sheets.quotations.name);
-    const rowInfo = findRowByField_(table, 'quotationId', input.quotationId);
+    const rowInfo = findVendorQuotationRecordById_(session.userId, input.quotationId);
     if (!rowInfo) {
         throw new Error('Quotation not found.');
-    }
-    if (rowInfo.row.vendorUserId !== session.userId) {
-        throw new Error('You can edit only your own quotations.');
     }
 
     const workOrder = findRequiredByField_(APP_CONFIG.sheets.workOrders.name, 'workOrderId', rowInfo.row.workOrderId);
@@ -820,13 +829,15 @@ function finalizeVendorQuotationSave(token, payload) {
     };
     const rowForSync = Object.assign({}, rowInfo.row, patch);
     const user = getUserById_(session.userId);
+    if (!user || !String(user.vendorSheetUrl || '').trim()) {
+        throw new Error('Vendor Google Sheet is not configured. Please contact admin.');
+    }
     const syncResult = syncQuotationToVendorSheet_(user, rowForSync);
     if (syncResult && syncResult.rowId) {
         patch.vendorSheetRowId = syncResult.rowId;
         patch.syncedAt = now;
     }
-
-    updateRowByIndex_(APP_CONFIG.sheets.quotations.name, rowInfo.rowIndex, patch);
+    updateWorkOrderQuotationReference_(workOrder.workOrderId, rowInfo.row.quotationId);
 
     appendActivity_({
         actorUserId: session.userId,
@@ -843,12 +854,31 @@ function finalizeVendorQuotationSave(token, payload) {
     };
 }
 
-function syncCurrentVendorSheet(token) {
+function getVendorQuotationsForWorkOrder(token, workOrderId) {
     const session = requireVendor_(token);
-    syncVendorSheetInternal_(session.userId);
+    const workOrder = findRequiredByField_(APP_CONFIG.sheets.workOrders.name, 'workOrderId', workOrderId);
+    const quotationIds = getWorkOrderQuotationRefs_(workOrder);
+    const quotations = getVendorQuotationRowsByWorkOrder_(session.userId, workOrder.workOrderNumber, quotationIds).map(function (row) {
+        return mapVendorSheetQuotationForUi_(row, workOrder, getUserById_(session.userId));
+    }).sort(function (left, right) {
+        return String(right.quotationDate || '').localeCompare(String(left.quotationDate || '')) || String(right.quotationId || '').localeCompare(String(left.quotationId || ''));
+    });
+
     return {
         ok: true,
-        data: getVendorBootstrap_(session)
+        workOrder: mapWorkOrderForUi_(workOrder, quotations.length),
+        quotations: quotations
+    };
+}
+
+function syncCurrentVendorSheet(token) {
+    const session = requireVendor_(token);
+    const quotations = syncVendorSheetInternal_(session.userId);
+    return {
+        ok: true,
+        role: 'vendor',
+        user: sanitizeUser_(getUserById_(session.userId)),
+        data: getVendorBootstrap_(session, quotations)
     };
 }
 
@@ -863,13 +893,12 @@ function syncVendorSheetAsAdmin(token, userId) {
 
 function getAdminBootstrap_(session) {
     const workOrders = getTable_(APP_CONFIG.sheets.workOrders.name).rows;
-    const quotations = getTable_(APP_CONFIG.sheets.quotations.name).rows;
     const users = getTable_(APP_CONFIG.sheets.users.name).rows;
-    const quoteCountByWorkOrderId = {};
-
-    quotations.forEach(function (row) {
-        quoteCountByWorkOrderId[row.workOrderId] = (quoteCountByWorkOrderId[row.workOrderId] || 0) + 1;
-    });
+    const totalQuotations = workOrders.reduce(function (accumulator, row) {
+        const refs = getWorkOrderQuotationRefs_(row);
+        const fallbackCount = normalizeNumber_(row.quotationCount) || 0;
+        return accumulator + (refs.length || fallbackCount);
+    }, 0);
 
     const summary = {
         total: workOrders.length,
@@ -879,13 +908,13 @@ function getAdminBootstrap_(session) {
         other: 0,
         vendorUsers: users.filter(function (row) { return row.role === 'vendor'; }).length,
         activeVendors: users.filter(function (row) { return row.role === 'vendor' && String(row.isActive).toUpperCase() === 'TRUE'; }).length,
-        totalQuotations: quotations.length
+        totalQuotations: totalQuotations
     };
 
     const mappedWorkOrders = workOrders
         .map(function (row) {
             const status = String(row.status || '').toUpperCase();
-            const quoteCount = quoteCountByWorkOrderId[row.workOrderId] || 0;
+            const quoteCount = getWorkOrderQuotationRefs_(row).length || (normalizeNumber_(row.quotationCount) || 0);
             if (status === 'CLOSED') {
                 summary.closed += 1;
             } else if (quoteCount > 0) {
@@ -912,12 +941,17 @@ function getAdminBootstrap_(session) {
     };
 }
 
-function getVendorBootstrap_(session) {
+function getVendorBootstrap_(session, vendorQuotationRows) {
     const workOrders = getTable_(APP_CONFIG.sheets.workOrders.name).rows;
-    const quotations = getTable_(APP_CONFIG.sheets.quotations.name).rows.filter(function (row) { return row.vendorUserId === session.userId; });
-    const quoteByWorkOrderId = {};
-    quotations.forEach(function (row) {
-        quoteByWorkOrderId[row.workOrderId] = row;
+    const vendorUser = getUserById_(session.userId);
+    const quotationRows = Array.isArray(vendorQuotationRows) ? vendorQuotationRows : getAllVendorQuotationRows_(session.userId);
+    const quotationRowById = {};
+
+    quotationRows.forEach(function (row) {
+        const quotationId = String(row['Quotation number'] || '').trim();
+        if (quotationId) {
+            quotationRowById[quotationId] = row;
+        }
     });
 
     const summary = {
@@ -931,11 +965,17 @@ function getVendorBootstrap_(session) {
     const openWorkOrders = workOrders
         .filter(function (row) { return String(row.status || 'OPEN').toUpperCase() !== 'ARCHIVED'; })
         .map(function (row) {
-            const quote = quoteByWorkOrderId[row.workOrderId] || null;
+            const quoteItems = getWorkOrderQuotationRefs_(row).map(function (quotationId) {
+                return quotationRowById[quotationId] || null;
+            }).filter(function (quoteRow) {
+                return !!quoteRow;
+            }).map(function (quoteRow) {
+                return mapVendorSheetQuotationForUi_(quoteRow, row, vendorUser);
+            });
             summary.total += 1;
             if (String(row.status || '').toUpperCase() === 'CLOSED') {
                 summary.closed += 1;
-            } else if (quote) {
+            } else if (quoteItems.length) {
                 summary.submitted += 1;
             } else if (!row.status || String(row.status).toUpperCase() === 'OPEN' || String(row.status).toUpperCase() === 'PUBLISHED') {
                 summary.pendingQuote += 1;
@@ -943,7 +983,8 @@ function getVendorBootstrap_(session) {
                 summary.other += 1;
             }
             return Object.assign(mapWorkOrderForUi_(row, 0), {
-                myQuotation: quote ? mapQuotationForUi_(quote, row) : null
+                myQuotations: quoteItems,
+                myQuotationCount: quoteItems.length
             });
         })
         .sort(function (left, right) { return String(right.briefDate).localeCompare(String(left.briefDate)); });
@@ -951,8 +992,12 @@ function getVendorBootstrap_(session) {
     return {
         summary: summary,
         workOrders: openWorkOrders,
-        quotations: quotations.map(function (row) {
-            return mapQuotationForUi_(row, findOptionalByField_(APP_CONFIG.sheets.workOrders.name, 'workOrderId', row.workOrderId));
+        quotations: quotationRows.map(function (row) {
+            const workOrderNumber = String(row['work order number'] || '').trim();
+            const workOrder = workOrders.find(function (item) {
+                return String(item.workOrderNumber || '').trim() === workOrderNumber;
+            }) || null;
+            return mapVendorSheetQuotationForUi_(row, workOrder, vendorUser);
         }).sort(function (left, right) { return String(right.updatedAt).localeCompare(String(left.updatedAt)); }),
         me: sanitizeUser_(getUserById_(session.userId))
     };
@@ -961,79 +1006,38 @@ function getVendorBootstrap_(session) {
 function syncVendorSheetInternal_(userId) {
     const user = getUserById_(userId);
     if (!user || !user.vendorSheetUrl) {
+        return [];
+    }
+
+    const rows = getAllVendorQuotationRows_(userId);
+    syncWorkOrderQuotationRefsForVendorRows_(rows);
+    return rows;
+}
+
+function syncWorkOrderQuotationCountsForIds_(workOrderIds) {
+    const uniqueWorkOrderIds = (workOrderIds || []).filter(function (value, index, list) {
+        return value && list.indexOf(value) === index;
+    });
+    if (!uniqueWorkOrderIds.length) {
         return;
     }
 
-    const vendorSheet = ensureVendorSheet_(user.vendorSheetUrl);
-    const values = vendorSheet.getDataRange().getValues();
-    if (values.length <= 1) {
-        return;
-    }
+    const targetIds = uniqueWorkOrderIds.reduce(function (accumulator, workOrderId) {
+        accumulator[workOrderId] = true;
+        return accumulator;
+    }, {});
 
-    const headers = values[0];
-    const rows = values.slice(1).map(function (row, index) {
-        const objectRow = {};
-        headers.forEach(function (header, headerIndex) {
-            objectRow[header] = row[headerIndex];
-        });
-        objectRow.__rowIndex = index + 2;
-        return objectRow;
-    });
-
-    const centralTable = getTable_(APP_CONFIG.sheets.quotations.name);
-    const centralById = {};
-    centralTable.rows.forEach(function (row, index) {
-        centralById[row.quotationId] = { row: row, rowIndex: index + 2 };
-    });
     const workOrdersTable = getTable_(APP_CONFIG.sheets.workOrders.name);
-
-    rows.forEach(function (row) {
-        const workOrder = row.workOrderId
-            ? findRowByField_(workOrdersTable, 'workOrderId', row.workOrderId)
-            : findRowByField_(workOrdersTable, 'workOrderNumber', row.workOrderNumber);
-        if (!workOrder) {
+    workOrdersTable.rows.forEach(function (row, index) {
+        const workOrderId = String(row.workOrderId || '').trim();
+        if (!targetIds[workOrderId]) {
             return;
         }
-
-        const now = nowIso_();
-        const mapped = {
-            quotationId: row.quotationId || generateId_('QTN'),
-            workOrderId: workOrder.row.workOrderId,
-            workOrderNumber: workOrder.row.workOrderNumber,
-            vendorUserId: user.userId,
-            vendorCode: user.vendorCode,
-            vendorName: user.vendorName,
-            category: String(row.category || '').trim(),
-            priceRange: String(row.priceRange || '').trim(),
-            customerProject: String(row.customerProject || '').trim(),
-            productImageJson: String(row.productImageJson || '[]'),
-            description: String(row.description || '').trim(),
-            quantityPcs: normalizeNumber_(row.quantityPcs),
-            cifBkk: normalizeNumber_(row.cifBkk),
-            targetPrice: normalizeNumber_(row.targetPrice),
-            leadTime: String(row.leadTime || '').trim(),
-            quotationDate: toIsoDate_(row.quotationDate || now),
-            remark: String(row.remark || '').trim(),
-            sample: String(row.sample || '').trim(),
-            status: String(row.status || 'SUBMITTED').trim().toUpperCase(),
-            comment: String(row.comment || '').trim(),
-            thaiPrice: centralById[row.quotationId] ? centralById[row.quotationId].row.thaiPrice : '',
-            adminNote: centralById[row.quotationId] ? centralById[row.quotationId].row.adminNote : '',
-            source: 'SHEET_SYNC',
-            vendorSheetRowId: String(row.__rowIndex),
-            quotationFolderId: centralById[row.quotationId] ? centralById[row.quotationId].row.quotationFolderId : '',
-            createdAt: centralById[row.quotationId] ? centralById[row.quotationId].row.createdAt : now,
-            updatedAt: row.updatedAt ? new Date(row.updatedAt).toISOString() : now,
-            syncedAt: now
-        };
-
-        if (centralById[mapped.quotationId]) {
-            updateRowByIndex_(APP_CONFIG.sheets.quotations.name, centralById[mapped.quotationId].rowIndex, mapped);
-        } else {
-            appendRows_(APP_CONFIG.sheets.quotations.name, [mapped]);
-        }
-
-        syncWorkOrderQuotationCount_(mapped.workOrderId);
+        const quotationRefs = getWorkOrderQuotationRefs_(row);
+        updateRowByIndex_(APP_CONFIG.sheets.workOrders.name, index + 2, {
+            quotationCount: quotationRefs.length,
+            Quotations: quotationRefs.join(', ')
+        });
     });
 }
 
@@ -1042,24 +1046,332 @@ function syncQuotationToVendorSheet_(user, quotation) {
         return null;
     }
 
-    const vendorSheet = ensureVendorSheet_(user.vendorSheetUrl);
-    const values = vendorSheet.getDataRange().getValues();
-    const headers = values.length ? values[0] : APP_CONFIG.vendorSheet.headers;
-    const existingRowIndex = values.slice(1).findIndex(function (row) { return row[0] === quotation.quotationId; });
-    const vendorRow = APP_CONFIG.vendorSheet.headers.map(function (header) {
-        if (header === 'updatedAt') {
-            return nowIso_();
-        }
-        return quotation[header] != null ? quotation[header] : '';
-    });
+    const targetSheet = ensureVendorSheet_(user.vendorSheetUrl, quotation.quotationDate || quotation.updatedAt);
+    const vendorRow = buildVendorSheetRow_(quotation);
+    const existingRowIndex = findVendorSheetRowIndexByQuotationId_(targetSheet, quotation.quotationId);
+    const previousLocation = parseVendorSheetRowId_(quotation.vendorSheetRowId);
 
-    if (existingRowIndex >= 0) {
-        vendorSheet.getRange(existingRowIndex + 2, 1, 1, headers.length).setValues([vendorRow]);
-        return { rowId: String(existingRowIndex + 2) };
+    if (previousLocation && previousLocation.sheetName !== targetSheet.getName()) {
+        clearVendorSheetRow_(user.vendorSheetUrl, previousLocation);
     }
 
-    vendorSheet.appendRow(vendorRow);
-    return { rowId: String(vendorSheet.getLastRow()) };
+    if (existingRowIndex >= 0) {
+        targetSheet.getRange(existingRowIndex, 1, 1, vendorRow.length).setValues([vendorRow]);
+        return { rowId: targetSheet.getName() + '!' + String(existingRowIndex) };
+    }
+
+    targetSheet.appendRow(vendorRow);
+    return { rowId: targetSheet.getName() + '!' + String(targetSheet.getLastRow()) };
+}
+
+function getVendorQuotationRowsByWorkOrder_(userOrUserId, workOrderNumber, quotationIds) {
+    const user = normalizeVendorUserInput_(userOrUserId);
+    if (!user || !user.vendorSheetUrl) {
+        return [];
+    }
+
+    const spreadsheet = SpreadsheetApp.openByUrl(user.vendorSheetUrl);
+    const normalizedWorkOrderNumber = String(workOrderNumber || '').trim();
+    const normalizedQuotationIds = Array.isArray(quotationIds) ? quotationIds.reduce(function (accumulator, quotationId) {
+        const normalizedQuotationId = String(quotationId || '').trim();
+        if (normalizedQuotationId) {
+            accumulator[normalizedQuotationId] = true;
+        }
+        return accumulator;
+    }, {}) : null;
+    const rows = [];
+
+    getVendorQuotationSheets_(spreadsheet).forEach(function (sheet) {
+        const values = sheet.getDataRange().getValues();
+        if (values.length <= 1) {
+            return;
+        }
+        const headers = values[0];
+        values.slice(1).forEach(function (row, index) {
+            if (!row.some(function (cell) { return cell !== ''; })) {
+                return;
+            }
+            const objectRow = {};
+            headers.forEach(function (header, headerIndex) {
+                objectRow[header] = row[headerIndex];
+            });
+            if (String(objectRow['work order number'] || '').trim() !== normalizedWorkOrderNumber) {
+                return;
+            }
+            if (normalizedQuotationIds && !normalizedQuotationIds[String(objectRow['Quotation number'] || '').trim()]) {
+                return;
+            }
+            objectRow.__sheetName = sheet.getName();
+            objectRow.__rowIndex = index + 2;
+            rows.push(objectRow);
+        });
+    });
+
+    return rows;
+}
+
+function mapVendorSheetQuotationForUi_(row, workOrder, vendorUser) {
+    const images = normalizeStoredFiles_(row['attachmentJson'] || '[]');
+    return {
+        quotationId: String(row['Quotation number'] || '').trim(),
+        workOrderId: workOrder ? workOrder.workOrderId : '',
+        workOrderNumber: String(row['work order number'] || (workOrder ? workOrder.workOrderNumber : '') || '').trim(),
+        vendorUserId: vendorUser ? vendorUser.userId : '',
+        vendorCode: vendorUser ? vendorUser.vendorCode : '',
+        vendorName: vendorUser ? vendorUser.vendorName : '',
+        category: String(row['Category'] || '').trim(),
+        priceRange: String(row['Price Range'] || '').trim(),
+        customerProject: String(row['Customer/Project'] || '').trim(),
+        images: images,
+        description: String(row['Description'] || '').trim(),
+        quantityPcs: normalizeNumber_(row['Quantity(pcs)']),
+        cifBkk: normalizeNumber_(row['CIF BKK']),
+        targetPrice: normalizeNumber_(row['Target price']),
+        leadTime: String(row['Lead time'] || '').trim(),
+        quotationDate: normalizeDateFieldForUi_(row['Quotation Date']),
+        remark: String(row['Remark'] || '').trim(),
+        sample: String(row['Sample'] || '').trim(),
+        status: String(row['Status'] || 'SUBMITTED').trim().toUpperCase(),
+        comment: String(row['Comment'] || '').trim(),
+        thaiPrice: normalizeNumber_(row['Thai Price']),
+        adminNote: String(row['Admin Note'] || '').trim(),
+        source: 'VENDOR_SHEET',
+        updatedAt: normalizeDateFieldForUi_(row['Quotation Date']),
+        quotationFolderId: String(row['quotationFolderId'] || '').trim(),
+        vendorSheetRowId: row.__sheetName + '!' + String(row.__rowIndex),
+        workOrder: workOrder ? mapWorkOrderForUi_(workOrder, 0) : null
+    };
+}
+
+function normalizeVendorUserInput_(userOrUserId) {
+    if (!userOrUserId) {
+        return null;
+    }
+    if (typeof userOrUserId === 'string') {
+        return getUserById_(userOrUserId);
+    }
+    return userOrUserId;
+}
+
+function getVendorUsersWithSheets_() {
+    return getTable_(APP_CONFIG.sheets.users.name).rows.filter(function (row) {
+        return row.role === 'vendor' && String(row.vendorSheetUrl || '').trim();
+    });
+}
+
+function getWorkOrderQuotationRefs_(row) {
+    const seen = {};
+    return String((row && row.Quotations) || '')
+        .split(',')
+        .map(function (value) { return String(value || '').trim(); })
+        .filter(function (value) {
+            if (!value || seen[value]) {
+                return false;
+            }
+            seen[value] = true;
+            return true;
+        });
+}
+
+function updateWorkOrderQuotationReference_(workOrderId, quotationId) {
+    const normalizedWorkOrderId = String(workOrderId || '').trim();
+    const normalizedQuotationId = String(quotationId || '').trim();
+    if (!normalizedWorkOrderId || !normalizedQuotationId) {
+        return null;
+    }
+
+    const workOrdersTable = getTable_(APP_CONFIG.sheets.workOrders.name);
+    const rowInfo = findRowByField_(workOrdersTable, 'workOrderId', normalizedWorkOrderId);
+    if (!rowInfo) {
+        return null;
+    }
+
+    const quotationRefs = getWorkOrderQuotationRefs_(rowInfo.row);
+    if (quotationRefs.indexOf(normalizedQuotationId) === -1) {
+        quotationRefs.push(normalizedQuotationId);
+    }
+
+    const nextSerialized = quotationRefs.join(', ');
+    const currentSerialized = getWorkOrderQuotationRefs_(rowInfo.row).join(', ');
+    const nextCount = quotationRefs.length;
+    const currentCount = normalizeNumber_(rowInfo.row.quotationCount) || 0;
+
+    if (currentSerialized !== nextSerialized || currentCount !== nextCount) {
+        updateRowByIndex_(APP_CONFIG.sheets.workOrders.name, rowInfo.rowIndex, {
+            Quotations: nextSerialized,
+            quotationCount: nextCount
+        });
+    }
+
+    return Object.assign({}, rowInfo.row, {
+        Quotations: nextSerialized,
+        quotationCount: nextCount
+    });
+}
+
+function syncWorkOrderQuotationRefsForVendorRows_(vendorRows) {
+    const quotationRefsByWorkOrderNumber = {};
+    (vendorRows || []).forEach(function (row) {
+        const workOrderNumber = String(row['work order number'] || '').trim();
+        const quotationId = String(row['Quotation number'] || '').trim();
+        if (!workOrderNumber || !quotationId) {
+            return;
+        }
+        if (!quotationRefsByWorkOrderNumber[workOrderNumber]) {
+            quotationRefsByWorkOrderNumber[workOrderNumber] = [];
+        }
+        if (quotationRefsByWorkOrderNumber[workOrderNumber].indexOf(quotationId) === -1) {
+            quotationRefsByWorkOrderNumber[workOrderNumber].push(quotationId);
+        }
+    });
+
+    const workOrdersTable = getTable_(APP_CONFIG.sheets.workOrders.name);
+    workOrdersTable.rows.forEach(function (row, index) {
+        const existingRefs = getWorkOrderQuotationRefs_(row);
+        const syncedRefs = quotationRefsByWorkOrderNumber[String(row.workOrderNumber || '').trim()] || [];
+        const mergedRefs = existingRefs.slice();
+        syncedRefs.forEach(function (quotationId) {
+            if (mergedRefs.indexOf(quotationId) === -1) {
+                mergedRefs.push(quotationId);
+            }
+        });
+        const nextSerialized = mergedRefs.join(', ');
+        const currentSerialized = existingRefs.join(', ');
+        const nextCount = mergedRefs.length;
+        const currentCount = normalizeNumber_(row.quotationCount) || 0;
+
+        if (currentSerialized !== nextSerialized || currentCount !== nextCount) {
+            updateRowByIndex_(APP_CONFIG.sheets.workOrders.name, index + 2, {
+                Quotations: nextSerialized,
+                quotationCount: nextCount
+            });
+        }
+    });
+}
+
+function buildVendorSheetRowObject_(sheet, rowIndex) {
+    if (!sheet || rowIndex <= 1 || rowIndex > sheet.getLastRow()) {
+        return null;
+    }
+    const headers = sheet.getRange(1, 1, 1, APP_CONFIG.vendorSheet.headers.length).getValues()[0];
+    const rowValues = sheet.getRange(rowIndex, 1, 1, headers.length).getValues()[0];
+    if (!rowValues.some(function (value) { return value !== ''; })) {
+        return null;
+    }
+
+    const objectRow = {};
+    headers.forEach(function (header, index) {
+        objectRow[header] = rowValues[index];
+    });
+    objectRow.__sheetName = sheet.getName();
+    objectRow.__rowIndex = rowIndex;
+    return objectRow;
+}
+
+function buildVendorQuotationRecord_(user, rawRow) {
+    if (!user || !rawRow) {
+        return null;
+    }
+    const workOrderNumber = String(rawRow['work order number'] || '').trim();
+    const workOrder = findOptionalByField_(APP_CONFIG.sheets.workOrders.name, 'workOrderNumber', workOrderNumber);
+    const createdAt = rawRow['Quotation Date'] ? toIsoDate_(rawRow['Quotation Date']) : nowIso_();
+    return {
+        quotationId: String(rawRow['Quotation number'] || '').trim(),
+        workOrderId: workOrder ? workOrder.workOrderId : '',
+        workOrderNumber: workOrderNumber,
+        vendorUserId: user.userId,
+        vendorCode: user.vendorCode,
+        vendorName: user.vendorName,
+        category: String(rawRow['Category'] || '').trim(),
+        priceRange: String(rawRow['Price Range'] || '').trim(),
+        customerProject: String(rawRow['Customer/Project'] || '').trim(),
+        productImageJson: String(rawRow['attachmentJson'] || '[]'),
+        description: String(rawRow['Description'] || '').trim(),
+        quantityPcs: normalizeNumber_(rawRow['Quantity(pcs)']),
+        cifBkk: normalizeNumber_(rawRow['CIF BKK']),
+        targetPrice: normalizeNumber_(rawRow['Target price']),
+        leadTime: String(rawRow['Lead time'] || '').trim(),
+        quotationDate: rawRow['Quotation Date'] ? toIsoDate_(rawRow['Quotation Date']) : '',
+        remark: String(rawRow['Remark'] || '').trim(),
+        sample: String(rawRow['Sample'] || '').trim(),
+        status: String(rawRow['Status'] || 'SUBMITTED').trim().toUpperCase(),
+        comment: String(rawRow['Comment'] || '').trim(),
+        thaiPrice: normalizeNumber_(rawRow['Thai Price']),
+        adminNote: String(rawRow['Admin Note'] || '').trim(),
+        source: 'VENDOR_SHEET',
+        vendorSheetRowId: rawRow.__sheetName + '!' + String(rawRow.__rowIndex),
+        quotationFolderId: String(rawRow['quotationFolderId'] || '').trim(),
+        createdAt: createdAt,
+        updatedAt: createdAt,
+        syncedAt: createdAt
+    };
+}
+
+function getAllVendorQuotationRows_(userOrUserId) {
+    const user = normalizeVendorUserInput_(userOrUserId);
+    if (!user || !user.vendorSheetUrl) {
+        return [];
+    }
+
+    const spreadsheet = SpreadsheetApp.openByUrl(user.vendorSheetUrl);
+    const rows = [];
+    getVendorQuotationSheets_(spreadsheet).forEach(function (sheet) {
+        const values = sheet.getDataRange().getValues();
+        if (values.length <= 1) {
+            return;
+        }
+        const headers = values[0];
+        values.slice(1).forEach(function (rowValues, index) {
+            if (!rowValues.some(function (cell) { return cell !== ''; })) {
+                return;
+            }
+            const objectRow = {};
+            headers.forEach(function (header, headerIndex) {
+                objectRow[header] = rowValues[headerIndex];
+            });
+            objectRow.__sheetName = sheet.getName();
+            objectRow.__rowIndex = index + 2;
+            rows.push(objectRow);
+        });
+    });
+    return rows;
+}
+
+function findVendorQuotationRecordById_(userOrUserId, quotationId) {
+    const user = normalizeVendorUserInput_(userOrUserId);
+    const normalizedQuotationId = String(quotationId || '').trim();
+    if (!user || !user.vendorSheetUrl || !normalizedQuotationId) {
+        return null;
+    }
+
+    const spreadsheet = SpreadsheetApp.openByUrl(user.vendorSheetUrl);
+    const sheets = getVendorQuotationSheets_(spreadsheet);
+    for (let index = 0; index < sheets.length; index += 1) {
+        const rowIndex = findVendorSheetRowIndexByQuotationId_(sheets[index], normalizedQuotationId);
+        if (rowIndex > 0) {
+            const rawRow = buildVendorSheetRowObject_(sheets[index], rowIndex);
+            if (!rawRow) {
+                return null;
+            }
+            return {
+                user: user,
+                rawRow: rawRow,
+                row: buildVendorQuotationRecord_(user, rawRow)
+            };
+        }
+    }
+    return null;
+}
+
+function findVendorQuotationRecordAcrossUsers_(quotationId) {
+    const vendors = getVendorUsersWithSheets_();
+    for (let index = 0; index < vendors.length; index += 1) {
+        const record = findVendorQuotationRecordById_(vendors[index], quotationId);
+        if (record) {
+            return record;
+        }
+    }
+    return null;
 }
 
 function ensureSheets_() {
@@ -1146,11 +1458,12 @@ function ensureSheetWithHeaders_(sheetName, headers) {
     return sheet;
 }
 
-function ensureVendorSheet_(sheetUrl) {
+function ensureVendorSheet_(sheetUrl, quotationDate) {
     const spreadsheet = SpreadsheetApp.openByUrl(sheetUrl);
-    let sheet = spreadsheet.getSheetByName(APP_CONFIG.vendorSheet.sheetName);
+    const sheetName = getVendorQuotationSheetName_(quotationDate);
+    let sheet = spreadsheet.getSheetByName(sheetName);
     if (!sheet) {
-        sheet = spreadsheet.insertSheet(APP_CONFIG.vendorSheet.sheetName);
+        sheet = spreadsheet.insertSheet(sheetName);
     }
     const headers = APP_CONFIG.vendorSheet.headers;
     if (sheet.getLastRow() === 0) {
@@ -1164,6 +1477,102 @@ function ensureVendorSheet_(sheetUrl) {
     }
     sheet.setFrozenRows(1);
     return sheet;
+}
+
+function getVendorQuotationSheetName_(value) {
+    const year = resolveQuotationYear_(value);
+    return APP_CONFIG.vendorSheet.sheetNamePrefix + String(year);
+}
+
+function resolveQuotationYear_(value) {
+    const normalized = value ? new Date(value) : new Date();
+    const date = isNaN(normalized.getTime()) ? new Date() : normalized;
+    return Utilities.formatDate(date, APP_CONFIG.timezone, 'yyyy');
+}
+
+function getVendorQuotationSheets_(spreadsheet) {
+    return spreadsheet.getSheets().filter(function (sheet) {
+        return isVendorQuotationSheetName_(sheet.getName());
+    }).sort(function (left, right) {
+        return left.getName().localeCompare(right.getName());
+    });
+}
+
+function isVendorQuotationSheetName_(sheetName) {
+    return new RegExp('^' + APP_CONFIG.vendorSheet.sheetNamePrefix.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '\\d{4}$').test(String(sheetName || ''));
+}
+
+function buildVendorSheetRow_(quotation) {
+    const images = normalizeStoredFiles_(quotation.productImageJson);
+    const firstImage = images.length ? (images[0].previewUrl || images[0].url || images[0].preview || '') : '';
+    return [
+        String(quotation.category || '').trim(),
+        String(quotation.priceRange || '').trim(),
+        String(quotation.customerProject || '').trim(),
+        buildVendorSheetImageFormula_(firstImage),
+        String(quotation.description || '').trim(),
+        quotation.quantityPcs != null ? quotation.quantityPcs : '',
+        quotation.cifBkk != null ? quotation.cifBkk : '',
+        quotation.targetPrice != null ? quotation.targetPrice : '',
+        String(quotation.leadTime || '').trim(),
+        quotation.quotationDate ? toIsoDate_(quotation.quotationDate) : '',
+        String(quotation.remark || '').trim(),
+        String(quotation.sample || '').trim(),
+        String(quotation.status || '').trim(),
+        String(quotation.comment || '').trim(),
+        String(quotation.quotationId || '').trim(),
+        String(quotation.workOrderNumber || '').trim(),
+        JSON.stringify(images),
+        String(quotation.quotationFolderId || '').trim(),
+        quotation.thaiPrice != null ? quotation.thaiPrice : '',
+        String(quotation.adminNote || '').trim()
+    ];
+}
+
+function buildVendorSheetImageFormula_(imageUrl) {
+    const normalized = String(imageUrl || '').trim();
+    if (!normalized) {
+        return '';
+    }
+    return '=IMAGE("' + normalized.replace(/"/g, '""') + '")';
+}
+
+function findVendorSheetRowIndexByQuotationId_(sheet, quotationId) {
+    const normalized = String(quotationId || '').trim();
+    if (!normalized || sheet.getLastRow() <= 1) {
+        return -1;
+    }
+    const values = sheet.getRange(2, 15, sheet.getLastRow() - 1, 1).getValues();
+    for (let index = 0; index < values.length; index += 1) {
+        if (String(values[index][0] || '').trim() === normalized) {
+            return index + 2;
+        }
+    }
+    return -1;
+}
+
+function parseVendorSheetRowId_(value) {
+    const normalized = String(value || '').trim();
+    const match = normalized.match(/^(Quotation \d{4})!(\d+)$/);
+    if (!match) {
+        return null;
+    }
+    return {
+        sheetName: match[1],
+        rowIndex: Number(match[2])
+    };
+}
+
+function clearVendorSheetRow_(sheetUrl, location) {
+    if (!location || !location.sheetName || !location.rowIndex) {
+        return;
+    }
+    const spreadsheet = SpreadsheetApp.openByUrl(sheetUrl);
+    const sheet = spreadsheet.getSheetByName(location.sheetName);
+    if (!sheet || location.rowIndex <= 1 || location.rowIndex > sheet.getMaxRows()) {
+        return;
+    }
+    sheet.getRange(location.rowIndex, 1, 1, APP_CONFIG.vendorSheet.headers.length).clearContent();
 }
 
 function ensureUploadFolder_() {
@@ -1961,12 +2370,12 @@ function syncWorkOrderQuotationCount_(workOrderId) {
         return 0;
     }
 
-    const quotationCount = getTable_(APP_CONFIG.sheets.quotations.name).rows.filter(function (row) {
-        return String(row.workOrderId) === normalizedWorkOrderId;
-    }).length;
+    const quotationRefs = getWorkOrderQuotationRefs_(workOrderRowInfo.row);
+    const quotationCount = quotationRefs.length;
 
     updateRowByIndex_(APP_CONFIG.sheets.workOrders.name, workOrderRowInfo.rowIndex, {
-        quotationCount: quotationCount
+        quotationCount: quotationCount,
+        Quotations: quotationRefs.join(', ')
     });
 
     return quotationCount;
@@ -1980,31 +2389,26 @@ function backfillWorkOrderQuotationCounts() {
         ensureSheets_();
 
         const workOrdersTable = getTable_(APP_CONFIG.sheets.workOrders.name);
-        const quotations = getTable_(APP_CONFIG.sheets.quotations.name).rows;
-        const quotationCountByWorkOrderId = quotations.reduce(function (accumulator, row) {
-            const workOrderId = String(row.workOrderId || '').trim();
-            if (!workOrderId) {
-                return accumulator;
-            }
-            accumulator[workOrderId] = (accumulator[workOrderId] || 0) + 1;
-            return accumulator;
-        }, {});
 
         let updatedWorkOrders = 0;
         let unchangedWorkOrders = 0;
 
         workOrdersTable.rows.forEach(function (row, index) {
             const workOrderId = String(row.workOrderId || '').trim();
-            const nextQuotationCount = quotationCountByWorkOrderId[workOrderId] || 0;
+            const quotationRefs = getWorkOrderQuotationRefs_(row);
+            const nextQuotationCount = quotationRefs.length;
             const currentQuotationCount = normalizeNumber_(row.quotationCount) || 0;
+            const currentQuotationRefs = String(row.Quotations || '').trim();
+            const nextQuotationRefs = quotationRefs.join(', ');
 
-            if (currentQuotationCount === nextQuotationCount) {
+            if (currentQuotationCount === nextQuotationCount && currentQuotationRefs === nextQuotationRefs) {
                 unchangedWorkOrders += 1;
                 return;
             }
 
             updateRowByIndex_(APP_CONFIG.sheets.workOrders.name, index + 2, {
-                quotationCount: nextQuotationCount
+                quotationCount: nextQuotationCount,
+                Quotations: nextQuotationRefs
             });
             updatedWorkOrders += 1;
         });
@@ -2012,7 +2416,9 @@ function backfillWorkOrderQuotationCounts() {
         return {
             ok: true,
             totalWorkOrders: workOrdersTable.rows.length,
-            totalQuotations: quotations.length,
+            totalQuotations: workOrdersTable.rows.reduce(function (accumulator, row) {
+                return accumulator + getWorkOrderQuotationRefs_(row).length;
+            }, 0),
             updatedWorkOrders: updatedWorkOrders,
             unchangedWorkOrders: unchangedWorkOrders
         };
