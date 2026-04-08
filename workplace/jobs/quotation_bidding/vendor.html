@@ -1,0 +1,3437 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/locale/th.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@2.0.2/resumableupload2_js.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#20B2AA',
+                        brandDark: '#0f766e',
+                        ink: '#16323a',
+                        mist: '#f8f9fa',
+                        line: '#d3d3d3'
+                    },
+                    boxShadow: {
+                        soft: '0 24px 80px rgba(15, 118, 110, 0.12)'
+                    },
+                    fontFamily: {
+                        display: ['Sora', 'sans-serif'],
+                        body: ['IBM Plex Sans Thai', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            background:
+                radial-gradient(circle at top left, rgba(32, 178, 170, 0.16), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.12), transparent 24%),
+                #f8f9fa;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(14px);
+        }
+
+        .card-enter {
+            animation: card-enter 0.35s ease-out;
+        }
+
+        .loading-shimmer {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(90deg, rgba(226, 232, 240, 0.78) 14%, rgba(248, 250, 252, 0.98) 48%, rgba(203, 213, 225, 0.9) 76%, rgba(248, 250, 252, 0.98) 100%);
+            background-size: 240% 100%;
+            animation: loading-shimmer 1.35s ease-in-out infinite;
+        }
+
+        .loading-shimmer-dark {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.12) 14%, rgba(255, 255, 255, 0.32) 48%, rgba(255, 255, 255, 0.18) 76%, rgba(255, 255, 255, 0.12) 100%);
+            background-size: 240% 100%;
+        }
+
+        .swal2-popup.swal2-quotation-toast,
+        .swal2-popup.swal2-quotation-modal {
+            border: 1px solid rgba(255, 255, 255, 0.78);
+            border-radius: 1.5rem;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 24px 80px rgba(15, 118, 110, 0.16);
+            color: #16323a;
+        }
+
+        .swal2-popup.swal2-quotation-toast {
+            width: fit-content;
+            max-width: min(calc(100vw - 1.5rem), 42rem);
+            min-width: 0;
+            padding: 0.95rem 1rem;
+        }
+
+        .swal2-container.swal2-top .swal2-popup.swal2-quotation-toast {
+            margin-inline: auto;
+        }
+
+        .swal2-popup.swal2-quotation-modal {
+            padding: 1.5rem;
+        }
+
+        .swal2-title.swal2-quotation-title {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #16323a;
+        }
+
+        .swal2-html-container.swal2-quotation-html {
+            margin-top: 0.5rem;
+            font-size: 0.95rem;
+            color: #475569;
+        }
+
+        .swal2-confirm.swal2-quotation-confirm {
+            border-radius: 9999px;
+            background: #20B2AA;
+            padding: 0.75rem 1.6rem;
+            font-weight: 600;
+            box-shadow: none;
+        }
+
+        .swal2-confirm.swal2-quotation-confirm:focus {
+            box-shadow: 0 0 0 4px rgba(32, 178, 170, 0.18);
+        }
+
+        .swal2-timer-progress-bar {
+            background: linear-gradient(90deg, #20B2AA, #0f766e);
+        }
+
+        @keyframes card-enter {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes loading-shimmer {
+            from {
+                background-position: 200% 0;
+            }
+
+            to {
+                background-position: -200% 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="font-body text-ink antialiased" data-auth-url="<?!= authUrl ?>">
+    <div id="loadingOverlay"
+        class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/20 backdrop-blur-sm">
+        <div class="glass rounded-[1.75rem] border border-white/80 px-6 py-5 shadow-soft">
+            <div class="flex items-center gap-4">
+                <div class="h-10 w-10 animate-spin rounded-full border-4 border-brand/20 border-t-brand"></div>
+                <div>
+                    <p class="font-display text-lg font-semibold text-slate-800">Processing</p>
+                    <p class="text-sm text-slate-500">Please wait a moment</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="imagePreviewModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-950/90 p-4">
+        <div class="relative flex max-h-full w-full max-w-6xl items-center justify-center">
+            <button id="closeImagePreviewModalBtn" type="button"
+                class="absolute right-0 top-0 z-10 inline-flex h-12 w-12 -translate-y-14 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20">
+                <i data-lucide="x" class="h-5 w-5"></i>
+            </button>
+            <img id="imagePreviewModalImg" src="" alt="Full preview"
+                class="max-h-[88vh] w-auto max-w-full rounded-[1.5rem] border border-white/10 bg-white/5 object-contain shadow-2xl">
+            <div id="imagePreviewModalCaption"
+                class="absolute inset-x-0 bottom-0 mx-auto max-w-3xl rounded-full bg-slate-950/55 px-5 py-2 text-center text-sm text-white/90 backdrop-blur-sm"></div>
+        </div>
+    </div>
+
+    <main id="workspaceView" class="hidden min-h-screen px-4 py-5 lg:px-8 lg:py-6">
+        <div class="mx-auto max-w-7xl space-y-6">
+            <section
+                class="glass flex items-center justify-between gap-4 rounded-[1.75rem] border border-white/80 px-4 py-4 shadow-soft lg:px-5">
+                <div class="flex items-center gap-3">
+                    <button id="openWorkspaceMenuBtn" type="button"
+                        class="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-brand hover:text-brandDark">
+                        <i data-lucide="panel-left-open" class="h-5 w-5"></i>
+                    </button>
+                    <div
+                        class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 p-2.5 shadow-sm">
+                        <img src="<?!= logo ?>" alt="KV Premium logo" class="h-full w-full object-contain">
+                    </div>
+                    <div>
+                        <p id="workspaceTopbarAppName"
+                            class="font-display text-[11px] uppercase tracking-[0.28em] text-brandDark"><span>Quotation
+                                Bidding Hub</span></p>
+                        <h2 id="workspaceTitle" class="mt-1 font-display text-2xl font-semibold">Workspace</h2>
+                        <p id="workspaceUserLabel" class="mt-1 text-sm text-slate-500"></p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="summarySection" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4"></section>
+
+            <section id="adminView" class="hidden space-y-6">
+                <section class="glass rounded-[1.75rem] border border-white/80 p-5 shadow-soft">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-display text-xl font-semibold">Work Orders</h3>
+                            <p class="mt-1 text-sm text-slate-500">Open a comparison modal to review quotations and save
+                                THB pricing.</p>
+                        </div>
+                        <button id="openWorkOrderModalBtn" type="button"
+                            class="hidden rounded-full bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:bg-brandDark"><i
+                                data-lucide="file-plus-2" class="mr-2 inline-flex h-4 w-4"></i>Create Work Order</button>
+                    </div>
+                    <div class="mt-5 overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200 text-sm">
+                            <thead>
+                                <tr class="text-left text-slate-500">
+                                    <th class="pb-3 pr-4">Work Order</th>
+                                    <th class="pb-3 pr-4">Customer</th>
+                                    <th class="pb-3 pr-4">Deadline</th>
+                                    <th class="pb-3 pr-4">Budget RMB</th>
+                                    <th class="pb-3 pr-4">Quotes</th>
+                                    <th class="pb-3 pr-4">Status</th>
+                                    <th class="pb-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminWorkOrdersTable" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <section id="vendorView" class="hidden space-y-6">
+                <section class="glass rounded-[1.75rem] border border-white/80 p-5 shadow-soft">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-display text-xl font-semibold">Available Work Orders</h3>
+                            <p class="mt-1 text-sm text-slate-500">Review open work orders and jump straight into your quotation draft.</p>
+                        </div>
+                    </div>
+                    <div class="mt-5 overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200 text-sm">
+                            <thead>
+                                <tr class="text-left text-slate-500">
+                                    <th class="pb-3 pr-4">Work Order</th>
+                                    <th class="pb-3 pr-4">Customer</th>
+                                    <th class="pb-3 pr-4">Volume</th>
+                                    <th class="pb-3 pr-4">Budget</th>
+                                    <th class="pb-3 pr-4">Status</th>
+                                    <th class="pb-3 pr-4">My Quote</th>
+                                    <th class="pb-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendorWorkOrdersTable" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+            </section>
+        </div>
+    </main>
+
+    <div id="workspaceMenuBackdrop" class="fixed inset-0 z-40 hidden bg-brandDark/20 backdrop-blur-sm"></div>
+    <aside id="workspaceMenu"
+        class="fixed inset-y-0 left-0 z-50 flex w-full max-w-sm -translate-x-full flex-col border-r border-white/80 bg-white/92 p-5 shadow-soft backdrop-blur-xl transition-transform duration-300">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <p id="workspaceAppName" class="font-display text-[11px] uppercase tracking-[0.28em] text-brandDark"><i
+                        data-lucide="sparkles" class="mr-2 inline-flex h-4 w-4 align-[-2px]"></i><span>Quotation Bidding Hub</span></p>
+                <h3 id="workspaceMenuTitle" class="mt-3 font-display text-2xl font-semibold text-slate-900">Workspace</h3>
+                <p id="workspaceMenuUserLabel" class="mt-2 text-sm text-slate-500"></p>
+            </div>
+            <button id="closeWorkspaceMenuBtn" type="button"
+                class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:border-brand hover:text-brandDark">
+                <i data-lucide="x" class="h-4 w-4"></i>
+            </button>
+        </div>
+
+        <div class="mt-6 rounded-[1.5rem] bg-slate-100/80 p-4">
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Quick Actions</p>
+            <div class="mt-4 grid gap-3">
+                <button id="menuManageVendorsBtn" type="button"
+                    class="hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:border-brand hover:text-brandDark"><i
+                        data-lucide="users" class="mr-2 inline-flex h-4 w-4"></i>Manage Vendors</button>
+                <button id="openMyQuotationsBtn" type="button"
+                    class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:border-brand hover:text-brandDark"><i
+                        data-lucide="folder-kanban" class="mr-2 inline-flex h-4 w-4"></i>My Quotations</button>
+                <button id="refreshBootstrapBtn" type="button"
+                    class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:border-brand hover:text-brandDark"><i
+                        data-lucide="refresh-cw" class="mr-2 inline-flex h-4 w-4"></i>Refresh Data</button>
+                <button id="logoutBtn" type="button"
+                    class="rounded-2xl bg-slate-900 px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-slate-800"><i
+                        data-lucide="log-out" class="mr-2 inline-flex h-4 w-4"></i>Log Out</button>
+            </div>
+        </div>
+    </aside>
+
+    <div id="vendorsModal"
+        class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 p-4 lg:items-center">
+        <div
+            class="glass max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/80 shadow-soft">
+            <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                <div>
+                    <p class="text-sm text-slate-500">Admin Management</p>
+                    <h3 class="font-display text-2xl font-semibold">Vendors</h3>
+                </div>
+                <button id="closeVendorsModalBtn" type="button"
+                    class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
+                        class="mr-2 inline-flex h-4 w-4"></i>Close</button>
+            </div>
+            <div class="overflow-x-auto px-6 py-6">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead>
+                        <tr class="text-left text-slate-500">
+                            <th class="pb-3 pr-4">Vendor</th>
+                            <th class="pb-3 pr-4">Contact</th>
+                            <th class="pb-3 pr-4">Email</th>
+                            <th class="pb-3 pr-4">Status</th>
+                            <th class="pb-3 pr-4">Sheet</th>
+                            <th class="pb-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vendorsTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="vendorEditorModal"
+        class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 p-4 lg:items-center">
+        <div class="glass w-full max-w-4xl rounded-[2rem] border border-white/80 shadow-soft">
+            <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                <div>
+                    <p class="text-sm text-slate-500">Vendor Detail</p>
+                    <h3 id="vendorEditorTitle" class="font-display text-2xl font-semibold">Edit Vendor</h3>
+                </div>
+                <button id="closeVendorEditorModalBtn" type="button"
+                    class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
+                        class="mr-2 inline-flex h-4 w-4"></i>Close</button>
+            </div>
+            <div id="vendorEditorContent" class="px-6 py-6"></div>
+        </div>
+    </div>
+
+    <div id="workOrderModal"
+        class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 p-4 lg:items-center">
+        <div
+            class="glass flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-white/80 shadow-soft">
+            <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                <div>
+                    <p class="text-sm text-slate-500">Admin Action</p>
+                    <h3 id="workOrderModalTitle" class="font-display text-2xl font-semibold">Create Work Order</h3>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="clearWorkOrderBtn" type="button"
+                        class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i
+                            data-lucide="eraser" class="mr-2 inline-flex h-4 w-4"></i>Clear</button>
+                    <button id="closeWorkOrderModalBtn" type="button"
+                        class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
+                            class="mr-2 inline-flex h-4 w-4"></i>Close</button>
+                </div>
+            </div>
+            <div class="min-h-0 flex-1 overflow-y-auto px-6 py-6 overscroll-contain">
+                <form id="workOrderForm" class="grid gap-4 md:grid-cols-2">
+                    <input type="hidden" name="workOrderId">
+                    <input type="hidden" name="workOrderNumber">
+                    <input type="hidden" name="createdBy">
+                    <input type="hidden" name="createdAt">
+
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Brief
+                            date</span><input name="briefDate" type="date"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Deadline to
+                            quote</span><input name="deadlineToQuote" type="date"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Brief from
+                            Customer</span><input name="briefFromCustomer" type="text"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Budget
+                            (RMB)</span><input name="budgetRmb" step="0.01" type="number"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span
+                            class="text-sm font-medium text-slate-600">Volume</span><input name="volumeValue" step="1"
+                            type="number"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Volume
+                            unit</span><input name="volumeUnit" type="text"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span
+                            class="text-sm font-medium text-slate-600">Material</span><input name="material" type="text"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span
+                            class="text-sm font-medium text-slate-600">Size</span><input name="size" type="text"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span
+                            class="text-sm font-medium text-slate-600">Printing</span><input name="printing" type="text"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span
+                            class="text-sm font-medium text-slate-600">Packing</span><input name="packing" type="text"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2 md:col-span-2"><span
+                            class="text-sm font-medium text-slate-600">Remarks</span><textarea name="remarks" rows="3"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></textarea></label>
+                    <label class="block space-y-2 md:col-span-2"><span
+                            class="text-sm font-medium text-slate-600">Status</span>
+                        <div id="workOrderStatusControl"
+                            class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition">
+                            <span id="workOrderStatusIconWrap"
+                                class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition">
+                                <i id="workOrderStatusIcon" data-lucide="folder-open" class="h-5 w-5"></i>
+                            </span>
+                            <select name="status"
+                                class="w-full bg-transparent text-sm font-bold tracking-[0.22em] text-slate-700 outline-none transition">
+                                <option value="OPEN">OPEN</option>
+                                <option value="PUBLISHED">PUBLISHED</option>
+                                <option value="ON_HOLD">ON_HOLD</option>
+                                <option value="CLOSED">CLOSED</option>
+                            </select>
+                        </div>
+                    </label>
+                    <label class="block space-y-2 md:col-span-2"><span class="flex items-center justify-between gap-3"><span
+                                class="text-sm font-medium text-slate-600">Attachments</span><span
+                                id="workOrderUploadCounter" class="text-xs font-medium text-slate-500">0/10 files</span></span>
+                        <div class="rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50/80 p-4">
+                            <div id="workOrderUploadPickerWrap" class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-700">Upload supporting files</p>
+                                    <p class="text-xs text-slate-500">Up to 10 files. Any file type is allowed and uploads begin immediately.</p>
+                                </div>
+                                <input id="workOrderFileInput" type="file" multiple
+                                    class="block w-full max-w-sm cursor-pointer rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 file:mr-3 file:rounded-full file:border-0 file:bg-brand/10 file:px-4 file:py-2 file:font-semibold file:text-brand md:w-auto">
+                            </div>
+                            <p id="workOrderUploadLimitNotice" class="hidden mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">File limit reached</p>
+                            <button id="workOrderRemoveAllBtn" type="button"
+                                class="hidden mt-3 rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600">Remove all</button>
+                            <div id="workOrderAttachmentList" class="mt-4 grid gap-3 md:grid-cols-2"></div>
+                        </div>
+                    </label>
+                    <div class="flex items-end justify-end md:col-span-2"><button id="saveWorkOrderBtn"
+                            class="rounded-full bg-brand px-6 py-3 font-semibold text-white transition hover:bg-brandDark">Create
+                            Work Order</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="quotationModal"
+        class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 p-4 lg:items-center">
+        <div
+            class="glass flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-white/80 shadow-soft">
+            <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                <div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <p class="text-sm text-slate-500">Vendor Action</p>
+                        <span id="quotationModalModeBadge"
+                            class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Create Mode</span>
+                    </div>
+                    <h3 id="quotationModalTitle" class="font-display text-2xl font-semibold">Add Quotation</h3>
+                    <p id="quotationModalHint" class="mt-1 text-sm text-slate-500">Create a new quotation for this work order. A new QT number will be generated when you save.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="clearQuotationBtn" type="button"
+                        class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i
+                            data-lucide="eraser" class="mr-2 inline-flex h-4 w-4"></i>Clear</button>
+                    <button id="closeQuotationModalBtn" type="button"
+                        class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
+                            class="mr-2 inline-flex h-4 w-4"></i>Close</button>
+                </div>
+            </div>
+            <div class="min-h-0 flex-1 overflow-y-auto px-6 py-6 overscroll-contain">
+                <form id="quotationForm" class="grid gap-4 md:grid-cols-2">
+                    <input type="hidden" name="quotationId">
+                    <label class="block space-y-2 md:col-span-2"><span
+                            class="text-sm font-medium text-slate-600">Work Order</span><select
+                            name="workOrderId"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand">
+                            <option value="">Select a work order</option>
+                        </select></label>
+                    <label class="block space-y-2"><span
+                            class="text-sm font-medium text-slate-600">Category</span><select name="category"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"><option value="">Select category</option></select></label>
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Price
+                            Range</span><select name="priceRange"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"><option value="">Select price range</option></select></label>
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Customer /
+                            Project</span><input name="customerProject" type="text" readonly
+                            class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-600 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Target
+                            price</span><input name="targetPrice" step="0.01" type="number"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Quantity
+                            (pcs)</span><textarea name="quantityPcs" rows="3"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></textarea></label>
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">CIF
+                            BKK</span><textarea name="cifBkk" rows="3"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></textarea></label>
+                    
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Lead
+                            time</span><input name="leadTime" type="text"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Quotation
+                            Date</span><input name="quotationDate" type="date"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span
+                            class="text-sm font-medium text-slate-600">Sample</span><input name="sample"
+                            type="text"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                    <label class="block space-y-2"><span
+                            class="text-sm font-medium text-slate-600">Status</span><select name="status"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand">
+                            <option value="SUBMITTED">SUBMITTED</option>
+                            <option value="UPDATED">UPDATED</option>
+                            <option value="WAITING_SAMPLE">WAITING_SAMPLE</option>
+                            <option value="NOT_AVAILABLE">NOT_AVAILABLE</option>
+                        </select></label>
+                    <label class="block space-y-2 md:col-span-2"><span
+                            class="text-sm font-medium text-slate-600">Description</span><textarea
+                            name="description" rows="3"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></textarea></label>
+                    <label class="block space-y-2 md:col-span-2"><span
+                            class="text-sm font-medium text-slate-600">Remark</span><textarea name="remark"
+                            rows="2"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></textarea></label>
+                    <label class="block space-y-2 md:col-span-2"><span
+                            class="text-sm font-medium text-slate-600">Comment</span><textarea name="comment"
+                            rows="2"
+                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></textarea></label>
+                    <label class="block space-y-2 md:col-span-2"><span class="flex items-center justify-between gap-3"><span
+                                class="text-sm font-medium text-slate-600">Product Images</span><span
+                                id="quotationUploadCounter" class="text-xs font-medium text-slate-500">0/10 files</span></span>
+                        <div class="rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50/80 p-4">
+                            <div id="quotationUploadPickerWrap" class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-700">Upload product images</p>
+                                    <p class="text-xs text-slate-500">Up to 10 image files. Upload starts immediately after selection.</p>
+                                </div>
+                                <input id="quotationImageInput" type="file" accept="image/*" multiple
+                                    class="block w-full max-w-sm cursor-pointer rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 file:mr-3 file:rounded-full file:border-0 file:bg-brand/10 file:px-4 file:py-2 file:font-semibold file:text-brand md:w-auto">
+                            </div>
+                            <p id="quotationUploadLimitNotice" class="hidden mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">File limit reached</p>
+                            <button id="quotationRemoveAllBtn" type="button"
+                                class="hidden mt-3 rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600">Remove all</button>
+                            <div id="quotationImagesPreview" class="mt-4 grid gap-3 md:grid-cols-2"></div>
+                        </div>
+                    </label>
+                    <div class="flex items-end justify-end md:col-span-2"><button id="saveQuotationBtn"
+                            class="rounded-full bg-brand px-6 py-3 font-semibold text-white transition hover:bg-brandDark">Submit
+                            Quotation</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="quotationManagerModal"
+        class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 p-4 lg:items-center">
+        <div
+            class="glass flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-white/80 shadow-soft">
+            <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                <div>
+                    <p class="text-sm text-slate-500">Vendor Action</p>
+                    <h3 id="quotationManagerTitle" class="font-display text-2xl font-semibold">Manage QT</h3>
+                    <p id="quotationManagerSubtitle" class="mt-1 text-sm text-slate-500"></p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="quotationManagerAddBtn" type="button"
+                        class="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brandDark"><i
+                            data-lucide="circle-plus" class="mr-2 inline-flex h-4 w-4"></i>Add QT</button>
+                    <button id="closeQuotationManagerModalBtn" type="button"
+                        class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
+                            class="mr-2 inline-flex h-4 w-4"></i>Close</button>
+                </div>
+            </div>
+            <div class="min-h-0 flex-1 overflow-y-auto px-6 py-6 overscroll-contain">
+                <div class="overflow-x-auto rounded-[1.5rem] border border-slate-200 bg-white/85">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead>
+                            <tr class="text-left text-slate-500">
+                                <th class="px-5 py-4">Quotation</th>
+                                <th class="px-5 py-4">Category</th>
+                                <th class="px-5 py-4">Project</th>
+                                <th class="px-5 py-4">Status</th>
+                                <th class="px-5 py-4">Updated</th>
+                                <th class="px-5 py-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="quotationManagerTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="myQuotationsModal"
+        class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 p-4 lg:items-center">
+        <div
+            class="glass flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-white/80 shadow-soft">
+            <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                <div>
+                    <p class="text-sm text-slate-500">Vendor Action</p>
+                    <h3 class="font-display text-2xl font-semibold">My Quotations</h3>
+                    <p class="mt-1 text-sm text-slate-500">Track recent drafts and submissions, then reopen any record for updates.</p>
+                </div>
+                <button id="closeMyQuotationsModalBtn" type="button"
+                    class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
+                        class="mr-2 inline-flex h-4 w-4"></i>Close</button>
+            </div>
+            <div class="min-h-0 flex-1 overflow-y-auto px-6 py-6 overscroll-contain">
+                <div id="myQuotationsList" class="space-y-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="workOrderDetailModal"
+        class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 p-4 lg:items-center">
+        <div
+            class="glass flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-white/80 shadow-soft">
+            <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                <div>
+                    <p class="text-sm text-slate-500">Work Order Detail</p>
+                    <h3 id="workOrderDetailTitle" class="font-display text-2xl font-semibold">Work Order</h3>
+                    <p id="workOrderDetailSubtitle" class="mt-1 text-sm text-slate-500"></p>
+                </div>
+                <button id="closeWorkOrderDetailModalBtn" type="button"
+                    class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
+                        class="mr-2 inline-flex h-4 w-4"></i>Close</button>
+            </div>
+            <div class="min-h-0 flex-1 overflow-y-auto px-6 py-6 overscroll-contain">
+                <div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                    <section class="space-y-6">
+                        <div id="workOrderDetailSummary" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"></div>
+                        <div class="rounded-[1.5rem] border border-slate-200 bg-white/85 p-5">
+                            <h4 class="font-display text-lg font-semibold text-slate-900">Specification</h4>
+                            <div id="workOrderDetailSpecs" class="mt-4 grid gap-3 md:grid-cols-2"></div>
+                        </div>
+                        <div class="rounded-[1.5rem] border border-slate-200 bg-white/85 p-5">
+                            <h4 class="font-display text-lg font-semibold text-slate-900">Remarks</h4>
+                            <p id="workOrderDetailRemarks" class="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-600"></p>
+                        </div>
+                    </section>
+                    <section class="space-y-6">
+                        <div class="rounded-[1.5rem] border border-slate-200 bg-white/85 p-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <h4 class="font-display text-lg font-semibold text-slate-900">Image Attachments</h4>
+                                <span id="workOrderDetailImageCount" class="text-xs font-medium text-slate-500"></span>
+                            </div>
+                            <div id="workOrderDetailImages" class="mt-4 grid gap-4 sm:grid-cols-2"></div>
+                        </div>
+                        <div class="rounded-[1.5rem] border border-slate-200 bg-white/85 p-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <h4 class="font-display text-lg font-semibold text-slate-900">Other Attachments</h4>
+                                <span id="workOrderDetailFileCount" class="text-xs font-medium text-slate-500"></span>
+                            </div>
+                            <div id="workOrderDetailFiles" class="mt-4 grid gap-3"></div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="compareModal"
+        class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 p-4 lg:items-center">
+        <div
+            class="glass max-h-[92vh] w-full max-w-7xl overflow-hidden rounded-[2rem] border border-white/80 shadow-soft">
+            <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                <div>
+                    <p class="text-sm text-slate-500">Quotation Comparison</p>
+                    <h3 id="compareModalTitle" class="font-display text-2xl font-semibold"></h3>
+                    <p id="compareModalSubtitle" class="mt-1 text-sm text-slate-500"></p>
+                </div>
+                <button id="closeCompareBtn" type="button"
+                    class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
+                        class="mr-2 inline-flex h-4 w-4"></i>Close</button>
+            </div>
+            <div class="max-h-[calc(92vh-6.5rem)] overflow-auto px-6 py-6">
+                <div id="compareCardsContainer" class="flex min-w-max items-stretch gap-5 pb-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <template id="summaryCardTemplate">
+        <article class="card-enter rounded-[1.6rem] border border-white/80 p-5 shadow-soft">
+            <div class="flex items-start justify-between gap-3">
+                <p data-field="label" class="text-sm text-slate-500"></p>
+                <span data-field="icon"
+                    class="inline-flex h-10 w-10 flex-none items-center justify-center rounded-2xl bg-slate-100 text-slate-500"><i
+                        data-lucide="layers-3" class="h-4.5 w-4.5"></i></span>
+            </div>
+            <p data-field="value" class="mt-3 font-display text-3xl font-semibold"></p>
+        </article>
+    </template>
+
+    <template id="adminWorkOrderRowTemplate">
+        <tr>
+            <td class="py-4 pr-4 align-top">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <div data-field="number" class="font-semibold text-slate-800"></div>
+                        <div data-field="meta" class="text-xs text-slate-500"></div>
+                    </div>
+                    <button type="button" data-action="view-workorder"
+                        class="inline-flex flex-none rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600"><i
+                            data-lucide="eye" class="mr-1 inline-flex h-3.5 w-3.5"></i>View</button>
+                </div>
+            </td>
+            <td data-field="customer" class="py-4 pr-4 align-top"></td>
+            <td data-field="deadline" class="py-4 pr-4 align-top"></td>
+            <td data-field="budget" class="py-4 pr-4 align-top"></td>
+            <td data-field="quotes" class="py-4 pr-4 align-top"></td>
+            <td class="py-4 pr-4 align-top"><span data-field="status"></span></td>
+            <td class="py-4 text-right align-top">
+                <div class="flex justify-end gap-2"><button type="button" data-action="edit-workorder"
+                        class="rounded-full border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600"><i
+                            data-lucide="square-pen" class="mr-1 inline-flex h-3.5 w-3.5"></i>Edit</button><button
+                        type="button" data-action="open-compare" data-field="compare-button"
+                        class="inline-flex min-w-[9.75rem] items-center justify-center rounded-full bg-brand px-4 py-2 text-center text-xs font-semibold text-white whitespace-nowrap"><i
+                            data-lucide="columns-3" class="mr-1 inline-flex h-3.5 w-3.5"></i><span data-field="compare-label">Compare</span></button></div>
+            </td>
+        </tr>
+    </template>
+
+    <template id="vendorWorkOrderRowTemplate">
+        <tr>
+            <td class="py-4 pr-4 align-top">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <div data-field="number" class="font-semibold text-slate-800"></div>
+                        <div data-field="deadlineMeta" class="text-xs text-slate-500"></div>
+                    </div>
+                    <button type="button" data-action="view-workorder"
+                        class="inline-flex flex-none rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600"><i
+                            data-lucide="eye" class="mr-1 inline-flex h-3.5 w-3.5"></i>View</button>
+                </div>
+            </td>
+            <td data-field="customer" class="py-4 pr-4 align-top"></td>
+            <td data-field="volume" class="py-4 pr-4 align-top"></td>
+            <td data-field="budget" class="py-4 pr-4 align-top"></td>
+            <td class="py-4 pr-4 align-top"><span data-field="status"></span></td>
+            <td class="py-4 pr-4 align-top"><span data-field="myQuote"></span></td>
+            <td class="py-4 text-right align-top">
+                <div data-field="actionWrap" class="flex justify-end gap-2 flex-wrap"></div>
+            </td>
+        </tr>
+    </template>
+
+    <template id="quotationManagerRowTemplate">
+        <tr>
+            <td class="px-5 py-4 align-top">
+                <div data-field="number" class="font-semibold text-slate-800"></div>
+                <div data-field="meta" class="text-xs text-slate-500"></div>
+            </td>
+            <td data-field="category" class="px-5 py-4 align-top text-slate-700"></td>
+            <td data-field="project" class="px-5 py-4 align-top text-slate-700"></td>
+            <td class="px-5 py-4 align-top"><span data-field="status"></span></td>
+            <td data-field="updatedAt" class="px-5 py-4 align-top text-slate-500"></td>
+            <td class="px-5 py-4 text-right align-top">
+                <div class="flex justify-end gap-2">
+                    <button type="button" data-action="delete-quotation"
+                        class="rounded-full border border-rose-200 px-4 py-2 text-xs font-medium text-rose-600"><i
+                            data-lucide="trash-2" class="mr-1 inline-flex h-3.5 w-3.5"></i>Delete</button>
+                    <button type="button" data-action="edit-quotation"
+                        class="rounded-full border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600"><i
+                            data-lucide="square-pen" class="mr-1 inline-flex h-3.5 w-3.5"></i>Edit</button>
+                </div>
+            </td>
+        </tr>
+    </template>
+
+    <template id="userAccessTemplate">
+        <form class="user-access-form rounded-3xl border border-slate-200 bg-white p-4">
+            <input type="hidden" name="userId">
+            <div class="grid gap-3 md:grid-cols-2">
+                <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Display
+                        name</span><input name="displayName" type="text"
+                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Vendor name</span><input
+                        name="vendorName" type="text"
+                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Email</span><input
+                        name="email" type="email"
+                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Google Sheet
+                        URL</span><input name="vendorSheetUrl" type="text"
+                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+            </div>
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <label class="inline-flex items-center gap-3 text-sm text-slate-600"><input name="isActive"
+                        type="checkbox" class="h-5 w-5 rounded border-slate-300 text-brand focus:ring-brand">Enable
+                    Access</label>
+                <div class="flex gap-2"><button type="button" data-action="sync-vendor-admin"
+                        class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i
+                            data-lucide="database" class="mr-2 inline-flex h-4 w-4"></i>Import from
+                        Sheet</button><button
+                        class="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white"><i
+                            data-lucide="save" class="mr-2 inline-flex h-4 w-4"></i>Save</button></div>
+            </div>
+        </form>
+    </template>
+
+    <template id="vendorTableRowTemplate">
+        <tr>
+            <td class="py-4 pr-4 align-top">
+                <div data-field="vendorName" class="font-semibold text-slate-800"></div>
+                <div data-field="vendorCode" class="text-xs text-slate-500"></div>
+            </td>
+            <td data-field="contactName" class="py-4 pr-4 align-top"></td>
+            <td data-field="email" class="py-4 pr-4 align-top"></td>
+            <td class="py-4 pr-4 align-top"><span data-field="status"></span></td>
+            <td data-field="sheetStatus" class="py-4 pr-4 align-top text-slate-500"></td>
+            <td class="py-4 text-right align-top">
+                <button type="button" data-action="edit-vendor"
+                    class="rounded-full border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600"><i
+                        data-lucide="square-pen" class="mr-1 inline-flex h-3.5 w-3.5"></i>Edit</button>
+            </td>
+        </tr>
+    </template>
+
+    <template id="quotationCardTemplate">
+        <article class="rounded-3xl border border-slate-200 bg-white p-4">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p data-field="number" class="font-semibold text-slate-800"></p>
+                    <p data-field="project" class="text-sm text-slate-500"></p>
+                </div><span data-field="status"></span>
+            </div>
+            <div class="mt-3 grid gap-2 text-sm text-slate-600 md:grid-cols-2">
+                <p data-field="category"></p>
+                <p data-field="target"></p>
+                <p data-field="cif"></p>
+                <p data-field="thai"></p>
+            </div>
+            <div class="mt-4 flex justify-end"><button type="button" data-action="edit-quotation"
+                    class="rounded-full border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600"><i
+                        data-lucide="square-pen" class="mr-1 inline-flex h-3.5 w-3.5"></i>Edit</button></div>
+        </article>
+    </template>
+
+    <template id="compareCardTemplate">
+        <article class="flex w-[420px] flex-none flex-col rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p data-field="vendorName" class="font-display text-lg font-semibold text-slate-900"></p>
+                    <p data-field="vendorCode" class="text-sm text-slate-500"></p>
+                </div><span data-field="status"></span>
+            </div>
+            <div class="mt-4 space-y-3">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Commercial</p>
+                    <div data-field="commercialSpecs" class="mt-3 space-y-2.5"></div>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Production</p>
+                    <div data-field="productionSpecs" class="mt-3 space-y-2.5"></div>
+                </div>
+            </div>
+            <div class="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Notes</p>
+                <p data-field="comment" class="mt-3 text-sm leading-6 text-slate-700"></p>
+            </div>
+            <div data-field="imagesWrap" class="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Product Images</p>
+                    <p data-field="imageCount" class="text-xs text-slate-400"></p>
+                </div>
+                <div data-field="images" class="mt-3 grid grid-cols-2 gap-3"></div>
+            </div>
+            <div data-field="filesWrap" class="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Attachments</p>
+                    <p data-field="fileCount" class="text-xs text-slate-400"></p>
+                </div>
+                <div data-field="files" class="mt-3 space-y-2"></div>
+            </div>
+            <form class="thai-price-form mt-5 space-y-3 rounded-3xl bg-slate-50 p-4">
+                <input type="hidden" name="quotationId">
+                <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Thai Price
+                        (THB)</span><input name="thaiPrice" step="0.01" type="number"
+                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
+                <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Admin
+                        Note</span><textarea name="adminNote" rows="2"
+                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></textarea></label>
+                <button
+                    class="w-full rounded-full bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-brandDark"><i
+                        data-lucide="wallet" class="mr-2 inline-flex h-4 w-4"></i>Save THB Price</button>
+            </form>
+        </article>
+    </template>
+
+    <template id="imageThumbTemplate">
+        <div class="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
+            <img class="h-28 w-full object-cover" alt="preview">
+            <div class="absolute left-2 top-2" data-field="status"></div>
+            <button type="button"
+                class="absolute right-2 top-2 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-slate-700">Remove</button>
+            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent px-3 pb-3 pt-8 text-white">
+                <p data-field="name" class="truncate text-xs font-semibold"></p>
+                <p data-field="meta" class="mt-1 text-[11px] text-white/80"></p>
+                <div data-field="progress" class="mt-2"></div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        (() => {
+        const SESSION_KEY = 'quotation-bidding-session-token';
+        const SESSION_ROLE_KEY = 'quotation-bidding-session-role';
+        const TEMPLATE_ROLE = 'vendor';
+        const AUTH_APP_URL = document.body ? String(document.body.getAttribute('data-auth-url') || '').trim() : '';
+        const FILE_UPLOAD_LIMIT = 10;
+        const RESUMABLE_UPLOAD_CHUNK_SIZE = 524288;
+        const QUOTATION_PRICE_RANGE_OPTIONS = [
+            '0-1 rmb', '1-2 rmb', '2-3 rmb', '3-4 rmb', '4-5 rmb', '5-6 rmb', '6-7 rmb', '7-8 rmb', '8-9 rmb', '9-10 rmb',
+            '10-11 rmb', '11-12 rmb', '12-14 rmb', '14-16 rmb', '16-20 rmb', '20-25 rmb', '25-30 rmb', '30-50 rmb', '50-100 rmb'
+        ];
+        const QUOTATION_CATEGORY_OPTIONS = [
+            'Bag', 'Tumbler', 'Key chain', 'Fan', 'Textile', 'Plastic', 'PVC', 'Clip', 'Luggage', 'Hat', 'Water bottle', 'Raincoat',
+            'Garment', 'Kitchenware', 'Laundry bin', 'Picnic Mat', 'Chair', 'Lunch box', 'Ball', 'Umbrella', 'Doll', 'Basin', 'Pen',
+            'Keychain', 'Gift set', 'Mug', 'Mirror', 'Fabric', 'Bowl'
+        ];
+        let memoryStorage = {};
+
+        const state = {
+            appName: 'Quotation Bidding Hub',
+            token: storageGet(SESSION_KEY),
+            role: storageGet(SESSION_ROLE_KEY) || TEMPLATE_ROLE,
+            user: null,
+            data: null,
+            myQuotations: null,
+            myQuotationsLoading: false,
+            vendorLoadInFlight: false,
+            authMode: 'login',
+            compareModal: null,
+            quotationManager: null,
+            returnToQuotationManagerOnClose: false,
+            workOrderDraft: null,
+            quotationDraft: null,
+            uploadSequence: 0,
+            newWorkOrderFiles: [],
+            newImages: [],
+            registerAvailability: {
+                username: null,
+                email: null
+            },
+            resetFlow: {
+                email: '',
+                otp: '',
+                otpRequested: false,
+                otpVerified: false
+            }
+        };
+
+        $(init);
+
+        function init() {
+            moment.locale('en');
+            bindGlobalEvents();
+            refreshIcons();
+            renderQuotationSelectOptions();
+            renderWorkspace();
+            callServer('getPublicBootstrap').then(function (result) {
+                state.appName = result.appName || state.appName;
+                $('#workspaceAppName span, #workspaceTopbarAppName span').text(state.appName);
+                if (state.token && state.role === 'vendor') {
+                    return loadVendorWorkspaceData({
+                        invalidateSession: true,
+                        showSuccess: false,
+                        silent: true
+                    });
+                }
+                if (state.token) {
+                    return refreshBootstrap({ silent: true });
+                }
+                redirectToAuthApp();
+            }).catch(function (error) {
+                handleError(error);
+                redirectToAuthApp();
+            });
+        }
+
+        function bindGlobalEvents() {
+            $(document)
+                .on('click', '.auth-tab, .auth-link', function () {
+                    switchAuthMode($(this).data('auth-mode'));
+                })
+                .on('submit', '#loginForm', function (event) {
+                    event.preventDefault();
+                    submitLogin(this);
+                })
+                .on('submit', '#registerForm', function (event) {
+                    event.preventDefault();
+                    submitRegister(this);
+                })
+                .on('blur', '#registerForm [name="username"], #registerForm [name="email"]', function () {
+                    checkRegistrationField($(this).attr('name'));
+                })
+                .on('input', '#registerForm [name="username"], #registerForm [name="email"]', function () {
+                    clearRegistrationFieldState($(this).attr('name'));
+                })
+                .on('submit', '#requestResetForm', function (event) {
+                    event.preventDefault();
+                    submitRequestReset(this);
+                })
+                .on('submit', '#verifyResetOtpForm', function (event) {
+                    event.preventDefault();
+                    submitVerifyResetOtp(this);
+                })
+                .on('submit', '#resetPasswordForm', function (event) {
+                    event.preventDefault();
+                    submitResetPassword(this);
+                })
+                .on('submit', '#workOrderForm', function (event) {
+                    event.preventDefault();
+                    submitWorkOrder(this);
+                })
+                .on('submit', '.user-access-form', function (event) {
+                    event.preventDefault();
+                    submitUserAccess(this);
+                })
+                .on('submit', '#quotationForm', function (event) {
+                    event.preventDefault();
+                    submitQuotation(this);
+                })
+                .on('submit', '.thai-price-form', function (event) {
+                    event.preventDefault();
+                    submitThaiPrice(this);
+                })
+                .on('change', '#quotationImageInput', function () {
+                    handleQuotationImageSelection(this.files);
+                    $(this).val('');
+                })
+                .on('change', '#workOrderFileInput', function () {
+                    handleWorkOrderFileSelection(this.files);
+                    $(this).val('');
+                })
+                .on('change', '#quotationForm [name="workOrderId"]', function () {
+                    syncQuotationCustomerProjectField($(this).val());
+                })
+                .on('change', '#workOrderForm [name="status"]', function () {
+                    updateWorkOrderStatusControl($(this).val());
+                })
+                .on('click', '#openWorkspaceMenuBtn', openWorkspaceMenu)
+                .on('click', '#closeWorkspaceMenuBtn, #workspaceMenuBackdrop', closeWorkspaceMenu)
+                .on('click', '#logoutBtn', logout)
+                .on('click', '#refreshBootstrapBtn', function () {
+                    refreshBootstrap();
+                })
+                .on('click', '#openMyQuotationsBtn', openMyQuotationsModal)
+                .on('click', '#menuManageVendorsBtn', function () {
+                    openVendorsModal();
+                })
+                .on('click', '#closeVendorsModalBtn', closeVendorsModal)
+                .on('click', '#closeMyQuotationsModalBtn', closeMyQuotationsModal)
+                .on('click', '#closeVendorEditorModalBtn', closeVendorEditorModal)
+                .on('click', '#openWorkOrderModalBtn', function () {
+                    state.workOrderDraft = null;
+                    fillWorkOrderForm(null);
+                    openWorkOrderModal();
+                })
+                .on('click', '#closeWorkOrderModalBtn', closeWorkOrderModal)
+                .on('click', '#closeQuotationModalBtn', closeQuotationModal)
+                .on('click', '#closeQuotationManagerModalBtn', closeQuotationManagerModal)
+                .on('click', '#closeWorkOrderDetailModalBtn', closeWorkOrderDetailModal)
+                .on('click', '#clearWorkOrderBtn', clearWorkOrderForm)
+                .on('click', '#clearQuotationBtn', clearQuotationForm)
+                .on('click', '#quotationManagerAddBtn', function () {
+                    state.returnToQuotationManagerOnClose = true;
+                    const workOrderId = $(this).attr('data-work-order-id')
+                        || (state.quotationManager && state.quotationManager.workOrder && state.quotationManager.workOrder.workOrderId)
+                        || '';
+                    if (workOrderId) {
+                        openQuotationModalForWorkOrder(workOrderId);
+                    }
+                })
+                .on('click', '#closeCompareBtn', closeCompareModal)
+                .on('click', '[data-action="view-workorder"]', function () {
+                    openWorkOrderDetailModal($(this).attr('data-work-order-id'));
+                })
+                .on('click', '[data-action="edit-workorder"]', function () {
+                    const row = findById(state.data.workOrders, 'workOrderId', $(this).attr('data-work-order-id'));
+                    state.workOrderDraft = row ? $.extend(true, {}, row) : null;
+                    fillWorkOrderForm(state.workOrderDraft);
+                    openWorkOrderModal();
+                })
+                .on('click', '[data-action="open-compare"]', function () {
+                    openComparison($(this).attr('data-work-order-id'));
+                })
+                .on('click', '[data-action="edit-quotation"]', function () {
+                    const quotationId = $(this).attr('data-quotation-id');
+                    const modalQuotations = state.quotationManager && Array.isArray(state.quotationManager.quotations)
+                        ? state.quotationManager.quotations
+                        : [];
+                    const recentQuotations = Array.isArray(state.myQuotations)
+                        ? state.myQuotations
+                        : [];
+                    const managerQuote = findById(modalQuotations, 'quotationId', quotationId);
+                    const quote = managerQuote || findById(recentQuotations, 'quotationId', quotationId);
+                    state.returnToQuotationManagerOnClose = Boolean(managerQuote);
+                    state.quotationDraft = quote ? $.extend(true, {}, quote) : null;
+                    fillQuotationForm(state.quotationDraft);
+                    hideQuotationManagerModal();
+                    closeMyQuotationsModal();
+                    openQuotationModal();
+                })
+                .on('click', '[data-action="delete-quotation"]', function () {
+                    deleteQuotation($(this).attr('data-quotation-id'));
+                })
+                .on('click', '[data-action="add-quotation"]', function () {
+                    state.returnToQuotationManagerOnClose = false;
+                    openQuotationModalForWorkOrder($(this).attr('data-work-order-id'));
+                })
+                .on('click', '[data-action="manage-quotations"]', function () {
+                    openQuotationManagerModal($(this).attr('data-work-order-id'));
+                })
+                .on('click', '[data-action="sync-vendor-admin"]', function () {
+                    syncVendorAsAdmin($(this).attr('data-user-id'));
+                })
+                .on('click', '[data-action="edit-vendor"]', function () {
+                    openVendorEditorModal($(this).attr('data-user-id'));
+                })
+                .on('click', '[data-remove-existing-image]', function () {
+                    if (!state.quotationDraft || !Array.isArray(state.quotationDraft.images)) {
+                        return;
+                    }
+                    state.quotationDraft.images.splice(Number($(this).attr('data-remove-existing-image')), 1);
+                    renderQuotationPreviews();
+                })
+                .on('click', '[data-remove-new-image]', function () {
+                    removePendingUploadAt('newImages', Number($(this).attr('data-remove-new-image')), renderQuotationPreviews);
+                })
+                .on('click', '#quotationRemoveAllBtn', function () {
+                    clearAllUploads('QUOTATION');
+                })
+                .on('click', '[data-remove-workorder-existing-file]', function () {
+                    if (!state.workOrderDraft || !Array.isArray(state.workOrderDraft.attachments)) {
+                        return;
+                    }
+                    state.workOrderDraft.attachments.splice(Number($(this).attr('data-remove-workorder-existing-file')), 1);
+                    renderWorkOrderAttachmentList();
+                })
+                .on('click', '[data-remove-workorder-new-file]', function () {
+                    removePendingUploadAt('newWorkOrderFiles', Number($(this).attr('data-remove-workorder-new-file')), renderWorkOrderAttachmentList);
+                })
+                .on('click', '#workOrderRemoveAllBtn', function () {
+                    clearAllUploads('WORK_ORDER');
+                })
+                .on('click', '[data-preview-image]', function () {
+                    openImagePreviewModal($(this).attr('data-preview-image'), $(this).attr('data-preview-title'));
+                })
+                .on('click', '#closeImagePreviewModalBtn', closeImagePreviewModal)
+                .on('click', '#imagePreviewModal', function (event) {
+                    if (event.target === this) {
+                        closeImagePreviewModal();
+                    }
+                });
+        }
+
+        function switchAuthMode(mode) {
+            state.authMode = mode;
+            if (mode !== 'register') {
+                resetRegistrationAvailability();
+            }
+            if (mode !== 'reset') {
+                resetPasswordFlow();
+            }
+            $('.auth-panel').addClass('hidden');
+            $('#auth-' + mode).removeClass('hidden');
+            $('.auth-tab').removeClass('bg-white text-slate-900 shadow').addClass('text-slate-500');
+            $('.auth-tab i').attr('data-lucide', 'circle');
+            updateResetFlowUi();
+            refreshIcons();
+        }
+
+        function submitLogin(form) {
+            setLoading(true);
+            callServer('loginUser', formToObject(form)).then(function (response) {
+                state.token = response.token;
+                storageSet(SESSION_KEY, response.token);
+                storageSet(SESSION_ROLE_KEY, response.role);
+                state.role = response.role;
+                state.user = response.user;
+                state.data = null;
+                renderWorkspace();
+                flash('Success', 'Signed in successfully.', 'success', false);
+                setLoading(false);
+                callServer('finalizeLoginSession', response.token).then(function (result) {
+                    if (result && result.user) {
+                        state.user = result.user;
+                    }
+                }).catch(function () { });
+                refreshBootstrap({ silent: true });
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function submitRegister(form) {
+            setLoading(true);
+            validateRegistrationAvailability(form).then(function () {
+                return callServer('registerVendor', formToObject(form));
+            }).then(function (response) {
+                flash('Success', response.message, 'success', false);
+                form.reset();
+                resetRegistrationAvailability();
+                switchAuthMode('login');
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function checkRegistrationField(fieldName) {
+            const $form = $('#registerForm');
+            const payload = {
+                username: $form.find('[name="username"]').val(),
+                email: $form.find('[name="email"]').val()
+            };
+            const value = String(payload[fieldName] || '').trim();
+
+            if (!value) {
+                clearRegistrationFieldState(fieldName);
+                return Promise.resolve();
+            }
+
+            return callServer('checkRegistrationAvailability', payload).then(function (response) {
+                applyRegistrationAvailability('username', response.usernameAvailable, response.usernameMessage);
+                applyRegistrationAvailability('email', response.emailAvailable, response.emailMessage);
+            }).catch(function (error) {
+                clearRegistrationFieldState(fieldName);
+                throw error;
+            });
+        }
+
+        function validateRegistrationAvailability(form) {
+            return callServer('checkRegistrationAvailability', formToObject(form)).then(function (response) {
+                applyRegistrationAvailability('username', response.usernameAvailable, response.usernameMessage);
+                applyRegistrationAvailability('email', response.emailAvailable, response.emailMessage);
+
+                if (!response.usernameAvailable || !response.emailAvailable) {
+                    throw new Error(response.usernameAvailable ? response.emailMessage : response.usernameMessage);
+                }
+            });
+        }
+
+        function applyRegistrationAvailability(fieldName, isAvailable, message) {
+            state.registerAvailability[fieldName] = isAvailable;
+            const hintId = fieldName === 'username' ? '#registerUsernameHint' : '#registerEmailHint';
+            $(hintId)
+                .removeClass('hidden text-emerald-600 text-rose-600')
+                .addClass(isAvailable ? 'text-emerald-600' : 'text-rose-600')
+                .text(message || '');
+        }
+
+        function clearRegistrationFieldState(fieldName) {
+            state.registerAvailability[fieldName] = null;
+            const hintId = fieldName === 'username' ? '#registerUsernameHint' : '#registerEmailHint';
+            $(hintId).addClass('hidden').removeClass('text-emerald-600 text-rose-600').text('');
+        }
+
+        function resetRegistrationAvailability() {
+            clearRegistrationFieldState('username');
+            clearRegistrationFieldState('email');
+        }
+
+        function submitRequestReset(form) {
+            const payload = formToObject(form);
+            setLoading(true);
+            callServer('requestPasswordReset', payload).then(function (response) {
+                state.resetFlow.email = payload.email;
+                state.resetFlow.otpRequested = true;
+                state.resetFlow.otpVerified = false;
+                state.resetFlow.otp = '';
+                updateResetFlowUi();
+                flash('Success', response.message, 'success', false);
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function submitVerifyResetOtp(form) {
+            const payload = formToObject(form);
+            setLoading(true);
+            callServer('verifyPasswordResetOtp', payload).then(function (response) {
+                state.resetFlow.email = payload.email;
+                state.resetFlow.otp = payload.otp;
+                state.resetFlow.otpRequested = true;
+                state.resetFlow.otpVerified = true;
+                updateResetFlowUi();
+                flash('Success', response.message, 'success', true);
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function submitResetPassword(form) {
+            const payload = formToObject(form);
+            setLoading(true);
+            callServer('resetPasswordWithOtp', payload).then(function () {
+                flash('Success', 'Password has been reset successfully.', 'success', true);
+                resetPasswordFlow();
+                $('#requestResetForm')[0].reset();
+                $('#verifyResetOtpForm')[0].reset();
+                form.reset();
+                switchAuthMode('login');
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function updateResetFlowUi() {
+            const isResetMode = state.authMode === 'reset';
+            $('#requestResetForm').toggleClass('hidden', !isResetMode || state.resetFlow.otpRequested);
+            $('#verifyResetOtpForm').toggleClass('hidden', !isResetMode || !state.resetFlow.otpRequested || state.resetFlow.otpVerified);
+            $('#resetPasswordForm').toggleClass('hidden', !isResetMode || !state.resetFlow.otpVerified);
+            $('#resetStepRequest').toggleClass('hidden', !isResetMode || state.resetFlow.otpRequested);
+            $('#resetStepVerify').toggleClass('hidden', !isResetMode || !state.resetFlow.otpRequested || state.resetFlow.otpVerified);
+            $('#resetStepPassword').toggleClass('hidden', !isResetMode || !state.resetFlow.otpVerified);
+
+            if (state.resetFlow.email) {
+                $('#verifyResetOtpForm [name="email"]').val(state.resetFlow.email);
+                $('#resetPasswordForm [name="email"]').val(state.resetFlow.email);
+            }
+
+            if (state.resetFlow.otp) {
+                $('#resetPasswordForm [name="otp"]').val(state.resetFlow.otp);
+            }
+
+            $('#resetFlowHint')
+                .text(
+                    state.resetFlow.otpVerified
+                        ? 'OTP verified. Set your new password below.'
+                        : state.resetFlow.otpRequested
+                            ? 'Enter the OTP sent to your email to continue.'
+                            : 'Enter your registered email address to receive an OTP.'
+                );
+        }
+
+        function resetPasswordFlow() {
+            state.resetFlow = {
+                email: '',
+                otp: '',
+                otpRequested: false,
+                otpVerified: false
+            };
+            if ($('#verifyResetOtpForm').length) {
+                $('#verifyResetOtpForm')[0].reset();
+            }
+            if ($('#resetPasswordForm').length) {
+                $('#resetPasswordForm')[0].reset();
+            }
+            if ($('#requestResetForm').length && state.authMode !== 'reset') {
+                $('#requestResetForm')[0].reset();
+            }
+        }
+
+        function submitWorkOrder(form) {
+            const workOrderUploadError = getUploadBlockingMessage(state.newWorkOrderFiles, 'attachments');
+            if (workOrderUploadError) {
+                flash('Upload Incomplete', workOrderUploadError, 'error', true);
+                return;
+            }
+            const payload = formToObject(form);
+            payload.existingAttachments = JSON.stringify((state.workOrderDraft && state.workOrderDraft.attachments) || []);
+            payload.newAttachments = normalizeUploadedEntries(state.newWorkOrderFiles);
+            setLoading(true);
+            callServer('saveWorkOrder', state.token, payload).then(function (response) {
+                state.workOrderDraft = null;
+                state.newWorkOrderFiles = [];
+                fillWorkOrderForm(null);
+                closeWorkOrderModal();
+                flash('Success', 'Work order saved successfully.', 'success', true);
+                refreshBootstrap({ silent: true });
+                if (response && response.finalizeJob) {
+                    callServer('finalizeWorkOrderSave', state.token, response.finalizeJob)
+                        .then(function () {
+                            refreshBootstrap({ silent: true });
+                        })
+                        .catch(function () { });
+                }
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function submitUserAccess(form) {
+            const payload = formToObject(form);
+            payload.isActive = $(form).find('[name="isActive"]').is(':checked');
+            setLoading(true);
+            callServer('saveUserAccess', state.token, payload).then(function (response) {
+                closeVendorEditorModal();
+                applyBootstrap(response.data, state.role, state.user);
+                flash('Success', 'User access updated successfully.', 'success', true);
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function submitQuotation(form) {
+            const quotationUploadError = getUploadBlockingMessage(state.newImages, 'product images');
+            if (quotationUploadError) {
+                flash('Upload Incomplete', quotationUploadError, 'error', true);
+                return;
+            }
+            const payload = formToObject(form);
+            if (!(state.quotationDraft && state.quotationDraft.quotationId)) {
+                delete payload.quotationId;
+                $(form).find('[name="quotationId"]').val('');
+            }
+            payload.existingImages = JSON.stringify((state.quotationDraft && state.quotationDraft.images) || []);
+            payload.newImages = normalizeUploadedEntries(state.newImages);
+            setLoading(true);
+            callServer('saveVendorQuotation', state.token, payload).then(function (response) {
+                state.quotationDraft = null;
+                state.newImages = [];
+                fillQuotationForm(null);
+                renderQuotationPreviews();
+                closeQuotationModal({ restoreManager: false });
+                flash('Success', 'Quotation saved successfully.', 'success', true);
+                refreshBootstrap({ silent: true, skipVendorSheetSync: true });
+                if (response && response.finalizeJob) {
+                    callServer('finalizeVendorQuotationSave', state.token, response.finalizeJob)
+                        .then(function () {
+                            refreshBootstrap({ silent: true, skipVendorSheetSync: true });
+                        })
+                        .catch(function () { });
+                }
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function submitThaiPrice(form) {
+            const payload = formToObject(form);
+            setLoading(true);
+            callServer('saveQuotationThaiPrice', state.token, payload).then(function (response) {
+                applyBootstrap(response.data, state.role, state.user);
+                if (state.compareModal && Array.isArray(state.compareModal.quotations)) {
+                    const quote = findById(state.compareModal.quotations, 'quotationId', payload.quotationId);
+                    if (quote) {
+                        const thaiPriceValue = String(payload.thaiPrice || '').trim();
+                        quote.thaiPrice = thaiPriceValue === '' ? '' : Number(thaiPriceValue);
+                        quote.adminNote = String(payload.adminNote || '').trim();
+                    }
+                    renderCompareModal();
+                }
+                flash('Success', 'THB price saved successfully.', 'success', true);
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function deleteQuotation(quotationId) {
+            const normalizedQuotationId = String(quotationId || '').trim();
+            if (!normalizedQuotationId || !window.Swal) {
+                return;
+            }
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Delete quotation?',
+                text: 'This will remove the quotation from the vendor sheet, purge its work order reference, and trash uploaded files.',
+                showCancelButton: true,
+                confirmButtonText: 'Delete',
+                cancelButtonText: 'Cancel',
+                customClass: {
+                    popup: 'swal2-quotation-modal',
+                    title: 'swal2-quotation-title',
+                    htmlContainer: 'swal2-quotation-html',
+                    confirmButton: 'swal2-quotation-confirm'
+                }
+            }).then(function (result) {
+                if (!result.isConfirmed) {
+                    return null;
+                }
+
+                setLoading(true);
+                return callServer('deleteVendorQuotation', state.token, { quotationId: normalizedQuotationId }).then(function (response) {
+                    if (state.quotationDraft && state.quotationDraft.quotationId === normalizedQuotationId) {
+                        clearQuotationForm();
+                        closeQuotationModal();
+                    }
+
+                    return loadVendorWorkspaceData({
+                        silent: true,
+                        suppressError: false,
+                        invalidateSession: false,
+                        showSuccess: false
+                    }).then(function () {
+                        if (response && response.workOrderId) {
+                            return callServer('getVendorQuotationsForWorkOrder', state.token, response.workOrderId).then(function (managerResponse) {
+                                state.quotationManager = managerResponse;
+                                renderQuotationManagerModal(managerResponse);
+                                $('#quotationManagerModal').removeClass('hidden').addClass('flex');
+                                refreshIcons();
+                            });
+                        }
+                        return null;
+                    }).then(function () {
+                        flash('Success', 'Quotation deleted successfully.', 'success', true);
+                    });
+                }).catch(handleError).finally(function () {
+                    setLoading(false);
+                });
+            });
+        }
+
+        function refreshBootstrap(options) {
+            const config = options || {};
+            if (state.role === 'vendor') {
+                return loadVendorWorkspaceData({
+                    silent: config.silent,
+                    suppressError: false,
+                    invalidateSession: true,
+                    showSuccess: false
+                });
+            }
+            if (!config.silent) {
+                setLoading(true);
+            }
+            return callServer('getBootstrapData', state.token).then(function (response) {
+                applyBootstrap(response.data, response.role, response.user);
+            }).catch(function (error) {
+                storageRemove(SESSION_KEY);
+                storageRemove(SESSION_ROLE_KEY);
+                state.token = '';
+                state.role = '';
+                state.user = null;
+                state.data = null;
+                flash('Error', error.message || 'Session expired', 'error', true);
+                showAuthView();
+            }).finally(function () {
+                if (!config.silent) {
+                    setLoading(false);
+                }
+            });
+        }
+
+        function applyBootstrap(data, role, user) {
+            state.data = data;
+            state.role = role;
+            state.user = user;
+            storageSet(SESSION_ROLE_KEY, role || '');
+            renderWorkspace();
+        }
+
+        function loadVendorWorkspaceData(options) {
+            const config = options || {};
+            if (!state.token || state.role !== 'vendor') {
+                return Promise.resolve(null);
+            }
+            if (state.vendorLoadInFlight) {
+                return Promise.resolve(null);
+            }
+
+            state.vendorLoadInFlight = true;
+            if (!config.silent) {
+                setLoading(true);
+            }
+
+            return callServer('getBootstrapData', state.token).then(function (response) {
+                applyBootstrap(response.data, response.role || state.role, response.user || state.user);
+                if (config.showSuccess) {
+                    flash('Success', 'Workspace refreshed successfully.', 'success', true);
+                }
+                return response;
+            }).catch(function (error) {
+                if (config.invalidateSession) {
+                    storageRemove(SESSION_KEY);
+                    storageRemove(SESSION_ROLE_KEY);
+                    state.token = '';
+                    state.role = '';
+                    state.user = null;
+                    state.data = null;
+                    flash('Error', error.message || 'Session expired', 'error', true);
+                    showAuthView();
+                    return null;
+                }
+                if (!config.suppressError) {
+                    handleError(error);
+                }
+                return null;
+            }).finally(function () {
+                state.vendorLoadInFlight = false;
+                if (!config.silent) {
+                    setLoading(false);
+                }
+            });
+        }
+
+        function redirectToAuthApp() {
+            closeWorkspaceMenu();
+            closeVendorsModal();
+            closeVendorEditorModal();
+            closeWorkOrderModal();
+            const targetUrl = String(AUTH_APP_URL || '').trim() || '/';
+            try {
+                if (window.top && window.top.location) {
+                    window.top.location.replace(targetUrl);
+                    return;
+                }
+            } catch (error) { }
+            window.location.replace(targetUrl);
+        }
+
+        function showAuthView() {
+            redirectToAuthApp();
+        }
+
+        function showWorkspaceView() {
+            $('#workspaceView').removeClass('hidden');
+        }
+
+        function renderWorkspace() {
+            showWorkspaceView();
+            $('#workspaceAppName span, #workspaceTopbarAppName span').text(state.appName);
+            $('#workspaceTitle').text(state.role === 'admin' ? 'Admin Workspace' : 'Vendor Workspace');
+            $('#workspaceUserLabel').text(buildUserLabel(state.user));
+            $('#workspaceMenuTitle').text(state.role === 'admin' ? 'Admin Workspace' : 'Vendor Workspace');
+            $('#workspaceMenuUserLabel').text(buildUserLabel(state.user));
+            $('#menuManageVendorsBtn, #openWorkOrderModalBtn').toggleClass('hidden', state.role !== 'admin');
+            $('#openMyQuotationsBtn').toggleClass('hidden', state.role !== 'vendor');
+
+            if (!state.data) {
+                renderWorkspaceLoading();
+                refreshIcons();
+                return;
+            }
+
+            renderSummaryCards();
+            renderWorkOrderOptions();
+
+            $('#adminView, #vendorView').removeClass('pointer-events-none opacity-70');
+
+            if (state.role === 'admin') {
+                $('#adminView').removeClass('hidden');
+                $('#vendorView').addClass('hidden');
+                renderAdminSections();
+            } else {
+                $('#vendorView').removeClass('hidden');
+                $('#adminView').addClass('hidden');
+                renderVendorSections();
+            }
+
+            refreshIcons();
+        }
+
+        function renderWorkspaceLoading() {
+            renderSummaryLoading();
+
+            if (state.role === 'admin') {
+                $('#adminView').removeClass('hidden').addClass('pointer-events-none opacity-70');
+                $('#vendorView').addClass('hidden').removeClass('pointer-events-none opacity-70');
+                renderAdminWorkOrderLoadingRows();
+                renderVendorTableLoadingRows();
+            } else {
+                $('#vendorView').removeClass('hidden').addClass('pointer-events-none opacity-70');
+                $('#adminView').addClass('hidden').removeClass('pointer-events-none opacity-70');
+                fillQuotationForm(null);
+                renderQuotationPreviews();
+                renderWorkOrderOptions();
+                renderVendorWorkOrderLoadingRows();
+            }
+        }
+
+        function renderSummaryLoading() {
+            const labels = state.role === 'admin'
+                ? ['Total Work Orders', 'No Quotations Yet', 'Quoted', 'Closed', 'Total Vendors', 'Quotations']
+                : ['Total Work Orders', 'Pending Quote', 'Submitted', 'Closed'];
+            const $target = $('#summarySection').empty();
+
+            labels.forEach(function (label, index) {
+                const $card = $($('#summaryCardTemplate').html());
+                $card.css('animation-delay', (index * 40) + 'ms');
+                $card.addClass(index === 0 ? 'bg-slate-900 text-white' : 'bg-white opacity-80');
+                if (index === 0) {
+                    $card.find('[data-field="label"]').addClass('text-white/70').removeClass('text-slate-500');
+                }
+                $card.find('[data-field="label"]').text(label);
+                $card.find('[data-field="value"]').empty().append(buildLoadingBar('h-8 w-20', index === 0));
+                $target.append($card);
+            });
+        }
+
+        function renderAdminWorkOrderLoadingRows() {
+            renderLoadingTableRows('#adminWorkOrdersTable', [
+                'w-28',
+                'w-32',
+                'w-20',
+                'w-16',
+                'w-10',
+                'w-16',
+                'w-24'
+            ], 4, true);
+        }
+
+        function renderVendorTableLoadingRows() {
+            renderLoadingTableRows('#vendorsTableBody', [
+                'w-32',
+                'w-24',
+                'w-28',
+                'w-16',
+                'w-20',
+                'w-20'
+            ], 4, true);
+        }
+
+        function renderVendorWorkOrderLoadingRows() {
+            renderLoadingTableRows('#vendorWorkOrdersTable', [
+                'w-28',
+                'w-32',
+                'w-20',
+                'w-16',
+                'w-16',
+                'w-14',
+                'w-24'
+            ], 4, true);
+        }
+
+        function renderQuotationCardsLoading(targetSelector) {
+            const $target = $(targetSelector).empty();
+
+            for (let index = 0; index < 3; index += 1) {
+                const $card = $('<article>').addClass('rounded-3xl border border-slate-200 bg-white p-4');
+                const $header = $('<div>').addClass('flex items-start justify-between gap-4');
+                const $titleWrap = $('<div>').addClass('space-y-2');
+                const $grid = $('<div>').addClass('mt-3 grid gap-2 md:grid-cols-2');
+                const $footer = $('<div>').addClass('mt-4 flex justify-end');
+
+                $titleWrap.append(buildLoadingBar('h-4 w-28'), buildLoadingBar('h-3 w-40'));
+                $header.append($titleWrap, buildLoadingBar('h-6 w-20'));
+
+                for (let lineIndex = 0; lineIndex < 4; lineIndex += 1) {
+                    $grid.append(buildLoadingBar('h-3.5 ' + (lineIndex % 2 === 0 ? 'w-32' : 'w-24')));
+                }
+
+                $footer.append(buildLoadingBar('h-9 w-24'));
+                $card.append($header, $grid, $footer);
+                $target.append($card);
+            }
+        }
+
+        function renderLoadingTableRows(targetSelector, widths, rowCount, alignLastRight) {
+            const $target = $(targetSelector).empty();
+
+            for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+                const $row = $('<tr>');
+
+                widths.forEach(function (widthClass, columnIndex) {
+                    const isLastColumn = columnIndex === widths.length - 1;
+                    const $cell = $('<td>').addClass('py-4 pr-4 align-top' + (isLastColumn && alignLastRight ? ' text-right' : ''));
+                    const $bar = buildLoadingBar('h-4 ' + widthClass + (isLastColumn && alignLastRight ? ' ml-auto' : ''));
+                    $cell.append($bar);
+                    $row.append($cell);
+                });
+
+                $target.append($row);
+            }
+        }
+
+        function buildLoadingBar(className, isDark) {
+            return $('<span>').addClass('loading-shimmer block rounded-full ' + (isDark ? 'loading-shimmer-dark ' : '') + className);
+        }
+
+        function renderSummaryCards() {
+            const $target = $('#summarySection').empty();
+            const items = state.role === 'admin'
+                ? [
+                    { label: 'Total Work Orders', value: state.data.summary.total, dark: true, icon: 'briefcase-business' },
+                    { label: 'No Quotations Yet', value: state.data.summary.withoutQuote, icon: 'clock-3' },
+                    { label: 'Quoted', value: state.data.summary.quoted, icon: 'badge-check' },
+                    { label: 'Closed', value: state.data.summary.closed, icon: 'archive' },
+                    { label: 'Total Vendors', value: state.data.summary.vendorUsers, icon: 'users' },
+                    { label: 'Quotations', value: state.data.summary.totalQuotations, icon: 'files' }
+                ]
+                : [
+                    { label: 'Total Work Orders', value: state.data.summary.total, dark: true, icon: 'briefcase-business' },
+                    { label: 'Pending Quote', value: state.data.summary.pendingQuote, icon: 'clock-3' },
+                    { label: 'Submitted', value: state.data.summary.submitted, icon: 'send' },
+                    { label: 'Closed', value: state.data.summary.closed, icon: 'archive' }
+                ];
+
+            items.forEach(function (item, index) {
+                const $card = $($('#summaryCardTemplate').html());
+                $card.css('animation-delay', (index * 40) + 'ms');
+                if (item.dark) {
+                    $card.addClass('bg-slate-900 text-white');
+                    $card.find('[data-field="label"]').addClass('text-white/70').removeClass('text-slate-500');
+                    $card.find('[data-field="icon"]').removeClass('bg-slate-100 text-slate-500').addClass('bg-white/10 text-white');
+                } else {
+                    $card.addClass('bg-white');
+                }
+                $card.find('[data-field="label"]').text(item.label);
+                $card.find('[data-field="icon"] i').attr('data-lucide', item.icon || 'layers-3');
+                $card.find('[data-field="value"]').text(item.value);
+                $target.append($card);
+            });
+            refreshIcons();
+        }
+
+        function renderAdminSections() {
+            renderVendorsTable();
+            renderAdminWorkOrders();
+        }
+
+        function renderVendorSections() {
+            fillQuotationForm(state.quotationDraft);
+            renderQuotationPreviews();
+            renderVendorWorkOrders();
+        }
+
+        function fillWorkOrderForm(workOrder) {
+            const form = $('#workOrderForm')[0];
+            discardPendingUploads(state.newWorkOrderFiles);
+            form.reset();
+            const draft = workOrder || {};
+            Object.keys(draft).forEach(function (key) {
+                $(form).find('[name="' + key + '"]').val(draft[key]);
+            });
+            if (state.workOrderDraft && draft.workOrderId) {
+                state.workOrderDraft.attachments = $.extend(true, [], draft.attachments || []);
+            }
+            state.newWorkOrderFiles = [];
+            $('#workOrderFileInput').val('');
+            renderWorkOrderAttachmentList();
+            updateWorkOrderStatusControl($(form).find('[name="status"]').val() || 'OPEN');
+            $('#workOrderModalTitle').text(draft.workOrderId ? 'Edit Work Order' : 'Create Work Order');
+            $('#saveWorkOrderBtn').text(draft.workOrderId ? 'Save Changes' : 'Create Work Order');
+        }
+
+        function clearWorkOrderForm() {
+            discardPendingUploads(state.newWorkOrderFiles);
+            state.workOrderDraft = null;
+            state.newWorkOrderFiles = [];
+            fillWorkOrderForm(null);
+        }
+
+        function fillQuotationForm(quotation) {
+            const form = $('#quotationForm')[0];
+            discardPendingUploads(state.newImages);
+            form.reset();
+            const draft = quotation || {};
+            $(form).find('[name="quotationId"]').val('');
+            Object.keys(draft).forEach(function (key) {
+                if (key === 'images') {
+                    return;
+                }
+                $(form).find('[name="' + key + '"]').val(draft[key]);
+            });
+            renderQuotationSelectOptions(draft);
+            syncQuotationCustomerProjectField(draft.workOrderId, draft.customerProject);
+            const isEditMode = !!draft.quotationId;
+            $('#saveQuotationBtn').text(isEditMode ? 'Save Changes' : 'Submit Quotation');
+            $('#quotationModalTitle').text(isEditMode ? 'Edit Quotation' : 'Add Quotation');
+            $('#quotationModalModeBadge')
+                .text(isEditMode ? 'Edit Mode' : 'Create Mode')
+                .toggleClass('border-emerald-200 bg-emerald-50 text-emerald-700', !isEditMode)
+                .toggleClass('border-amber-200 bg-amber-50 text-amber-700', isEditMode);
+            $('#quotationModalHint').text(
+                isEditMode
+                    ? 'You are editing an existing quotation. Saving will update the current QT record.'
+                    : 'Create a new quotation for this work order. A new QT number will be generated when you save.'
+            );
+            renderQuotationPreviews();
+        }
+
+        function clearQuotationForm() {
+            discardPendingUploads(state.newImages);
+            state.quotationDraft = null;
+            state.newImages = [];
+            fillQuotationForm(null);
+            $('#quotationImageInput').val('');
+            renderQuotationPreviews();
+        }
+
+        function renderWorkOrderOptions() {
+            const $select = $('#quotationForm [name="workOrderId"]').empty();
+            $select.append($('<option>').val('').text('Select a work order'));
+            (state.data && state.data.workOrders ? state.data.workOrders : []).forEach(function (item) {
+                $select.append($('<option>').val(item.workOrderId).text(item.workOrderNumber + ' • ' + item.briefFromCustomer));
+            });
+            if (state.quotationDraft && state.quotationDraft.workOrderId) {
+                $select.val(state.quotationDraft.workOrderId);
+            }
+            syncQuotationCustomerProjectField($select.val(), state.quotationDraft && state.quotationDraft.customerProject);
+        }
+
+        function renderQuotationSelectOptions(draft) {
+            const quotationDraft = draft || {};
+            renderQuotationSelectField('#quotationForm [name="category"]', QUOTATION_CATEGORY_OPTIONS, 'Select category', quotationDraft.category);
+            renderQuotationSelectField('#quotationForm [name="priceRange"]', QUOTATION_PRICE_RANGE_OPTIONS, 'Select price range', quotationDraft.priceRange);
+        }
+
+        function renderQuotationSelectField(selector, options, placeholder, value) {
+            const normalizedValue = String(value || '').trim();
+            const $select = $(selector).empty();
+            $select.append($('<option>').val('').text(placeholder));
+            (options || []).forEach(function (option) {
+                $select.append($('<option>').val(option).text(option));
+            });
+            if (normalizedValue && (options || []).indexOf(normalizedValue) === -1) {
+                $select.append($('<option>').val(normalizedValue).text(normalizedValue));
+            }
+            $select.val(normalizedValue);
+        }
+
+        function syncQuotationCustomerProjectField(workOrderId, fallbackValue) {
+            const workOrder = findById(state.data && state.data.workOrders, 'workOrderId', workOrderId);
+            const value = workOrder ? (workOrder.briefFromCustomer || '') : String(fallbackValue || '').trim();
+            $('#quotationForm [name="customerProject"]').val(value);
+        }
+
+        function renderVendorsTable() {
+            const $target = $('#vendorsTableBody').empty();
+            const users = state.data.users || [];
+            if (!users.length) {
+                $target.append($('<tr>').html('<td colspan="6" class="py-8 text-center text-sm text-slate-500">No vendors have registered yet.</td>'));
+                return;
+            }
+            users.forEach(function (user) {
+                const $row = $($('#vendorTableRowTemplate').html());
+                $row.find('[data-field="vendorName"]').text(user.vendorName || '-');
+                $row.find('[data-field="vendorCode"]').text(user.vendorCode || '');
+                $row.find('[data-field="contactName"]').text(user.displayName || '-');
+                $row.find('[data-field="email"]').text(user.email || '-');
+                $row.find('[data-field="status"]').replaceWith(renderVendorStatusBadge(user.isActive));
+                $row.find('[data-field="sheetStatus"]').text(user.vendorSheetUrl ? 'Connected' : 'Not linked');
+                $row.find('[data-action="edit-vendor"]').attr('data-user-id', user.userId);
+                $target.append($row);
+            });
+        }
+
+        function renderAdminWorkOrders() {
+            const $tbody = $('#adminWorkOrdersTable').empty();
+            (state.data.workOrders || []).forEach(function (row) {
+                const quoteCount = Number(row.quoteCount || 0);
+                const $tr = $($('#adminWorkOrderRowTemplate').html());
+                $tr.find('[data-field="number"]').text(row.workOrderNumber || '-');
+                $tr.find('[data-field="meta"]').text((row.material || '-') + ' • ' + (row.size || '-'));
+                $tr.find('[data-field="customer"]').text(row.briefFromCustomer || '-');
+                $tr.find('[data-field="deadline"]').text(formatDate(row.deadlineToQuote));
+                $tr.find('[data-field="budget"]').text(formatCurrency(row.budgetRmb, 'RMB'));
+                $tr.find('[data-field="quotes"]').text(String(quoteCount));
+                $tr.find('[data-field="status"]').replaceWith(renderStatusPill(row.status));
+                $tr.find('[data-action="view-workorder"]').attr('data-work-order-id', row.workOrderId);
+                $tr.find('[data-action="edit-workorder"]').attr('data-work-order-id', row.workOrderId);
+                const $compareButton = $tr.find('[data-action="open-compare"]');
+                $compareButton.attr('data-work-order-id', row.workOrderId);
+                if (quoteCount > 0) {
+                    $compareButton
+                        .prop('disabled', false)
+                        .removeClass('bg-slate-200 text-slate-500 cursor-not-allowed')
+                        .addClass('bg-brand text-white')
+                        .find('[data-field="compare-label"]').text('Compare (' + quoteCount + ')');
+                } else {
+                    $compareButton
+                        .prop('disabled', true)
+                        .removeClass('bg-brand text-white')
+                        .addClass('bg-slate-200 text-slate-500 cursor-not-allowed')
+                        .find('[data-field="compare-label"]').text('Waiting for QT');
+                }
+                $tbody.append($tr);
+            });
+        }
+
+        function renderVendorWorkOrders() {
+            const $tbody = $('#vendorWorkOrdersTable').empty();
+            (state.data.workOrders || []).forEach(function (row) {
+                const quoteCount = Number(row.myQuotationCount || 0);
+                const $tr = $($('#vendorWorkOrderRowTemplate').html());
+                $tr.find('[data-field="number"]').text(row.workOrderNumber || '-');
+                $tr.find('[data-field="deadlineMeta"]').text(formatDate(row.deadlineToQuote));
+                $tr.find('[data-field="customer"]').text(row.briefFromCustomer || '-');
+                $tr.find('[data-field="volume"]').text([row.volumeValue, row.volumeUnit].filter(Boolean).join(' ') || '-');
+                $tr.find('[data-field="budget"]').text(formatCurrency(row.budgetRmb, 'RMB'));
+                $tr.find('[data-field="status"]').replaceWith(renderStatusPill(row.status));
+                $tr.find('[data-action="view-workorder"]').attr('data-work-order-id', row.workOrderId);
+                if (quoteCount > 0) {
+                    $tr.find('[data-field="myQuote"]').replaceWith(renderQuotationCountBadge(quoteCount));
+                    const $button = $('<button>')
+                        .attr({ type: 'button', 'data-action': 'manage-quotations', 'data-work-order-id': row.workOrderId })
+                        .addClass('inline-flex min-w-[8.5rem] items-center justify-center rounded-full bg-brand px-4 py-2 text-center text-xs font-semibold text-white whitespace-nowrap')
+                        .html('<i data-lucide="folder-kanban" class="mr-1 inline-flex h-3.5 w-3.5"></i>Manage QT');
+                    $tr.find('[data-field="actionWrap"]').append($button);
+                } else {
+                    $tr.find('[data-field="myQuote"]').replaceWith($('<span>').addClass('text-xs text-slate-400').text('Not submitted'));
+                    const $button = $('<button>')
+                        .attr({ type: 'button', 'data-action': 'add-quotation', 'data-work-order-id': row.workOrderId })
+                        .addClass('inline-flex min-w-[8.5rem] items-center justify-center rounded-full border border-brand/20 bg-brand/10 px-4 py-2 text-center text-xs font-semibold text-brandDark transition whitespace-nowrap hover:bg-brand hover:text-white')
+                        .html('<i data-lucide="circle-plus" class="mr-1 inline-flex h-3.5 w-3.5"></i>Add QT');
+                    $tr.find('[data-field="actionWrap"]').append($button);
+                }
+                $tbody.append($tr);
+            });
+        }
+
+        function renderQuotationCards(targetSelector, quotations) {
+            const $target = $(targetSelector).empty();
+            const items = Array.isArray(quotations) ? quotations : [];
+            if (!items.length) {
+                $target.append($('<p>').addClass('text-sm text-slate-500').text('No quotations yet.'));
+                return;
+            }
+            items.forEach(function (quote) {
+                const $card = $($('#quotationCardTemplate').html());
+                $card.find('[data-field="number"]').text(quote.workOrderNumber || '-');
+                $card.find('[data-field="project"]').text(quote.customerProject || '-');
+                $card.find('[data-field="status"]').replaceWith(renderStatusPill(quote.status));
+                $card.find('[data-field="category"]').text('Category: ' + (quote.category || '-'));
+                $card.find('[data-field="target"]').text('Target: ' + formatCurrency(quote.targetPrice, 'RMB'));
+                $card.find('[data-field="cif"]').addClass('whitespace-pre-line').text('CIF BKK: ' + formatMultilineField(quote.cifBkk));
+                $card.find('[data-field="thai"]').text('Thai Price: ' + formatCurrency(quote.thaiPrice, 'THB'));
+                $card.find('[data-action="edit-quotation"]').attr('data-quotation-id', quote.quotationId);
+                $target.append($card);
+            });
+        }
+
+        function renderQuotationPreviews() {
+            const $target = $('#quotationImagesPreview').empty();
+            const existingImages = state.quotationDraft && Array.isArray(state.quotationDraft.images) ? state.quotationDraft.images : [];
+            const newImages = state.newImages || [];
+            const totalCount = existingImages.length + newImages.length;
+            updateUploadCounter('#quotationUploadCounter', totalCount);
+            updateUploadPickerVisibility('QUOTATION', totalCount);
+
+            if (!existingImages.length && !newImages.length) {
+                $target.append(
+                    $('<div>')
+                        .addClass('rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 md:col-span-2')
+                        .text('No product images attached yet.')
+                );
+                refreshIcons();
+                return;
+            }
+
+            existingImages.forEach(function (image, index) {
+                const $thumb = buildQuotationImageCard(image, {
+                    index: index,
+                    isNew: false,
+                    status: 'UPLOADED'
+                });
+                $target.append($thumb);
+            });
+
+            newImages.forEach(function (image, index) {
+                const $thumb = buildQuotationImageCard(image, {
+                    index: index,
+                    isNew: true,
+                    status: image.uploadStatus || 'PENDING'
+                });
+                $target.append($thumb);
+            });
+            refreshIcons();
+        }
+
+        function buildQuotationImageCard(image, options) {
+            const config = options || {};
+            const isNew = !!config.isNew;
+            const $card = $('<div>').addClass('flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3');
+            const $preview = buildInlineImagePreview({
+                name: image.name || 'Image preview',
+                preview: image.preview || image.previewUrl || image.url || '',
+                previewUrl: image.previewUrl || image.preview || image.url || '',
+                url: image.url || image.previewUrl || image.preview || ''
+            });
+            const $meta = $('<div>').addClass('min-w-0 flex-1');
+            const $title = $('<p>').addClass('truncate text-sm font-semibold text-slate-800').text(image.name || 'Image');
+            const $subtitle = $('<p>').addClass('mt-1 text-xs text-slate-500').text(buildUploadMetaLine(image, config.status));
+            const $progress = renderUploadProgress(image, config.status, 'default');
+            const $actions = $('<div>').addClass('mt-3 flex items-center gap-2');
+
+            $actions.append(renderUploadStatusBadge(config.status, image));
+
+            if (!isNew && (image.url || image.previewUrl || image.preview)) {
+                $actions.append(
+                    $('<button>')
+                        .attr({
+                            type: 'button',
+                            'data-preview-image': image.preview || image.previewUrl || image.url || '',
+                            'data-preview-title': image.name || 'Image preview'
+                        })
+                        .addClass('inline-flex rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600')
+                        .text('Open image')
+                );
+            }
+
+            $actions.append(
+                $('<button>')
+                    .attr({ type: 'button' })
+                    .attr(isNew ? 'data-remove-new-image' : 'data-remove-existing-image', config.index)
+                    .addClass('inline-flex rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600')
+                    .text('Remove')
+            );
+
+            $meta.append($title, $subtitle);
+            if ($progress) {
+                $meta.append($progress);
+            }
+            $meta.append($actions);
+            $card.append($preview, $meta);
+            return $card;
+        }
+
+        function openComparison(workOrderId) {
+            const workOrder = findById(state.data && state.data.workOrders, 'workOrderId', workOrderId);
+            renderCompareModalLoading(workOrder);
+            $('#compareModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+            return callServer('getQuotationComparison', state.token, workOrderId).then(function (response) {
+                state.compareModal = response;
+                renderCompareModal();
+            }).catch(function (error) {
+                $('#compareCardsContainer').empty().append(
+                    $('<div>').addClass('rounded-3xl border border-dashed border-rose-200 bg-white px-8 py-14 text-center text-rose-600').text(error.message || 'Unable to load quotation comparison.')
+                );
+                handleError(error);
+            });
+        }
+
+        function renderCompareModalLoading(workOrder) {
+            $('#compareModalTitle').text(((workOrder && workOrder.workOrderNumber) || 'Work Order') + ' • Comparison');
+            $('#compareModalSubtitle').text((workOrder && workOrder.briefFromCustomer) || 'Loading quotations for comparison...');
+            const $container = $('#compareCardsContainer').empty();
+
+            for (let cardIndex = 0; cardIndex < 2; cardIndex += 1) {
+                const $card = $('<article>').addClass('flex w-[420px] flex-none flex-col rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft');
+                const $header = $('<div>').addClass('flex items-start justify-between gap-4');
+                const $title = $('<div>').addClass('space-y-2').append(buildLoadingBar('h-5 w-28'), buildLoadingBar('h-3 w-20'));
+                const $status = buildLoadingBar('h-6 w-20');
+                const $specStack = $('<div>').addClass('mt-4 space-y-3');
+
+                for (let sectionIndex = 0; sectionIndex < 2; sectionIndex += 1) {
+                    const $section = $('<div>').addClass('rounded-2xl border border-slate-200 bg-slate-50/70 p-4');
+                    $section.append(buildLoadingBar('h-3 w-20'));
+                    for (let lineIndex = 0; lineIndex < 4; lineIndex += 1) {
+                        $section.append(buildLoadingBar('mt-3 h-4 ' + (lineIndex % 2 === 0 ? 'w-full' : 'w-4/5')));
+                    }
+                    $specStack.append($section);
+                }
+
+                $card.append(
+                    $header.append($title, $status),
+                    $specStack,
+                    $('<div>').addClass('mt-3 rounded-2xl border border-slate-200 bg-white p-4').append(buildLoadingBar('h-3 w-16'), buildLoadingBar('mt-3 h-4 w-full'), buildLoadingBar('mt-2 h-4 w-3/4')),
+                    $('<div>').addClass('mt-3 rounded-2xl border border-slate-200 bg-white p-4').append(
+                        $('<div>').addClass('flex items-center justify-between gap-3').append(buildLoadingBar('h-3 w-24'), buildLoadingBar('h-3 w-12')),
+                        $('<div>').addClass('mt-3 grid grid-cols-2 gap-3').append(buildLoadingBar('h-36 w-full rounded-2xl'), buildLoadingBar('h-36 w-full rounded-2xl'))
+                    ),
+                    $('<div>').addClass('mt-3 rounded-2xl border border-slate-200 bg-white p-4').append(
+                        $('<div>').addClass('flex items-center justify-between gap-3').append(buildLoadingBar('h-3 w-20'), buildLoadingBar('h-3 w-10')),
+                        $('<div>').addClass('mt-3 space-y-2').append(buildLoadingBar('h-4 w-full'), buildLoadingBar('h-4 w-5/6'))
+                    ),
+                    $('<div>').addClass('mt-5 space-y-3 rounded-3xl bg-slate-50 p-4').append(buildLoadingBar('h-4 w-28'), buildLoadingBar('h-11 w-full rounded-2xl'), buildLoadingBar('h-4 w-24'), buildLoadingBar('h-20 w-full rounded-2xl'), buildLoadingBar('h-11 w-full rounded-full'))
+                );
+                $container.append($card);
+            }
+        }
+
+        function buildCompareSpecItem(label, value, highlight) {
+            const displayValue = String(value || '').trim() || '-';
+            return $('<div>').addClass('flex items-start justify-between gap-4 border-b border-slate-200/80 pb-2 last:border-b-0 last:pb-0').append(
+                $('<p>').addClass('min-w-0 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500').text(label),
+                $('<p>').addClass('min-w-0 text-right text-sm font-medium leading-6 ' + (highlight ? 'text-brandDark' : 'text-slate-800') + ' whitespace-pre-line').text(displayValue)
+            );
+        }
+
+        function renderCompareModal() {
+            const modal = state.compareModal;
+            if (!modal) {
+                return;
+            }
+
+            $('#compareModalTitle').text((modal.workOrder.workOrderNumber || '') + ' • ' + (modal.workOrder.briefFromCustomer || ''));
+            $('#compareModalSubtitle').text('Compare vendor specs, pricing, lead time, and admin notes side by side.');
+            const $container = $('#compareCardsContainer').empty();
+            const quotations = modal.quotations || [];
+
+            if (!quotations.length) {
+                $container.append($('<div>').addClass('rounded-3xl border border-dashed border-slate-300 bg-white px-8 py-14 text-center text-slate-500').text('No quotations are available for this work order.'));
+                $('#compareModal').removeClass('hidden').addClass('flex');
+                refreshIcons();
+                return;
+            }
+
+            quotations.forEach(function (quote) {
+                const $card = $($('#compareCardTemplate').html());
+                $card.find('[data-field="vendorName"]').text(quote.vendorName || '-');
+                $card.find('[data-field="vendorCode"]').text(quote.vendorCode || '');
+                $card.find('[data-field="status"]').replaceWith(renderStatusPill(quote.status));
+                $card.find('[data-field="commercialSpecs"]').append(
+                    buildCompareSpecItem('Category', quote.category),
+                    buildCompareSpecItem('Price Range', quote.priceRange),
+                    buildCompareSpecItem('Target Price', formatCurrency(quote.targetPrice, 'RMB'), true),
+                    buildCompareSpecItem('CIF BKK', formatMultilineField(quote.cifBkk), true)
+                );
+                $card.find('[data-field="productionSpecs"]').append(
+                    buildCompareSpecItem('Quantity', formatMultilineField(quote.quantityPcs)),
+                    buildCompareSpecItem('Lead Time', quote.leadTime),
+                    buildCompareSpecItem('Sample', quote.sample),
+                    buildCompareSpecItem('Updated', formatDateTime(quote.updatedAt))
+                );
+                $card.find('[data-field="comment"]').text(quote.comment || '-');
+                $card.find('[name="quotationId"]').val(quote.quotationId);
+                $card.find('[name="thaiPrice"]').val(quote.thaiPrice || '');
+                $card.find('[name="adminNote"]').val(quote.adminNote || '');
+                const attachments = Array.isArray(quote.images) ? quote.images : [];
+                const imageAttachments = attachments.filter(isImageFile).slice(0, 6);
+                const fileAttachments = attachments.filter(function (file) {
+                    return !isImageFile(file);
+                });
+                const $images = $card.find('[data-field="images"]');
+                const $files = $card.find('[data-field="files"]');
+                $card.find('[data-field="imageCount"]').text(imageAttachments.length ? String(imageAttachments.length) + ' preview' + (imageAttachments.length === 1 ? '' : 's') : 'No images');
+                $card.find('[data-field="fileCount"]').text(fileAttachments.length ? String(fileAttachments.length) + ' file' + (fileAttachments.length === 1 ? '' : 's') : 'No files');
+                if (!imageAttachments.length) {
+                    $images.append($('<div>').addClass('col-span-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs text-slate-400').text('No product images attached.'));
+                }
+                imageAttachments.forEach(function (image) {
+                    const previewSource = image.previewUrl || image.url || '';
+                    $images.append(
+                        $('<button>')
+                            .attr({
+                                type: 'button',
+                                'data-preview-image': previewSource,
+                                'data-preview-title': image.name || ((quote.vendorName || 'Vendor') + ' product image')
+                            })
+                            .addClass('group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 text-left')
+                            .append(
+                                $('<img>').attr({ src: previewSource, alt: image.name || 'product' }).addClass('h-36 w-full object-cover transition duration-200 group-hover:scale-[1.03]')
+                            )
+                    );
+                });
+                if (!fileAttachments.length) {
+                    $files.append($('<div>').addClass('rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-center text-xs text-slate-400').text('No additional attachments.'));
+                }
+                fileAttachments.forEach(function (file) {
+                    $files.append(
+                        $('<a>')
+                            .attr({ href: file.url || '#', target: '_blank', rel: 'noopener noreferrer' })
+                            .addClass('block truncate rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-brand/40 hover:text-brandDark')
+                            .text(file.name || 'Open attachment')
+                    );
+                });
+                $container.append($card);
+            });
+
+            $('#compareModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function closeCompareModal() {
+            state.compareModal = null;
+            $('#compareModal').addClass('hidden').removeClass('flex');
+            $('#compareCardsContainer').empty();
+            $('#compareModalSubtitle').text('');
+        }
+
+        function openQuotationManagerModal(workOrderId) {
+            closeWorkspaceMenu();
+            const workOrder = findById(state.data && state.data.workOrders, 'workOrderId', workOrderId);
+            if (!workOrder) {
+                return;
+            }
+            renderQuotationManagerLoading(workOrder);
+            $('#quotationManagerModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+            callServer('getVendorQuotationsForWorkOrder', state.token, workOrderId).then(function (response) {
+                state.quotationManager = response;
+                renderQuotationManagerModal(response);
+                refreshIcons();
+            }).catch(function (error) {
+                $('#quotationManagerTableBody').empty().append(
+                    $('<tr>').append(
+                        $('<td>')
+                            .attr('colspan', 6)
+                            .addClass('px-5 py-10 text-center text-sm text-rose-600')
+                            .text(error.message || 'Unable to load quotations.')
+                    )
+                );
+                handleError(error);
+            });
+        }
+
+        function closeQuotationManagerModal() {
+            state.returnToQuotationManagerOnClose = false;
+            state.quotationManager = null;
+            hideQuotationManagerModal();
+            $('#quotationManagerTableBody').empty();
+        }
+
+        function hideQuotationManagerModal() {
+            $('#quotationManagerModal').addClass('hidden').removeClass('flex');
+        }
+
+        function renderQuotationManagerLoading(workOrder) {
+            const $tbody = $('#quotationManagerTableBody').empty();
+            $('#quotationManagerTitle').text(((workOrder && workOrder.workOrderNumber) || 'Work Order') + ' • Manage QT');
+            $('#quotationManagerSubtitle').text((workOrder && workOrder.briefFromCustomer) || 'Loading quotations...');
+            $('#quotationManagerAddBtn').attr('data-work-order-id', workOrder && workOrder.workOrderId ? workOrder.workOrderId : '');
+
+            for (let rowIndex = 0; rowIndex < 4; rowIndex += 1) {
+                const $row = $('<tr>');
+                [
+                    'w-28',
+                    'w-24',
+                    'w-32',
+                    'w-16',
+                    'w-20',
+                    'w-24'
+                ].forEach(function (widthClass, columnIndex) {
+                    const isLastColumn = columnIndex === 5;
+                    const $cell = $('<td>').addClass('px-5 py-4 align-top' + (isLastColumn ? ' text-right' : ''));
+                    $cell.append(buildLoadingBar('h-4 ' + widthClass + (isLastColumn ? ' ml-auto' : '')));
+                    $row.append($cell);
+                });
+                $tbody.append($row);
+            }
+        }
+
+        function openMyQuotationsModal() {
+            closeWorkspaceMenu();
+            renderQuotationCardsLoading('#myQuotationsList');
+            $('#myQuotationsModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+            loadMyQuotations();
+        }
+
+        function closeMyQuotationsModal() {
+            $('#myQuotationsModal').addClass('hidden').removeClass('flex');
+        }
+
+        function loadMyQuotations() {
+            if (state.myQuotationsLoading) {
+                return Promise.resolve(null);
+            }
+
+            state.myQuotationsLoading = true;
+            return callServer('getVendorRecentQuotations', state.token).then(function (response) {
+                state.myQuotations = response && Array.isArray(response.quotations) ? response.quotations : [];
+                renderQuotationCards('#myQuotationsList', state.myQuotations);
+                refreshIcons();
+                return response;
+            }).catch(function (error) {
+                $('#myQuotationsList').empty().append(
+                    $('<p>').addClass('text-sm text-rose-600').text(error.message || 'Unable to load quotations.')
+                );
+                throw error;
+            }).finally(function () {
+                state.myQuotationsLoading = false;
+            });
+        }
+
+        function renderQuotationManagerModal(payload) {
+            const workOrder = payload && payload.workOrder ? payload.workOrder : null;
+            const quotations = payload && Array.isArray(payload.quotations) ? payload.quotations : [];
+            const $tbody = $('#quotationManagerTableBody').empty();
+            $('#quotationManagerTitle').text(((workOrder && workOrder.workOrderNumber) || 'Work Order') + ' • Manage QT');
+            $('#quotationManagerSubtitle').text((workOrder && workOrder.briefFromCustomer) || '-');
+            $('#quotationManagerAddBtn').attr('data-work-order-id', workOrder && workOrder.workOrderId ? workOrder.workOrderId : '');
+
+            if (!quotations.length) {
+                $tbody.append(
+                    $('<tr>').append(
+                        $('<td>')
+                            .attr('colspan', 6)
+                            .addClass('px-5 py-10 text-center text-sm text-slate-500')
+                            .text('No quotations submitted for this work order yet.')
+                    )
+                );
+                return;
+            }
+
+            quotations.forEach(function (quote) {
+                const $row = $($('#quotationManagerRowTemplate').html());
+                $row.find('[data-field="number"]').text(quote.quotationId || '-');
+                $row.find('[data-field="meta"]').text('Updated ' + formatDateTime(quote.updatedAt));
+                $row.find('[data-field="category"]').text(quote.category || '-');
+                $row.find('[data-field="project"]').text(quote.customerProject || '-');
+                $row.find('[data-field="status"]').replaceWith(renderStatusPill(quote.status));
+                $row.find('[data-field="updatedAt"]').text(formatDateTime(quote.updatedAt));
+                $row.find('[data-action="delete-quotation"]').attr('data-quotation-id', quote.quotationId);
+                $row.find('[data-action="edit-quotation"]').attr('data-quotation-id', quote.quotationId);
+                $tbody.append($row);
+            });
+        }
+
+        function openWorkOrderDetailModal(workOrderId) {
+            closeWorkspaceMenu();
+            const workOrder = findById(state.data && state.data.workOrders, 'workOrderId', workOrderId);
+            if (!workOrder) {
+                return;
+            }
+            renderWorkOrderDetailModal(workOrder);
+            $('#workOrderDetailModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function closeWorkOrderDetailModal() {
+            $('#workOrderDetailModal').addClass('hidden').removeClass('flex');
+        }
+
+        function renderWorkOrderDetailModal(workOrder) {
+            const attachments = Array.isArray(workOrder.attachments) ? workOrder.attachments : [];
+            const imageAttachments = attachments.filter(isImageFile);
+            const fileAttachments = attachments.filter(function (file) {
+                return !isImageFile(file);
+            });
+            $('#workOrderDetailTitle').text(workOrder.workOrderNumber || 'Work Order');
+            $('#workOrderDetailSubtitle').text(workOrder.briefFromCustomer || '-');
+            $('#workOrderDetailRemarks').text(workOrder.remarks || '-');
+            $('#workOrderDetailImageCount').text(String(imageAttachments.length) + ' image' + (imageAttachments.length === 1 ? '' : 's'));
+            $('#workOrderDetailFileCount').text(String(fileAttachments.length) + ' file' + (fileAttachments.length === 1 ? '' : 's'));
+
+            const $summary = $('#workOrderDetailSummary').empty();
+            [
+                { label: 'Status', value: String(workOrder.status || '-').toUpperCase(), dark: true },
+                { label: 'Deadline', value: formatDate(workOrder.deadlineToQuote) },
+                { label: 'Budget', value: formatCurrency(workOrder.budgetRmb, 'RMB') },
+                { label: 'Volume', value: [workOrder.volumeValue, workOrder.volumeUnit].filter(Boolean).join(' ') || '-' },
+                { label: 'Material', value: workOrder.material || '-' },
+                { label: 'Size', value: workOrder.size || '-' }
+            ].forEach(function (item) {
+                const $card = $('<article>').addClass('rounded-[1.35rem] border border-slate-200 p-4 ' + (item.dark ? 'bg-slate-900 text-white' : 'bg-white/85'));
+                $card.append(
+                    $('<p>').addClass('text-xs uppercase tracking-[0.18em] ' + (item.dark ? 'text-white/60' : 'text-slate-500')).text(item.label),
+                    $('<p>').addClass('mt-3 font-display text-xl font-semibold ' + (item.dark ? 'text-white' : 'text-slate-900')).text(item.value || '-')
+                );
+                $summary.append($card);
+            });
+
+            const $specs = $('#workOrderDetailSpecs').empty();
+            [
+                { label: 'Brief Date', value: formatDate(workOrder.briefDate) },
+                { label: 'Customer', value: workOrder.briefFromCustomer || '-' },
+                { label: 'Printing', value: workOrder.printing || '-' },
+                { label: 'Packing', value: workOrder.packing || '-' }
+            ].forEach(function (item) {
+                $specs.append(
+                    $('<div>').addClass('rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3').append(
+                        $('<p>').addClass('text-xs font-semibold uppercase tracking-[0.14em] text-slate-500').text(item.label),
+                        $('<p>').addClass('mt-2 text-sm font-medium leading-6 text-slate-800').text(item.value || '-')
+                    )
+                );
+            });
+
+            const $images = $('#workOrderDetailImages').empty();
+            if (!imageAttachments.length) {
+                $images.append($('<div>').addClass('rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-6 text-sm text-slate-500 sm:col-span-2').text('No image attachments.'));
+            } else {
+                imageAttachments.forEach(function (file) {
+                    const previewSource = getFilePreviewSource(file);
+                    $images.append(
+                        $('<article>').addClass('overflow-hidden rounded-[1.35rem] border border-slate-200 bg-slate-50/85').append(
+                            $('<button>')
+                                .attr({
+                                    type: 'button',
+                                    'data-preview-image': previewSource,
+                                    'data-preview-title': file.name || 'Image preview'
+                                })
+                                .addClass('block w-full bg-slate-100')
+                                .append($('<img>').attr({ src: previewSource, alt: file.name || 'Attachment image' }).addClass('h-52 w-full object-cover')),
+                            $('<div>').addClass('space-y-2 px-4 py-4').append(
+                                $('<p>').addClass('truncate text-sm font-semibold text-slate-800').text(file.name || 'Image attachment'),
+                                $('<p>').addClass('text-xs text-slate-500').text(buildUploadMetaLine(file, 'UPLOADED'))
+                            )
+                        )
+                    );
+                });
+            }
+
+            const $files = $('#workOrderDetailFiles').empty();
+            if (!fileAttachments.length) {
+                $files.append($('<div>').addClass('rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-6 text-sm text-slate-500').text('No additional files.'));
+            } else {
+                fileAttachments.forEach(function (file) {
+                    const $card = $('<div>').addClass('flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3');
+                    const $icon = $('<span>').addClass('inline-flex h-11 w-11 flex-none items-center justify-center rounded-full bg-brand/10 text-brand').html('<i data-lucide="paperclip" class="h-4 w-4"></i>');
+                    const $meta = $('<div>').addClass('min-w-0 flex-1').append(
+                        $('<p>').addClass('truncate text-sm font-semibold text-slate-800').text(file.name || 'Attachment'),
+                        $('<p>').addClass('mt-1 text-xs text-slate-500').text(buildUploadMetaLine(file, 'UPLOADED'))
+                    );
+                    if (file.url) {
+                        $meta.append(
+                            $('<a>')
+                                .attr({ href: file.url, target: '_blank', rel: 'noopener noreferrer' })
+                                .addClass('mt-3 inline-flex rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600')
+                                .text('Open file')
+                        );
+                    }
+                    $card.append($icon, $meta);
+                    $files.append($card);
+                });
+            }
+        }
+
+        function syncVendorAsAdmin(userId) {
+            setLoading(true);
+            callServer('syncVendorSheetAsAdmin', state.token, userId).then(function (response) {
+                applyBootstrap(response.data, state.role, state.user);
+                flash('Success', 'Vendor Google Sheet imported successfully.', 'success', true);
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function logout() {
+            discardPendingUploads(state.newImages);
+            discardPendingUploads(state.newWorkOrderFiles);
+            storageRemove(SESSION_KEY);
+            storageRemove(SESSION_ROLE_KEY);
+            state.token = '';
+            state.role = '';
+            state.user = null;
+            state.data = null;
+            state.myQuotations = null;
+            state.myQuotationsLoading = false;
+            state.compareModal = null;
+            state.returnToQuotationManagerOnClose = false;
+            state.workOrderDraft = null;
+            state.quotationDraft = null;
+            state.newImages = [];
+            state.newWorkOrderFiles = [];
+            clearWorkOrderForm();
+            clearQuotationForm();
+            closeWorkspaceMenu();
+            closeVendorsModal();
+            closeVendorEditorModal();
+            closeWorkOrderModal();
+            closeQuotationModal();
+            closeQuotationManagerModal();
+            closeMyQuotationsModal();
+            closeWorkOrderDetailModal();
+            closeCompareModal();
+            redirectToAuthApp();
+        }
+
+        function openWorkspaceMenu() {
+            $('#workspaceMenuBackdrop').removeClass('hidden');
+            $('#workspaceMenu').removeClass('-translate-x-full').addClass('translate-x-0');
+            refreshIcons();
+        }
+
+        function closeWorkspaceMenu() {
+            $('#workspaceMenuBackdrop').addClass('hidden');
+            $('#workspaceMenu').addClass('-translate-x-full').removeClass('translate-x-0');
+        }
+
+        function openVendorsModal() {
+            closeWorkspaceMenu();
+            if (state.data) {
+                renderVendorsTable();
+            }
+            $('#vendorsModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function closeVendorsModal() {
+            $('#vendorsModal').addClass('hidden').removeClass('flex');
+        }
+
+        function openVendorEditorModal(userId) {
+            const user = findById(state.data && state.data.users, 'userId', userId);
+            if (!user) {
+                return;
+            }
+            const $content = $('#vendorEditorContent').empty();
+            const $form = $($('#userAccessTemplate').html());
+            $form.find('[name="userId"]').val(user.userId);
+            $form.find('[name="displayName"]').val(user.displayName || '');
+            $form.find('[name="vendorName"]').val(user.vendorName || '');
+            $form.find('[name="email"]').val(user.email || '');
+            $form.find('[name="vendorSheetUrl"]').val(user.vendorSheetUrl || '');
+            $form.find('[name="isActive"]').prop('checked', !!user.isActive);
+            $form.find('[data-action="sync-vendor-admin"]').attr('data-user-id', user.userId);
+            $content.append($form);
+            $('#vendorEditorTitle').text((user.vendorName || 'Vendor') + ' Details');
+            $('#vendorEditorModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function closeVendorEditorModal() {
+            $('#vendorEditorModal').addClass('hidden').removeClass('flex');
+            $('#vendorEditorContent').empty();
+        }
+
+        function openWorkOrderModal() {
+            closeWorkspaceMenu();
+            $('#workOrderModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function closeWorkOrderModal() {
+            $('#workOrderModal').addClass('hidden').removeClass('flex');
+        }
+
+        function openQuotationModal() {
+            closeWorkspaceMenu();
+            $('#quotationModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function closeQuotationModal(options) {
+            const shouldRestoreManager = !(options && options.restoreManager === false)
+                && state.returnToQuotationManagerOnClose
+                && state.quotationManager;
+            $('#quotationModal').addClass('hidden').removeClass('flex');
+            state.returnToQuotationManagerOnClose = false;
+            if (shouldRestoreManager) {
+                $('#quotationManagerModal').removeClass('hidden').addClass('flex');
+                refreshIcons();
+            }
+        }
+
+        function openQuotationModalForWorkOrder(workOrderId) {
+            hideQuotationManagerModal();
+            discardPendingUploads(state.newImages);
+            state.newImages = [];
+            state.quotationDraft = workOrderId ? {
+                quotationId: '',
+                workOrderId: workOrderId,
+                images: []
+            } : null;
+            fillQuotationForm(state.quotationDraft);
+            if (workOrderId) {
+                $('#quotationForm [name="quotationId"]').val('');
+                $('#quotationForm [name="workOrderId"]').val(workOrderId);
+                syncQuotationCustomerProjectField(workOrderId);
+            }
+            openQuotationModal();
+        }
+
+        function formatMultilineField(value) {
+            const normalized = String(value || '').trim();
+            return normalized || '-';
+        }
+
+        function openImagePreviewModal(imageSrc, title) {
+            if (!imageSrc) {
+                return;
+            }
+            $('#imagePreviewModalImg').attr('src', imageSrc);
+            $('#imagePreviewModalCaption').text(title || 'Image preview');
+            $('#imagePreviewModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function closeImagePreviewModal() {
+            $('#imagePreviewModal').addClass('hidden').removeClass('flex');
+            $('#imagePreviewModalImg').attr('src', '');
+            $('#imagePreviewModalCaption').text('');
+        }
+
+        function callServer(functionName) {
+            console.log("🚀 ~ callServer ~ functionName:", functionName)
+            const args = Array.prototype.slice.call(arguments, 1);
+            return new Promise(function (resolve, reject) {
+                if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                    reject(new Error('google.script.run is not available in this context. Please open the deployed Apps Script web app URL.'));
+                    return;
+                }
+                const runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+                runner[functionName].apply(runner, args);
+            });
+        }
+
+        function formToObject(form) {
+            const object = {};
+            $.each($(form).serializeArray(), function (_, field) {
+                object[field.name] = field.value;
+            });
+            return object;
+        }
+
+        function handleWorkOrderFileSelection(fileList) {
+            queueImmediateUploads('WORK_ORDER', fileList);
+        }
+
+        function handleQuotationImageSelection(fileList) {
+            queueImmediateUploads('QUOTATION', fileList);
+        }
+
+        function queueImmediateUploads(scope, fileList) {
+            const config = getUploadConfig(scope);
+            const currentCount = config.getExistingCount() + config.getPendingList().length;
+            const selectedFiles = Array.from(fileList || []);
+            if (!selectedFiles.length) {
+                return;
+            }
+
+            if (currentCount >= FILE_UPLOAD_LIMIT) {
+                flash('Limit Reached', 'You can upload up to ' + FILE_UPLOAD_LIMIT + ' files.', 'error', true);
+                return;
+            }
+
+            if (currentCount + selectedFiles.length > FILE_UPLOAD_LIMIT) {
+                flash('Limit Reached', 'This selection exceeds the ' + FILE_UPLOAD_LIMIT + '-file limit, so the latest selection was not added.', 'error', true);
+                config.render();
+                return;
+            }
+
+            const queuedUploads = selectedFiles.map(function (file) {
+                return enqueueImmediateUpload(scope, file);
+            });
+            config.render();
+
+            callServer('getDriveUploadAuthContext', state.token, { scope: scope }).then(function (uploadAuthContext) {
+                queuedUploads.forEach(function (queuedUpload) {
+                    startImmediateUpload(scope, queuedUpload.file, queuedUpload.clientId, uploadAuthContext);
+                });
+                config.render();
+            }).catch(function (error) {
+                queuedUploads.forEach(function (queuedUpload) {
+                    markPendingUploadError(scope, queuedUpload.clientId, error);
+                });
+                handleError(error);
+            });
+        }
+
+        function enqueueImmediateUpload(scope, file) {
+            const config = getUploadConfig(scope);
+            const clientId = nextUploadClientId();
+            const preview = createLocalUploadPreview(file);
+            const entry = {
+                clientId: clientId,
+                name: file.name,
+                type: file.type,
+                contentType: file.type,
+                sizeBytes: file.size || 0,
+                totalBytes: file.size || 0,
+                uploadedBytes: 0,
+                uploadPercent: 0,
+                preview: preview.preview,
+                previewUrl: '',
+                uploadStatus: 'PREPARING',
+                isTemp: true,
+                scope: scope,
+                errorMessage: '',
+                objectUrl: preview.objectUrl
+            };
+
+            config.getPendingList().push(entry);
+            return {
+                clientId: clientId,
+                file: file
+            };
+        }
+
+        function startImmediateUpload(scope, file, clientId, uploadAuthContext) {
+            const config = getUploadConfig(scope);
+            const currentEntry = findUploadEntry(config.getPendingList(), clientId);
+            if (currentEntry) {
+                currentEntry.uploadStatus = 'UPLOADING';
+                currentEntry.errorMessage = '';
+                config.render();
+            }
+
+            uploadFileToDriveSession(file, uploadAuthContext, function (progressState) {
+                const uploadingEntry = findUploadEntry(config.getPendingList(), clientId);
+                if (!uploadingEntry) {
+                    return;
+                }
+                updateUploadEntryProgress(uploadingEntry, progressState);
+                config.render();
+            }).then(function (result) {
+                const uploadedEntry = findUploadEntry(config.getPendingList(), clientId);
+                if (!uploadedEntry) {
+                    if (result && result.id) {
+                        deleteUploadedFileSilently(result.id, 'REMOVED_DURING_UPLOAD');
+                    }
+                    return;
+                }
+
+                cleanupUploadPreview(uploadedEntry);
+                $.extend(uploadedEntry, {
+                    fileId: result.id,
+                    name: result.name || uploadedEntry.name || file.name,
+                    url: result.webViewLink || buildDriveOpenUrl(result.id),
+                    preview: buildDrivePreviewUrl(result.id),
+                    previewUrl: buildDrivePreviewUrl(result.id),
+                    contentType: result.mimeType || uploadedEntry.contentType || file.type,
+                    sizeBytes: Number(result.size || uploadedEntry.sizeBytes || file.size || 0),
+                    uploadStatus: 'UPLOADED',
+                    errorMessage: '',
+                    uploadedBytes: Number(result.size || uploadedEntry.totalBytes || file.size || 0),
+                    totalBytes: Number(result.size || uploadedEntry.totalBytes || file.size || 0),
+                    uploadPercent: 100,
+                    isTemp: true,
+                    scope: scope,
+                    objectUrl: ''
+                });
+                config.render();
+            }).catch(function (error) {
+                const failedEntry = findUploadEntry(config.getPendingList(), clientId);
+                if (failedEntry) {
+                    failedEntry.uploadStatus = 'ERROR';
+                    failedEntry.errorMessage = getUploadErrorMessage(error);
+                    config.render();
+                }
+                handleError(error);
+            });
+        }
+
+        function markPendingUploadError(scope, clientId, error) {
+            const config = getUploadConfig(scope);
+            const failedEntry = findUploadEntry(config.getPendingList(), clientId);
+            if (!failedEntry) {
+                return;
+            }
+            failedEntry.uploadStatus = 'ERROR';
+            failedEntry.errorMessage = getUploadErrorMessage(error);
+            config.render();
+        }
+
+        function uploadFileToDriveSession(file, uploadAuthContext, onProgress) {
+            return new Promise(function (resolve, reject) {
+                const uploader = new ResumableUploadToGoogleDrive2();
+                uploader.Do({
+                    file: file,
+                    accessToken: uploadAuthContext.accessToken,
+                    folderId: uploadAuthContext.folderId,
+                    fields: 'id,name,mimeType,size,webViewLink',
+                    chunkSize: RESUMABLE_UPLOAD_CHUNK_SIZE
+                }, function (result, error) {
+                    if (error) {
+                        reject(normalizeUploadError(error));
+                        return;
+                    }
+                    if (!result) {
+                        return;
+                    }
+
+                    if (typeof onProgress === 'function') {
+                        onProgress(result);
+                    }
+
+                    if (result.status === 'Done') {
+                        resolve(result.result || {});
+                    }
+                });
+            });
+        }
+
+        function updateUploadEntryProgress(entry, progressState) {
+            if (!entry || !progressState) {
+                return;
+            }
+
+            if (progressState.status === 'initialize' || progressState.status === 'getLocation' || progressState.status === 'start') {
+                entry.uploadStatus = 'UPLOADING';
+                return;
+            }
+
+            if (progressState.status !== 'Uploading' || !progressState.progressByte) {
+                return;
+            }
+
+            const totalBytes = Number(progressState.progressByte.total || entry.totalBytes || entry.sizeBytes || 0);
+            const uploadedBytes = Math.min(totalBytes, Number(progressState.progressByte.end || -1) + 1);
+            entry.uploadStatus = 'UPLOADING';
+            entry.totalBytes = totalBytes;
+            entry.uploadedBytes = Math.max(0, uploadedBytes);
+            entry.uploadPercent = totalBytes > 0 ? Math.min(100, Math.round((entry.uploadedBytes / totalBytes) * 100)) : 0;
+        }
+
+        function createLocalUploadPreview(file) {
+            if (!file || !isImageFile({ name: file.name, type: file.type, contentType: file.type })) {
+                return { preview: '', objectUrl: '' };
+            }
+
+            if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+                return { preview: '', objectUrl: '' };
+            }
+
+            const objectUrl = URL.createObjectURL(file);
+            return {
+                preview: objectUrl,
+                objectUrl: objectUrl
+            };
+        }
+
+        function cleanupUploadPreview(entry) {
+            if (!entry || !entry.objectUrl || typeof URL === 'undefined' || typeof URL.revokeObjectURL !== 'function') {
+                return;
+            }
+            URL.revokeObjectURL(entry.objectUrl);
+            entry.objectUrl = '';
+        }
+
+        function normalizeUploadError(error) {
+            const message = getUploadErrorMessage(error);
+            return error instanceof Error ? new Error(message) : new Error(message);
+        }
+
+        function getUploadErrorMessage(error) {
+            if (!error) {
+                return 'Upload failed.';
+            }
+            if (typeof error === 'string') {
+                return error;
+            }
+            if (error.message) {
+                return error.message;
+            }
+            if (error.Error) {
+                return error.Error;
+            }
+            if (error.error && error.error.message) {
+                return error.error.message;
+            }
+            return 'Upload failed.';
+        }
+
+        function getUploadConfig(scope) {
+            if (scope === 'QUOTATION') {
+                return {
+                    getPendingList: function () { return state.newImages; },
+                    getExistingCount: function () { return state.quotationDraft && Array.isArray(state.quotationDraft.images) ? state.quotationDraft.images.length : 0; },
+                    render: renderQuotationPreviews,
+                    pickerSelector: '#quotationUploadPickerWrap',
+                    inputSelector: '#quotationImageInput',
+                    limitNoticeSelector: '#quotationUploadLimitNotice',
+                    clearButtonSelector: '#quotationRemoveAllBtn'
+                };
+            }
+            return {
+                getPendingList: function () { return state.newWorkOrderFiles; },
+                getExistingCount: function () { return state.workOrderDraft && Array.isArray(state.workOrderDraft.attachments) ? state.workOrderDraft.attachments.length : 0; },
+                render: renderWorkOrderAttachmentList,
+                pickerSelector: '#workOrderUploadPickerWrap',
+                inputSelector: '#workOrderFileInput',
+                limitNoticeSelector: '#workOrderUploadLimitNotice',
+                clearButtonSelector: '#workOrderRemoveAllBtn'
+            };
+        }
+
+        function updateUploadPickerVisibility(scope, count) {
+            const config = getUploadConfig(scope);
+            const totalCount = Number(count || 0);
+            $(config.pickerSelector).toggleClass('hidden', totalCount >= FILE_UPLOAD_LIMIT);
+            $(config.limitNoticeSelector).toggleClass('hidden', totalCount < FILE_UPLOAD_LIMIT);
+            $(config.clearButtonSelector).toggleClass('hidden', totalCount <= 0);
+            if (totalCount >= FILE_UPLOAD_LIMIT) {
+                $(config.inputSelector).val('');
+            }
+        }
+
+        function clearAllUploads(scope) {
+            if (scope === 'QUOTATION') {
+                discardPendingUploads(state.newImages);
+                state.newImages = [];
+                if (state.quotationDraft && Array.isArray(state.quotationDraft.images)) {
+                    state.quotationDraft.images = [];
+                }
+                $('#quotationImageInput').val('');
+                renderQuotationPreviews();
+                return;
+            }
+
+            discardPendingUploads(state.newWorkOrderFiles);
+            state.newWorkOrderFiles = [];
+            if (state.workOrderDraft && Array.isArray(state.workOrderDraft.attachments)) {
+                state.workOrderDraft.attachments = [];
+            }
+            $('#workOrderFileInput').val('');
+            renderWorkOrderAttachmentList();
+        }
+
+        function nextUploadClientId() {
+            state.uploadSequence += 1;
+            return 'upload-' + Date.now() + '-' + state.uploadSequence;
+        }
+
+        function findUploadEntry(list, clientId) {
+            return (list || []).find(function (item) {
+                return item && item.clientId === clientId;
+            }) || null;
+        }
+
+        function normalizeUploadedEntries(list) {
+            return (list || []).filter(function (item) {
+                return item && item.uploadStatus === 'UPLOADED' && item.fileId;
+            }).map(function (item) {
+                return {
+                    fileId: item.fileId,
+                    name: item.name,
+                    url: item.url,
+                    previewUrl: item.previewUrl || item.preview || '',
+                    contentType: item.contentType || item.type || '',
+                    sizeBytes: item.sizeBytes || 0,
+                    isTemp: item.isTemp === true,
+                    scope: item.scope || ''
+                };
+            });
+        }
+
+        function getUploadBlockingMessage(list, label) {
+            const uploads = list || [];
+            if (uploads.some(function (item) { return item.uploadStatus === 'PREPARING' || item.uploadStatus === 'PENDING' || item.uploadStatus === 'UPLOADING'; })) {
+                return 'Please wait for all ' + label + ' to finish uploading.';
+            }
+            if (uploads.some(function (item) { return item.uploadStatus === 'ERROR'; })) {
+                return 'Some ' + label + ' failed to upload. Remove them or try again.';
+            }
+            return '';
+        }
+
+        function removePendingUploadAt(stateKey, index, renderFn) {
+            const list = state[stateKey] || [];
+            const item = list[index];
+            if (!item) {
+                return;
+            }
+            cleanupUploadPreview(item);
+            list.splice(index, 1);
+            if (item.fileId && item.isTemp) {
+                deleteUploadedFileSilently(item.fileId, 'REMOVE_PENDING_UPLOAD');
+            }
+            renderFn();
+        }
+
+        function discardPendingUploads(list) {
+            (list || []).forEach(function (item) {
+                cleanupUploadPreview(item);
+                if (item && item.fileId && item.isTemp) {
+                    deleteUploadedFileSilently(item.fileId, 'DISCARD_PENDING_UPLOAD');
+                }
+            });
+        }
+
+        function deleteUploadedFileSilently(fileId, reason) {
+            if (!state.token || !fileId) {
+                return;
+            }
+            callServer('deleteUploadedFile', state.token, {
+                fileId: fileId,
+                reason: reason || 'DELETE_FILE'
+            }).catch(function () { });
+        }
+
+        function flash(title, message, type, isToast) {
+            const iconMap = {
+                success: 'success',
+                error: 'error',
+                info: 'info'
+            };
+
+            if (!window.Swal) {
+                return;
+            }
+
+            Swal.close();
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                icon: iconMap[type] || 'info',
+                title: title,
+                text: message,
+                showConfirmButton: false,
+                timer: type === 'error' ? 4500 : 3200,
+                timerProgressBar: true,
+                customClass: {
+                    popup: 'swal2-quotation-toast',
+                    title: 'swal2-quotation-title'
+                }
+            });
+        }
+
+        function handleError(error) {
+            const message = error && error.message ? error.message : 'An unexpected error occurred.';
+            if (!state.token && !state.data && window.Swal) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Unable to Login',
+                    text: message,
+                    confirmButtonText: 'OK',
+                    customClass: {
+                        popup: 'swal2-quotation-modal',
+                        title: 'swal2-quotation-title',
+                        htmlContainer: 'swal2-quotation-html',
+                        confirmButton: 'swal2-quotation-confirm'
+                    }
+                });
+                return;
+            }
+            flash('Error', message, 'error', true);
+        }
+
+        function setLoading(value) {
+            $('#loadingOverlay').toggleClass('hidden', !value).toggleClass('flex', !!value);
+        }
+
+        function formatCurrency(value, currency) {
+            if (value === '' || value === null || value === undefined || Number.isNaN(Number(value))) {
+                return '-';
+            }
+            return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Number(value)) + ' ' + currency;
+        }
+
+        function formatDate(value) {
+            if (!value) {
+                return '-';
+            }
+            const parsed = moment(value);
+            return parsed.isValid() ? parsed.format('D MMM YYYY') : value;
+        }
+
+        function renderStatusPill(status) {
+            const normalized = String(status || '-').toUpperCase();
+            const map = {
+                OPEN: 'bg-teal-50 text-teal-700',
+                PUBLISHED: 'bg-sky-50 text-sky-700',
+                CLOSED: 'bg-slate-200 text-slate-700',
+                SUBMITTED: 'bg-emerald-50 text-emerald-700',
+                UPDATED: 'bg-amber-50 text-amber-700',
+                ON_HOLD: 'bg-rose-50 text-rose-700',
+                WAITING_SAMPLE: 'bg-fuchsia-50 text-fuchsia-700',
+                NOT_AVAILABLE: 'bg-slate-100 text-slate-600'
+            };
+            return $('<span>').addClass('inline-flex rounded-full px-3 py-1 text-xs font-semibold ' + (map[normalized] || 'bg-slate-100 text-slate-600')).text(normalized);
+        }
+
+        function renderWorkOrderAttachmentList() {
+            const $target = $('#workOrderAttachmentList').empty();
+            const existingFiles = state.workOrderDraft && Array.isArray(state.workOrderDraft.attachments) ? state.workOrderDraft.attachments : [];
+            const newFiles = state.newWorkOrderFiles || [];
+            const totalCount = existingFiles.length + newFiles.length;
+            updateUploadCounter('#workOrderUploadCounter', totalCount);
+            updateUploadPickerVisibility('WORK_ORDER', totalCount);
+
+            if (!existingFiles.length && !newFiles.length) {
+                $target.append(
+                    $('<div>')
+                        .addClass('rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 md:col-span-2')
+                        .text('No files attached yet.')
+                );
+                refreshIcons();
+                return;
+            }
+
+            existingFiles.forEach(function (file, index) {
+                $target.append(buildWorkOrderAttachmentCard(file, { index: index, isNew: false, status: 'UPLOADED' }));
+            });
+
+            newFiles.forEach(function (file, index) {
+                $target.append(buildWorkOrderAttachmentCard(file, { index: index, isNew: true, status: file.uploadStatus || 'PENDING' }));
+            });
+            refreshIcons();
+        }
+
+        function buildWorkOrderAttachmentCard(file, options) {
+            const config = options || {};
+            const isNew = !!config.isNew;
+            const $card = $('<div>').addClass('flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3');
+            const $icon = isImageFile(file)
+                ? buildInlineImagePreview(file)
+                : $('<span>').addClass('inline-flex h-10 w-10 flex-none items-center justify-center rounded-full bg-brand/10 text-brand').html('<i data-lucide="paperclip" class="h-4 w-4"></i>');
+            const $meta = $('<div>').addClass('min-w-0 flex-1');
+            const $title = $('<p>').addClass('truncate text-sm font-semibold text-slate-800').text(file.name || 'Attachment');
+            const $subtitle = $('<p>').addClass('mt-1 text-xs text-slate-500').text(buildUploadMetaLine(file, config.status));
+            const $progress = renderUploadProgress(file, config.status, 'default');
+            const $actions = $('<div>').addClass('mt-3 flex items-center gap-2');
+
+            $actions.append(renderUploadStatusBadge(config.status, file));
+
+            if (!isNew && file.url) {
+                $actions.append(
+                    $('<a>')
+                        .attr({ href: file.url, target: '_blank', rel: 'noopener noreferrer' })
+                        .addClass('inline-flex rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600')
+                        .text('Open file')
+                );
+            }
+
+            $actions.append(
+                $('<button>')
+                    .attr({ type: 'button' })
+                    .attr(isNew ? 'data-remove-workorder-new-file' : 'data-remove-workorder-existing-file', config.index)
+                    .addClass('inline-flex rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600')
+                    .text('Remove')
+            );
+
+            $meta.append($title, $subtitle);
+            if ($progress) {
+                $meta.append($progress);
+            }
+            $meta.append($actions);
+            $card.append($icon, $meta);
+            return $card;
+        }
+
+        function buildInlineImagePreview(file) {
+            const previewSource = getFilePreviewSource(file);
+            const $button = $('<button>')
+                .attr({
+                    type: 'button',
+                    'data-preview-image': previewSource,
+                    'data-preview-title': file.name || 'Image preview'
+                })
+                .addClass('flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-100');
+
+            $button.append(
+                $('<img>')
+                    .attr({ src: previewSource, alt: file.name || 'Attachment preview' })
+                    .addClass('h-full w-full object-cover')
+            );
+
+            return $button;
+        }
+
+        function getFilePreviewSource(file) {
+            return String((file && (file.preview || file.previewUrl || file.url)) || '').trim();
+        }
+
+        function isImageFile(file) {
+            const contentType = String(file && (file.contentType || file.type) || '').trim().toLowerCase();
+            const fileName = String(file && file.name || '').trim().toLowerCase();
+            return contentType.indexOf('image/') === 0 || /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif)$/i.test(fileName);
+        }
+
+        function updateUploadCounter(selector, count) {
+            $(selector).text(String(count || 0) + '/' + FILE_UPLOAD_LIMIT + ' files');
+        }
+
+        function buildUploadMetaLine(file, status) {
+            const parts = [];
+            if (file.contentType || file.type) {
+                parts.push(String(file.contentType || file.type));
+            }
+            if (file.sizeBytes) {
+                parts.push(formatFileSize(file.sizeBytes));
+            }
+            if (status === 'ERROR' && file.errorMessage) {
+                parts.push(file.errorMessage);
+            }
+            return parts.join(' • ') || 'File ready';
+        }
+
+        function appendUploadProgress($target, file, status, tone) {
+            const $progress = renderUploadProgress(file, status, tone);
+            $target.empty();
+            if ($progress) {
+                $target.append($progress);
+            }
+        }
+
+        function renderUploadProgress(file, status, tone) {
+            const normalized = String(status || '').toUpperCase();
+            if (normalized !== 'PREPARING' && normalized !== 'UPLOADING' && normalized !== 'PENDING') {
+                return null;
+            }
+
+            const totalBytes = Number(file.totalBytes || file.sizeBytes || 0);
+            const uploadedBytes = Number(file.uploadedBytes || 0);
+            const percent = Math.max(0, Math.min(100, Number(file.uploadPercent || 0)));
+            const isOverlay = String(tone || '').toLowerCase() === 'overlay';
+            const $wrap = $('<div>').addClass('mt-2 space-y-1.5');
+            const $track = $('<div>').addClass('h-1.5 overflow-hidden rounded-full ' + (isOverlay ? 'bg-white/20' : 'bg-slate-200'));
+            const $bar = $('<div>').addClass('h-full rounded-full transition-all duration-150 ' + (isOverlay ? 'bg-white/90' : 'bg-brand')).css('width', percent + '%');
+            const label = normalized === 'PREPARING'
+                ? 'Preparing upload...'
+                : totalBytes > 0
+                ? (formatFileSize(uploadedBytes) + ' / ' + formatFileSize(totalBytes) + ' (' + percent + '%)')
+                : (percent + '%');
+            const textClass = isOverlay
+                ? (normalized === 'PENDING' ? 'text-white/70' : 'text-white/80')
+                : 'text-slate-500';
+            const $label = $('<p>').addClass('text-[11px] ' + textClass).text(label);
+
+            $track.append($bar);
+            $wrap.append($track, $label);
+            return $wrap;
+        }
+
+        function renderUploadStatusBadge(status, file) {
+            const normalized = String(status || 'UPLOADED').toUpperCase();
+            const percent = Math.max(0, Math.min(100, Number(file && file.uploadPercent || 0)));
+            const map = {
+                PREPARING: { classes: 'bg-indigo-50 text-indigo-700', icon: 'loader-circle', label: 'Preparing upload', spin: true },
+                PENDING: { classes: 'bg-amber-50 text-amber-700', icon: 'clock-3', label: 'Pending upload', spin: false },
+                UPLOADING: { classes: 'bg-sky-50 text-sky-700', icon: 'loader-circle', label: 'Uploading ' + percent + '%', spin: true },
+                UPLOADED: { classes: 'bg-emerald-50 text-emerald-700', icon: 'check-circle-2', label: 'Uploaded', spin: false },
+                ERROR: { classes: 'bg-rose-50 text-rose-700', icon: 'triangle-alert', label: 'Upload failed', spin: false }
+            };
+            const meta = map[normalized] || map.UPLOADED;
+            const $badge = $('<span>').addClass('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ' + meta.classes);
+            const $icon = $('<i>').attr('data-lucide', meta.icon).addClass('h-3.5 w-3.5' + (meta.spin ? ' animate-spin' : ''));
+            return $badge.append($icon, $('<span>').text(meta.label));
+        }
+
+        function buildDrivePreviewUrl(fileId) {
+            const normalized = String(fileId || '').trim();
+            return normalized ? ('https://drive.google.com/thumbnail?id=' + encodeURIComponent(normalized) + '&sz=w1600') : '';
+        }
+
+        function buildDriveOpenUrl(fileId) {
+            const normalized = String(fileId || '').trim();
+            return normalized ? ('https://drive.google.com/open?id=' + encodeURIComponent(normalized)) : '';
+        }
+
+        function updateWorkOrderStatusControl(status) {
+            const normalized = String(status || 'OPEN').toUpperCase();
+            const meta = getWorkOrderStatusMeta(normalized);
+            const $control = $('#workOrderStatusControl');
+            const $iconWrap = $('#workOrderStatusIconWrap');
+            const $icon = $('#workOrderStatusIcon');
+            const $select = $('#workOrderForm [name="status"]');
+
+            $control.removeClass('border-teal-200 bg-teal-50/90 border-sky-200 bg-sky-50/90 border-rose-200 bg-rose-50/90 border-slate-300 bg-slate-100/90');
+            $iconWrap.removeClass('bg-teal-100 text-teal-700 bg-sky-100 text-sky-700 bg-rose-100 text-rose-700 bg-slate-200 text-slate-700');
+            $select.removeClass('text-teal-700 text-sky-700 text-rose-700 text-slate-700');
+
+            $control.addClass(meta.controlClass);
+            $iconWrap.addClass(meta.iconClass);
+            $select.addClass(meta.textClass).val(normalized);
+            $icon.attr('data-lucide', meta.icon);
+            refreshIcons();
+        }
+
+        function getWorkOrderStatusMeta(status) {
+            const map = {
+                OPEN: {
+                    icon: 'folder-open',
+                    controlClass: 'border-teal-200 bg-teal-50/90',
+                    iconClass: 'bg-teal-100 text-teal-700',
+                    textClass: 'text-teal-700'
+                },
+                PUBLISHED: {
+                    icon: 'send',
+                    controlClass: 'border-sky-200 bg-sky-50/90',
+                    iconClass: 'bg-sky-100 text-sky-700',
+                    textClass: 'text-sky-700'
+                },
+                ON_HOLD: {
+                    icon: 'pause',
+                    controlClass: 'border-rose-200 bg-rose-50/90',
+                    iconClass: 'bg-rose-100 text-rose-700',
+                    textClass: 'text-rose-700'
+                },
+                CLOSED: {
+                    icon: 'lock',
+                    controlClass: 'border-slate-300 bg-slate-100/90',
+                    iconClass: 'bg-slate-200 text-slate-700',
+                    textClass: 'text-slate-700'
+                }
+            };
+            return map[status] || map.OPEN;
+        }
+
+        function formatFileSize(value) {
+            const size = Number(value || 0);
+            if (!size) {
+                return '';
+            }
+            if (size < 1024) {
+                return size + ' B';
+            }
+            if (size < 1024 * 1024) {
+                return (size / 1024).toFixed(1) + ' KB';
+            }
+            return (size / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function renderVendorStatusBadge(isActive) {
+            const active = !!isActive;
+            return $('<span>')
+                .addClass('inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ' + (active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'))
+                .append(
+                    $('<span>').addClass('h-2 w-2 rounded-full ' + (active ? 'bg-emerald-500' : 'bg-rose-500')),
+                    document.createTextNode(active ? 'ACTIVE' : 'PENDING')
+                );
+        }
+
+        function renderQuotationCountBadge(count) {
+            return $('<span>')
+                .addClass('inline-flex rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700')
+                .text(String(count || 0) + ' quotations');
+        }
+
+        function formatDateTime(value) {
+            if (!value) {
+                return '-';
+            }
+            if (/^\d{4}-\d{2}-\d{2}$/.test(String(value).trim())) {
+                const parsedDateOnly = moment(value, 'YYYY-MM-DD', true);
+                return parsedDateOnly.isValid() ? parsedDateOnly.format('D MMM YYYY') : value;
+            }
+            const parsed = moment(value);
+            return parsed.isValid() ? parsed.format('D MMM YYYY, HH:mm') : value;
+        }
+
+        function refreshIcons() {
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                window.lucide.createIcons();
+            }
+        }
+
+        function buildUserLabel(user) {
+            if (!user) {
+                return '';
+            }
+            const baseName = user.displayName || user.username || '';
+            return baseName + (user.vendorName ? ' • ' + user.vendorName : '');
+        }
+
+        function findById(list, field, value) {
+            return (list || []).find(function (item) {
+                return item && item[field] === value;
+            }) || null;
+        }
+
+        function storageGet(key) {
+            try {
+                return window.localStorage ? window.localStorage.getItem(key) || '' : (memoryStorage[key] || '');
+            } catch (error) {
+                return memoryStorage[key] || '';
+            }
+        }
+
+        function storageSet(key, value) {
+            memoryStorage[key] = value || '';
+            try {
+                if (window.localStorage) {
+                    window.localStorage.setItem(key, value || '');
+                }
+            } catch (error) { }
+        }
+
+        function storageRemove(key) {
+            delete memoryStorage[key];
+            try {
+                if (window.localStorage) {
+                    window.localStorage.removeItem(key);
+                }
+            } catch (error) { }
+        }
+        })();
+    </script>
+</body>
+
+</html>
