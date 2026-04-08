@@ -9,9 +9,13 @@ const COL_PLATE  = 3;  // C ทะเบียน
 const COL_TYPE   = 4;  // D ประเภทการลา
 const COL_START  = 5;  // E วันที่เริ่มต้นการลา
 const COL_END    = 6;  // F วันที่สิ้นสุดการลา
-const COL_DAYS   = 7;  // G จำนวนวันลา
-const COL_STATUS = 8;  // H สถานะการอนุมัติ
-const COL_TIME   = 9;  // I วันเวลาอนุมัติ
+const COL_USERNAME = 7;  // G username
+const COL_DAYS   = 8;  // H จำนวนวันลา
+const COL_JOB_TYPE = 9;  // I ประเภทงาน
+const COL_STATUS = 10;  // J สถานะการอนุมัติ
+const COL_NOTE   = 11; // K หมายเหตุ
+const COL_TIME   = 12; // L วันเวลาอนุมัติ
+const COL_UUID   = 13; // M UUID
 
 /**
  * คืนหน้าเว็บ พร้อมข้อมูลจากชีทฝั่งเซิร์ฟเวอร์เลย
@@ -28,8 +32,8 @@ function doGet() {
 
   if (lastRow > HEADER_ROW) {
     const numRows = lastRow - HEADER_ROW;
-    // ดึง A:I ของทุกแถวที่มีข้อมูล
-    const values = sh.getRange(HEADER_ROW + 1, 1, numRows, COL_TIME).getValues();
+    // ดึง A:M ของทุกแถวที่มีข้อมูลตาม schema ล่าสุด
+    const values = sh.getRange(HEADER_ROW + 1, 1, numRows, COL_UUID).getValues();
 
     for (let i = 0; i < values.length; i++) {
       const r = values[i];
@@ -40,8 +44,10 @@ function doGet() {
       const type   = r[COL_TYPE   - 1]; // D
       const start  = r[COL_START  - 1]; // E
       const end    = r[COL_END    - 1]; // F
-      const days   = r[COL_DAYS   - 1]; // G
-      const status = r[COL_STATUS - 1]; // H
+      const days   = r[COL_DAYS   - 1]; // H
+      const jobType = r[COL_JOB_TYPE - 1]; // I
+      const status = r[COL_STATUS - 1]; // J
+      const note = r[COL_NOTE - 1]; // K
 
       // ข้ามแถวที่ไม่มีข้อมูลเลย
       if (!name && !plate && !type) continue;
@@ -54,6 +60,8 @@ function doGet() {
         start: start,
         end: end,
         days: days,
+        jobType: jobType,
+        note: note,
         status: status || ''  // '', 'อนุมัติ', 'ไม่อนุมัติ'
       });
     }
