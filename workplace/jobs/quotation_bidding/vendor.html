@@ -281,7 +281,7 @@
             <div class="mt-4 grid gap-3">
                 <button id="menuManageVendorsBtn" type="button"
                     class="hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:border-brand hover:text-brandDark"><i
-                        data-lucide="users" class="mr-2 inline-flex h-4 w-4"></i>Manage Vendors</button>
+                        data-lucide="users" class="mr-2 inline-flex h-4 w-4"></i>Manage Suppliers</button>
                 <button id="openMyQuotationsBtn" type="button"
                     class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:border-brand hover:text-brandDark"><i
                         data-lucide="folder-kanban" class="mr-2 inline-flex h-4 w-4"></i>My Quotations</button>
@@ -302,7 +302,7 @@
             <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
                 <div>
                     <p class="text-sm text-slate-500">Admin Management</p>
-                    <h3 class="font-display text-2xl font-semibold">Vendors</h3>
+                    <h3 class="font-display text-2xl font-semibold">Suppliers</h3>
                 </div>
                 <button id="closeVendorsModalBtn" type="button"
                     class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
@@ -312,7 +312,7 @@
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead>
                         <tr class="text-left text-slate-500">
-                            <th class="pb-3 pr-4">Vendor</th>
+                            <th class="pb-3 pr-4">Supplier</th>
                             <th class="pb-3 pr-4">Contact</th>
                             <th class="pb-3 pr-4">Email</th>
                             <th class="pb-3 pr-4">Status</th>
@@ -331,8 +331,8 @@
         <div class="glass w-full max-w-4xl rounded-[2rem] border border-white/80 shadow-soft">
             <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
                 <div>
-                    <p class="text-sm text-slate-500">Vendor Detail</p>
-                    <h3 id="vendorEditorTitle" class="font-display text-2xl font-semibold">Edit Vendor</h3>
+                    <p class="text-sm text-slate-500">Supplier Detail</p>
+                    <h3 id="vendorEditorTitle" class="font-display text-2xl font-semibold">Edit Supplier</h3>
                 </div>
                 <button id="closeVendorEditorModalBtn" type="button"
                     class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
@@ -451,7 +451,7 @@
             <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
                 <div>
                     <div class="flex flex-wrap items-center gap-3">
-                        <p class="text-sm text-slate-500">Vendor Action</p>
+                        <p class="text-sm text-slate-500">Supplier Action</p>
                         <span id="quotationModalModeBadge"
                             class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Create Mode</span>
                     </div>
@@ -557,7 +557,7 @@
             class="glass flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-white/80 shadow-soft">
             <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
                 <div>
-                    <p class="text-sm text-slate-500">Vendor Action</p>
+                    <p class="text-sm text-slate-500">Supplier Action</p>
                     <h3 id="quotationManagerTitle" class="font-display text-2xl font-semibold">Manage QT</h3>
                     <p id="quotationManagerSubtitle" class="mt-1 text-sm text-slate-500"></p>
                 </div>
@@ -596,7 +596,7 @@
             class="glass flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] border border-white/80 shadow-soft">
             <div class="flex items-center justify-between border-b border-slate-200 px-6 py-5">
                 <div>
-                    <p class="text-sm text-slate-500">Vendor Action</p>
+                    <p class="text-sm text-slate-500">Supplier Action</p>
                     <h3 class="font-display text-2xl font-semibold">My Quotations</h3>
                     <p class="mt-1 text-sm text-slate-500">Track recent drafts and submissions, then reopen any record for updates.</p>
                 </div>
@@ -773,7 +773,7 @@
                 <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Display
                         name</span><input name="displayName" type="text"
                         class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
-                <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Vendor name</span><input
+                <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Supplier name</span><input
                         name="vendorName" type="text"
                         class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand"></label>
                 <label class="block space-y-2"><span class="text-sm font-medium text-slate-600">Email</span><input
@@ -1358,6 +1358,7 @@
                 return;
             }
             const payload = formToObject(form);
+            const isNewWorkOrder = !payload.workOrderId;
             payload.existingAttachments = JSON.stringify((state.workOrderDraft && state.workOrderDraft.attachments) || []);
             payload.newAttachments = normalizeUploadedEntries(state.newWorkOrderFiles);
             setLoading(true);
@@ -1368,6 +1369,9 @@
                 closeWorkOrderModal();
                 flash('Success', 'Work order saved successfully.', 'success', true);
                 refreshBootstrap({ silent: true });
+                if (isNewWorkOrder && response && response.workOrder && response.workOrder.workOrderId) {
+                    notifyWorkOrderSuppliers(response.workOrder.workOrderId);
+                }
                 if (response && response.finalizeJob) {
                     callServer('finalizeWorkOrderSave', state.token, response.finalizeJob)
                         .then(function () {
@@ -1378,6 +1382,60 @@
             }).catch(handleError).finally(function () {
                 setLoading(false);
             });
+        }
+
+        function notifyWorkOrderSuppliers(workOrderId) {
+            showEmailProgressToast();
+            callServer('sendWorkOrderNotificationEmails', state.token, workOrderId)
+                .then(function (response) {
+                    showEmailResultToast(response && response.notificationSummary);
+                })
+                .catch(function (error) {
+                    const message = error && error.message ? error.message : 'Unable to send supplier email notifications.';
+                    flash('Email Failed', message, 'error', true);
+                });
+        }
+
+        function showEmailProgressToast() {
+            if (!window.Swal) {
+                return;
+            }
+            Swal.close();
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                icon: 'info',
+                title: 'Sending Email',
+                text: 'Sending email notifications to suppliers...',
+                showConfirmButton: false,
+                timer: undefined,
+                timerProgressBar: false,
+                customClass: {
+                    popup: 'swal2-quotation-toast',
+                    title: 'swal2-quotation-title'
+                }
+            });
+        }
+
+        function showEmailResultToast(notificationSummary) {
+            const summary = notificationSummary || {};
+            const notifiedCount = Number(summary.notifiedCount || 0);
+            const failedCount = Number(summary.failedCount || 0);
+            const recipientCount = Number(summary.recipientCount || 0);
+
+            if (notifiedCount > 0 && failedCount > 0) {
+                flash('Email Sent', 'Sent successfully to ' + notifiedCount + ' supplier(s). ' + failedCount + ' failed.', 'success', true);
+                return;
+            }
+            if (notifiedCount > 0) {
+                flash('Email Sent', 'Sent successfully to ' + notifiedCount + ' supplier(s).', 'success', true);
+                return;
+            }
+            if (failedCount > 0) {
+                flash('Email Failed', 'Unable to send supplier email notifications.', 'error', true);
+                return;
+            }
+            flash('Email Skipped', recipientCount ? 'No supplier emails were sent.' : 'No active suppliers were available for email notification.', 'info', true);
         }
 
         function submitUserAccess(form) {
@@ -1456,7 +1514,7 @@
             Swal.fire({
                 icon: 'warning',
                 title: 'Delete quotation?',
-                text: 'This will remove the quotation from the vendor sheet, purge its work order reference, and trash uploaded files.',
+                text: 'This will remove the quotation from the supplier sheet, purge its work order reference, and trash uploaded files.',
                 showCancelButton: true,
                 confirmButtonText: 'Delete',
                 cancelButtonText: 'Cancel',
@@ -1611,9 +1669,9 @@
         function renderWorkspace() {
             showWorkspaceView();
             $('#workspaceAppName span, #workspaceTopbarAppName span').text(state.appName);
-            $('#workspaceTitle').text(state.role === 'admin' ? 'Admin Workspace' : 'Vendor Workspace');
+            $('#workspaceTitle').text(state.role === 'admin' ? 'Admin Workspace' : 'Supplier Workspace');
             $('#workspaceUserLabel').text(buildUserLabel(state.user));
-            $('#workspaceMenuTitle').text(state.role === 'admin' ? 'Admin Workspace' : 'Vendor Workspace');
+            $('#workspaceMenuTitle').text(state.role === 'admin' ? 'Admin Workspace' : 'Supplier Workspace');
             $('#workspaceMenuUserLabel').text(buildUserLabel(state.user));
             $('#menuManageVendorsBtn, #openWorkOrderModalBtn').toggleClass('hidden', state.role !== 'admin');
             $('#openMyQuotationsBtn').toggleClass('hidden', state.role !== 'vendor');
@@ -1662,7 +1720,7 @@
 
         function renderSummaryLoading() {
             const labels = state.role === 'admin'
-                ? ['Total Work Orders', 'No Quotations Yet', 'Quoted', 'Closed', 'Total Vendors', 'Quotations']
+                ? ['Total Work Orders', 'No Quotations Yet', 'Quoted', 'Closed', 'Total Suppliers', 'Quotations']
                 : ['Total Work Orders', 'Pending Quote', 'Submitted', 'Closed'];
             const $target = $('#summarySection').empty();
 
@@ -1767,7 +1825,7 @@
                     { label: 'No Quotations Yet', value: state.data.summary.withoutQuote, icon: 'clock-3' },
                     { label: 'Quoted', value: state.data.summary.quoted, icon: 'badge-check' },
                     { label: 'Closed', value: state.data.summary.closed, icon: 'archive' },
-                    { label: 'Total Vendors', value: state.data.summary.vendorUsers, icon: 'users' },
+                    { label: 'Total Suppliers', value: state.data.summary.vendorUsers, icon: 'users' },
                     { label: 'Quotations', value: state.data.summary.totalQuotations, icon: 'files' }
                 ]
                 : [
@@ -1911,7 +1969,7 @@
             const $target = $('#vendorsTableBody').empty();
             const users = state.data.users || [];
             if (!users.length) {
-                $target.append($('<tr>').html('<td colspan="6" class="py-8 text-center text-sm text-slate-500">No vendors have registered yet.</td>'));
+                $target.append($('<tr>').html('<td colspan="6" class="py-8 text-center text-sm text-slate-500">No suppliers have registered yet.</td>'));
                 return;
             }
             users.forEach(function (user) {
@@ -2168,7 +2226,7 @@
             }
 
             $('#compareModalTitle').text((modal.workOrder.workOrderNumber || '') + ' • ' + (modal.workOrder.briefFromCustomer || ''));
-            $('#compareModalSubtitle').text('Compare vendor specs, pricing, lead time, and admin notes side by side.');
+            $('#compareModalSubtitle').text('Compare supplier specs, pricing, lead time, and admin notes side by side.');
             const $container = $('#compareCardsContainer').empty();
             const quotations = modal.quotations || [];
 
@@ -2219,7 +2277,7 @@
                             .attr({
                                 type: 'button',
                                 'data-preview-image': previewSource,
-                                'data-preview-title': image.name || ((quote.vendorName || 'Vendor') + ' product image')
+                                'data-preview-title': image.name || ((quote.vendorName || 'Supplier') + ' product image')
                             })
                             .addClass('group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 text-left')
                             .append(
@@ -2494,7 +2552,7 @@
             setLoading(true);
             callServer('syncVendorSheetAsAdmin', state.token, userId).then(function (response) {
                 applyBootstrap(response.data, state.role, state.user);
-                flash('Success', 'Vendor Google Sheet imported successfully.', 'success', true);
+                flash('Success', 'Supplier Google Sheet imported successfully.', 'success', true);
             }).catch(handleError).finally(function () {
                 setLoading(false);
             });
@@ -2570,7 +2628,7 @@
             $form.find('[name="isActive"]').prop('checked', !!user.isActive);
             $form.find('[data-action="sync-vendor-admin"]').attr('data-user-id', user.userId);
             $content.append($form);
-            $('#vendorEditorTitle').text((user.vendorName || 'Vendor') + ' Details');
+            $('#vendorEditorTitle').text((user.vendorName || 'Supplier') + ' Details');
             $('#vendorEditorModal').removeClass('hidden').addClass('flex');
             refreshIcons();
         }
@@ -3034,7 +3092,7 @@
             }).catch(function () { });
         }
 
-        function flash(title, message, type, isToast) {
+        function flash(title, message, type, isToast, position) {
             const iconMap = {
                 success: 'success',
                 error: 'error',
@@ -3048,7 +3106,7 @@
             Swal.close();
             Swal.fire({
                 toast: true,
-                position: 'top',
+                position: position || 'top-end',
                 icon: iconMap[type] || 'info',
                 title: title,
                 text: message,

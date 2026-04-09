@@ -151,6 +151,15 @@ const APP_CONFIG = {
     }
 };
 
+const RUNTIME_CACHE_ = {
+    scriptProperties: null,
+    appSecret: null,
+    spreadsheet: null,
+    spreadsheetsByUrl: {},
+    tablesBySheetName: {},
+    vendorIndexRowsBySpreadsheetId: {}
+};
+
 function doGet() {
     let html = HtmlService.createTemplateFromFile('Index')
     html.logo = APP_CONFIG.logo.square;
@@ -494,22 +503,30 @@ function validatePasswordResetOtp_(candidate, otp) {
 }
 
 function getBootstrapData(token) {
+    const profile = createProfileTimer_('getBootstrapData');
     const session = requireSession_(token);
+    addProfileSegment_(profile, 'requireSession');
     if (session.role === 'admin') {
-        return {
+        const response = {
             ok: true,
             role: 'admin',
             user: session,
             data: getAdminBootstrap_(session)
         };
+        addProfileSegment_(profile, 'buildAdminBootstrap');
+        logProfileTimer_(profile, { role: 'admin', userId: session.userId });
+        return response;
     }
 
-    return {
+    const response = {
         ok: true,
         role: 'vendor',
         user: session,
         data: getVendorBootstrap_(session)
     };
+    addProfileSegment_(profile, 'buildVendorBootstrap');
+    logProfileTimer_(profile, { role: 'vendor', userId: session.userId });
+    return response;
 }
 
 function getDriveUploadAuthContext(token, payload) {
@@ -604,6 +621,17 @@ function saveWorkOrder(token, payload) {
             currentAttachments: allAttachments,
             action: input.workOrderId ? 'UPDATE_WORK_ORDER' : 'CREATE_WORK_ORDER'
         }
+    };
+}
+
+function sendWorkOrderNotificationEmails(token, workOrderId) {
+    requireAdmin_(token);
+    const workOrder = findRequiredByField_(APP_CONFIG.sheets.workOrders.name, 'workOrderId', workOrderId);
+    return {
+        ok: true,
+        workOrderId: workOrder.workOrderId,
+        workOrderNumber: workOrder.workOrderNumber,
+        notificationSummary: notifySuppliersOfNewWorkOrder_(workOrder)
     };
 }
 
@@ -797,7 +825,7 @@ function saveVendorQuotation(token, payload) {
 
     const user = getUserById_(session.userId);
     if (!user || !String(user.vendorSheetUrl || '').trim()) {
-        throw new Error('Vendor Google Sheet is not configured. Please contact admin.');
+        throw new Error('Supplier Google Sheet is not configured. Please contact admin.');
     }
     const syncResult = syncQuotationToVendorSheet_(user, row);
     if (syncResult && syncResult.rowId) {
@@ -854,7 +882,7 @@ function finalizeVendorQuotationSave(token, payload) {
     const rowForSync = Object.assign({}, rowInfo.row, patch);
     const user = getUserById_(session.userId);
     if (!user || !String(user.vendorSheetUrl || '').trim()) {
-        throw new Error('Vendor Google Sheet is not configured. Please contact admin.');
+        throw new Error('Supplier Google Sheet is not configured. Please contact admin.');
     }
     const syncResult = syncQuotationToVendorSheet_(user, rowForSync);
     if (syncResult && syncResult.rowId) {
@@ -956,13 +984,17 @@ function getAdminVendorUsers(token) {
 }
 
 function getAdminBootstrap_(session) {
+    const profile = createProfileTimer_('getAdminBootstrap_');
     const workOrders = getTable_(APP_CONFIG.sheets.workOrders.name).rows;
+    addProfileSegment_(profile, 'loadWorkOrders');
     const users = getTable_(APP_CONFIG.sheets.users.name).rows;
+    addProfileSegment_(profile, 'loadUsers');
     const totalQuotations = workOrders.reduce(function (accumulator, row) {
         const refs = getWorkOrderQuotationRefs_(row);
         const fallbackCount = normalizeNumber_(row.quotationCount) || 0;
         return accumulator + (refs.length || fallbackCount);
     }, 0);
+    addProfileSegment_(profile, 'countQuotations');
 
     const summary = {
         total: workOrders.length,
@@ -990,7 +1022,15 @@ function getAdminBootstrap_(session) {
             }
             return mapWorkOrderForUi_(row, quoteCount);
         })
-        .sort(function (left, right) { return String(right.briefDate).localeCompare(String(left.briefDate)); });
+        .sort(compareWorkOrdersNewestFirst_);
+    addProfileSegment_(profile, 'mapWorkOrders');
+
+    logProfileTimer_(profile, {
+        role: 'admin',
+        userId: session.userId,
+        workOrders: workOrders.length,
+        users: users.length
+    });
 
     return {
         summary: summary,
@@ -1007,13 +1047,18 @@ function getAdminVendorUsers_() {
 }
 
 function getVendorBootstrap_(session, vendorQuotationRows) {
+    const profile = createProfileTimer_('getVendorBootstrap_');
     const workOrders = getTable_(APP_CONFIG.sheets.workOrders.name).rows;
+    addProfileSegment_(profile, 'loadWorkOrders');
     const vendorUser = getUserById_(session.userId);
-    const spreadsheet = vendorUser && vendorUser.vendorSheetUrl ? SpreadsheetApp.openByUrl(vendorUser.vendorSheetUrl) : null;
+    addProfileSegment_(profile, 'loadVendorUser');
+    const spreadsheet = vendorUser && vendorUser.vendorSheetUrl ? openSpreadsheetByUrl_(vendorUser.vendorSheetUrl) : null;
+    addProfileSegment_(profile, 'openVendorSpreadsheet');
     const quotationRows = Array.isArray(vendorQuotationRows) ? vendorQuotationRows : [];
     const indexEntries = quotationRows.length
         ? quotationRows.map(function (row) { return buildVendorQuotationIndexRowObjectFromRaw_(row); }).filter(function (entry) { return !!entry; })
         : (spreadsheet ? getVendorQuotationRowsFromIndex_(spreadsheet) : []);
+    addProfileSegment_(profile, 'loadVendorIndex');
     const quotationCountByWorkOrderNumber = {};
 
     indexEntries.forEach(function (entry) {
@@ -1023,6 +1068,7 @@ function getVendorBootstrap_(session, vendorQuotationRows) {
         }
         quotationCountByWorkOrderNumber[workOrderNumber] = (quotationCountByWorkOrderNumber[workOrderNumber] || 0) + 1;
     });
+    addProfileSegment_(profile, 'countVendorQuotations');
 
     const summary = {
         total: 0,
@@ -1050,7 +1096,15 @@ function getVendorBootstrap_(session, vendorQuotationRows) {
                 myQuotationCount: quoteCount
             });
         })
-        .sort(function (left, right) { return String(right.briefDate).localeCompare(String(left.briefDate)); });
+        .sort(compareWorkOrdersNewestFirst_);
+    addProfileSegment_(profile, 'mapOpenWorkOrders');
+
+    logProfileTimer_(profile, {
+        role: 'vendor',
+        userId: session.userId,
+        workOrders: workOrders.length,
+        indexEntries: indexEntries.length
+    });
 
     return {
         summary: summary,
@@ -1061,7 +1115,7 @@ function getVendorBootstrap_(session, vendorQuotationRows) {
 
 function getVendorRecentQuotations_(session, vendorQuotationRows) {
     const vendorUser = getUserById_(session.userId);
-    const spreadsheet = vendorUser && vendorUser.vendorSheetUrl ? SpreadsheetApp.openByUrl(vendorUser.vendorSheetUrl) : null;
+    const spreadsheet = vendorUser && vendorUser.vendorSheetUrl ? openSpreadsheetByUrl_(vendorUser.vendorSheetUrl) : null;
     if (!spreadsheet && !(Array.isArray(vendorQuotationRows) && vendorQuotationRows.length)) {
         return [];
     }
@@ -1162,7 +1216,7 @@ function getVendorQuotationRowsByWorkOrder_(userOrUserId, workOrderNumber, quota
         return [];
     }
 
-    const spreadsheet = SpreadsheetApp.openByUrl(user.vendorSheetUrl);
+    const spreadsheet = openSpreadsheetByUrl_(user.vendorSheetUrl);
     const normalizedWorkOrderNumber = String(workOrderNumber || '').trim();
     const normalizedQuotationIds = Array.isArray(quotationIds) && quotationIds.length ? quotationIds.reduce(function (accumulator, quotationId) {
         const normalizedQuotationId = String(quotationId || '').trim();
@@ -1234,6 +1288,93 @@ function getVendorUsersWithSheets_() {
     return getTable_(APP_CONFIG.sheets.users.name).rows.filter(function (row) {
         return row.role === 'vendor' && String(row.vendorSheetUrl || '').trim();
     });
+}
+
+function getActiveSupplierUsers_() {
+    return getTable_(APP_CONFIG.sheets.users.name).rows.filter(function (row) {
+        return row.role === 'vendor'
+            && String(row.isActive).toUpperCase() === 'TRUE'
+            && String(row.email || '').trim();
+    });
+}
+
+function notifySuppliersOfNewWorkOrder_(workOrder) {
+    if (!workOrder || !String(workOrder.workOrderId || '').trim()) {
+        return {
+            recipientCount: 0,
+            notifiedCount: 0,
+            failedCount: 0
+        };
+    }
+
+    const recipients = getActiveSupplierUsers_();
+    if (!recipients.length) {
+        return {
+            recipientCount: 0,
+            notifiedCount: 0,
+            failedCount: 0
+        };
+    }
+
+    const appUrl = getWebAppUrl_();
+    const subject = APP_CONFIG.appName + ' new work order ' + String(workOrder.workOrderNumber || '').trim();
+    const detailRows = [
+        ['Work Order', workOrder.workOrderNumber],
+        ['Brief Date', workOrder.briefDate],
+        ['Deadline To Quote', workOrder.deadlineToQuote],
+        ['Customer Brief', workOrder.briefFromCustomer],
+        ['Material', workOrder.material],
+        ['Size', workOrder.size],
+        ['Printing', workOrder.printing],
+        ['Packing', workOrder.packing],
+        ['Remarks', workOrder.remarks]
+    ].filter(function (entry) {
+        return String(entry[1] || '').trim();
+    }).map(function (entry) {
+        return '<tr><td style="padding:8px 12px;border:1px solid #dbe4e8;background:#f8f9fa;font-weight:600">'
+            + escapeHtml_(entry[0])
+            + '</td><td style="padding:8px 12px;border:1px solid #dbe4e8">'
+            + escapeHtml_(entry[1])
+            + '</td></tr>';
+    }).join('');
+
+    let notifiedCount = 0;
+    let failedCount = 0;
+
+    recipients.forEach(function (user) {
+        const htmlBody = [
+            '<div style="font-family:Arial,sans-serif;line-height:1.7;color:#16323a">',
+            '<h2 style="margin:0 0 12px;color:#20B2AA">New work order available</h2>',
+            '<p style="margin:0 0 12px">Hello ' + escapeHtml_(user.displayName || user.vendorName || 'Supplier') + ',</p>',
+            '<p style="margin:0 0 12px">A new work order is ready for quotation. Please review the details below and submit your quotation in the web app.</p>',
+            '<table style="border-collapse:collapse;margin:0 0 16px;width:100%;max-width:640px">',
+            detailRows,
+            '</table>',
+            (appUrl
+                ? '<p style="margin:0 0 16px"><a href="' + escapeHtml_(appUrl) + '" style="display:inline-block;border-radius:999px;background:#20B2AA;color:#ffffff;text-decoration:none;padding:10px 18px;font-weight:600">Open Web App</a></p>'
+                : ''),
+            '<p style="margin:0;color:#64748b;font-size:12px">This notification was generated automatically when a new work order was created.</p>',
+            '</div>'
+        ].join('');
+
+        try {
+            MailApp.sendEmail({
+                to: String(user.email || '').trim(),
+                subject: subject,
+                htmlBody: htmlBody
+            });
+            notifiedCount += 1;
+        } catch (error) {
+            failedCount += 1;
+            Logger.log('Supplier work order notification failed for ' + user.email + ': ' + error);
+        }
+    });
+
+    return {
+        recipientCount: recipients.length,
+        notifiedCount: notifiedCount,
+        failedCount: failedCount
+    };
 }
 
 function getWorkOrderQuotationRefs_(row) {
@@ -1425,7 +1566,7 @@ function getAllVendorQuotationRows_(userOrUserId) {
         return [];
     }
 
-    const spreadsheet = SpreadsheetApp.openByUrl(user.vendorSheetUrl);
+    const spreadsheet = openSpreadsheetByUrl_(user.vendorSheetUrl);
     const indexedRows = getVendorQuotationRowsFromIndex_(spreadsheet);
     if (indexedRows.length) {
         return resolveVendorQuotationRowsFromIndexEntries_(spreadsheet, indexedRows);
@@ -1440,7 +1581,7 @@ function findVendorQuotationRecordById_(userOrUserId, quotationId) {
         return null;
     }
 
-    const spreadsheet = SpreadsheetApp.openByUrl(user.vendorSheetUrl);
+    const spreadsheet = openSpreadsheetByUrl_(user.vendorSheetUrl);
     let indexEntry = findVendorQuotationRowFromIndexById_(spreadsheet, normalizedQuotationId);
     let rawRow = indexEntry ? resolveVendorQuotationRowFromIndexEntry_(spreadsheet, indexEntry) : null;
     if (!rawRow) {
@@ -1570,7 +1711,7 @@ function ensureSheetWithHeaders_(sheetName, headers) {
 }
 
 function ensureVendorSheet_(sheetUrl, quotationDate) {
-    const spreadsheet = SpreadsheetApp.openByUrl(sheetUrl);
+    const spreadsheet = openSpreadsheetByUrl_(sheetUrl);
     const sheetName = getVendorQuotationSheetName_(quotationDate);
     let sheet = spreadsheet.getSheetByName(sheetName);
     if (!sheet) {
@@ -1668,14 +1809,23 @@ function buildVendorQuotationIndexRowObjectFromRaw_(rawRow) {
 }
 
 function getVendorQuotationRowsFromIndex_(spreadsheet) {
+    const cacheKey = getSpreadsheetCacheKey_(spreadsheet);
+    if (cacheKey && RUNTIME_CACHE_.vendorIndexRowsBySpreadsheetId[cacheKey]) {
+        return RUNTIME_CACHE_.vendorIndexRowsBySpreadsheetId[cacheKey];
+    }
+
     const sheet = ensureVendorQuotationIndexSheet_(spreadsheet);
-    const values = sheet.getDataRange().getValues();
-    if (values.length <= 1) {
+    const lastRow = sheet.getLastRow();
+    const headers = getVendorQuotationIndexHeaders_();
+    if (lastRow <= 1) {
+        if (cacheKey) {
+            RUNTIME_CACHE_.vendorIndexRowsBySpreadsheetId[cacheKey] = [];
+        }
         return [];
     }
 
-    const headers = values[0];
-    return values.slice(1).map(function (rowValues) {
+    const values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+    const rows = values.map(function (rowValues, rowOffset) {
         if (!rowValues.some(function (cell) { return cell !== ''; })) {
             return null;
         }
@@ -1687,11 +1837,16 @@ function getVendorQuotationRowsFromIndex_(spreadsheet) {
             return null;
         }
         objectRow.__sheetName = String(objectRow.__sheetName || '').trim();
-        objectRow.__rowIndex = Number(objectRow.__rowIndex) || 0;
+        objectRow.__rowIndex = Number(objectRow.__rowIndex) || (rowOffset + 2);
         return objectRow;
     }).filter(function (row) {
         return !!row;
     });
+
+    if (cacheKey) {
+        RUNTIME_CACHE_.vendorIndexRowsBySpreadsheetId[cacheKey] = rows;
+    }
+    return rows;
 }
 
 function findVendorQuotationRowFromIndexById_(spreadsheet, quotationId) {
@@ -1734,12 +1889,13 @@ function rebuildVendorQuotationIndex_(spreadsheet) {
     const indexRows = [];
 
     getVendorQuotationSheets_(spreadsheet).forEach(function (sheet) {
-        const values = sheet.getDataRange().getValues();
-        if (values.length <= 1) {
+        const lastRow = sheet.getLastRow();
+        if (lastRow <= 1) {
             return;
         }
-        const rowHeaders = values[0];
-        values.slice(1).forEach(function (rowValues, rowOffset) {
+        const rowHeaders = APP_CONFIG.vendorSheet.headers;
+        const values = sheet.getRange(2, 1, lastRow - 1, rowHeaders.length).getValues();
+        values.forEach(function (rowValues, rowOffset) {
             if (!rowValues.some(function (cell) { return cell !== ''; })) {
                 return;
             }
@@ -1768,6 +1924,8 @@ function rebuildVendorQuotationIndex_(spreadsheet) {
         indexSheet.getRange(2, 1, matrix.length, headers.length).setValues(matrix);
     }
 
+    invalidateVendorIndexRowsCache_(spreadsheet);
+
     return getVendorQuotationRowsFromIndex_(spreadsheet);
 }
 
@@ -1788,7 +1946,7 @@ function findVendorQuotationIndexRowIndexByQuotationId_(sheet, quotationId) {
 }
 
 function upsertVendorQuotationIndexRecord_(sheetUrl, quotation, sheetName, rowIndex) {
-    const spreadsheet = SpreadsheetApp.openByUrl(sheetUrl);
+    const spreadsheet = openSpreadsheetByUrl_(sheetUrl);
     const sheet = ensureVendorQuotationIndexSheet_(spreadsheet);
     const headers = getVendorQuotationIndexHeaders_();
     const rowObject = buildVendorQuotationIndexRowObject_(quotation, sheetName, rowIndex);
@@ -1801,6 +1959,7 @@ function upsertVendorQuotationIndexRecord_(sheetUrl, quotation, sheetName, rowIn
     } else {
         sheet.getRange(sheet.getLastRow() + 1, 1, 1, headers.length).setValues(matrix);
     }
+    invalidateVendorIndexRowsCache_(spreadsheet);
 }
 
 function upsertVendorQuotationIndexFromRawRow_(spreadsheet, rawRow) {
@@ -1816,14 +1975,16 @@ function upsertVendorQuotationIndexFromRawRow_(spreadsheet, rawRow) {
     } else {
         sheet.getRange(sheet.getLastRow() + 1, 1, 1, headers.length).setValues(matrix);
     }
+    invalidateVendorIndexRowsCache_(spreadsheet);
 }
 
 function removeVendorQuotationIndexRecord_(sheetUrl, quotationId) {
-    const spreadsheet = SpreadsheetApp.openByUrl(sheetUrl);
+    const spreadsheet = openSpreadsheetByUrl_(sheetUrl);
     const sheet = ensureVendorQuotationIndexSheet_(spreadsheet);
     const rowIndex = findVendorQuotationIndexRowIndexByQuotationId_(sheet, quotationId);
     if (rowIndex > 0) {
         sheet.getRange(rowIndex, 1, 1, getVendorQuotationIndexHeaders_().length).clearContent();
+        invalidateVendorIndexRowsCache_(spreadsheet);
     }
 }
 
@@ -1946,12 +2107,66 @@ function clearVendorSheetRow_(sheetUrl, location) {
     if (!location || !location.sheetName || !location.rowIndex) {
         return;
     }
-    const spreadsheet = SpreadsheetApp.openByUrl(sheetUrl);
+    const spreadsheet = openSpreadsheetByUrl_(sheetUrl);
     const sheet = spreadsheet.getSheetByName(location.sheetName);
     if (!sheet || location.rowIndex <= 1 || location.rowIndex > sheet.getMaxRows()) {
         return;
     }
     sheet.getRange(location.rowIndex, 1, 1, APP_CONFIG.vendorSheet.headers.length).clearContent();
+}
+
+function getSpreadsheetCacheKey_(spreadsheet) {
+    if (!spreadsheet) {
+        return '';
+    }
+    try {
+        return String(spreadsheet.getId() || '').trim();
+    } catch (error) {
+        return '';
+    }
+}
+
+function invalidateVendorIndexRowsCache_(spreadsheet) {
+    const cacheKey = getSpreadsheetCacheKey_(spreadsheet);
+    if (cacheKey) {
+        delete RUNTIME_CACHE_.vendorIndexRowsBySpreadsheetId[cacheKey];
+    }
+}
+
+function createProfileTimer_(label) {
+    return {
+        label: label,
+        startedAt: Date.now(),
+        lastMarkAt: Date.now(),
+        segments: []
+    };
+}
+
+function logProfileTimer_(profile, meta) {
+    if (!profile) {
+        return;
+    }
+    const totalMs = Date.now() - profile.startedAt;
+    const payload = {
+        label: profile.label,
+        totalMs: totalMs,
+        segments: profile.segments,
+        meta: meta || {}
+    };
+    Logger.log('[PROFILE] ' + JSON.stringify(payload));
+}
+
+function addProfileSegment_(profile, name) {
+    if (!profile) {
+        return;
+    }
+    const now = Date.now();
+    profile.segments.push({
+        name: name,
+        elapsedMs: now - profile.lastMarkAt,
+        totalMs: now - profile.startedAt
+    });
+    profile.lastMarkAt = now;
 }
 
 function ensureUploadFolder_() {
@@ -2030,27 +2245,48 @@ function ensureSecret_() {
 }
 
 function getSpreadsheet_() {
-    const scriptProperties = PropertiesService.getScriptProperties();
+    if (RUNTIME_CACHE_.spreadsheet) {
+        return RUNTIME_CACHE_.spreadsheet;
+    }
+    const scriptProperties = getScriptProperties_();
     const spreadsheetId = scriptProperties.getProperty('SPREADSHEET_ID');
     if (spreadsheetId) {
-        return SpreadsheetApp.openById(spreadsheetId);
+        RUNTIME_CACHE_.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+        return RUNTIME_CACHE_.spreadsheet;
     }
     const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     if (activeSpreadsheet) {
-        return activeSpreadsheet;
+        RUNTIME_CACHE_.spreadsheet = activeSpreadsheet;
+        return RUNTIME_CACHE_.spreadsheet;
     }
     throw new Error('Spreadsheet not configured. Run AppInit first.');
 }
 
+function openSpreadsheetByUrl_(sheetUrl) {
+    const normalizedSheetUrl = String(sheetUrl || '').trim();
+    if (!normalizedSheetUrl) {
+        return null;
+    }
+    if (!RUNTIME_CACHE_.spreadsheetsByUrl[normalizedSheetUrl]) {
+        RUNTIME_CACHE_.spreadsheetsByUrl[normalizedSheetUrl] = SpreadsheetApp.openByUrl(normalizedSheetUrl);
+    }
+    return RUNTIME_CACHE_.spreadsheetsByUrl[normalizedSheetUrl];
+}
+
 function getTable_(sheetName) {
-    const sheet = ensureSheetWithHeaders_(sheetName, getSheetHeaders_(sheetName));
-    const values = sheet.getDataRange().getValues();
-    if (values.length === 0) {
-        return { headers: [], rows: [], sheet: sheet };
+    if (RUNTIME_CACHE_.tablesBySheetName[sheetName]) {
+        return RUNTIME_CACHE_.tablesBySheetName[sheetName];
+    }
+    const headers = getSheetHeaders_(sheetName);
+    const sheet = ensureSheetWithHeaders_(sheetName, headers);
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+        RUNTIME_CACHE_.tablesBySheetName[sheetName] = { headers: headers, rows: [], sheet: sheet, _indexes: {} };
+        return RUNTIME_CACHE_.tablesBySheetName[sheetName];
     }
 
-    const headers = values[0];
-    const rows = values.slice(1).filter(function (row) {
+    const values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+    const rows = values.filter(function (row) {
         return row.some(function (cell) { return cell !== ''; });
     }).map(function (row) {
         const objectRow = {};
@@ -2059,7 +2295,8 @@ function getTable_(sheetName) {
         });
         return objectRow;
     });
-    return { headers: headers, rows: rows, sheet: sheet };
+    RUNTIME_CACHE_.tablesBySheetName[sheetName] = { headers: headers, rows: rows, sheet: sheet, _indexes: {} };
+    return RUNTIME_CACHE_.tablesBySheetName[sheetName];
 }
 
 function getSheetHeaders_(sheetName) {
@@ -2084,21 +2321,46 @@ function appendRows_(sheetName, rows) {
         });
     });
     sheet.getRange(sheet.getLastRow() + 1, 1, matrix.length, headers.length).setValues(matrix);
+
+    const cachedTable = RUNTIME_CACHE_.tablesBySheetName[sheetName];
+    if (cachedTable) {
+        rows.forEach(function (row) {
+            const objectRow = {};
+            headers.forEach(function (header) {
+                objectRow[header] = row[header] != null ? normalizeCellValue_(row[header]) : '';
+            });
+            cachedTable.rows.push(objectRow);
+        });
+        cachedTable.sheet = sheet;
+        invalidateTableIndexes_(cachedTable);
+    }
 }
 
 function updateRowByIndex_(sheetName, rowIndex, patch) {
-    const headers = getSheetHeaders_(sheetName);
-    const sheet = ensureSheetWithHeaders_(sheetName, headers);
-    const rowValues = sheet.getRange(rowIndex, 1, 1, headers.length).getValues()[0];
-    const rowObject = {};
-    headers.forEach(function (header, index) {
-        rowObject[header] = normalizeCellValue_(rowValues[index]);
-    });
+    const table = getTable_(sheetName);
+    const headers = table.headers;
+    const sheet = table.sheet || ensureSheetWithHeaders_(sheetName, headers);
+    const zeroBasedRowIndex = rowIndex - 2;
+    const rowObject = zeroBasedRowIndex >= 0 && zeroBasedRowIndex < table.rows.length
+        ? table.rows[zeroBasedRowIndex]
+        : {};
     const updated = Object.assign({}, rowObject, patch);
     const matrix = [headers.map(function (header) {
         return updated[header] != null ? updated[header] : '';
     })];
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues(matrix);
+
+    if (zeroBasedRowIndex >= 0) {
+        table.rows[zeroBasedRowIndex] = updated;
+        table.sheet = sheet;
+        invalidateTableIndexes_(table);
+    }
+}
+
+function invalidateTableIndexes_(table) {
+    if (table) {
+        table._indexes = {};
+    }
 }
 
 function appendActivity_(entry) {
@@ -2173,20 +2435,20 @@ function sendAdminRegistrationNotification_(userRow) {
     }
 
     const appUrl = getWebAppUrl_();
-    const subject = APP_CONFIG.appName + ' new vendor registration approval required';
+    const subject = APP_CONFIG.appName + ' new supplier registration approval required';
     const htmlBody = [
         '<div style="font-family:Arial,sans-serif;line-height:1.7;color:#16323a">',
         '<h2 style="margin:0 0 12px;color:#20B2AA">New account pending approval</h2>',
-        '<p style="margin:0 0 12px">A new vendor account has been created and is waiting for admin approval.</p>',
+        '<p style="margin:0 0 12px">A new supplier account has been created and is waiting for admin approval.</p>',
         '<table style="border-collapse:collapse;margin:0 0 16px;width:100%;max-width:560px">',
         '<tr><td style="padding:8px 12px;border:1px solid #dbe4e8;background:#f8f9fa;font-weight:600">Contact Name</td><td style="padding:8px 12px;border:1px solid #dbe4e8">' + escapeHtml_(userRow.displayName) + '</td></tr>',
-        '<tr><td style="padding:8px 12px;border:1px solid #dbe4e8;background:#f8f9fa;font-weight:600">Vendor Name</td><td style="padding:8px 12px;border:1px solid #dbe4e8">' + escapeHtml_(userRow.vendorName) + '</td></tr>',
+        '<tr><td style="padding:8px 12px;border:1px solid #dbe4e8;background:#f8f9fa;font-weight:600">Supplier Name</td><td style="padding:8px 12px;border:1px solid #dbe4e8">' + escapeHtml_(userRow.vendorName) + '</td></tr>',
         '<tr><td style="padding:8px 12px;border:1px solid #dbe4e8;background:#f8f9fa;font-weight:600">Username</td><td style="padding:8px 12px;border:1px solid #dbe4e8">' + escapeHtml_(userRow.username) + '</td></tr>',
         '<tr><td style="padding:8px 12px;border:1px solid #dbe4e8;background:#f8f9fa;font-weight:600">Email</td><td style="padding:8px 12px;border:1px solid #dbe4e8">' + escapeHtml_(userRow.email) + '</td></tr>',
-        '<tr><td style="padding:8px 12px;border:1px solid #dbe4e8;background:#f8f9fa;font-weight:600">Vendor Code</td><td style="padding:8px 12px;border:1px solid #dbe4e8">' + escapeHtml_(userRow.vendorCode) + '</td></tr>',
+        '<tr><td style="padding:8px 12px;border:1px solid #dbe4e8;background:#f8f9fa;font-weight:600">Supplier Code</td><td style="padding:8px 12px;border:1px solid #dbe4e8">' + escapeHtml_(userRow.vendorCode) + '</td></tr>',
         '<tr><td style="padding:8px 12px;border:1px solid #dbe4e8;background:#f8f9fa;font-weight:600">Created At</td><td style="padding:8px 12px;border:1px solid #dbe4e8">' + escapeHtml_(userRow.createdAt) + '</td></tr>',
         '</table>',
-        '<p style="margin:0 0 12px">Open the admin workspace and approve this vendor from the Vendor Access section.</p>',
+        '<p style="margin:0 0 12px">Open the admin workspace and approve this supplier from the Manage Suppliers section.</p>',
         (appUrl
             ? '<p style="margin:0 0 16px"><a href="' + escapeHtml_(appUrl) + '" style="display:inline-block;border-radius:999px;background:#20B2AA;color:#ffffff;text-decoration:none;padding:10px 18px;font-weight:600">Open Web App</a></p>'
             : ''),
@@ -2250,7 +2512,7 @@ function requireAdmin_(token) {
 function requireVendor_(token) {
     const session = requireSession_(token);
     if (session.role !== 'vendor') {
-        throw new Error('Vendor access required.');
+        throw new Error('Supplier access required.');
     }
     return session;
 }
@@ -2307,14 +2569,25 @@ function computeHashWithSecret_(plainText, salt, secret) {
     return Utilities.base64EncodeWebSafe(digest);
 }
 
+function getScriptProperties_() {
+    if (!RUNTIME_CACHE_.scriptProperties) {
+        RUNTIME_CACHE_.scriptProperties = PropertiesService.getScriptProperties();
+    }
+    return RUNTIME_CACHE_.scriptProperties;
+}
+
 function getAppSecret_(createIfMissing) {
-    const scriptProperties = PropertiesService.getScriptProperties();
+    if (RUNTIME_CACHE_.appSecret) {
+        return RUNTIME_CACHE_.appSecret;
+    }
+    const scriptProperties = getScriptProperties_();
     let secret = scriptProperties.getProperty('APP_SECRET');
     if (!secret && createIfMissing) {
         secret = Utilities.getUuid() + Utilities.getUuid();
         scriptProperties.setProperty('APP_SECRET', secret);
     }
-    return secret || '';
+    RUNTIME_CACHE_.appSecret = secret || '';
+    return RUNTIME_CACHE_.appSecret;
 }
 
 function getUserById_(userId) {
@@ -2337,7 +2610,20 @@ function findOptionalByField_(sheetName, field, value) {
 
 function findRowByField_(table, field, value) {
     const stringValue = String(value);
-    const rowIndex = table.rows.findIndex(function (row) { return String(row[field]) === stringValue; });
+    table._indexes = table._indexes || {};
+    if (!table._indexes[field]) {
+        const indexMap = {};
+        table.rows.forEach(function (row, index) {
+            const key = String(row[field]);
+            if (!Object.prototype.hasOwnProperty.call(indexMap, key)) {
+                indexMap[key] = index;
+            }
+        });
+        table._indexes[field] = indexMap;
+    }
+    const rowIndex = Object.prototype.hasOwnProperty.call(table._indexes[field], stringValue)
+        ? table._indexes[field][stringValue]
+        : -1;
     if (rowIndex === -1) {
         return null;
     }
@@ -2408,6 +2694,24 @@ function mapWorkOrderForUi_(row, quoteCount) {
         createdAt: row.createdAt,
         updatedAt: row.updatedAt
     };
+}
+
+function compareWorkOrdersNewestFirst_(left, right) {
+    const leftCreatedAt = normalizeWorkOrderSortValue_(left && left.createdAt);
+    const rightCreatedAt = normalizeWorkOrderSortValue_(right && right.createdAt);
+    const leftBriefDate = normalizeWorkOrderSortValue_(left && left.briefDate);
+    const rightBriefDate = normalizeWorkOrderSortValue_(right && right.briefDate);
+    const leftUpdatedAt = normalizeWorkOrderSortValue_(left && left.updatedAt);
+    const rightUpdatedAt = normalizeWorkOrderSortValue_(right && right.updatedAt);
+
+    return String(rightCreatedAt).localeCompare(String(leftCreatedAt))
+        || String(rightBriefDate).localeCompare(String(leftBriefDate))
+        || String(rightUpdatedAt).localeCompare(String(leftUpdatedAt))
+        || String(right && right.workOrderNumber || '').localeCompare(String(left && left.workOrderNumber || ''));
+}
+
+function normalizeWorkOrderSortValue_(value) {
+    return String(value || '').trim();
 }
 
 function mapQuotationForUi_(row, workOrder) {
@@ -2545,7 +2849,7 @@ function validateUploadScope_(session, scope) {
         throw new Error('Admin access required for work order uploads.');
     }
     if (normalizedScope === 'QUOTATION' && session.role !== 'vendor') {
-        throw new Error('Vendor access required for quotation uploads.');
+        throw new Error('Supplier access required for quotation uploads.');
     }
     if (normalizedScope !== 'WORK_ORDER' && normalizedScope !== 'QUOTATION') {
         throw new Error('Invalid upload scope.');
