@@ -144,6 +144,30 @@
                 background-position: -200% 0;
             }
         }
+
+        .compare-scroll-shell {
+            overflow-x: auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x pan-y;
+            scrollbar-gutter: stable both-edges;
+            scroll-behavior: smooth;
+        }
+
+        .compare-scroll-shell::-webkit-scrollbar {
+            height: 12px;
+        }
+
+        .compare-scroll-shell::-webkit-scrollbar-track {
+            background: rgba(226, 232, 240, 0.85);
+            border-radius: 9999px;
+        }
+
+        .compare-scroll-shell::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.55);
+            border-radius: 9999px;
+            border: 2px solid rgba(226, 232, 240, 0.85);
+        }
     </style>
 </head>
 
@@ -658,7 +682,17 @@
                     class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
                         class="mr-2 inline-flex h-4 w-4"></i>Close</button>
             </div>
-            <div class="max-h-[calc(92vh-6.5rem)] overflow-auto px-6 py-6">
+            <div id="compareScrollToolbar" class="flex items-center justify-end gap-2 border-b border-slate-200/80 px-6 py-3">
+                <button id="compareScrollLeftBtn" type="button"
+                    class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-brand hover:text-brandDark disabled:cursor-not-allowed disabled:opacity-40">
+                    <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                </button>
+                <button id="compareScrollRightBtn" type="button"
+                    class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-brand hover:text-brandDark disabled:cursor-not-allowed disabled:opacity-40">
+                    <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                </button>
+            </div>
+            <div id="compareScrollViewport" class="compare-scroll-shell max-h-[calc(92vh-10rem)] px-6 py-6">
                 <div id="compareCardsContainer" class="flex min-w-max items-stretch gap-5 pb-2"></div>
             </div>
         </div>
@@ -940,6 +974,7 @@
         function init() {
             moment.locale('en');
             bindGlobalEvents();
+            bindCompareScrollEvents();
             refreshIcons();
             renderQuotationSelectOptions();
             renderWorkspace();
@@ -1056,6 +1091,12 @@
                     }
                 })
                 .on('click', '#closeCompareBtn', closeCompareModal)
+                .on('click', '#compareScrollLeftBtn', function () {
+                    scrollCompareCards(-1);
+                })
+                .on('click', '#compareScrollRightBtn', function () {
+                    scrollCompareCards(1);
+                })
                 .on('click', '[data-action="view-workorder"]', function () {
                     openWorkOrderDetailModal($(this).attr('data-work-order-id'));
                 })
@@ -1135,6 +1176,14 @@
                         closeImagePreviewModal();
                     }
                 });
+        }
+
+        function bindCompareScrollEvents() {
+            const viewport = document.getElementById('compareScrollViewport');
+            if (viewport) {
+                viewport.addEventListener('scroll', updateCompareScrollControls, { passive: true });
+            }
+            window.addEventListener('resize', updateCompareScrollControls);
         }
 
         function switchAuthMode(mode) {
@@ -2142,6 +2191,8 @@
 
         function openComparison(workOrderId) {
             const workOrder = findById(state.data && state.data.workOrders, 'workOrderId', workOrderId);
+            console.log("🚀 ~ openComparison ~ workOrderId:", workOrderId)
+            console.log("🚀 ~ openComparison ~ workOrder:", workOrder)
             renderCompareModalLoading(workOrder);
             $('#compareModal').removeClass('hidden').addClass('flex');
             refreshIcons();
@@ -2159,40 +2210,80 @@
         function renderCompareModalLoading(workOrder) {
             $('#compareModalTitle').text(((workOrder && workOrder.workOrderNumber) || 'Work Order') + ' • Comparison');
             $('#compareModalSubtitle').text((workOrder && workOrder.briefFromCustomer) || 'Loading quotations for comparison...');
+            setCompareModalLayoutMode('loading');
             const $container = $('#compareCardsContainer').empty();
 
-            for (let cardIndex = 0; cardIndex < 2; cardIndex += 1) {
-                const $card = $('<article>').addClass('flex w-[420px] flex-none flex-col rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft');
-                const $header = $('<div>').addClass('flex items-start justify-between gap-4');
-                const $title = $('<div>').addClass('space-y-2').append(buildLoadingBar('h-5 w-28'), buildLoadingBar('h-3 w-20'));
-                const $status = buildLoadingBar('h-6 w-20');
-                const $specStack = $('<div>').addClass('mt-4 space-y-3');
-
-                for (let sectionIndex = 0; sectionIndex < 2; sectionIndex += 1) {
-                    const $section = $('<div>').addClass('rounded-2xl border border-slate-200 bg-slate-50/70 p-4');
-                    $section.append(buildLoadingBar('h-3 w-20'));
-                    for (let lineIndex = 0; lineIndex < 4; lineIndex += 1) {
-                        $section.append(buildLoadingBar('mt-3 h-4 ' + (lineIndex % 2 === 0 ? 'w-full' : 'w-4/5')));
-                    }
-                    $specStack.append($section);
-                }
-
-                $card.append(
-                    $header.append($title, $status),
-                    $specStack,
-                    $('<div>').addClass('mt-3 rounded-2xl border border-slate-200 bg-white p-4').append(buildLoadingBar('h-3 w-16'), buildLoadingBar('mt-3 h-4 w-full'), buildLoadingBar('mt-2 h-4 w-3/4')),
-                    $('<div>').addClass('mt-3 rounded-2xl border border-slate-200 bg-white p-4').append(
-                        $('<div>').addClass('flex items-center justify-between gap-3').append(buildLoadingBar('h-3 w-24'), buildLoadingBar('h-3 w-12')),
-                        $('<div>').addClass('mt-3 grid grid-cols-2 gap-3').append(buildLoadingBar('h-36 w-full rounded-2xl'), buildLoadingBar('h-36 w-full rounded-2xl'))
+            $container.append(
+                $('<div>').addClass('mx-auto flex min-h-[22rem] w-full max-w-xl flex-col items-center justify-center rounded-[1.75rem] border border-slate-200/80 bg-white/90 px-8 py-12 text-center shadow-soft').append(
+                    $('<div>').addClass('flex h-16 w-16 items-center justify-center rounded-full border border-brand/15 bg-brand/10').append(
+                        $('<div>').addClass('h-9 w-9 animate-spin rounded-full border-[3px] border-brand/20 border-t-brand')
                     ),
-                    $('<div>').addClass('mt-3 rounded-2xl border border-slate-200 bg-white p-4').append(
-                        $('<div>').addClass('flex items-center justify-between gap-3').append(buildLoadingBar('h-3 w-20'), buildLoadingBar('h-3 w-10')),
-                        $('<div>').addClass('mt-3 space-y-2').append(buildLoadingBar('h-4 w-full'), buildLoadingBar('h-4 w-5/6'))
-                    ),
-                    $('<div>').addClass('mt-5 space-y-3 rounded-3xl bg-slate-50 p-4').append(buildLoadingBar('h-4 w-28'), buildLoadingBar('h-11 w-full rounded-2xl'), buildLoadingBar('h-4 w-24'), buildLoadingBar('h-20 w-full rounded-2xl'), buildLoadingBar('h-11 w-full rounded-full'))
-                );
-                $container.append($card);
+                    $('<p>').addClass('mt-6 font-display text-xl font-semibold text-slate-900').text('Loading quotation comparison'),
+                    $('<p>').addClass('mt-2 text-sm leading-6 text-slate-500').text('Preparing supplier cards, pricing details, attachments, and admin note fields.'),
+                    $('<div>').addClass('mt-6 w-full max-w-sm space-y-3').append(
+                        buildLoadingBar('mx-auto h-3 w-44'),
+                        buildLoadingBar('mx-auto h-3 w-60'),
+                        buildLoadingBar('mx-auto h-3 w-52')
+                    )
+                )
+            );
+
+            updateCompareScrollControls();
+        }
+
+        function setCompareModalLayoutMode(mode) {
+            const $toolbar = $('#compareScrollToolbar');
+            const $container = $('#compareCardsContainer');
+            const showScrollableCards = mode === 'cards';
+
+            $toolbar.toggleClass('hidden', !showScrollableCards);
+            $container.toggleClass('min-w-max', showScrollableCards);
+            $container.toggleClass('w-full justify-center', !showScrollableCards);
+        }
+
+        function getCompareScrollMetrics() {
+            const viewport = document.getElementById('compareScrollViewport');
+            if (!viewport) {
+                return null;
             }
+
+            const maxScrollLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+            return {
+                viewport: viewport,
+                maxScrollLeft: maxScrollLeft,
+                scrollLeft: viewport.scrollLeft,
+                canScroll: maxScrollLeft > 8
+            };
+        }
+
+        function updateCompareScrollControls() {
+            const metrics = getCompareScrollMetrics();
+            const $leftButton = $('#compareScrollLeftBtn');
+            const $rightButton = $('#compareScrollRightBtn');
+            if (!metrics) {
+                $leftButton.prop('disabled', true);
+                $rightButton.prop('disabled', true);
+                return;
+            }
+
+            const isAtStart = metrics.scrollLeft <= 8;
+            const isAtEnd = metrics.scrollLeft >= metrics.maxScrollLeft - 8;
+            $leftButton.prop('disabled', !metrics.canScroll || isAtStart);
+            $rightButton.prop('disabled', !metrics.canScroll || isAtEnd);
+        }
+
+        function scrollCompareCards(direction) {
+            const metrics = getCompareScrollMetrics();
+            if (!metrics || !metrics.canScroll) {
+                return;
+            }
+
+            const scrollDistance = Math.max(320, Math.round(metrics.viewport.clientWidth * 0.72));
+            metrics.viewport.scrollBy({
+                left: direction * scrollDistance,
+                behavior: 'smooth'
+            });
+            window.setTimeout(updateCompareScrollControls, 220);
         }
 
         function buildCompareSpecItem(label, value, highlight) {
@@ -2215,11 +2306,15 @@
             const quotations = modal.quotations || [];
 
             if (!quotations.length) {
+                setCompareModalLayoutMode('empty');
                 $container.append($('<div>').addClass('rounded-3xl border border-dashed border-slate-300 bg-white px-8 py-14 text-center text-slate-500').text('No quotations are available for this work order.'));
                 $('#compareModal').removeClass('hidden').addClass('flex');
+                updateCompareScrollControls();
                 refreshIcons();
                 return;
             }
+
+            setCompareModalLayoutMode('cards');
 
             quotations.forEach(function (quote) {
                 const $card = $($('#compareCardTemplate').html());
@@ -2284,6 +2379,7 @@
             });
 
             $('#compareModal').removeClass('hidden').addClass('flex');
+            updateCompareScrollControls();
             refreshIcons();
         }
 
@@ -2292,6 +2388,12 @@
             $('#compareModal').addClass('hidden').removeClass('flex');
             $('#compareCardsContainer').empty();
             $('#compareModalSubtitle').text('');
+            setCompareModalLayoutMode('empty');
+            const viewport = document.getElementById('compareScrollViewport');
+            if (viewport) {
+                viewport.scrollLeft = 0;
+            }
+            updateCompareScrollControls();
         }
 
         function openQuotationManagerModal(workOrderId) {
