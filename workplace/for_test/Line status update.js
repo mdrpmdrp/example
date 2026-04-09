@@ -16,7 +16,7 @@ function onFormSubitForLineStatusUpdate(e) {
     const COL_JOB_TYPE = 9; // I
     const COL_STATUS = 10; // J
     const COL_UUID = 13; // M
-    const COL_SYSTEM_RECOMMEND = 19; // S
+    const COL_SYSTEM_RECOMMEND = 20; // T
     let uuid = Utilities.getUuid();
     // save uuid ไว้ในคอลัมน์ที่ซ่อนอยู่ เพื่อใช้เป็น token ในการอัปเดตสถานะผ่าน Line
     sh.getRange(rowIndex, COL_UUID).setValue(uuid);
@@ -43,12 +43,208 @@ function onFormSubitForLineStatusUpdate(e) {
 }
 
 function buildLeaveApprovalFlexMessage(payload) {
-    const statusMeta = getFlexStatusMeta(payload.status);
     const recommendationMeta = getRecommendationMeta(payload.systemRecommend);
+    const showActions = payload.showActions !== false;
+    const showRecommendation = showActions;
+    const displayStatus = showActions ? payload.status : getDisplayStatusForFlex(payload.status);
+    const statusMeta = getFlexStatusMeta(displayStatus);
+    const flexTitle = showActions ? 'แจ้งการลางาน LACO' : 'ผลการอนุมัติการลา LACO';
+    const altTextPrefix = showActions ? 'แจ้งการลางาน LACO' : 'ผลการอนุมัติการลา LACO';
+    const footerContents = [];
+    const bodyContents = [
+        {
+            type: 'box',
+            layout: 'vertical',
+            paddingAll: '16px',
+            cornerRadius: '18px',
+            backgroundColor: '#0F766E',
+            contents: [
+                {
+                    type: 'text',
+                    text: flexTitle,
+                    weight: 'bold',
+                    size: 'lg',
+                    color: '#FFFFFF',
+                    wrap: true
+                },
+                {
+                    type: 'text',
+                    text: payload.employeeName,
+                    size: showActions ? 'xl' : 'sm',
+                    weight: 'bold',
+                    color: '#FFFFFF',
+                    margin: 'sm',
+                    wrap: true,
+                    adjustMode: 'shrink-to-fit'
+                },
+                {
+                    type: 'text',
+                    text: stringifyFlexValue(payload.leaveType),
+                    size: 'sm',
+                    color: '#CCFBF1',
+                    margin: 'sm',
+                    wrap: true
+                }
+            ]
+        },
+        {
+            type: 'box',
+            layout: 'vertical',
+            spacing: showActions ? 'sm' : 'md',
+            paddingAll: showActions ? '12px' : '16px',
+            cornerRadius: '18px',
+            backgroundColor: statusMeta.badgeColor,
+            contents: [
+                {
+                    type: 'box',
+                    layout: 'vertical',
+                    paddingStart: '10px',
+                    paddingEnd: '10px',
+                    paddingTop: '5px',
+                    paddingBottom: '5px',
+                    cornerRadius: '999px',
+                    backgroundColor: statusMeta.accentColor,
+                    contents: [
+                        {
+                            type: 'text',
+                            text: statusMeta.heading,
+                            size: 'xs',
+                            weight: 'bold',
+                            color: statusMeta.accentTextColor,
+                            align: 'center'
+                        }
+                    ]
+                },
+                {
+                    type: 'text',
+                    text: 'สถานะการอนุมัติ',
+                    size: 'sm',
+                    color: statusMeta.textColor,
+                    weight: 'bold',
+                    align: 'center'
+                },
+                {
+                    type: 'text',
+                    text: statusMeta.label,
+                    size: showActions ? 'md' : 'xl',
+                    weight: 'bold',
+                    color: statusMeta.textColor,
+                    margin: 'sm',
+                    adjustMode: 'shrink-to-fit',
+                    align: 'center',
+                },
+                {
+                    type: 'text',
+                    text: showActions ? 'รอผู้อนุมัติดำเนินการ' : 'ผลการอนุมัติจากผู้ดูแลถูกอัปเดตแล้ว',
+                    size: showActions ? 'xs' : 'sm',
+                    color: statusMeta.textColor,
+                    wrap: true,
+                    align: 'center',
+
+                }
+            ]
+        },
+        {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            paddingAll: '12px',
+            cornerRadius: '16px',
+            backgroundColor: '#FFFFFF',
+            contents: [
+                {
+                    type: 'text',
+                    text: 'สรุปคำขอ',
+                    size: 'sm',
+                    weight: 'bold',
+                    color: '#0F172A'
+                },
+                buildFlexDetailRow('พนักงาน', payload.employeeName),
+                buildFlexDetailRow('วันที่แจ้ง', payload.notifyDate),
+                buildFlexDetailRow('ช่วงลา', `${stringifyFlexValue(payload.startDate)} - ${stringifyFlexValue(payload.endDate)}`),
+                buildFlexDetailRow('จำนวนวัน', `${stringifyFlexValue(payload.leaveDays)} วัน`, true),
+                buildFlexDetailRow('ทะเบียนรถ', payload.plate)
+            ]
+        }
+    ];
+
+    if (showActions) {
+        footerContents.push(
+            {
+                type: 'button',
+                style: 'primary',
+                color: '#0F9D58',
+                height: 'md',
+                action: {
+                    type: 'postback',
+                    label: 'อนุมัติ',
+                    data: payload.approveData,
+                }
+            },
+            {
+                type: 'button',
+                style: 'link',
+                color: '#B91C1C',
+                height: 'md',
+                action: {
+                    type: 'postback',
+                    label: 'ไม่อนุมัติ',
+                    data: payload.rejectData,
+                }
+            }
+        );
+    }
+
+    if (showRecommendation) {
+        bodyContents.push({
+            type: 'box',
+            layout: 'horizontal',
+            spacing: 'sm',
+            paddingAll: '12px',
+            cornerRadius: '16px',
+            backgroundColor: recommendationMeta.backgroundColor,
+            contents: [
+                {
+                    type: 'text',
+                    text: 'ระบบแนะนำ',
+                    size: 'sm',
+                    color: recommendationMeta.labelColor,
+                    flex: 2,
+                    gravity: 'center'
+                },
+                {
+                    type: 'text',
+                    text: recommendationMeta.label,
+                    size: 'sm',
+                    weight: 'bold',
+                    color: recommendationMeta.valueColor,
+                    align: 'end',
+                    flex: 3,
+                    wrap: true,
+                    gravity: 'center'
+                }
+            ]
+        });
+    }
+
+    bodyContents.push({
+        type: 'box',
+        layout: 'baseline',
+        spacing: 'sm',
+        contents: [
+            {
+                type: 'text',
+                text: showActions ? 'ตรวจสอบและเลือกผลการอนุมัติได้จากปุ่มด้านล่าง' : 'ระบบได้อัปเดตผลการอนุมัติใบลาของคุณแล้ว',
+                size: 'xs',
+                color: '#64748B',
+                wrap: true
+            }
+        ]
+    });
 
     return {
         type: 'flex',
-        altText: `แจ้งการลางาน: ${payload.employeeName}`,
+        altText: `${altTextPrefix}: ${payload.employeeName}`,
         contents: {
             type: 'bubble',
             size: 'mega',
@@ -65,175 +261,74 @@ function buildLeaveApprovalFlexMessage(payload) {
                 type: 'box',
                 layout: 'vertical',
                 spacing: 'lg',
-                contents: [
-                    {
-                        type: 'box',
-                        layout: 'vertical',
-                        paddingAll: '20px',
-                        cornerRadius: '20px',
-                        backgroundColor: '#0F766E',
-                        contents: [
-                            {
-                                type: 'box',
-                                layout: 'baseline',
-                                spacing: 'sm',
-                                contents: [
-                                    {
-                                        type: 'text',
-                                        text: 'LEAVE REQUEST',
-                                        size: 'xs',
-                                        weight: 'bold',
-                                        color: '#CCFBF1',
-                                        flex: 0
-                                    },
-                                    {
-                                        type: 'filler'
-                                    },
-                                    {
-                                        type: 'text',
-                                        text: 'LACO',
-                                        size: 'xs',
-                                        color: '#F0FDFA',
-                                        align: 'end',
-                                        flex: 0
-                                    }
-                                ]
-                            },
-                            {
-                                type: 'text',
-                                text: 'แจ้งการลางาน',
-                                weight: 'bold',
-                                size: 'xl',
-                                color: '#FFFFFF',
-                                margin: 'md'
-                            },
-                            {
-                                type: 'text',
-                                text:  `ชื่อ: ${payload.employeeName}`,
-                                size: 'md',
-                                color: '#E6FFFB',
-                                margin: 'sm',
-                                wrap: true,
-                                adjustMode: 'shrink-to-fit'
-                            }
-                        ]
-                    },
-                    {
-                        type: 'box',
-                        layout: 'vertical',
-                        spacing: 'sm',
-                        paddingAll: '12px',
-                        cornerRadius: '16px',
-                        backgroundColor: '#FFFFFF',
-                        contents: [
-                            {
-                                type: 'text',
-                                text: 'รายละเอียด',
-                                size: 'sm',
-                                weight: 'bold',
-                                color: '#0F172A'
-                            },
-                            buildFlexDetailRow('วันที่แจ้ง', payload.notifyDate),
-                            buildFlexDetailRow('พนักงาน', payload.employeeName),
-                            buildFlexDetailRow('ทะเบียนรถ', payload.plate),
-                            buildFlexDetailRow('ประเภทการลา', payload.leaveType),
-                            buildFlexDetailRow('ประเภทงาน', payload.jobType)
-                        ]
-                    },
-                    {
-                        type: 'box',
-                        layout: 'vertical',
-                        spacing: 'sm',
-                        paddingAll: '12px',
-                        cornerRadius: '16px',
-                        backgroundColor: '#ECFEFF',
-                        contents: [
-                            {
-                                type: 'text',
-                                text: 'ช่วงวันลา',
-                                size: 'sm',
-                                weight: 'bold',
-                                color: '#155E75'
-                            },
-                            buildFlexDetailRow('เริ่มลา', payload.startDate),
-                            buildFlexDetailRow('สิ้นสุด', payload.endDate),
-                            buildFlexLeaveDaysRow(payload.leaveDays)
-                        ]
-                    },
-                    {
-                        type: 'box',
-                        layout: 'horizontal',
-                        spacing: 'sm',
-                        paddingAll: '12px',
-                        cornerRadius: '16px',
-                        backgroundColor: recommendationMeta.backgroundColor,
-                        contents: [
-                            {
-                                type: 'text',
-                                text: 'ระบบแนะนำ',
-                                size: 'sm',
-                                color: recommendationMeta.labelColor,
-                                flex: 2,
-                                gravity: 'center'
-                            },
-                            {
-                                type: 'text',
-                                text: recommendationMeta.label,
-                                size: 'sm',
-                                weight: 'bold',
-                                color: recommendationMeta.valueColor,
-                                align: 'end',
-                                flex: 3,
-                                wrap: true,
-                                gravity: 'center'
-                            }
-                        ]
-                    },
-                    {
-                        type: 'box',
-                        layout: 'baseline',
-                        spacing: 'sm',
-                        contents: [
-                            {
-                                type: 'text',
-                                text: 'ตรวจสอบและเลือกผลการอนุมัติได้จากปุ่มด้านล่าง',
-                                size: 'xs',
-                                color: '#64748B',
-                                wrap: true
-                            }
-                        ]
-                    }
-                ]
+                contents: bodyContents
             },
             footer: {
                 type: 'box',
                 layout: 'vertical',
                 spacing: 'md',
                 paddingAll: '16px',
+                contents: footerContents
+            }
+        }
+    };
+}
+
+function buildRegistrationSuccessFlexMessage(payload) {
+    return {
+        type: 'flex',
+        altText: `ลงทะเบียนสำเร็จ: ${payload.employeeName}`,
+        contents: {
+            type: 'bubble',
+            size: 'mega',
+            body: {
+                type: 'box',
+                layout: 'vertical',
+                spacing: 'md',
+                paddingAll: '16px',
                 contents: [
                     {
-                        type: 'button',
-                        style: 'primary',
-                        color: '#0F9D58',
-                        height: 'md',
-                        action: {
-                            type: 'postback',
-                            label: 'อนุมัติ',
-                            data: payload.approveData,
-                            displayText: `อนุมัติการลา: ${payload.employeeName}`
-                        }
+                        type: 'box',
+                        layout: 'vertical',
+                        spacing: 'sm',
+                        paddingAll: '16px',
+                        cornerRadius: '18px',
+                        backgroundColor: '#0F766E',
+                        contents: [
+                            {
+                                type: 'text',
+                                text: 'ลงทะเบียนสำเร็จ',
+                                size: 'lg',
+                                weight: 'bold',
+                                color: '#FFFFFF'
+                            },
+                            {
+                                type: 'text',
+                                text: payload.employeeName,
+                                size: 'sm',
+                                color: '#CCFBF1',
+                                wrap: true
+                            }
+                        ]
                     },
                     {
-                        type: 'button',
-                        style: 'link',
-                        color: '#B91C1C',
-                        height: 'md',
-                        action: {
-                            type: 'postback',
-                            label: 'ไม่อนุมัติ',
-                            data: payload.rejectData,
-                            displayText: `ไม่อนุมัติการลา: ${payload.employeeName}`
-                        }
+                        type: 'box',
+                        layout: 'vertical',
+                        spacing: 'sm',
+                        paddingAll: '12px',
+                        cornerRadius: '16px',
+                        backgroundColor: '#F8FAFC',
+                        contents: [
+                            buildFlexDetailRow('รหัสพนักงาน', payload.employeeId),
+                            {
+                                type: 'text',
+                                text: 'ระบบจะแจ้งผลการลาให้คุณทันทีเมื่อมีการอนุมัติหรือไม่อนุมัติ',
+                                size: 'sm',
+                                color: '#334155',
+                                wrap: true,
+                                margin: 'sm'
+                            }
+                        ]
                     }
                 ]
             }
@@ -269,59 +364,40 @@ function buildFlexDetailRow(label, value, emphasize) {
     };
 }
 
-function buildFlexLeaveDaysRow(value) {
-    return {
-        type: 'box',
-        layout: 'baseline',
-        margin: 'sm',
-        cornerRadius: '12px',
-        paddingAll: '10px',
-        backgroundColor: '#CFFAFE',
-        contents: [
-            {
-                type: 'text',
-                text: 'จำนวนวันลา',
-                size: 'xs',
-                color: '#155E75',
-                flex: 2
-            },
-            {
-                type: 'text',
-                text: stringifyFlexValue(value) + ' วัน',
-                size: 'sm',
-                weight: 'bold',
-                color: '#0F172A',
-                align: 'end',
-                flex: 3,
-                wrap: true
-            }
-        ]
-    };
-}
-
 function getFlexStatusMeta(status) {
-    const normalizedStatus = stringifyFlexValue(status);
+    const normalizedStatus = normalizeDecisionValue(status);
+    const isAutoStatus = normalizedStatus.indexOf('(auto)') !== -1;
+    const decisionType = getDecisionType(normalizedStatus);
 
-    if (normalizedStatus === 'อนุมัติ') {
+    if (decisionType === 'approve') {
         return {
-            label: 'อนุมัติแล้ว',
-            badgeColor: '#DCFCE7',
-            textColor: '#166534'
+            label: isAutoStatus ? 'อนุมัติ (auto)' : 'อนุมัติแล้ว',
+            heading: isAutoStatus ? 'AUTO APPROVED' : 'APPROVED',
+            badgeColor: '#D1FAE5',
+            textColor: '#14532D',
+            accentColor: '#166534',
+            accentTextColor: '#ECFDF5'
         };
     }
 
-    if (normalizedStatus === 'ไม่อนุมัติ') {
+    if (decisionType === 'reject') {
         return {
-            label: 'ไม่อนุมัติ',
+            label: isAutoStatus ? 'ไม่อนุมัติ (auto)' : 'คำขอไม่ผ่านอนุมัติ',
+            heading: isAutoStatus ? 'AUTO REJECTED' : 'REJECTED',
             badgeColor: '#FEE2E2',
-            textColor: '#991B1B'
+            textColor: '#7F1D1D',
+            accentColor: '#B91C1C',
+            accentTextColor: '#FEF2F2'
         };
     }
 
     return {
         label: 'รออนุมัติ',
+        heading: 'PENDING',
         badgeColor: '#FEF3C7',
-        textColor: '#92400E'
+        textColor: '#92400E',
+        accentColor: '#D97706',
+        accentTextColor: '#FFFBEB'
     };
 }
 
@@ -335,6 +411,7 @@ function stringifyFlexValue(value) {
     return String(value);
 }
 
+// Logger = BetterLog.useSpreadsheet();
 function doPost(e) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const [LINE_ACCESS_TOKEN, ADMIN_GROUP_ID] = ss.getSheetByName('chatid').getRange('D2:E2').getValues()[0].map(String);
@@ -359,24 +436,30 @@ function doPost(e) {
 function handleMessage(webhook) {
     let message = webhook.message.toLowerCase();
     if (message.startsWith('#') && message.endsWith('#') && message.length > 2) {
+        webhook.showLoading();
         let emp_id = message.slice(1, -1).trim(); // ดึงข้อความระหว่าง # และ #
         // ทำการค้นหาข้อมูลพนักงานจาก emp_id ในสเปรดชีต
         const ss = SpreadsheetApp.getActiveSpreadsheet();
         const sh = ss.getSheetByName('Line Registration');
-        const data = sh.getDataRange().getValues();
+        const data = sh.getDataRange().getDisplayValues();
         const header = data[0];
-        const empIdColIndex = 1
-        const nameColIndex = 2
-        const uidColIndex = 3
+        const empIdColIndex = 0
+        const nameColIndex = 1
+        const uidColIndex = 2
         for (let i = 1; i < data.length; i++) {
-            if (String(data[i][empIdColIndex]) == emp_id) {
+            if (String(data[i][empIdColIndex]).toLowerCase() == emp_id) {
                 // พบข้อมูลพนักงานที่ตรงกับ emp_id
                 const employeeName = data[i][nameColIndex];
                 const lineUid = webhook.userId;
                 // บันทึก Line UID ลงในสเปรดชีต
                 sh.getRange(i + 1, uidColIndex + 1).setValue(lineUid);
                 // ตอบกลับข้อความยืนยันการลงทะเบียน
-                webhook.replyToline(['สวัสดี ' + employeeName + '! คุณได้ลงทะเบียนกับระบบเรียบร้อยแล้ว 😊\n\nระบบจะแจ้งผลการลาให้คุณทราบทันที เมื่อมีการอนุมัติหรือไม่อนุมัติ']);
+                webhook.replyToline([
+                    buildRegistrationSuccessFlexMessage({
+                        employeeName: employeeName,
+                        employeeId: emp_id
+                    })
+                ]);
                 return webhook.ok;
             }
         }
@@ -386,14 +469,113 @@ function handleMessage(webhook) {
     }
 }
 
-function handleLeaveApprovalPostback(postbackData) {
+function handleLeaveApprovalPostback(webhook) {
     let postback = webhook.postback;
+    Logger.log('Received postback: ' + JSON.stringify(postback));
     let data = parsePostbackData(postback);
     let action = data.action;
+    let uuid = data.uuid;
+    let username = data.id;
+    Logger.log('Received postback with action: ' + action + ', uuid: ' + uuid + ', username: ' + username);
+    if (!action || !uuid || !username) {
+        webhook.replyToline(['ข้อมูลไม่ครบถ้วนสำหรับการดำเนินการนี้']);
+        return webhook.ok;
+    }
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sh = ss.getSheetByName(SHEET_NAME);
+    const registrationSheet = ss.getSheetByName('Line Registration');
+    const registrationData = registrationSheet.getDataRange().getValues();
+    const registrationHeader = registrationData[0];
+    let userID = null;
+    for (let i = 1; i < registrationData.length; i++) {
+        if (String(registrationData[i][0]).toLowerCase() === username.toLowerCase()) {
+            userID = registrationData[i][2];
+            break;
+        }
+    }
+    const dataRange = sh.getDataRange().getValues();
+    const header = dataRange[0];
+    const uuidColIndex = 12;
+    const statusColIndex = 9;
+    const approvedAtColIndex = 11;
+    const usernameColIndex = 6;
+    const approverUserIdColIndex = 13;
+    const approverDisplayNameColIndex = 14;
+    const lineAccessToken = ss.getSheetByName('chatid').getRange('D2').getValue();
+    for (let i = 1; i < dataRange.length; i++) {
+        if (String(dataRange[i][uuidColIndex]) === uuid) {
+            const row = dataRange[i];
+            const currentStatus = normalizeDecisionValue(row[statusColIndex]);
+            let updatedStatus = null;
+
+            if (isFinalLeaveStatus(currentStatus)) {
+                const approvedAtText = formatApprovalTimestamp(row[approvedAtColIndex]);
+                const approverDisplayName = stringifyFlexValue(row[approverDisplayNameColIndex]);
+                const approverText = approverDisplayName !== '-' ? approverDisplayName : 'ผู้อนุมัติคนก่อนหน้า';
+                const duplicateMessage = approvedAtText
+                    ? `รายการนี้ถูก${currentStatus}ไปแล้วโดย ${approverText} เมื่อ ${approvedAtText} และไม่สามารถดำเนินการซ้ำได้`
+                    : `รายการนี้ถูก${currentStatus}ไปแล้วโดย ${approverText} และไม่สามารถดำเนินการซ้ำได้`;
+                webhook.replyToline([duplicateMessage]);
+                return webhook.ok;
+            }
+
+            if (action === 'approve') {
+                updatedStatus = 'อนุมัติ';
+                sh.getRange(i + 1, statusColIndex + 1).setValue(updatedStatus);
+                webhook.replyToline(['คุณได้อนุมัติการลาเรียบร้อยแล้ว']);
+            } else if (action === 'reject') {
+                updatedStatus = 'ไม่อนุมัติ';
+                sh.getRange(i + 1, statusColIndex + 1).setValue(updatedStatus);
+                webhook.replyToline(['คุณได้ไม่อนุมัติการลาเรียบร้อยแล้ว']);
+            } else {
+                webhook.replyToline(['การดำเนินการไม่ถูกต้อง']);
+                return webhook.ok;
+            }
+
+            if (updatedStatus) {
+                const approvedAt = new Date();
+                const approverUserId = webhook.userId || '';
+                let approverDisplayName = '';
+
+                try {
+                    const profile = webhook.profile();
+                    approverDisplayName = profile && profile.displayName ? profile.displayName : '';
+                } catch (error) {
+                    Logger.log('Unable to load approver profile: ' + error.message);
+                }
+
+                sh.getRange(i + 1, approvedAtColIndex + 1).setValue(approvedAt);
+                sh.getRange(i + 1, approverUserIdColIndex + 1).setValue(approverUserId);
+                sh.getRange(i + 1, approverDisplayNameColIndex + 1).setValue(approverDisplayName);
+            }
+
+            if (updatedStatus && userID && lineAccessToken) {
+                const employeeMessage = buildLeaveApprovalFlexMessage({
+                    rowIndex: i + 1,
+                    employeeName: row[1],
+                    plate: row[2],
+                    leaveType: row[3],
+                    startDate: row[4],
+                    endDate: row[5],
+                    jobType: row[8],
+                    leaveDays: row[7],
+                    status: updatedStatus,
+                    systemRecommend: row[19],
+                    notifyDate: Utilities.formatDate(new Date(), 'Asia/Bangkok', 'dd/MM/yyyy'),
+                    showActions: false
+                });
+                LineBotWebhook.push(userID, lineAccessToken, [employeeMessage]);
+            }
+
+            return webhook.ok;
+        }
+    }
+    webhook.replyToline(['ไม่พบข้อมูลการลาที่เกี่ยวข้องกับการดำเนินการนี้']);
+    return webhook.ok;
 }
 
 function parsePostbackData(postbackData) {
-    return String(postbackData)
+    return String(postbackData.data || '')
         .split('&')
         .filter(Boolean)
         .reduce(function (result, pair) {
@@ -463,4 +645,143 @@ function getRecommendationMeta(recommendation) {
 
 function normalizeDecisionValue(value) {
     return stringifyFlexValue(value).replace(/\s+/g, ' ').trim();
+}
+
+function getDecisionType(value) {
+    const normalizedValue = normalizeDecisionValue(value);
+
+    if (normalizedValue.indexOf('ไม่อนุมัติ') === 0) {
+        return 'reject';
+    }
+
+    if (normalizedValue.indexOf('อนุมัติ') === 0) {
+        return 'approve';
+    }
+
+    return '';
+}
+
+function isFinalLeaveStatus(status) {
+    return Boolean(getDecisionType(status));
+}
+
+function getAutoStatusFromRecommendation(recommendation) {
+    const decisionType = getDecisionType(recommendation);
+
+    if (decisionType === 'approve') {
+        return 'อนุมัติ (auto)';
+    }
+
+    if (decisionType === 'reject') {
+        return 'ไม่อนุมัติ (auto)';
+    }
+
+    return '';
+}
+
+function getDisplayStatusForFlex(status) {
+    return normalizeDecisionValue(status).replace(/\s*\(auto\)$/i, '');
+}
+
+function formatApprovalTimestamp(value) {
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+        return '';
+    }
+    return Utilities.formatDate(value, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm');
+}
+
+function autoSetStatus() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sh = ss.getSheetByName(SHEET_NAME);
+    const registrationSheet = ss.getSheetByName('Line Registration');
+    const lineAccessToken = ss.getSheetByName('chatid').getRange('D2').getValue();
+
+    if (!sh) {
+        return;
+    }
+
+    const dataRange = sh.getDataRange().getValues();
+
+    if (dataRange.length <= 1) {
+        return;
+    }
+
+    const registrationMap = {};
+    const registrationData = registrationSheet ? registrationSheet.getDataRange().getValues() : [];
+    const now = new Date();
+    const cutoffTime = now.getTime() - (60 * 60 * 1000);
+    const submittedAtColIndex = 0;
+    const employeeNameColIndex = 1;
+    const plateColIndex = 2;
+    const leaveTypeColIndex = 3;
+    const startDateColIndex = 4;
+    const endDateColIndex = 5;
+    const usernameColIndex = 6;
+    const leaveDaysColIndex = 7;
+    const jobTypeColIndex = 8;
+    const statusColIndex = 9;
+    const approvedAtColIndex = 11;
+    const approverUserIdColIndex = 13;
+    const approverDisplayNameColIndex = 14;
+    const systemRecommendColIndex = 19;
+
+    for (let i = 1; i < registrationData.length; i++) {
+        const employeeId = normalizeDecisionValue(registrationData[i][0]).toLowerCase();
+        const lineUserId = registrationData[i][2];
+
+        if (employeeId && lineUserId) {
+            registrationMap[employeeId] = lineUserId;
+        }
+    }
+
+    for (let i = 1; i < dataRange.length; i++) {
+        const row = dataRange[i];
+        const submittedAt = row[submittedAtColIndex];
+        const currentStatus = row[statusColIndex];
+        const approvedAt = row[approvedAtColIndex];
+        const autoStatus = getAutoStatusFromRecommendation(row[systemRecommendColIndex]);
+
+        if (!(submittedAt instanceof Date) || isNaN(submittedAt.getTime())) {
+            continue;
+        }
+
+        if (submittedAt.getTime() > cutoffTime) {
+            continue;
+        }
+
+        if (isFinalLeaveStatus(currentStatus) || (approvedAt instanceof Date && !isNaN(approvedAt.getTime()))) {
+            continue;
+        }
+
+        if (!autoStatus) {
+            continue;
+        }
+
+        const sheetRowIndex = i + 1;
+        const employeeId = normalizeDecisionValue(row[usernameColIndex]).toLowerCase();
+        const registeredLineUserId = registrationMap[employeeId] || '';
+
+        sh.getRange(sheetRowIndex, statusColIndex + 1).setValue(autoStatus);
+        sh.getRange(sheetRowIndex, approvedAtColIndex + 1).setValue(now);
+        sh.getRange(sheetRowIndex, approverUserIdColIndex + 1).setValue('AUTO_TRIGGER');
+        sh.getRange(sheetRowIndex, approverDisplayNameColIndex + 1).setValue('ระบบอัตโนมัติ');
+
+        if (registeredLineUserId && lineAccessToken) {
+            const employeeMessage = buildLeaveApprovalFlexMessage({
+                rowIndex: sheetRowIndex,
+                employeeName: row[employeeNameColIndex],
+                plate: row[plateColIndex],
+                leaveType: row[leaveTypeColIndex],
+                startDate: row[startDateColIndex],
+                endDate: row[endDateColIndex],
+                jobType: row[jobTypeColIndex],
+                leaveDays: row[leaveDaysColIndex],
+                status: autoStatus,
+                systemRecommend: row[systemRecommendColIndex],
+                notifyDate: Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy'),
+                showActions: false
+            });
+            LineBotWebhook.push(registeredLineUserId, lineAccessToken, [employeeMessage]);
+        }
+    }
 }
