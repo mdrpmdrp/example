@@ -54,7 +54,8 @@ const APP_CONFIG = {
                 'attachmentJson',
                 'workOrderFolderId',
                 'quotationCount',
-                'Quotations'
+                'Quotations',
+                'selectedQuotationId'
             ]
         },
         quotations: {
@@ -595,7 +596,8 @@ function saveWorkOrder(token, payload) {
         closedAt: String(input.status || '').trim().toUpperCase() === 'CLOSED' ? now : '',
         attachmentJson: JSON.stringify(allAttachments),
         workOrderFolderId: rowInfo ? String(rowInfo.row.workOrderFolderId || '').trim() : '',
-        quotationCount: rowInfo ? (normalizeNumber_(rowInfo.row.quotationCount) || 0) : 0
+        quotationCount: rowInfo ? (normalizeNumber_(rowInfo.row.quotationCount) || 0) : 0,
+        selectedQuotationId: rowInfo ? String(rowInfo.row.selectedQuotationId || '').trim() : ''
     };
 
     if (input.workOrderId) {
@@ -720,16 +722,20 @@ function getQuotationComparison(token, workOrderId) {
     requireAdmin_(token);
     const workOrder = findRequiredByField_(APP_CONFIG.sheets.workOrders.name, 'workOrderId', workOrderId);
     const quotationIds = getWorkOrderQuotationRefs_(workOrder);
+    const selectedQuotationId = String(workOrder.selectedQuotationId || '').trim();
     const quotations = [];
 
     getVendorUsersWithSheets_().forEach(function (vendorUser) {
         getVendorQuotationRowsByWorkOrder_(vendorUser, workOrder.workOrderNumber, quotationIds).forEach(function (row) {
-            quotations.push(mapVendorSheetQuotationForUi_(row, workOrder, vendorUser));
+            const quotation = mapVendorSheetQuotationForUi_(row, workOrder, vendorUser);
+            quotation.isSelected = quotation.quotationId === selectedQuotationId;
+            quotations.push(quotation);
         });
     });
 
     quotations.sort(function (left, right) {
-        return String(left.vendorName || '').localeCompare(String(right.vendorName || ''))
+        return Number(Boolean(right.isSelected)) - Number(Boolean(left.isSelected))
+            || String(left.vendorName || '').localeCompare(String(right.vendorName || ''))
             || String(right.quotationDate || '').localeCompare(String(left.quotationDate || ''))
             || String(right.quotationId || '').localeCompare(String(left.quotationId || ''));
     });
@@ -769,6 +775,58 @@ function saveQuotationThaiPrice(token, payload) {
 
     return {
         ok: true,
+        data: getAdminBootstrap_(session)
+    };
+}
+
+function saveSelectedQuotation(token, payload) {
+    const session = requireAdmin_(token);
+    const input = sanitizeObject_(payload);
+    validateRequired_(input, ['workOrderId', 'quotationId']);
+
+    const normalizedWorkOrderId = String(input.workOrderId || '').trim();
+    const normalizedQuotationId = String(input.quotationId || '').trim();
+    const workOrdersTable = getTable_(APP_CONFIG.sheets.workOrders.name);
+    const workOrderRowInfo = findRowByField_(workOrdersTable, 'workOrderId', normalizedWorkOrderId);
+    if (!workOrderRowInfo) {
+        throw new Error('Work order not found.');
+    }
+
+    const quotationRecord = findVendorQuotationRecordAcrossUsers_(normalizedQuotationId);
+    if (!quotationRecord) {
+        throw new Error('Quotation not found.');
+    }
+
+    if (String(quotationRecord.row.workOrderId || '').trim() !== normalizedWorkOrderId) {
+        throw new Error('Quotation does not belong to this work order.');
+    }
+
+    const quotationRefs = getWorkOrderQuotationRefs_(workOrderRowInfo.row);
+    if (quotationRefs.indexOf(normalizedQuotationId) === -1) {
+        throw new Error('Quotation is not linked to this work order.');
+    }
+
+    updateRowByIndex_(APP_CONFIG.sheets.workOrders.name, workOrderRowInfo.rowIndex, {
+        selectedQuotationId: normalizedQuotationId,
+        updatedAt: nowIso_()
+    });
+
+    appendActivity_({
+        actorUserId: session.userId,
+        actorRole: session.role,
+        action: 'SELECT_QUOTATION',
+        entityType: 'WORK_ORDER',
+        entityId: normalizedWorkOrderId,
+        detailJson: JSON.stringify({
+            workOrderNumber: workOrderRowInfo.row.workOrderNumber,
+            quotationId: normalizedQuotationId
+        })
+    });
+
+    return {
+        ok: true,
+        workOrderId: normalizedWorkOrderId,
+        quotationId: normalizedQuotationId,
         data: getAdminBootstrap_(session)
     };
 }
@@ -1447,17 +1505,23 @@ function removeWorkOrderQuotationReference_(workOrderId, quotationId) {
     const currentSerialized = getWorkOrderQuotationRefs_(rowInfo.row).join(', ');
     const nextCount = nextRefs.length;
     const currentCount = normalizeNumber_(rowInfo.row.quotationCount) || 0;
+    const nextSelectedQuotationId = String(rowInfo.row.selectedQuotationId || '').trim() === normalizedQuotationId
+        ? ''
+        : String(rowInfo.row.selectedQuotationId || '').trim();
+    const currentSelectedQuotationId = String(rowInfo.row.selectedQuotationId || '').trim();
 
-    if (currentSerialized !== nextSerialized || currentCount !== nextCount) {
+    if (currentSerialized !== nextSerialized || currentCount !== nextCount || currentSelectedQuotationId !== nextSelectedQuotationId) {
         updateRowByIndex_(APP_CONFIG.sheets.workOrders.name, rowInfo.rowIndex, {
             Quotations: nextSerialized,
-            quotationCount: nextCount
+            quotationCount: nextCount,
+            selectedQuotationId: nextSelectedQuotationId
         });
     }
 
     return Object.assign({}, rowInfo.row, {
         Quotations: nextSerialized,
-        quotationCount: nextCount
+        quotationCount: nextCount,
+        selectedQuotationId: nextSelectedQuotationId
     });
 }
 
@@ -1491,11 +1555,14 @@ function syncWorkOrderQuotationRefsForVendorRows_(vendorRows) {
         const currentSerialized = existingRefs.join(', ');
         const nextCount = mergedRefs.length;
         const currentCount = normalizeNumber_(row.quotationCount) || 0;
+        const currentSelectedQuotationId = String(row.selectedQuotationId || '').trim();
+        const nextSelectedQuotationId = mergedRefs.indexOf(currentSelectedQuotationId) >= 0 ? currentSelectedQuotationId : '';
 
-        if (currentSerialized !== nextSerialized || currentCount !== nextCount) {
+        if (currentSerialized !== nextSerialized || currentCount !== nextCount || currentSelectedQuotationId !== nextSelectedQuotationId) {
             updateRowByIndex_(APP_CONFIG.sheets.workOrders.name, index + 2, {
                 Quotations: nextSerialized,
-                quotationCount: nextCount
+                quotationCount: nextCount,
+                selectedQuotationId: nextSelectedQuotationId
             });
         }
     });
@@ -2691,6 +2758,7 @@ function mapWorkOrderForUi_(row, quoteCount) {
         status: row.status,
         attachments: normalizeStoredFiles_(row.attachmentJson),
         quoteCount: normalizedQuoteCount || 0,
+        selectedQuotationId: String(row.selectedQuotationId || '').trim(),
         createdAt: row.createdAt,
         updatedAt: row.updatedAt
     };

@@ -244,6 +244,7 @@
                                     <th class="pb-3 pr-4">Deadline</th>
                                     <th class="pb-3 pr-4">Budget RMB</th>
                                     <th class="pb-3 pr-4">Quotes</th>
+                                    <th class="pb-3 pr-4">Selected QT</th>
                                     <th class="pb-3 pr-4">Status</th>
                                     <th class="pb-3 text-right">Action</th>
                                 </tr>
@@ -678,21 +679,23 @@
                     <h3 id="compareModalTitle" class="font-display text-2xl font-semibold"></h3>
                     <p id="compareModalSubtitle" class="mt-1 text-sm text-slate-500"></p>
                 </div>
-                <button id="closeCompareBtn" type="button"
-                    class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
-                        class="mr-2 inline-flex h-4 w-4"></i>Close</button>
+                <div class="flex items-center gap-3">
+                    <div id="compareScrollToolbar" class="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200/80 bg-white/90 p-2 shadow-sm">
+                        <button id="compareScrollLeftBtn" type="button"
+                            class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-brand hover:text-brandDark disabled:cursor-not-allowed disabled:opacity-40">
+                            <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                        </button>
+                        <button id="compareScrollRightBtn" type="button"
+                            class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-brand hover:text-brandDark disabled:cursor-not-allowed disabled:opacity-40">
+                            <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+                    <button id="closeCompareBtn" type="button"
+                        class="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600"><i data-lucide="x"
+                            class="mr-2 inline-flex h-4 w-4"></i>Close</button>
+                </div>
             </div>
-            <div id="compareScrollToolbar" class="flex items-center justify-end gap-2 border-b border-slate-200/80 px-6 py-3">
-                <button id="compareScrollLeftBtn" type="button"
-                    class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-brand hover:text-brandDark disabled:cursor-not-allowed disabled:opacity-40">
-                    <i data-lucide="arrow-left" class="h-4 w-4"></i>
-                </button>
-                <button id="compareScrollRightBtn" type="button"
-                    class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-brand hover:text-brandDark disabled:cursor-not-allowed disabled:opacity-40">
-                    <i data-lucide="arrow-right" class="h-4 w-4"></i>
-                </button>
-            </div>
-            <div id="compareScrollViewport" class="compare-scroll-shell max-h-[calc(92vh-10rem)] px-6 py-6">
+            <div id="compareScrollViewport" class="compare-scroll-shell max-h-[calc(92vh-8rem)] px-6 py-6">
                 <div id="compareCardsContainer" class="flex min-w-max items-stretch gap-5 pb-2"></div>
             </div>
         </div>
@@ -727,6 +730,7 @@
             <td data-field="deadline" class="py-4 pr-4 align-top"></td>
             <td data-field="budget" class="py-4 pr-4 align-top"></td>
             <td data-field="quotes" class="py-4 pr-4 align-top"></td>
+            <td class="py-4 pr-4 align-top"><span data-field="selectedQuotation"></span></td>
             <td class="py-4 pr-4 align-top"><span data-field="status"></span></td>
             <td class="py-4 text-right align-top">
                 <div class="flex justify-end gap-2"><button type="button" data-action="edit-workorder"
@@ -856,11 +860,16 @@
     </template>
 
     <template id="compareCardTemplate">
-        <article class="flex w-[420px] flex-none flex-col rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft">
+        <article data-field="compareCard" class="flex w-[420px] flex-none flex-col rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft transition">
             <div class="flex items-start justify-between gap-4">
                 <div>
-                    <p data-field="vendorName" class="font-display text-lg font-semibold text-slate-900"></p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <p data-field="vendorName" class="font-display text-lg font-semibold text-slate-900"></p>
+                        <span data-field="selectedBadge"
+                            class="hidden rounded-full bg-brand px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">Selected QT</span>
+                    </div>
                     <p data-field="vendorCode" class="text-sm text-slate-500"></p>
+                    <p data-field="quotationId" class="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"></p>
                 </div><span data-field="status"></span>
             </div>
             <div class="mt-4 space-y-3">
@@ -903,6 +912,10 @@
                     class="w-full rounded-full bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-brandDark"><i
                         data-lucide="wallet" class="mr-2 inline-flex h-4 w-4"></i>Save THB Price</button>
             </form>
+            <div data-field="selectionPanel" class="mt-4 flex justify-end rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
+                <button type="button" data-action="select-quotation"
+                    class="w-full inline-flex items-center justify-center rounded-full border px-5 py-2.5 text-sm font-semibold shadow-sm transition">Use This QT</button>
+            </div>
         </article>
     </template>
 
@@ -1096,6 +1109,12 @@
                 })
                 .on('click', '#compareScrollRightBtn', function () {
                     scrollCompareCards(1);
+                })
+                .on('click', '[data-action="select-quotation"]', function () {
+                    confirmSelectedQuotation(
+                        $(this).attr('data-work-order-id'),
+                        $(this).attr('data-quotation-id')
+                    );
                 })
                 .on('click', '[data-action="view-workorder"]', function () {
                     openWorkOrderDetailModal($(this).attr('data-work-order-id'));
@@ -1778,6 +1797,7 @@
                 'w-20',
                 'w-16',
                 'w-10',
+                'w-28',
                 'w-16',
                 'w-24'
             ], 4, true);
@@ -2022,6 +2042,7 @@
             const $tbody = $('#adminWorkOrdersTable').empty();
             (state.data.workOrders || []).forEach(function (row) {
                 const quoteCount = Number(row.quoteCount || 0);
+                const selectedQuotationId = String(row.selectedQuotationId || '').trim();
                 const $tr = $($('#adminWorkOrderRowTemplate').html());
                 $tr.find('[data-field="number"]').text(row.workOrderNumber || '-');
                 $tr.find('[data-field="meta"]').text((row.material || '-') + ' • ' + (row.size || '-'));
@@ -2029,6 +2050,19 @@
                 $tr.find('[data-field="deadline"]').text(formatDate(row.deadlineToQuote));
                 $tr.find('[data-field="budget"]').text(formatCurrency(row.budgetRmb, 'RMB'));
                 $tr.find('[data-field="quotes"]').text(String(quoteCount));
+                if (selectedQuotationId) {
+                    $tr.find('[data-field="selectedQuotation"]').replaceWith(
+                        $('<span>')
+                            .addClass('inline-flex rounded-full border border-brand/20 bg-brand/10 px-3 py-1 text-xs font-semibold text-brandDark')
+                            .text(selectedQuotationId)
+                    );
+                } else {
+                    $tr.find('[data-field="selectedQuotation"]').replaceWith(
+                        $('<span>')
+                            .addClass('text-sm text-slate-400')
+                            .text('-')
+                    );
+                }
                 $tr.find('[data-field="status"]').replaceWith(renderStatusPill(row.status));
                 $tr.find('[data-action="view-workorder"]').attr('data-work-order-id', row.workOrderId);
                 $tr.find('[data-action="edit-workorder"]').attr('data-work-order-id', row.workOrderId);
@@ -2241,6 +2275,35 @@
             $container.toggleClass('w-full justify-center', !showScrollableCards);
         }
 
+        function getSelectedComparisonQuotationId(modal) {
+            return String(modal && modal.workOrder && modal.workOrder.selectedQuotationId || '').trim();
+        }
+
+        function sortComparisonQuotations(quotations, selectedQuotationId) {
+            const normalizedSelectedQuotationId = String(selectedQuotationId || '').trim();
+            return (quotations || []).slice().sort(function (left, right) {
+                const leftIsSelected = String(left && left.quotationId || '').trim() === normalizedSelectedQuotationId;
+                const rightIsSelected = String(right && right.quotationId || '').trim() === normalizedSelectedQuotationId;
+                return Number(rightIsSelected) - Number(leftIsSelected)
+                    || String(left && left.vendorName || '').localeCompare(String(right && right.vendorName || ''))
+                    || String(right && right.quotationDate || '').localeCompare(String(left && left.quotationDate || ''))
+                    || String(right && right.quotationId || '').localeCompare(String(left && left.quotationId || ''));
+            }).map(function (quote) {
+                const nextQuote = Object.assign({}, quote);
+                nextQuote.isSelected = String(nextQuote.quotationId || '').trim() === normalizedSelectedQuotationId;
+                return nextQuote;
+            });
+        }
+
+        function syncSelectedQuotationInCompareModal(quotationId) {
+            if (!state.compareModal || !state.compareModal.workOrder) {
+                return;
+            }
+
+            state.compareModal.workOrder.selectedQuotationId = String(quotationId || '').trim();
+            state.compareModal.quotations = sortComparisonQuotations(state.compareModal.quotations || [], state.compareModal.workOrder.selectedQuotationId);
+        }
+
         function getCompareScrollMetrics() {
             const viewport = document.getElementById('compareScrollViewport');
             if (!viewport) {
@@ -2301,9 +2364,13 @@
             }
 
             $('#compareModalTitle').text((modal.workOrder.workOrderNumber || '') + ' • ' + (modal.workOrder.briefFromCustomer || ''));
-            $('#compareModalSubtitle').text('Compare supplier specs, pricing, lead time, and admin notes side by side.');
+            const selectedQuotationId = getSelectedComparisonQuotationId(modal);
+            $('#compareModalSubtitle').text(selectedQuotationId
+                ? ('Selected QT: ' + selectedQuotationId + ' • Compare supplier specs, pricing, lead time, and admin notes side by side.')
+                : 'Compare supplier specs, pricing, lead time, and admin notes side by side.');
             const $container = $('#compareCardsContainer').empty();
-            const quotations = modal.quotations || [];
+            const quotations = sortComparisonQuotations(modal.quotations || [], selectedQuotationId);
+            state.compareModal.quotations = quotations;
 
             if (!quotations.length) {
                 setCompareModalLayoutMode('empty');
@@ -2317,9 +2384,12 @@
             setCompareModalLayoutMode('cards');
 
             quotations.forEach(function (quote) {
+                console.log("🚀 ~ renderCompareModal ~ quote:", quote)
                 const $card = $($('#compareCardTemplate').html());
+                const isSelected = String(quote.quotationId || '').trim() === selectedQuotationId;
                 $card.find('[data-field="vendorName"]').text(quote.vendorName || '-');
                 $card.find('[data-field="vendorCode"]').text(quote.vendorCode || '');
+                $card.find('[data-field="quotationId"]').text(quote.quotationId || '-');
                 $card.find('[data-field="status"]').replaceWith(renderStatusPill(quote.status));
                 $card.find('[data-field="commercialSpecs"]').append(
                     buildCompareSpecItem('Category', quote.category),
@@ -2337,6 +2407,21 @@
                 $card.find('[name="quotationId"]').val(quote.quotationId);
                 $card.find('[name="thaiPrice"]').val(quote.thaiPrice || '');
                 $card.find('[name="adminNote"]').val(quote.adminNote || '');
+                $card.find('[data-field="selectedBadge"]').toggleClass('hidden', !isSelected);
+                const $selectionButton = $card.find('[data-action="select-quotation"]');
+                $selectionButton
+                    .attr('data-work-order-id', modal.workOrder.workOrderId || '')
+                    .attr('data-quotation-id', quote.quotationId || '')
+                    .prop('disabled', isSelected)
+                    .toggleClass('cursor-default border-slate-900 bg-slate-900 text-white hover:bg-slate-900 hover:border-slate-900', isSelected)
+                    .toggleClass('border-slate-300 bg-white text-slate-700 hover:border-brand hover:text-brandDark hover:bg-white', !isSelected)
+                    .text(isSelected ? 'Selected QT' : 'Use This QT');
+                $card.find('[data-field="compareCard"]')
+                    .toggleClass('border-brand bg-gradient-to-br from-brand/10 via-white to-white shadow-[0_24px_80px_rgba(32,178,170,0.18)]', isSelected)
+                    .toggleClass('border-slate-200 bg-white shadow-soft', !isSelected);
+                $card.find('[data-field="selectionPanel"]')
+                    .toggleClass('border-brand/30 bg-brand/10', isSelected)
+                    .toggleClass('border-slate-200 bg-slate-50/90', !isSelected);
                 const attachments = Array.isArray(quote.images) ? quote.images : [];
                 const imageAttachments = attachments.filter(isImageFile).slice(0, 6);
                 const fileAttachments = attachments.filter(function (file) {
@@ -2381,6 +2466,53 @@
             $('#compareModal').removeClass('hidden').addClass('flex');
             updateCompareScrollControls();
             refreshIcons();
+        }
+
+        function confirmSelectedQuotation(workOrderId, quotationId) {
+            const normalizedWorkOrderId = String(workOrderId || '').trim();
+            const normalizedQuotationId = String(quotationId || '').trim();
+            if (!normalizedWorkOrderId || !normalizedQuotationId || !window.Swal || !state.compareModal) {
+                return;
+            }
+
+            const quote = findById(state.compareModal.quotations || [], 'quotationId', normalizedQuotationId);
+            if (!quote || quote.isSelected) {
+                return;
+            }
+
+            Swal.fire({
+                icon: 'question',
+                title: 'Use this quotation?',
+                text: 'Confirm QT ' + normalizedQuotationId + ' for work order ' + String(state.compareModal.workOrder.workOrderNumber || '').trim() + '.',
+                showCancelButton: true,
+                confirmButtonText: 'Confirm Selection',
+                cancelButtonText: 'Cancel',
+                customClass: {
+                    popup: 'swal2-quotation-modal',
+                    title: 'swal2-quotation-title',
+                    htmlContainer: 'swal2-quotation-html',
+                    confirmButton: 'swal2-quotation-confirm'
+                }
+            }).then(function (result) {
+                if (!result.isConfirmed) {
+                    return null;
+                }
+
+                setLoading(true);
+                return callServer('saveSelectedQuotation', state.token, {
+                    workOrderId: normalizedWorkOrderId,
+                    quotationId: normalizedQuotationId
+                }).then(function (response) {
+                    applyBootstrap(response.data, state.role, state.user);
+                    if (state.compareModal && state.compareModal.workOrder && state.compareModal.workOrder.workOrderId === normalizedWorkOrderId) {
+                        syncSelectedQuotationInCompareModal(response.quotationId || normalizedQuotationId);
+                        renderCompareModal();
+                    }
+                    flash('Success', 'Selected QT saved successfully.', 'success', true);
+                }).catch(handleError).finally(function () {
+                    setLoading(false);
+                });
+            });
         }
 
         function closeCompareModal() {
