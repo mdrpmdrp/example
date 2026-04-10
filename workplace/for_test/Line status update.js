@@ -1,6 +1,8 @@
 function onFormSubitForLineStatusUpdate(e) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const [LINE_ACCESS_TOKEN, ADMIN_GROUP_ID] = ss.getSheetByName('chatid').getRange('D2:E2').getValues()[0].map(String);
+    const chatConfig = getChatConfig(ss);
+    const LINE_ACCESS_TOKEN = chatConfig.lineAccessToken;
+    const ADMIN_GROUP_ID = chatConfig.adminGroupId;
     let range = e.range;
     let sh = range.getSheet();
     if (sh.getName() !== SHEET_NAME) return;
@@ -31,6 +33,7 @@ function onFormSubitForLineStatusUpdate(e) {
         leaveDays: submitData[COL_DAYS - 1],
         status: submitData[COL_STATUS - 1] || 'รออนุมัติ',
         systemRecommend: submitData[COL_SYSTEM_RECOMMEND - 1],
+        companyName: chatConfig.companyName,
         notifyDate: Utilities.formatDate(new Date(), 'Asia/Bangkok', 'dd/MM/yyyy'),
         approveData: `action=approve&uuid=${uuid}&id=${encodeURIComponent(submitData[COL_USERNAME - 1])}`,
         rejectData: `action=reject&uuid=${uuid}&id=${encodeURIComponent(submitData[COL_USERNAME - 1])}`,
@@ -48,8 +51,9 @@ function buildLeaveApprovalFlexMessage(payload) {
     const showRecommendation = showActions;
     const displayStatus = showActions ? payload.status : getDisplayStatusForFlex(payload.status);
     const statusMeta = getFlexStatusMeta(displayStatus);
-    const flexTitle = showActions ? 'แจ้งการลางาน LACO' : 'ผลการอนุมัติการลา LACO';
-    const altTextPrefix = showActions ? 'แจ้งการลางาน LACO' : 'ผลการอนุมัติการลา LACO';
+    const companyName = getDisplayCompanyName(payload.companyName);
+    const flexTitle = showActions ? `แจ้งการลางาน ${companyName}` : `ผลการอนุมัติการลา ${companyName}`;
+    const altTextPrefix = showActions ? `แจ้งการลางาน ${companyName}` : `ผลการอนุมัติการลา ${companyName}`;
     const footerContents = [];
     const bodyContents = [
         {
@@ -179,6 +183,7 @@ function buildLeaveApprovalFlexMessage(payload) {
                     type: 'postback',
                     label: 'อนุมัติ',
                     data: payload.approveData,
+                    displayText: `✅ อนุมัติ การลาของ ${payload.employeeName}`
                 }
             },
             {
@@ -190,6 +195,7 @@ function buildLeaveApprovalFlexMessage(payload) {
                     type: 'postback',
                     label: 'ไม่อนุมัติ',
                     data: payload.rejectData,
+                    displayText: `❌ ไม่อนุมัติ การลาของ ${payload.employeeName}`
                 }
             }
         );
@@ -275,9 +281,11 @@ function buildLeaveApprovalFlexMessage(payload) {
 }
 
 function buildRegistrationSuccessFlexMessage(payload) {
+    const companyName = getDisplayCompanyName(payload.companyName);
+
     return {
         type: 'flex',
-        altText: `ลงทะเบียนสำเร็จ: ${payload.employeeName}`,
+        altText: `ลงทะเบียนสำเร็จ ${companyName}: ${payload.employeeName}`,
         contents: {
             type: 'bubble',
             size: 'mega',
@@ -301,6 +309,14 @@ function buildRegistrationSuccessFlexMessage(payload) {
                                 size: 'lg',
                                 weight: 'bold',
                                 color: '#FFFFFF'
+                            },
+                            {
+                                type: 'text',
+                                text: companyName,
+                                size: 'xs',
+                                color: '#CCFBF1',
+                                margin: 'sm',
+                                wrap: true
                             },
                             {
                                 type: 'text',
@@ -414,7 +430,8 @@ function stringifyFlexValue(value) {
 // Logger = BetterLog.useSpreadsheet();
 function doPost(e) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const [LINE_ACCESS_TOKEN, ADMIN_GROUP_ID] = ss.getSheetByName('chatid').getRange('D2:E2').getValues()[0].map(String);
+    const chatConfig = getChatConfig(ss);
+    const LINE_ACCESS_TOKEN = chatConfig.lineAccessToken;
     try {
         LineBotWebhook.init(e, LINE_ACCESS_TOKEN, true).forEach(webhook => {
             const events = webhook.eventType
@@ -457,7 +474,8 @@ function handleMessage(webhook) {
                 webhook.replyToline([
                     buildRegistrationSuccessFlexMessage({
                         employeeName: employeeName,
-                        employeeId: emp_id
+                        employeeId: emp_id,
+                        companyName: getChatConfig(ss).companyName
                     })
                 ]);
                 return webhook.ok;
@@ -501,7 +519,8 @@ function handleLeaveApprovalPostback(webhook) {
     const usernameColIndex = 6;
     const approverUserIdColIndex = 13;
     const approverDisplayNameColIndex = 14;
-    const lineAccessToken = ss.getSheetByName('chatid').getRange('D2').getValue();
+    const chatConfig = getChatConfig(ss);
+    const lineAccessToken = chatConfig.lineAccessToken;
     for (let i = 1; i < dataRange.length; i++) {
         if (String(dataRange[i][uuidColIndex]) === uuid) {
             const row = dataRange[i];
@@ -561,6 +580,7 @@ function handleLeaveApprovalPostback(webhook) {
                     leaveDays: row[7],
                     status: updatedStatus,
                     systemRecommend: row[19],
+                    companyName: chatConfig.companyName,
                     notifyDate: Utilities.formatDate(new Date(), 'Asia/Bangkok', 'dd/MM/yyyy'),
                     showActions: false
                 });
@@ -589,7 +609,7 @@ function parsePostbackData(postbackData) {
 
 function replyLineMessage(replyToken, text) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const lineAccessToken = ss.getSheetByName('chatid').getRange('D2').getValue();
+    const lineAccessToken = getChatConfig(ss).lineAccessToken;
 
     if (!lineAccessToken) {
         return;
@@ -690,11 +710,28 @@ function formatApprovalTimestamp(value) {
     return Utilities.formatDate(value, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm');
 }
 
+function getChatConfig(ss) {
+    const sheet = ss.getSheetByName('chatid');
+    const row = sheet ? sheet.getRange('D2:G2').getValues()[0] : [];
+
+    return {
+        lineAccessToken: String(row[0] || ''),
+        adminGroupId: String(row[1] || ''),
+        companyName: String(row[3] || '').trim()
+    };
+}
+
+function getDisplayCompanyName(companyName) {
+    const normalizedCompanyName = String(companyName || '').trim();
+    return normalizedCompanyName || 'บริษัท';
+}
+
 function autoSetStatus() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sh = ss.getSheetByName(SHEET_NAME);
     const registrationSheet = ss.getSheetByName('Line Registration');
-    const lineAccessToken = ss.getSheetByName('chatid').getRange('D2').getValue();
+    const chatConfig = getChatConfig(ss);
+    const lineAccessToken = chatConfig.lineAccessToken;
 
     if (!sh) {
         return;
@@ -778,6 +815,7 @@ function autoSetStatus() {
                 leaveDays: row[leaveDaysColIndex],
                 status: autoStatus,
                 systemRecommend: row[systemRecommendColIndex],
+                companyName: chatConfig.companyName,
                 notifyDate: Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy'),
                 showActions: false
             });
