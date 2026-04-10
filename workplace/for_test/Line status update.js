@@ -726,6 +726,39 @@ function getDisplayCompanyName(companyName) {
     return normalizedCompanyName || 'บริษัท';
 }
 
+function getNumericLeaveDays(value) {
+    if (typeof value === 'number') {
+        return value;
+    }
+
+    const normalizedValue = normalizeDecisionValue(value);
+    const matchedValue = normalizedValue.match(/\d+(?:\.\d+)?/);
+
+    if (!matchedValue) {
+        return NaN;
+    }
+
+    return parseFloat(matchedValue[0]);
+}
+
+function shouldUseShortAutoApprovalWindow(leaveType, leaveDays) {
+    const normalizedLeaveType = normalizeDecisionValue(leaveType);
+    const numericLeaveDays = getNumericLeaveDays(leaveDays);
+    const isPersonalLeave = normalizedLeaveType.indexOf('ลากิจ') === 0;
+    const isSickLeave = normalizedLeaveType.indexOf('ลาป่วย') === 0;
+
+    if (!(isPersonalLeave || isSickLeave)) {
+        return false;
+    }
+
+    return !isNaN(numericLeaveDays) && numericLeaveDays <= 1;
+}
+
+function getAutoUpdateCutoffTime(now, leaveType, leaveDays) {
+    const waitMinutes = shouldUseShortAutoApprovalWindow(leaveType, leaveDays) ? 15 : 60;
+    return now.getTime() - (waitMinutes * 60 * 1000);
+}
+
 function autoSetStatus() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sh = ss.getSheetByName(SHEET_NAME);
@@ -746,7 +779,6 @@ function autoSetStatus() {
     const registrationMap = {};
     const registrationData = registrationSheet ? registrationSheet.getDataRange().getValues() : [];
     const now = new Date();
-    const cutoffTime = now.getTime() - (60 * 60 * 1000);
     const submittedAtColIndex = 0;
     const employeeNameColIndex = 1;
     const plateColIndex = 2;
@@ -777,6 +809,7 @@ function autoSetStatus() {
         const currentStatus = row[statusColIndex];
         const approvedAt = row[approvedAtColIndex];
         const autoStatus = getAutoStatusFromRecommendation(row[systemRecommendColIndex]);
+        const cutoffTime = getAutoUpdateCutoffTime(now, row[leaveTypeColIndex], row[leaveDaysColIndex]);
 
         if (!(submittedAt instanceof Date) || isNaN(submittedAt.getTime())) {
             continue;
