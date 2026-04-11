@@ -182,7 +182,8 @@ function doGet() {
         .setTitle(APP_CONFIG.appName)
         .addMetaTag('viewport', 'width=device-width, initial-scale=1')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+        .setFaviconUrl(APP_CONFIG.logo.square);
 }
 
 function include(filename, templateData) {

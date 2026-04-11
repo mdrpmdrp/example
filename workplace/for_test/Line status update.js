@@ -14,12 +14,12 @@ function onFormSubitForLineStatusUpdate(e) {
     const COL_START = 5; // E
     const COL_END = 6; // F
     const COL_USERNAME = 7; // G
-    const COL_DAYS = 8; // H
-    const COL_JOB_TYPE = 9; // I
-    const COL_STATUS = 10; // J
-    const COL_UUID = 13; // M
-    const COL_LEAVE_REASON = 16; // P
-    const COL_SYSTEM_RECOMMEND = 22; // V
+    const COL_LEAVE_REASON = 8; // H
+    const COL_DAYS = 9; // I
+    const COL_JOB_TYPE = 10; // J
+    const COL_STATUS = 11; // K
+    const COL_UUID = 14; // N
+    const COL_SYSTEM_RECOMMEND = 23; // W
     let uuid = Utilities.getUuid();
     // save uuid ไว้ในคอลัมน์ที่ซ่อนอยู่ เพื่อใช้เป็น token ในการอัปเดตสถานะผ่าน Line
     sh.getRange(rowIndex, COL_UUID).setValue(uuid);
@@ -551,12 +551,12 @@ function handleLeaveApprovalPostback(webhook) {
     }
     const dataRange = sh.getDataRange().getValues();
     const header = dataRange[0];
-    const uuidColIndex = 12;
-    const statusColIndex = 9;
-    const approvedAtColIndex = 11;
+    const uuidColIndex = 13;
+    const statusColIndex = 10;
+    const approvedAtColIndex = 12;
     const usernameColIndex = 6;
-    const approverUserIdColIndex = 13;
-    const approverDisplayNameColIndex = 14;
+    const approverUserIdColIndex = 14;
+    const approverDisplayNameColIndex = 15;
     const chatConfig = getChatConfig(ss);
     const lineAccessToken = chatConfig.lineAccessToken;
     for (let i = 1; i < dataRange.length; i++) {
