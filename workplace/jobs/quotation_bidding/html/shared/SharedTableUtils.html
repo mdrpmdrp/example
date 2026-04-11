@@ -1,0 +1,189 @@
+        const tableSearchTimers = {};
+
+        function scheduleTableSearch(tableKey, value) {
+            const normalizedTableKey = String(tableKey || '').trim();
+            if (!normalizedTableKey) {
+                return;
+            }
+
+            window.clearTimeout(tableSearchTimers[normalizedTableKey]);
+            tableSearchTimers[normalizedTableKey] = window.setTimeout(function () {
+                getTableUiState(normalizedTableKey).searchQuery = String(value || '').trim();
+                rerenderTable(normalizedTableKey);
+            }, 300);
+        }
+
+        function handleTableSort(tableKey, sortKey) {
+            const normalizedTableKey = String(tableKey || '').trim();
+            const normalizedSortKey = String(sortKey || '').trim();
+            if (!normalizedTableKey || !normalizedSortKey) {
+                return;
+            }
+
+            const tableState = getTableUiState(normalizedTableKey);
+            if (tableState.sortKey === normalizedSortKey) {
+                tableState.sortDirection = tableState.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                tableState.sortKey = normalizedSortKey;
+                tableState.sortDirection = getDefaultTableSortDirection(normalizedTableKey, normalizedSortKey);
+            }
+            rerenderTable(normalizedTableKey);
+        }
+
+        function rerenderTable(tableKey) {
+            const tableConfig = getTableUiConfig(tableKey);
+            if (typeof tableConfig.rerender === 'function') {
+                tableConfig.rerender();
+            }
+        }
+
+        function resetTableUi(tableKey, options) {
+            const tableState = getTableUiState(tableKey);
+            const tableConfig = getTableUiConfig(tableKey);
+            const config = options || {};
+            tableState.searchQuery = '';
+            tableState.sortKey = String(config.sortKey || tableConfig.defaultSortKey || '').trim();
+            tableState.sortDirection = normalizeSortDirection(config.sortDirection || tableConfig.defaultSortDirection);
+            const selector = tableConfig.searchInputSelector || '';
+            if (selector) {
+                $(selector).val('');
+            }
+            updateTableResultCount(tableKey, 0, 0);
+            updateTableSortIndicators(tableKey);
+        }
+
+        function getTableUiState(tableKey) {
+            const normalizedTableKey = String(tableKey || '').trim();
+            if (!normalizedTableKey) {
+                return { searchQuery: '', sortKey: '', sortDirection: 'asc' };
+            }
+
+            if (!state.tableUi[normalizedTableKey]) {
+                state.tableUi[normalizedTableKey] = {};
+            }
+
+            const tableState = state.tableUi[normalizedTableKey];
+            const tableConfig = getTableUiConfig(normalizedTableKey);
+            if (typeof tableState.searchQuery !== 'string') {
+                tableState.searchQuery = '';
+            }
+            if (!tableState.sortKey && tableConfig.defaultSortKey) {
+                tableState.sortKey = tableConfig.defaultSortKey;
+            }
+            if (!tableState.sortDirection) {
+                tableState.sortDirection = normalizeSortDirection(tableConfig.defaultSortDirection);
+            }
+            return tableState;
+        }
+
+        function getTableUiConfig(tableKey) {
+            return TABLE_UI_CONFIG[String(tableKey || '').trim()] || {};
+        }
+
+        function getDefaultTableSortDirection(tableKey, sortKey) {
+            const tableConfig = getTableUiConfig(tableKey);
+            if (typeof tableConfig.getDefaultSortDirection === 'function') {
+                return normalizeSortDirection(tableConfig.getDefaultSortDirection(sortKey));
+            }
+            return normalizeSortDirection(tableConfig.defaultSortDirection);
+        }
+
+        function applyTableUi(tableKey, items) {
+            const list = Array.isArray(items) ? items.slice() : [];
+            const tableState = getTableUiState(tableKey);
+            const filteredItems = filterTableItems(tableKey, list, tableState.searchQuery);
+            const sortedItems = sortTableItems(tableKey, filteredItems, tableState);
+            updateTableResultCount(tableKey, sortedItems.length, list.length);
+            updateTableSortIndicators(tableKey);
+            return sortedItems;
+        }
+
+        function filterTableItems(tableKey, items, query) {
+            const normalizedQuery = String(query || '').trim().toLowerCase();
+            if (!normalizedQuery) {
+                return items;
+            }
+
+            const tableConfig = getTableUiConfig(tableKey);
+            return items.filter(function (item) {
+                const searchValues = typeof tableConfig.getSearchValues === 'function'
+                    ? tableConfig.getSearchValues(item)
+                    : [];
+                return searchValues.some(function (value) {
+                    return String(value || '').toLowerCase().indexOf(normalizedQuery) !== -1;
+                });
+            });
+        }
+
+        function sortTableItems(tableKey, items, tableState) {
+            if (!tableState || !tableState.sortKey) {
+                return items;
+            }
+
+            const direction = tableState.sortDirection === 'desc' ? -1 : 1;
+            return items.slice().sort(function (left, right) {
+                const comparison = compareTableItems(tableKey, left, right, tableState.sortKey);
+                if (comparison !== 0) {
+                    return comparison * direction;
+                }
+                return getTableFallbackComparison(tableKey, left, right);
+            });
+        }
+
+        function compareTableItems(tableKey, left, right, sortKey) {
+            const leftValue = getTableSortValue(tableKey, left, sortKey);
+            const rightValue = getTableSortValue(tableKey, right, sortKey);
+            if (typeof leftValue === 'number' || typeof rightValue === 'number') {
+                return Number(leftValue || 0) - Number(rightValue || 0);
+            }
+            return String(leftValue || '').localeCompare(String(rightValue || ''), undefined, {
+                sensitivity: 'base',
+                numeric: true
+            });
+        }
+
+        function getTableSortValue(tableKey, item, sortKey) {
+            const tableConfig = getTableUiConfig(tableKey);
+            if (typeof tableConfig.getSortValue === 'function') {
+                return tableConfig.getSortValue(item, sortKey);
+            }
+            return item && item[sortKey];
+        }
+
+        function getTableFallbackComparison(tableKey, left, right) {
+            const tableConfig = getTableUiConfig(tableKey);
+            if (typeof tableConfig.compareFallback === 'function') {
+                return tableConfig.compareFallback(left, right);
+            }
+            return 0;
+        }
+
+        function updateTableResultCount(tableKey, filteredCount, totalCount) {
+            const selector = getTableUiConfig(tableKey).resultCountSelector || '';
+            if (!selector) {
+                return;
+            }
+
+            const hasQuery = Boolean(String(getTableUiState(tableKey).searchQuery || '').trim());
+            const label = hasQuery
+                ? String(filteredCount) + ' of ' + String(totalCount) + ' results'
+                : String(filteredCount) + ' results';
+            $(selector).text(label);
+        }
+
+        function updateTableSortIndicators(tableKey) {
+            const tableConfig = getTableUiConfig(tableKey);
+            const tableState = getTableUiState(tableKey);
+            const sortKeys = Array.isArray(tableConfig.sortKeys) ? tableConfig.sortKeys : [];
+            sortKeys.forEach(function (sortKey) {
+                const iconName = tableState.sortKey === sortKey
+                    ? (tableState.sortDirection === 'asc' ? 'arrow-up' : 'arrow-down')
+                    : 'arrow-up-down';
+                $('[data-table="' + tableKey + '"][data-sort-icon="' + sortKey + '"]').attr('data-lucide', iconName);
+            });
+            refreshIcons();
+        }
+
+        function normalizeSortDirection(direction) {
+            return direction === 'desc' ? 'desc' : 'asc';
+        }

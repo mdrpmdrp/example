@@ -1,0 +1,3148 @@
+﻿    <script>
+        (() => {
+        const SESSION_KEY = 'quotation-bidding-session-token';
+        const SESSION_ROLE_KEY = 'quotation-bidding-session-role';
+        const TEMPLATE_ROLE = 'admin';
+        const AUTH_APP_URL = document.body ? String(document.body.getAttribute('data-auth-url') || '').trim() : '';
+        const FILE_UPLOAD_LIMIT = 10;
+        const RESUMABLE_UPLOAD_CHUNK_SIZE = 524288;
+        const QUOTATION_PRICE_RANGE_OPTIONS = [
+            '0-1 rmb', '1-2 rmb', '2-3 rmb', '3-4 rmb', '4-5 rmb', '5-6 rmb', '6-7 rmb', '7-8 rmb', '8-9 rmb', '9-10 rmb',
+            '10-11 rmb', '11-12 rmb', '12-14 rmb', '14-16 rmb', '16-20 rmb', '20-25 rmb', '25-30 rmb', '30-50 rmb', '50-100 rmb'
+        ];
+        const QUOTATION_CATEGORY_OPTIONS = [
+            'Bag', 'Tumbler', 'Key chain', 'Fan', 'Textile', 'Plastic', 'PVC', 'Clip', 'Luggage', 'Hat', 'Water bottle', 'Raincoat',
+            'Garment', 'Kitchenware', 'Laundry bin', 'Picnic Mat', 'Chair', 'Lunch box', 'Ball', 'Umbrella', 'Doll', 'Basin', 'Pen',
+            'Keychain', 'Gift set', 'Mug', 'Mirror', 'Fabric', 'Bowl'
+        ];
+        const AUTO_REFRESH_INTERVAL_MS = 60000;
+        const WORK_ORDER_NOTIFICATION_STORAGE_KEY = 'quotation-bidding-admin-work-order-notifications';
+        let memoryStorage = {};
+
+        const state = {
+            appName: 'Quotation Bidding Hub',
+            token: storageGet(SESSION_KEY),
+            role: TEMPLATE_ROLE,
+            user: null,
+            data: null,
+            bootstrapRefreshInFlight: false,
+            bootstrapRefreshTimer: null,
+            workOrderNotifications: loadWorkOrderNotifications(),
+            adminVendorUsers: null,
+            adminVendorUsersLoading: false,
+            vendorLoadInFlight: false,
+            authMode: 'login',
+            compareModal: null,
+            quotationManager: null,
+            returnToQuotationManagerOnClose: false,
+            workOrderDraft: null,
+            quotationDraft: null,
+            uploadSequence: 0,
+            newWorkOrderFiles: [],
+            newImages: [],
+            registerAvailability: {
+                username: null,
+                email: null
+            },
+            tableUi: {},
+            resetFlow: {
+                email: '',
+                otp: '',
+                otpRequested: false,
+                otpVerified: false
+            }
+        };
+
+        const TABLE_UI_CONFIG = {
+            adminWorkOrders: {
+                searchInputSelector: '#adminWorkOrdersSearchInput',
+                resultCountSelector: '#adminWorkOrdersResultCount',
+                sortKeys: ['workOrderNumber', 'briefFromCustomer', 'deadlineToQuote', 'budgetRmb', 'quoteCount', 'selectedQuotationId', 'status'],
+                defaultSortKey: 'deadlineToQuote',
+                defaultSortDirection: 'asc',
+                rerender: renderAdminWorkOrders,
+                getDefaultSortDirection: function (sortKey) {
+                    return (sortKey === 'budgetRmb' || sortKey === 'quoteCount') ? 'desc' : 'asc';
+                },
+                getSearchValues: function (item) {
+                    return [
+                        item && item.workOrderNumber,
+                        item && item.briefFromCustomer,
+                        item && item.material,
+                        item && item.size,
+                        item && item.status,
+                        item && item.selectedQuotationId
+                    ];
+                },
+                getSortValue: function (item, sortKey) {
+                    if (sortKey === 'quoteCount') {
+                        return Number(item && item.quoteCount || 0);
+                    }
+                    if (sortKey === 'budgetRmb') {
+                        return Number(item && item.budgetRmb || 0);
+                    }
+                    return item && item[sortKey];
+                },
+                compareFallback: function (left, right) {
+                    return String(left && left.deadlineToQuote || '').localeCompare(String(right && right.deadlineToQuote || ''))
+                        || String(left && left.workOrderNumber || '').localeCompare(String(right && right.workOrderNumber || ''), undefined, { numeric: true, sensitivity: 'base' });
+                }
+            },
+            vendors: {
+                searchInputSelector: '#vendorsSearchInput',
+                resultCountSelector: '#vendorsResultCount',
+                sortKeys: ['displayName', 'vendorName', 'email', 'role', 'isActive', 'vendorSheetUrl'],
+                defaultSortKey: 'isActive',
+                defaultSortDirection: 'desc',
+                rerender: renderVendorsTable,
+                getDefaultSortDirection: function (sortKey) {
+                    return (sortKey === 'isActive' || sortKey === 'vendorSheetUrl') ? 'desc' : 'asc';
+                },
+                getSearchValues: function (item) {
+                    return [
+                        item && item.username,
+                        item && item.role,
+                        item && item.vendorName,
+                        item && item.vendorCode,
+                        item && item.displayName,
+                        item && item.email,
+                        item && (item.isActive ? 'active' : 'inactive'),
+                        item && (item.vendorSheetUrl ? 'connected' : 'not linked')
+                    ];
+                },
+                getSortValue: function (item, sortKey) {
+                    if (sortKey === 'isActive') {
+                        return Number(Boolean(item && item.isActive));
+                    }
+                    if (sortKey === 'vendorSheetUrl') {
+                        return Number(Boolean(item && item.vendorSheetUrl));
+                    }
+                    return item && item[sortKey];
+                },
+                compareFallback: function (left, right) {
+                    return String(left && left.role || '').localeCompare(String(right && right.role || ''))
+                        || String(left && left.vendorName || left && left.displayName || left && left.username || '').localeCompare(String(right && right.vendorName || right && right.displayName || right && right.username || ''), undefined, { numeric: true, sensitivity: 'base' });
+                }
+            },
+            quotationManager: {
+                searchInputSelector: '#quotationManagerSearchInput',
+                resultCountSelector: '#quotationManagerResultCount',
+                sortKeys: ['quotationId', 'category', 'customerProject', 'status', 'updatedAt'],
+                defaultSortKey: 'updatedAt',
+                defaultSortDirection: 'desc',
+                rerender: function () {
+                    if (state.quotationManager) {
+                        renderQuotationManagerModal(state.quotationManager);
+                    }
+                },
+                getDefaultSortDirection: function (sortKey) {
+                    return sortKey === 'updatedAt' ? 'desc' : 'asc';
+                },
+                getSearchValues: function (item) {
+                    return [
+                        item && item.quotationId,
+                        item && item.category,
+                        item && item.customerProject,
+                        item && item.status,
+                        item && item.workOrderNumber
+                    ];
+                },
+                getSortValue: function (item, sortKey) {
+                    return item && item[sortKey];
+                },
+                compareFallback: function (left, right) {
+                    return String(right && right.updatedAt || '').localeCompare(String(left && left.updatedAt || ''))
+                        || String(right && right.quotationId || '').localeCompare(String(left && left.quotationId || ''), undefined, { numeric: true, sensitivity: 'base' });
+                }
+            }
+        };
+
+        $(init);
+
+        function init() {
+            moment.locale('en');
+            bindGlobalEvents();
+            bindCompareScrollEvents();
+            refreshIcons();
+            renderQuotationSelectOptions();
+            renderWorkspace();
+            callServer('getPublicBootstrap').then(function (result) {
+                state.appName = result.appName || state.appName;
+                $('#workspaceAppName span, #workspaceTopbarAppName span').text(state.appName);
+                if (state.token) {
+                    return refreshBootstrap({ silent: true });
+                }
+                redirectToAuthApp();
+            }).catch(function (error) {
+                handleError(error);
+                redirectToAuthApp();
+            });
+        }
+
+        function bindGlobalEvents() {
+            $(document)
+                .on('click', '.auth-tab, .auth-link', function () {
+                    switchAuthMode($(this).data('auth-mode'));
+                })
+                .on('submit', '#loginForm', function (event) {
+                    event.preventDefault();
+                    submitLogin(this);
+                })
+                .on('submit', '#registerForm', function (event) {
+                    event.preventDefault();
+                    submitRegister(this);
+                })
+                .on('blur', '#registerForm [name="username"], #registerForm [name="email"]', function () {
+                    checkRegistrationField($(this).attr('name'));
+                })
+                .on('input', '#registerForm [name="username"], #registerForm [name="email"]', function () {
+                    clearRegistrationFieldState($(this).attr('name'));
+                })
+                .on('submit', '#requestResetForm', function (event) {
+                    event.preventDefault();
+                    submitRequestReset(this);
+                })
+                .on('submit', '#verifyResetOtpForm', function (event) {
+                    event.preventDefault();
+                    submitVerifyResetOtp(this);
+                })
+                .on('submit', '#resetPasswordForm', function (event) {
+                    event.preventDefault();
+                    submitResetPassword(this);
+                })
+                .on('submit', '#workOrderForm', function (event) {
+                    event.preventDefault();
+                    submitWorkOrder(this);
+                })
+                .on('submit', '.user-access-form', function (event) {
+                    event.preventDefault();
+                    submitUserAccess(this);
+                })
+                .on('change', '.user-access-form [name="role"]', function () {
+                    updateUserAccessRoleUi($(this).closest('form'));
+                })
+                .on('submit', '#quotationForm', function (event) {
+                    event.preventDefault();
+                    submitQuotation(this);
+                })
+                .on('submit', '.thai-price-form', function (event) {
+                    event.preventDefault();
+                    submitThaiPrice(this);
+                })
+                .on('change', '#quotationImageInput', function () {
+                    handleQuotationImageSelection(this.files);
+                    $(this).val('');
+                })
+                .on('change', '#workOrderFileInput', function () {
+                    handleWorkOrderFileSelection(this.files);
+                    $(this).val('');
+                })
+                .on('change', '#quotationForm [name="workOrderId"]', function () {
+                    syncQuotationCustomerProjectField($(this).val());
+                })
+                .on('change', '#workOrderForm [name="status"]', function () {
+                    updateWorkOrderStatusControl($(this).val());
+                })
+                .on('click', '#openWorkspaceMenuBtn', openWorkspaceMenu)
+                .on('click', '#closeWorkspaceMenuBtn, #workspaceMenuBackdrop', closeWorkspaceMenu)
+                .on('click', '#logoutBtn', logout)
+                .on('click', '#refreshBootstrapBtn', function () {
+                    refreshBootstrap();
+                })
+                .on('click', function (event) {
+                    dismissWorkOrderNotificationToast(event);
+                })
+                .on('input', '#adminWorkOrdersSearchInput', function () {
+                    scheduleTableSearch('adminWorkOrders', $(this).val());
+                })
+                .on('input', '#vendorsSearchInput', function () {
+                    scheduleTableSearch('vendors', $(this).val());
+                })
+                .on('input', '#quotationManagerSearchInput', function () {
+                    scheduleTableSearch('quotationManager', $(this).val());
+                })
+                .on('click', '[data-action="sort-table"]', function () {
+                    handleTableSort($(this).attr('data-table'), $(this).attr('data-sort-key'));
+                })
+                .on('click', '#menuManageVendorsBtn', function () {
+                    openVendorsModal();
+                })
+                .on('click', '#closeVendorsModalBtn', closeVendorsModal)
+                .on('click', '#closeVendorEditorModalBtn', closeVendorEditorModal)
+                .on('click', '#openWorkOrderModalBtn', function () {
+                    state.workOrderDraft = null;
+                    fillWorkOrderForm(null);
+                    openWorkOrderModal();
+                })
+                .on('click', '#closeWorkOrderModalBtn', closeWorkOrderModal)
+                .on('click', '#closeQuotationModalBtn', closeQuotationModal)
+                .on('click', '#closeQuotationManagerModalBtn', closeQuotationManagerModal)
+                .on('click', '#closeWorkOrderDetailModalBtn', closeWorkOrderDetailModal)
+                .on('click', '#clearWorkOrderBtn', clearWorkOrderForm)
+                .on('click', '#clearQuotationBtn', clearQuotationForm)
+                .on('click', '#quotationManagerAddBtn', function () {
+                    state.returnToQuotationManagerOnClose = true;
+                    const workOrderId = $(this).attr('data-work-order-id')
+                        || (state.quotationManager && state.quotationManager.workOrder && state.quotationManager.workOrder.workOrderId)
+                        || '';
+                    if (workOrderId) {
+                        openQuotationModalForWorkOrder(workOrderId);
+                    }
+                })
+                .on('click', '#closeCompareBtn', closeCompareModal)
+                .on('click', '#compareScrollLeftBtn', function () {
+                    scrollCompareCards(-1);
+                })
+                .on('click', '#compareScrollRightBtn', function () {
+                    scrollCompareCards(1);
+                })
+                .on('click', '[data-action="select-quotation"]', function () {
+                    confirmSelectedQuotation(
+                        $(this).attr('data-work-order-id'),
+                        $(this).attr('data-quotation-id')
+                    );
+                })
+                .on('click', '[data-action="view-workorder"]', function () {
+                    openWorkOrderDetailModal($(this).attr('data-work-order-id'));
+                })
+                .on('click', '[data-action="edit-workorder"]', function () {
+                    const row = findById(state.data.workOrders, 'workOrderId', $(this).attr('data-work-order-id'));
+                    state.workOrderDraft = row ? $.extend(true, {}, row) : null;
+                    fillWorkOrderForm(state.workOrderDraft);
+                    openWorkOrderModal();
+                })
+                .on('click', '[data-action="open-compare"]', function () {
+                    openComparison($(this).attr('data-work-order-id'));
+                })
+                .on('click', '[data-action="edit-quotation"]', function () {
+                    const quotationId = $(this).attr('data-quotation-id');
+                    const modalQuotations = state.quotationManager && Array.isArray(state.quotationManager.quotations)
+                        ? state.quotationManager.quotations
+                        : [];
+                    const recentQuotations = state.data && Array.isArray(state.data.recentQuotations)
+                        ? state.data.recentQuotations
+                        : [];
+                    const managerQuote = findById(modalQuotations, 'quotationId', quotationId);
+                    const quote = managerQuote || findById(recentQuotations, 'quotationId', quotationId);
+                    state.returnToQuotationManagerOnClose = Boolean(managerQuote);
+                    state.quotationDraft = quote ? $.extend(true, {}, quote) : null;
+                    fillQuotationForm(state.quotationDraft);
+                    hideQuotationManagerModal();
+                    openQuotationModal();
+                })
+                .on('click', '[data-action="delete-quotation"]', function () {
+                    deleteQuotation($(this).attr('data-quotation-id'));
+                })
+                .on('click', '[data-action="add-quotation"]', function () {
+                    state.returnToQuotationManagerOnClose = false;
+                    openQuotationModalForWorkOrder($(this).attr('data-work-order-id'));
+                })
+                .on('click', '[data-action="manage-quotations"]', function () {
+                    openQuotationManagerModal($(this).attr('data-work-order-id'));
+                })
+                .on('click', '[data-action="edit-vendor"]', function () {
+                    openVendorEditorModal($(this).attr('data-user-id'));
+                })
+                .on('click', '[data-remove-existing-image]', function () {
+                    if (!state.quotationDraft || !Array.isArray(state.quotationDraft.images)) {
+                        return;
+                    }
+                    state.quotationDraft.images.splice(Number($(this).attr('data-remove-existing-image')), 1);
+                    renderQuotationPreviews();
+                })
+                .on('click', '[data-remove-new-image]', function () {
+                    removePendingUploadAt('newImages', Number($(this).attr('data-remove-new-image')), renderQuotationPreviews);
+                })
+                .on('click', '#quotationRemoveAllBtn', function () {
+                    clearAllUploads('QUOTATION');
+                })
+                .on('click', '[data-remove-workorder-existing-file]', function () {
+                    if (!state.workOrderDraft || !Array.isArray(state.workOrderDraft.attachments)) {
+                        return;
+                    }
+                    state.workOrderDraft.attachments.splice(Number($(this).attr('data-remove-workorder-existing-file')), 1);
+                    renderWorkOrderAttachmentList();
+                })
+                .on('click', '[data-remove-workorder-new-file]', function () {
+                    removePendingUploadAt('newWorkOrderFiles', Number($(this).attr('data-remove-workorder-new-file')), renderWorkOrderAttachmentList);
+                })
+                .on('click', '#workOrderRemoveAllBtn', function () {
+                    clearAllUploads('WORK_ORDER');
+                })
+                .on('click', '[data-preview-image]', function () {
+                    openImagePreviewModal($(this).attr('data-preview-image'), $(this).attr('data-preview-title'));
+                })
+                .on('click', '#closeImagePreviewModalBtn', closeImagePreviewModal)
+                .on('click', '#imagePreviewModal', function (event) {
+                    if (event.target === this) {
+                        closeImagePreviewModal();
+                    }
+                });
+        }
+
+        function bindCompareScrollEvents() {
+            const viewport = document.getElementById('compareScrollViewport');
+            if (viewport) {
+                viewport.addEventListener('scroll', updateCompareScrollControls, { passive: true });
+            }
+            window.addEventListener('resize', updateCompareScrollControls);
+        }
+
+<?!= include('SharedTableUtils') ?>
+
+        function switchAuthMode(mode) {
+            state.authMode = mode;
+            if (mode !== 'register') {
+                resetRegistrationAvailability();
+            }
+            if (mode !== 'reset') {
+                resetPasswordFlow();
+            }
+            $('.auth-panel').addClass('hidden');
+            $('#auth-' + mode).removeClass('hidden');
+            $('.auth-tab').removeClass('bg-white text-slate-900 shadow').addClass('text-slate-500');
+            $('.auth-tab i').attr('data-lucide', 'circle');
+            updateResetFlowUi();
+            refreshIcons();
+        }
+
+        function submitLogin(form) {
+            setLoading(true);
+            callServer('loginUser', formToObject(form)).then(function (response) {
+                state.token = response.token;
+                storageSet(SESSION_KEY, response.token);
+                storageSet(SESSION_ROLE_KEY, response.role);
+                state.role = response.role;
+                state.user = response.user;
+                state.data = null;
+                renderWorkspace();
+                flash('Success', 'Signed in successfully.', 'success', false);
+                setLoading(false);
+                callServer('finalizeLoginSession', response.token).then(function (result) {
+                    if (result && result.user) {
+                        state.user = result.user;
+                    }
+                }).catch(function () { });
+                refreshBootstrap({ silent: true });
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function submitRegister(form) {
+            setLoading(true);
+            validateRegistrationAvailability(form).then(function () {
+                return callServer('registerVendor', formToObject(form));
+            }).then(function (response) {
+                flash('Success', response.message, 'success', false);
+                form.reset();
+                resetRegistrationAvailability();
+                switchAuthMode('login');
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function checkRegistrationField(fieldName) {
+            const $form = $('#registerForm');
+            const payload = {
+                username: $form.find('[name="username"]').val(),
+                email: $form.find('[name="email"]').val()
+            };
+            const value = String(payload[fieldName] || '').trim();
+
+            if (!value) {
+                clearRegistrationFieldState(fieldName);
+                return Promise.resolve();
+            }
+
+            return callServer('checkRegistrationAvailability', payload).then(function (response) {
+                applyRegistrationAvailability('username', response.usernameAvailable, response.usernameMessage);
+                applyRegistrationAvailability('email', response.emailAvailable, response.emailMessage);
+            }).catch(function (error) {
+                clearRegistrationFieldState(fieldName);
+                throw error;
+            });
+        }
+
+        function validateRegistrationAvailability(form) {
+            return callServer('checkRegistrationAvailability', formToObject(form)).then(function (response) {
+                applyRegistrationAvailability('username', response.usernameAvailable, response.usernameMessage);
+                applyRegistrationAvailability('email', response.emailAvailable, response.emailMessage);
+
+                if (!response.usernameAvailable || !response.emailAvailable) {
+                    throw new Error(response.usernameAvailable ? response.emailMessage : response.usernameMessage);
+                }
+            });
+        }
+
+        function applyRegistrationAvailability(fieldName, isAvailable, message) {
+            state.registerAvailability[fieldName] = isAvailable;
+            const hintId = fieldName === 'username' ? '#registerUsernameHint' : '#registerEmailHint';
+            $(hintId)
+                .removeClass('hidden text-emerald-600 text-rose-600')
+                .addClass(isAvailable ? 'text-emerald-600' : 'text-rose-600')
+                .text(message || '');
+        }
+
+        function clearRegistrationFieldState(fieldName) {
+            state.registerAvailability[fieldName] = null;
+            const hintId = fieldName === 'username' ? '#registerUsernameHint' : '#registerEmailHint';
+            $(hintId).addClass('hidden').removeClass('text-emerald-600 text-rose-600').text('');
+        }
+
+        function resetRegistrationAvailability() {
+            clearRegistrationFieldState('username');
+            clearRegistrationFieldState('email');
+        }
+
+        function submitRequestReset(form) {
+            const payload = formToObject(form);
+            setLoading(true);
+            callServer('requestPasswordReset', payload).then(function (response) {
+                state.resetFlow.email = payload.email;
+                state.resetFlow.otpRequested = true;
+                state.resetFlow.otpVerified = false;
+                state.resetFlow.otp = '';
+                updateResetFlowUi();
+                flash('Success', response.message, 'success', false);
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function submitVerifyResetOtp(form) {
+            const payload = formToObject(form);
+            setLoading(true);
+            callServer('verifyPasswordResetOtp', payload).then(function (response) {
+                state.resetFlow.email = payload.email;
+                state.resetFlow.otp = payload.otp;
+                state.resetFlow.otpRequested = true;
+                state.resetFlow.otpVerified = true;
+                updateResetFlowUi();
+                flash('Success', response.message, 'success', true);
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function submitResetPassword(form) {
+            const payload = formToObject(form);
+            setLoading(true);
+            callServer('resetPasswordWithOtp', payload).then(function () {
+                flash('Success', 'Password has been reset successfully.', 'success', true);
+                resetPasswordFlow();
+                $('#requestResetForm')[0].reset();
+                $('#verifyResetOtpForm')[0].reset();
+                form.reset();
+                switchAuthMode('login');
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function updateResetFlowUi() {
+            const isResetMode = state.authMode === 'reset';
+            $('#requestResetForm').toggleClass('hidden', !isResetMode || state.resetFlow.otpRequested);
+            $('#verifyResetOtpForm').toggleClass('hidden', !isResetMode || !state.resetFlow.otpRequested || state.resetFlow.otpVerified);
+            $('#resetPasswordForm').toggleClass('hidden', !isResetMode || !state.resetFlow.otpVerified);
+            $('#resetStepRequest').toggleClass('hidden', !isResetMode || state.resetFlow.otpRequested);
+            $('#resetStepVerify').toggleClass('hidden', !isResetMode || !state.resetFlow.otpRequested || state.resetFlow.otpVerified);
+            $('#resetStepPassword').toggleClass('hidden', !isResetMode || !state.resetFlow.otpVerified);
+
+            if (state.resetFlow.email) {
+                $('#verifyResetOtpForm [name="email"]').val(state.resetFlow.email);
+                $('#resetPasswordForm [name="email"]').val(state.resetFlow.email);
+            }
+
+            if (state.resetFlow.otp) {
+                $('#resetPasswordForm [name="otp"]').val(state.resetFlow.otp);
+            }
+
+            $('#resetFlowHint')
+                .text(
+                    state.resetFlow.otpVerified
+                        ? 'OTP verified. Set your new password below.'
+                        : state.resetFlow.otpRequested
+                            ? 'Enter the OTP sent to your email to continue.'
+                            : 'Enter your registered email address to receive an OTP.'
+                );
+        }
+
+        function resetPasswordFlow() {
+            state.resetFlow = {
+                email: '',
+                otp: '',
+                otpRequested: false,
+                otpVerified: false
+            };
+            if ($('#verifyResetOtpForm').length) {
+                $('#verifyResetOtpForm')[0].reset();
+            }
+            if ($('#resetPasswordForm').length) {
+                $('#resetPasswordForm')[0].reset();
+            }
+            if ($('#requestResetForm').length && state.authMode !== 'reset') {
+                $('#requestResetForm')[0].reset();
+            }
+        }
+
+        function submitWorkOrder(form) {
+            const workOrderUploadError = getUploadBlockingMessage(state.newWorkOrderFiles, 'attachments');
+            if (workOrderUploadError) {
+                flash('Upload Incomplete', workOrderUploadError, 'error', true);
+                return;
+            }
+            const payload = formToObject(form);
+            const isNewWorkOrder = !payload.workOrderId;
+            payload.existingAttachments = JSON.stringify((state.workOrderDraft && state.workOrderDraft.attachments) || []);
+            payload.newAttachments = normalizeUploadedEntries(state.newWorkOrderFiles);
+            setLoading(true);
+            callServer('saveWorkOrder', state.token, payload).then(function (response) {
+                state.workOrderDraft = null;
+                state.newWorkOrderFiles = [];
+                fillWorkOrderForm(null);
+                closeWorkOrderModal();
+                flash('Success', 'Work order saved successfully.', 'success', true);
+                refreshBootstrap({ silent: true });
+                if (isNewWorkOrder && response && response.workOrder && response.workOrder.workOrderId) {
+                    notifyWorkOrderSuppliers(response.workOrder.workOrderId);
+                }
+                if (response && response.finalizeJob) {
+                    callServer('finalizeWorkOrderSave', state.token, response.finalizeJob)
+                        .then(function () {
+                            refreshBootstrap({ silent: true });
+                        })
+                        .catch(function () { });
+                }
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function notifyWorkOrderSuppliers(workOrderId) {
+            showEmailProgressToast();
+            callServer('sendWorkOrderNotificationEmails', state.token, workOrderId)
+                .then(function (response) {
+                    showEmailResultToast(response && response.notificationSummary);
+                })
+                .catch(function (error) {
+                    const message = error && error.message ? error.message : 'Unable to send supplier email notifications.';
+                    flash('Email Failed', message, 'error', true);
+                });
+        }
+
+        function showEmailProgressToast() {
+            if (!window.Swal) {
+                return;
+            }
+            Swal.close();
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                icon: 'info',
+                title: 'Sending Email',
+                text: 'Sending email notifications to suppliers...',
+                showConfirmButton: false,
+                timer: undefined,
+                timerProgressBar: false,
+                customClass: {
+                    popup: 'swal2-quotation-toast',
+                    title: 'swal2-quotation-title'
+                }
+            });
+        }
+
+        function showEmailResultToast(notificationSummary) {
+            const summary = notificationSummary || {};
+            const notifiedCount = Number(summary.notifiedCount || 0);
+            const failedCount = Number(summary.failedCount || 0);
+            const recipientCount = Number(summary.recipientCount || 0);
+
+            if (notifiedCount > 0 && failedCount > 0) {
+                flash('Email Sent', 'Sent successfully to ' + notifiedCount + ' supplier(s). ' + failedCount + ' failed.', 'success', true);
+                return;
+            }
+            if (notifiedCount > 0) {
+                flash('Email Sent', 'Sent successfully to ' + notifiedCount + ' supplier(s).', 'success', true);
+                return;
+            }
+            if (failedCount > 0) {
+                flash('Email Failed', 'Unable to send supplier email notifications.', 'error', true);
+                return;
+            }
+            flash('Email Skipped', recipientCount ? 'No supplier emails were sent.' : 'No active suppliers were available for email notification.', 'info', true);
+        }
+
+        function submitUserAccess(form) {
+            const payload = formToObject(form);
+            payload.isActive = $(form).find('[name="isActive"]').is(':checked');
+            setLoading(true);
+            callServer('saveUserAccess', state.token, payload).then(function (response) {
+                closeVendorEditorModal();
+                applyBootstrap(response.data, state.role, state.user);
+                if (Array.isArray(state.adminVendorUsers)) {
+                    loadAdminVendorUsers({ force: true, showSkeleton: false }).catch(function () { });
+                }
+                flash('Success', 'User access updated successfully.', 'success', true);
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function submitQuotation(form) {
+            const quotationUploadError = getUploadBlockingMessage(state.newImages, 'product images');
+            if (quotationUploadError) {
+                flash('Upload Incomplete', quotationUploadError, 'error', true);
+                return;
+            }
+            const payload = formToObject(form);
+            if (!(state.quotationDraft && state.quotationDraft.quotationId)) {
+                delete payload.quotationId;
+                $(form).find('[name="quotationId"]').val('');
+            }
+            payload.existingImages = JSON.stringify((state.quotationDraft && state.quotationDraft.images) || []);
+            payload.newImages = normalizeUploadedEntries(state.newImages);
+            setLoading(true);
+            callServer('saveVendorQuotation', state.token, payload).then(function (response) {
+                state.quotationDraft = null;
+                state.newImages = [];
+                fillQuotationForm(null);
+                renderQuotationPreviews();
+                closeQuotationModal({ restoreManager: false });
+                flash('Success', 'Quotation saved successfully.', 'success', true);
+                refreshBootstrap({ silent: true, skipVendorSheetSync: true });
+                if (response && response.finalizeJob) {
+                    callServer('finalizeVendorQuotationSave', state.token, response.finalizeJob)
+                        .then(function () {
+                            refreshBootstrap({ silent: true, skipVendorSheetSync: true });
+                        })
+                        .catch(function () { });
+                }
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function submitThaiPrice(form) {
+            const payload = formToObject(form);
+            setLoading(true);
+            callServer('saveQuotationThaiPrice', state.token, payload).then(function (response) {
+                applyBootstrap(response.data, state.role, state.user);
+                if (state.compareModal && Array.isArray(state.compareModal.quotations)) {
+                    const quote = findById(state.compareModal.quotations, 'quotationId', payload.quotationId);
+                    if (quote) {
+                        const thaiPriceValue = String(payload.thaiPrice || '').trim();
+                        quote.thaiPrice = thaiPriceValue === '' ? '' : Number(thaiPriceValue);
+                        quote.adminNote = String(payload.adminNote || '').trim();
+                    }
+                    renderCompareModal();
+                }
+                flash('Success', 'THB price saved successfully.', 'success', true);
+            }).catch(handleError).finally(function () {
+                setLoading(false);
+            });
+        }
+
+        function deleteQuotation(quotationId) {
+            const normalizedQuotationId = String(quotationId || '').trim();
+            if (!normalizedQuotationId || !window.Swal) {
+                return;
+            }
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Delete quotation?',
+                text: 'This will remove the quotation from the supplier sheet, purge its work order reference, and trash uploaded files.',
+                showCancelButton: true,
+                confirmButtonText: 'Delete',
+                cancelButtonText: 'Cancel',
+                customClass: getQuotationSwalModalClasses()
+            }).then(function (result) {
+                if (!result.isConfirmed) {
+                    return null;
+                }
+
+                setLoading(true);
+                return callServer('deleteVendorQuotation', state.token, { quotationId: normalizedQuotationId }).then(function (response) {
+                    if (state.quotationDraft && state.quotationDraft.quotationId === normalizedQuotationId) {
+                        clearQuotationForm();
+                        closeQuotationModal();
+                    }
+
+                    return loadVendorWorkspaceData({
+                        silent: true,
+                        suppressError: false,
+                        invalidateSession: false,
+                        showSuccess: false
+                    }).then(function () {
+                        if (response && response.workOrderId) {
+                            return callServer('getVendorQuotationsForWorkOrder', state.token, response.workOrderId).then(function (managerResponse) {
+                                state.quotationManager = managerResponse;
+                                renderQuotationManagerModal(managerResponse);
+                                $('#quotationManagerModal').removeClass('hidden').addClass('flex');
+                                refreshIcons();
+                            });
+                        }
+                        return null;
+                    }).then(function () {
+                        flash('Success', 'Quotation deleted successfully.', 'success', true);
+                    });
+                }).catch(handleError).finally(function () {
+                    setLoading(false);
+                });
+            });
+        }
+
+        function refreshBootstrap(options) {
+            const config = options || {};
+            if (state.role === 'vendor') {
+                return loadVendorWorkspaceData({
+                    silent: config.silent,
+                    suppressError: false,
+                    invalidateSession: true,
+                    showSuccess: false
+                });
+            }
+            if (state.bootstrapRefreshInFlight) {
+                return Promise.resolve(null);
+            }
+            state.bootstrapRefreshInFlight = true;
+            if (!config.silent) {
+                setLoading(true);
+            }
+            return callServer('getBootstrapData', state.token).then(function (response) {
+                applyBootstrap(response.data, response.role, response.user, {
+                    source: config.source || (config.silent ? 'background' : 'manual')
+                });
+            }).catch(function (error) {
+                storageRemove(SESSION_KEY);
+                storageRemove(SESSION_ROLE_KEY);
+                stopBackgroundRefresh();
+                state.token = '';
+                state.role = '';
+                state.user = null;
+                state.data = null;
+                flash('Error', error.message || 'Session expired', 'error', true);
+                showAuthView();
+            }).finally(function () {
+                state.bootstrapRefreshInFlight = false;
+                if (!config.silent) {
+                    setLoading(false);
+                }
+            });
+        }
+
+        function applyBootstrap(data, role, user, options) {
+            const previousData = state.data;
+            state.data = data;
+            state.role = role;
+            state.user = user;
+            storageSet(SESSION_ROLE_KEY, role || '');
+            reconcileWorkOrderNotifications(previousData, data, options);
+            startBackgroundRefresh();
+            renderWorkspace();
+        }
+
+        function loadVendorWorkspaceData(options) {
+            const config = options || {};
+            if (!state.token || state.role !== 'vendor') {
+                return Promise.resolve(null);
+            }
+            if (state.vendorLoadInFlight) {
+                return Promise.resolve(null);
+            }
+
+            state.vendorLoadInFlight = true;
+            if (!config.silent) {
+                setLoading(true);
+            }
+
+            return callServer('getBootstrapData', state.token).then(function (response) {
+                applyBootstrap(response.data, response.role || state.role, response.user || state.user, {
+                    source: config.source || (config.silent ? 'background' : 'manual')
+                });
+                if (config.showSuccess) {
+                    flash('Success', 'Workspace refreshed successfully.', 'success', true);
+                }
+                return response;
+            }).catch(function (error) {
+                if (config.invalidateSession) {
+                    storageRemove(SESSION_KEY);
+                    storageRemove(SESSION_ROLE_KEY);
+                    stopBackgroundRefresh();
+                    state.token = '';
+                    state.role = '';
+                    state.user = null;
+                    state.data = null;
+                    flash('Error', error.message || 'Session expired', 'error', true);
+                    showAuthView();
+                    return null;
+                }
+                if (!config.suppressError) {
+                    handleError(error);
+                }
+                return null;
+            }).finally(function () {
+                state.vendorLoadInFlight = false;
+                if (!config.silent) {
+                    setLoading(false);
+                }
+            });
+        }
+
+        function startBackgroundRefresh() {
+            if (!state.token || !state.role) {
+                stopBackgroundRefresh();
+                return;
+            }
+            if (state.bootstrapRefreshTimer) {
+                return;
+            }
+            state.bootstrapRefreshTimer = window.setInterval(function () {
+                if (!state.token || !state.data) {
+                    return;
+                }
+                refreshBootstrap({ silent: true, source: 'background' });
+            }, AUTO_REFRESH_INTERVAL_MS);
+        }
+
+        function stopBackgroundRefresh() {
+            if (!state.bootstrapRefreshTimer) {
+                return;
+            }
+            window.clearInterval(state.bootstrapRefreshTimer);
+            state.bootstrapRefreshTimer = null;
+        }
+
+        function loadWorkOrderNotifications() {
+            const raw = storageGet(WORK_ORDER_NOTIFICATION_STORAGE_KEY);
+            if (!raw) {
+                return {};
+            }
+            try {
+                return normalizeWorkOrderNotifications(JSON.parse(raw));
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function normalizeWorkOrderNotifications(value) {
+            const source = value && typeof value === 'object' ? value : {};
+            return Object.keys(source).reduce(function (result, workOrderId) {
+                const normalizedId = String(workOrderId || '').trim();
+                const entry = source[workOrderId];
+                if (!normalizedId || !entry || typeof entry !== 'object') {
+                    return result;
+                }
+                const marker = String(entry.marker || '').trim();
+                if (!marker) {
+                    return result;
+                }
+                result[normalizedId] = {
+                    marker: marker,
+                    unread: entry.unread !== false
+                };
+                return result;
+            }, {});
+        }
+
+        function persistWorkOrderNotifications() {
+            const normalized = normalizeWorkOrderNotifications(state.workOrderNotifications);
+            state.workOrderNotifications = normalized;
+            if (!Object.keys(normalized).length) {
+                storageRemove(WORK_ORDER_NOTIFICATION_STORAGE_KEY);
+                return;
+            }
+            storageSet(WORK_ORDER_NOTIFICATION_STORAGE_KEY, JSON.stringify(normalized));
+        }
+
+        function reconcileWorkOrderNotifications(previousData, nextData, options) {
+            const nextWorkOrders = Array.isArray(nextData && nextData.workOrders) ? nextData.workOrders : [];
+            const existing = normalizeWorkOrderNotifications(state.workOrderNotifications);
+            const nextNotifications = {};
+            let newNotificationCount = 0;
+
+            nextWorkOrders.forEach(function (workOrder) {
+                const workOrderId = String(workOrder && workOrder.workOrderId || '').trim();
+                if (workOrderId && existing[workOrderId]) {
+                    nextNotifications[workOrderId] = existing[workOrderId];
+                }
+            });
+
+            if (previousData && Array.isArray(previousData.workOrders)) {
+                const previousById = previousData.workOrders.reduce(function (result, workOrder) {
+                    const workOrderId = String(workOrder && workOrder.workOrderId || '').trim();
+                    if (workOrderId) {
+                        result[workOrderId] = workOrder;
+                    }
+                    return result;
+                }, {});
+
+                nextWorkOrders.forEach(function (workOrder) {
+                    const workOrderId = String(workOrder && workOrder.workOrderId || '').trim();
+                    const previousWorkOrder = previousById[workOrderId];
+                    const nextQuoteCount = Number(workOrder && workOrder.quoteCount || 0);
+                    const previousQuoteCount = Number(previousWorkOrder && previousWorkOrder.quoteCount || 0);
+                    if (!workOrderId || !previousWorkOrder || nextQuoteCount <= previousQuoteCount) {
+                        return;
+                    }
+                    const marker = 'qt:' + nextQuoteCount;
+                    if (!nextNotifications[workOrderId] || nextNotifications[workOrderId].marker !== marker) {
+                        newNotificationCount += 1;
+                    }
+                    nextNotifications[workOrderId] = {
+                        marker: marker,
+                        unread: true
+                    };
+                });
+            }
+
+            state.workOrderNotifications = nextNotifications;
+            persistWorkOrderNotifications();
+            updateWorkOrderNotificationCounter();
+
+            if (newNotificationCount && options && options.source === 'background') {
+                showWorkOrderNotificationToast(
+                    'New quotation update',
+                    newNotificationCount === 1
+                        ? 'A work order has a new quotation submission.'
+                        : String(newNotificationCount) + ' work orders have new quotation submissions.'
+                );
+            }
+        }
+
+        function getUnreadWorkOrderNotificationCount() {
+            return Object.keys(normalizeWorkOrderNotifications(state.workOrderNotifications)).reduce(function (count, workOrderId) {
+                return count + (hasWorkOrderNotification(workOrderId) ? 1 : 0);
+            }, 0);
+        }
+
+        function updateWorkOrderNotificationCounter() {
+            const unreadCount = getUnreadWorkOrderNotificationCount();
+            $('#workspaceTopNotificationCounter')
+                .toggleClass('hidden', unreadCount <= 0)
+                .text(unreadCount === 1 ? '1 new' : String(unreadCount) + ' new');
+            $('#workspaceDrawerNotificationCounter')
+                .toggleClass('hidden', unreadCount <= 0)
+                .text(unreadCount === 1 ? '1 unread' : String(unreadCount) + ' unread');
+
+            if (unreadCount <= 0) {
+                dismissWorkOrderNotificationToast();
+            }
+        }
+
+        function showWorkOrderNotificationToast(title, message) {
+            const normalizedTitle = String(title || '').trim();
+            const normalizedMessage = String(message || '').trim();
+            if (!normalizedTitle && !normalizedMessage) {
+                return;
+            }
+            if (!window.Swal) {
+                return;
+            }
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                icon: 'info',
+                title: normalizedTitle || 'New update',
+                text: normalizedMessage,
+                showConfirmButton: false,
+                timer: undefined,
+                timerProgressBar: false,
+                customClass: {
+                    popup: 'swal2-quotation-toast',
+                    title: 'swal2-quotation-title'
+                }
+            });
+        }
+
+        function dismissWorkOrderNotificationToast(event) {
+            if (!window.Swal || !Swal.isVisible()) {
+                return;
+            }
+            const popup = Swal.getPopup();
+            if (!popup || !popup.classList.contains('swal2-toast')) {
+                return;
+            }
+            if (event && $(event.target).closest('.swal2-container, .swal2-popup').length) {
+                return;
+            }
+            Swal.close();
+        }
+
+        function hasWorkOrderNotification(workOrderId) {
+            const normalizedId = String(workOrderId || '').trim();
+            return !!(normalizedId && state.workOrderNotifications && state.workOrderNotifications[normalizedId] && state.workOrderNotifications[normalizedId].unread);
+        }
+
+        function clearWorkOrderNotification(workOrderId) {
+            const normalizedId = String(workOrderId || '').trim();
+            if (!normalizedId || !state.workOrderNotifications || !state.workOrderNotifications[normalizedId]) {
+                return;
+            }
+            delete state.workOrderNotifications[normalizedId];
+            persistWorkOrderNotifications();
+            updateWorkOrderNotificationCounter();
+            if (state.data) {
+                renderAdminWorkOrders();
+                refreshIcons();
+            }
+        }
+
+        function redirectToAuthApp() {
+            closeWorkspaceMenu();
+            closeVendorsModal();
+            closeVendorEditorModal();
+            closeWorkOrderModal();
+            const targetUrl = String(AUTH_APP_URL || '').trim() || '/';
+            try {
+                if (window.top && window.top.location) {
+                    window.top.location.replace(targetUrl);
+                    return;
+                }
+            } catch (error) { }
+            window.location.replace(targetUrl);
+        }
+
+        function showAuthView() {
+            redirectToAuthApp();
+        }
+
+        function showWorkspaceView() {
+            $('#workspaceView').removeClass('hidden');
+        }
+
+        function renderWorkspace() {
+            showWorkspaceView();
+            $('#workspaceAppName span, #workspaceTopbarAppName span').text(state.appName);
+            $('#workspaceTitle').text(state.role === 'admin' ? 'Admin Workspace' : 'Supplier Workspace');
+            $('#workspaceUserLabel').text(buildUserLabel(state.user));
+            $('#workspaceMenuTitle').text(state.role === 'admin' ? 'Admin Workspace' : 'Supplier Workspace');
+            $('#workspaceMenuUserLabel').text(buildUserLabel(state.user));
+            $('#menuManageVendorsBtn, #openWorkOrderModalBtn').toggleClass('hidden', state.role !== 'admin');
+            updateWorkOrderNotificationCounter();
+
+            if (!state.data) {
+                renderWorkspaceLoading();
+                refreshIcons();
+                return;
+            }
+
+            renderSummaryCards();
+            renderWorkOrderOptions();
+
+            $('#adminView, #vendorView').removeClass('pointer-events-none opacity-70');
+
+            if (state.role === 'admin') {
+                $('#adminView').removeClass('hidden');
+                $('#vendorView').addClass('hidden');
+                renderAdminSections();
+            } else {
+                $('#vendorView').removeClass('hidden');
+                $('#adminView').addClass('hidden');
+                renderVendorSections();
+            }
+
+            refreshIcons();
+        }
+
+        function renderWorkspaceLoading() {
+            renderSummaryLoading();
+
+            if (state.role === 'admin') {
+                $('#adminView').removeClass('hidden').addClass('pointer-events-none opacity-70');
+                $('#vendorView').addClass('hidden').removeClass('pointer-events-none opacity-70');
+                renderAdminWorkOrderLoadingRows();
+            } else {
+                $('#vendorView').removeClass('hidden').addClass('pointer-events-none opacity-70');
+                $('#adminView').addClass('hidden').removeClass('pointer-events-none opacity-70');
+                fillQuotationForm(null);
+                renderQuotationPreviews();
+                renderWorkOrderOptions();
+                renderQuotationCardsLoading();
+                renderVendorWorkOrderLoadingRows();
+            }
+        }
+
+        function renderSummaryLoading() {
+            const labels = state.role === 'admin'
+                ? ['Total Work Orders', 'No Quotations Yet', 'Quoted', 'Closed', 'Quotations']
+                : ['Total Work Orders', 'Pending Quote', 'Submitted', 'Closed'];
+            const $target = $('#summarySection').empty();
+
+            labels.forEach(function (label, index) {
+                const $card = $($('#summaryCardTemplate').html());
+                $card.css('animation-delay', (index * 40) + 'ms');
+                $card.addClass(index === 0 ? 'bg-slate-900 text-white' : 'bg-white opacity-80');
+                if (index === 0) {
+                    $card.find('[data-field="label"]').addClass('text-white/70').removeClass('text-slate-500');
+                }
+                $card.find('[data-field="label"]').text(label);
+                $card.find('[data-field="value"]').empty().append(buildLoadingBar('h-8 w-20', index === 0));
+                $target.append($card);
+            });
+        }
+
+        function renderAdminWorkOrderLoadingRows() {
+            renderLoadingTableRows('#adminWorkOrdersTable', [
+                'w-28',
+                'w-32',
+                'w-20',
+                'w-16',
+                'w-10',
+                'w-28',
+                'w-16',
+                'w-24'
+            ], 4, true);
+        }
+
+        function renderVendorTableLoadingRows() {
+            renderLoadingTableRows('#vendorsTableBody', [
+                'w-32',
+                'w-24',
+                'w-28',
+                'w-16',
+                'w-16',
+                'w-20',
+                'w-20'
+            ], 4, true);
+        }
+
+        function renderVendorWorkOrderLoadingRows() {
+            renderLoadingTableRows('#vendorWorkOrdersTable', [
+                'w-28',
+                'w-32',
+                'w-20',
+                'w-16',
+                'w-16',
+                'w-14',
+                'w-24'
+            ], 4, true);
+        }
+
+        function renderQuotationCardsLoading() {
+            const $target = $('#myQuotationsList').empty();
+
+            for (let index = 0; index < 3; index += 1) {
+                const $card = $('<article>').addClass('rounded-3xl border border-slate-200 bg-white p-4');
+                const $header = $('<div>').addClass('flex items-start justify-between gap-4');
+                const $titleWrap = $('<div>').addClass('space-y-2');
+                const $grid = $('<div>').addClass('mt-3 grid gap-2 md:grid-cols-2');
+                const $footer = $('<div>').addClass('mt-4 flex justify-end');
+
+                $titleWrap.append(buildLoadingBar('h-4 w-28'), buildLoadingBar('h-3 w-40'));
+                $header.append($titleWrap, buildLoadingBar('h-6 w-20'));
+
+                for (let lineIndex = 0; lineIndex < 4; lineIndex += 1) {
+                    $grid.append(buildLoadingBar('h-3.5 ' + (lineIndex % 2 === 0 ? 'w-32' : 'w-24')));
+                }
+
+                $footer.append(buildLoadingBar('h-9 w-24'));
+                $card.append($header, $grid, $footer);
+                $target.append($card);
+            }
+        }
+
+        function renderLoadingTableRows(targetSelector, widths, rowCount, alignLastRight) {
+            const $target = $(targetSelector).empty();
+
+            for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+                const $row = $('<tr>');
+
+                widths.forEach(function (widthClass, columnIndex) {
+                    const isLastColumn = columnIndex === widths.length - 1;
+                    const $cell = $('<td>').addClass('py-4 pr-4 align-top' + (isLastColumn && alignLastRight ? ' text-right' : ''));
+                    const $bar = buildLoadingBar('h-4 ' + widthClass + (isLastColumn && alignLastRight ? ' ml-auto' : ''));
+                    $cell.append($bar);
+                    $row.append($cell);
+                });
+
+                $target.append($row);
+            }
+        }
+
+        function buildLoadingBar(className, isDark) {
+            return $('<span>').addClass('loading-shimmer block rounded-full ' + (isDark ? 'loading-shimmer-dark ' : '') + className);
+        }
+
+        function renderSummaryCards() {
+            const $target = $('#summarySection').empty();
+            const items = state.role === 'admin'
+                ? [
+                    { label: 'Total Work Orders', value: state.data.summary.total, dark: true, icon: 'briefcase-business' },
+                    { label: 'No Quotations Yet', value: state.data.summary.withoutQuote, icon: 'clock-3' },
+                    { label: 'Quoted', value: state.data.summary.quoted, icon: 'badge-check' },
+                    { label: 'Closed', value: state.data.summary.closed, icon: 'archive' },
+                    { label: 'Quotations', value: state.data.summary.totalQuotations, icon: 'files' }
+                ]
+                : [
+                    { label: 'Total Work Orders', value: state.data.summary.total, dark: true, icon: 'briefcase-business' },
+                    { label: 'Pending Quote', value: state.data.summary.pendingQuote, icon: 'clock-3' },
+                    { label: 'Submitted', value: state.data.summary.submitted, icon: 'send' },
+                    { label: 'Closed', value: state.data.summary.closed, icon: 'archive' }
+                ];
+
+            items.forEach(function (item, index) {
+                const $card = $($('#summaryCardTemplate').html());
+                $card.css('animation-delay', (index * 40) + 'ms');
+                if (item.dark) {
+                    $card.addClass('bg-slate-900 text-white');
+                    $card.find('[data-field="label"]').addClass('text-white/70').removeClass('text-slate-500');
+                    $card.find('[data-field="icon"]').removeClass('bg-slate-100 text-slate-500').addClass('bg-white/10 text-white');
+                } else {
+                    $card.addClass('bg-white');
+                }
+                $card.find('[data-field="label"]').text(item.label);
+                $card.find('[data-field="icon"] i').attr('data-lucide', item.icon || 'layers-3');
+                $card.find('[data-field="value"]').text(item.value);
+                $target.append($card);
+            });
+            refreshIcons();
+        }
+
+        function renderAdminSections() {
+            renderAdminWorkOrders();
+        }
+
+        function renderVendorSections() {
+            fillQuotationForm(state.quotationDraft);
+            renderQuotationPreviews();
+            renderQuotationCards();
+            renderVendorWorkOrders();
+        }
+
+        function fillWorkOrderForm(workOrder) {
+            const form = $('#workOrderForm')[0];
+            discardPendingUploads(state.newWorkOrderFiles);
+            form.reset();
+            const draft = workOrder || {};
+            Object.keys(draft).forEach(function (key) {
+                $(form).find('[name="' + key + '"]').val(draft[key]);
+            });
+            if (state.workOrderDraft && draft.workOrderId) {
+                state.workOrderDraft.attachments = $.extend(true, [], draft.attachments || []);
+            }
+            state.newWorkOrderFiles = [];
+            $('#workOrderFileInput').val('');
+            renderWorkOrderAttachmentList();
+            updateWorkOrderStatusControl($(form).find('[name="status"]').val() || 'OPEN');
+            $('#workOrderModalTitle').text(draft.workOrderId ? 'Edit Work Order' : 'Create Work Order');
+            $('#saveWorkOrderBtn').text(draft.workOrderId ? 'Save Changes' : 'Create Work Order');
+        }
+
+        function clearWorkOrderForm() {
+            discardPendingUploads(state.newWorkOrderFiles);
+            state.workOrderDraft = null;
+            state.newWorkOrderFiles = [];
+            fillWorkOrderForm(null);
+        }
+
+        function fillQuotationForm(quotation) {
+            const form = $('#quotationForm')[0];
+            discardPendingUploads(state.newImages);
+            form.reset();
+            const draft = quotation || {};
+            $(form).find('[name="quotationId"]').val('');
+            Object.keys(draft).forEach(function (key) {
+                if (key === 'images') {
+                    return;
+                }
+                $(form).find('[name="' + key + '"]').val(draft[key]);
+            });
+            renderQuotationSelectOptions(draft);
+            syncQuotationCustomerProjectField(draft.workOrderId, draft.customerProject);
+            const isEditMode = !!draft.quotationId;
+            $('#saveQuotationBtn').text(isEditMode ? 'Save Changes' : 'Submit Quotation');
+            $('#quotationModalTitle').text(isEditMode ? 'Edit Quotation' : 'Add Quotation');
+            $('#quotationModalModeBadge')
+                .text(isEditMode ? 'Edit Mode' : 'Create Mode')
+                .toggleClass('border-emerald-200 bg-emerald-50 text-emerald-700', !isEditMode)
+                .toggleClass('border-amber-200 bg-amber-50 text-amber-700', isEditMode);
+            $('#quotationModalHint').text(
+                isEditMode
+                    ? 'You are editing an existing quotation. Saving will update the current QT record.'
+                    : 'Create a new quotation for this work order. A new QT number will be generated when you save.'
+            );
+            renderQuotationPreviews();
+        }
+
+        function clearQuotationForm() {
+            discardPendingUploads(state.newImages);
+            state.quotationDraft = null;
+            state.newImages = [];
+            fillQuotationForm(null);
+            $('#quotationImageInput').val('');
+            renderQuotationPreviews();
+        }
+
+        function renderWorkOrderOptions() {
+            const $select = $('#quotationForm [name="workOrderId"]').empty();
+            $select.append($('<option>').val('').text('Select a work order'));
+            (state.data && state.data.workOrders ? state.data.workOrders : []).forEach(function (item) {
+                $select.append($('<option>').val(item.workOrderId).text(item.workOrderNumber + ' â€¢ ' + item.briefFromCustomer));
+            });
+            if (state.quotationDraft && state.quotationDraft.workOrderId) {
+                $select.val(state.quotationDraft.workOrderId);
+            }
+            syncQuotationCustomerProjectField($select.val(), state.quotationDraft && state.quotationDraft.customerProject);
+        }
+
+        function renderQuotationSelectOptions(draft) {
+            const quotationDraft = draft || {};
+            renderQuotationSelectField('#quotationForm [name="category"]', QUOTATION_CATEGORY_OPTIONS, 'Select category', quotationDraft.category);
+            renderQuotationSelectField('#quotationForm [name="priceRange"]', QUOTATION_PRICE_RANGE_OPTIONS, 'Select price range', quotationDraft.priceRange);
+        }
+
+        function renderQuotationSelectField(selector, options, placeholder, value) {
+            const normalizedValue = String(value || '').trim();
+            const $select = $(selector).empty();
+            $select.append($('<option>').val('').text(placeholder));
+            (options || []).forEach(function (option) {
+                $select.append($('<option>').val(option).text(option));
+            });
+            if (normalizedValue && (options || []).indexOf(normalizedValue) === -1) {
+                $select.append($('<option>').val(normalizedValue).text(normalizedValue));
+            }
+            $select.val(normalizedValue);
+        }
+
+        function syncQuotationCustomerProjectField(workOrderId, fallbackValue) {
+            const workOrder = findById(state.data && state.data.workOrders, 'workOrderId', workOrderId);
+            const value = workOrder ? (workOrder.briefFromCustomer || '') : String(fallbackValue || '').trim();
+            $('#quotationForm [name="customerProject"]').val(value);
+        }
+
+        function renderVendorsTable() {
+            const $target = $('#vendorsTableBody').empty();
+            const users = applyTableUi('vendors', Array.isArray(state.adminVendorUsers) ? state.adminVendorUsers : []);
+            if (!users.length) {
+                $target.append($('<tr>').html('<td colspan="7" class="py-8 text-center text-sm text-slate-500">' + (getTableUiState('vendors').searchQuery ? 'No users match your search.' : 'No users have registered yet.') + '</td>'));
+                return;
+            }
+            users.forEach(function (user) {
+                const $row = $($('#vendorTableRowTemplate').html());
+                $row.find('[data-field="displayName"]').text(user.displayName || user.username || user.vendorName || '-');
+                $row.find('[data-field="username"]').text(user.username ? '@' + user.username : '');
+                $row.find('[data-field="vendorName"]').text(user.vendorName || '-');
+                $row.find('[data-field="vendorCode"]').text(user.vendorCode || '');
+                $row.find('[data-field="email"]').text(user.email || '-');
+                $row.find('[data-field="role"]').replaceWith(renderUserRoleBadge(user.role));
+                $row.find('[data-field="status"]').replaceWith(renderVendorStatusBadge(user.isActive));
+                $row.find('[data-field="sheetStatus"]').text(user.role === 'vendor' ? (user.vendorSheetUrl ? 'Connected' : 'Not linked') : 'N/A');
+                $row.find('[data-action="edit-vendor"]').attr('data-user-id', user.userId);
+                $target.append($row);
+            });
+        }
+
+        function renderAdminWorkOrders() {
+            const $tbody = $('#adminWorkOrdersTable').empty();
+            const workOrders = applyTableUi('adminWorkOrders', state.data && state.data.workOrders || []);
+            if (!workOrders.length) {
+                $tbody.append(
+                    $('<tr>').append(
+                        $('<td>')
+                            .attr('colspan', 8)
+                            .addClass('py-10 text-center text-sm text-slate-500')
+                            .text(getTableUiState('adminWorkOrders').searchQuery ? 'No work orders match your search.' : 'No work orders found.')
+                    )
+                );
+                return;
+            }
+            workOrders.forEach(function (row) {
+                const quoteCount = Number(row.quoteCount || 0);
+                const selectedQuotationId = String(row.selectedQuotationId || '').trim();
+                const $tr = $($('#adminWorkOrderRowTemplate').html());
+                $tr.find('[data-field="number"]').text(row.workOrderNumber || '-');
+                $tr.find('[data-field="notificationDot"]').toggleClass('hidden', !hasWorkOrderNotification(row.workOrderId));
+                $tr.find('[data-field="meta"]').text((row.material || '-') + ' â€¢ ' + (row.size || '-'));
+                $tr.find('[data-field="customer"]').text(row.briefFromCustomer || '-');
+                $tr.find('[data-field="deadline"]').text(formatDate(row.deadlineToQuote));
+                $tr.find('[data-field="budget"]').text(formatCurrency(row.budgetRmb, 'RMB'));
+                $tr.find('[data-field="quotes"]').text(String(quoteCount));
+                if (selectedQuotationId) {
+                    $tr.find('[data-field="selectedQuotation"]').replaceWith(
+                        $('<span>')
+                            .addClass('inline-flex rounded-full border border-brand/20 bg-brand/10 px-3 py-1 text-xs font-semibold text-brandDark')
+                            .text(selectedQuotationId)
+                    );
+                } else {
+                    $tr.find('[data-field="selectedQuotation"]').replaceWith(
+                        $('<span>')
+                            .addClass('text-sm text-slate-400')
+                            .text('-')
+                    );
+                }
+                $tr.find('[data-field="status"]').replaceWith(renderStatusPill(row.status));
+                $tr.find('[data-action="view-workorder"]').attr('data-work-order-id', row.workOrderId);
+                $tr.find('[data-action="edit-workorder"]').attr('data-work-order-id', row.workOrderId);
+                const $compareButton = $tr.find('[data-action="open-compare"]');
+                $compareButton.attr('data-work-order-id', row.workOrderId);
+                if (quoteCount > 0) {
+                    $compareButton
+                        .prop('disabled', false)
+                        .removeClass('bg-slate-200 text-slate-500 cursor-not-allowed')
+                        .addClass('bg-brand text-white')
+                        .find('[data-field="compare-label"]').text('Compare (' + quoteCount + ')');
+                } else {
+                    $compareButton
+                        .prop('disabled', true)
+                        .removeClass('bg-brand text-white')
+                        .addClass('bg-slate-200 text-slate-500 cursor-not-allowed')
+                        .find('[data-field="compare-label"]').text('Waiting for QT');
+                }
+                $tbody.append($tr);
+            });
+        }
+
+        function renderVendorWorkOrders() {
+            const $tbody = $('#vendorWorkOrdersTable').empty();
+            (state.data.workOrders || []).forEach(function (row) {
+                const quoteCount = Number(row.myQuotationCount || 0);
+                const $tr = $($('#vendorWorkOrderRowTemplate').html());
+                $tr.find('[data-field="number"]').text(row.workOrderNumber || '-');
+                $tr.find('[data-field="deadlineMeta"]').text(formatDate(row.deadlineToQuote));
+                $tr.find('[data-field="customer"]').text(row.briefFromCustomer || '-');
+                $tr.find('[data-field="volume"]').text([row.volumeValue, row.volumeUnit].filter(Boolean).join(' ') || '-');
+                $tr.find('[data-field="budget"]').text(formatCurrency(row.budgetRmb, 'RMB'));
+                $tr.find('[data-field="status"]').replaceWith(renderStatusPill(row.status));
+                $tr.find('[data-action="view-workorder"]').attr('data-work-order-id', row.workOrderId);
+                if (quoteCount > 0) {
+                    $tr.find('[data-field="myQuote"]').replaceWith(renderQuotationCountBadge(quoteCount));
+                    const $button = $('<button>')
+                        .attr({ type: 'button', 'data-action': 'manage-quotations', 'data-work-order-id': row.workOrderId })
+                        .addClass('rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white')
+                        .html('<i data-lucide="folder-kanban" class="mr-1 inline-flex h-3.5 w-3.5"></i>Manage QT');
+                    $tr.find('[data-field="actionWrap"]').append($button);
+                } else {
+                    $tr.find('[data-field="myQuote"]').replaceWith($('<span>').addClass('text-xs text-slate-400').text('Not submitted'));
+                    const $button = $('<button>')
+                        .attr({ type: 'button', 'data-action': 'add-quotation', 'data-work-order-id': row.workOrderId })
+                        .addClass('rounded-full border border-brand/20 bg-brand/10 px-4 py-2 text-xs font-semibold text-brandDark transition hover:bg-brand hover:text-white')
+                        .html('<i data-lucide="circle-plus" class="mr-1 inline-flex h-3.5 w-3.5"></i>Add QT');
+                    $tr.find('[data-field="actionWrap"]').append($button);
+                }
+                $tbody.append($tr);
+            });
+        }
+
+        function renderQuotationCards() {
+            const $target = $('#myQuotationsList').empty();
+            const quotations = state.data.recentQuotations || [];
+            if (!quotations.length) {
+                $target.append($('<p>').addClass('text-sm text-slate-500').text('No quotations yet.'));
+                return;
+            }
+            quotations.forEach(function (quote) {
+                const $card = $($('#quotationCardTemplate').html());
+                $card.find('[data-field="number"]').text(quote.workOrderNumber || '-');
+                $card.find('[data-field="project"]').text(quote.customerProject || '-');
+                $card.find('[data-field="status"]').replaceWith(renderStatusPill(quote.status));
+                $card.find('[data-field="category"]').text('Category: ' + (quote.category || '-'));
+                $card.find('[data-field="target"]').text('Target: ' + formatCurrency(quote.targetPrice, 'RMB'));
+                $card.find('[data-field="cif"]').addClass('whitespace-pre-line').text('CIF BKK: ' + formatMultilineField(quote.cifBkk));
+                $card.find('[data-field="thai"]').text('Thai Price: ' + formatCurrency(quote.thaiPrice, 'THB'));
+                $card.find('[data-action="edit-quotation"]').attr('data-quotation-id', quote.quotationId);
+                $target.append($card);
+            });
+        }
+
+        function renderQuotationPreviews() {
+            const $target = $('#quotationImagesPreview').empty();
+            const existingImages = state.quotationDraft && Array.isArray(state.quotationDraft.images) ? state.quotationDraft.images : [];
+            const newImages = state.newImages || [];
+            const totalCount = existingImages.length + newImages.length;
+            updateUploadCounter('#quotationUploadCounter', totalCount);
+            updateUploadPickerVisibility('QUOTATION', totalCount);
+
+            if (!existingImages.length && !newImages.length) {
+                $target.append(
+                    $('<div>')
+                        .addClass('rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 md:col-span-2')
+                        .text('No product images attached yet.')
+                );
+                refreshIcons();
+                return;
+            }
+
+            existingImages.forEach(function (image, index) {
+                const $thumb = buildQuotationImageCard(image, {
+                    index: index,
+                    isNew: false,
+                    status: 'UPLOADED'
+                });
+                $target.append($thumb);
+            });
+
+            newImages.forEach(function (image, index) {
+                const $thumb = buildQuotationImageCard(image, {
+                    index: index,
+                    isNew: true,
+                    status: image.uploadStatus || 'PENDING'
+                });
+                $target.append($thumb);
+            });
+            refreshIcons();
+        }
+
+        function buildQuotationImageCard(image, options) {
+            const config = options || {};
+            const isNew = !!config.isNew;
+            const $card = $('<div>').addClass('flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3');
+            const $preview = buildInlineImagePreview({
+                name: image.name || 'Image preview',
+                preview: image.preview || image.previewUrl || image.url || '',
+                previewUrl: image.previewUrl || image.preview || image.url || '',
+                url: image.url || image.previewUrl || image.preview || ''
+            });
+            const $meta = $('<div>').addClass('min-w-0 flex-1');
+            const $title = $('<p>').addClass('truncate text-sm font-semibold text-slate-800').text(image.name || 'Image');
+            const $subtitle = $('<p>').addClass('mt-1 text-xs text-slate-500').text(buildUploadMetaLine(image, config.status));
+            const $progress = renderUploadProgress(image, config.status, 'default');
+            const $actions = $('<div>').addClass('mt-3 flex items-center gap-2');
+
+            $actions.append(renderUploadStatusBadge(config.status, image));
+
+            if (!isNew && (image.url || image.previewUrl || image.preview)) {
+                $actions.append(
+                    $('<button>')
+                        .attr({
+                            type: 'button',
+                            'data-preview-image': image.preview || image.previewUrl || image.url || '',
+                            'data-preview-title': image.name || 'Image preview'
+                        })
+                        .addClass('inline-flex rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600')
+                        .text('Open image')
+                );
+            }
+
+            $actions.append(
+                $('<button>')
+                    .attr({ type: 'button' })
+                    .attr(isNew ? 'data-remove-new-image' : 'data-remove-existing-image', config.index)
+                    .addClass('inline-flex rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600')
+                    .text('Remove')
+            );
+
+            $meta.append($title, $subtitle);
+            if ($progress) {
+                $meta.append($progress);
+            }
+            $meta.append($actions);
+            $card.append($preview, $meta);
+            return $card;
+        }
+
+        function openComparison(workOrderId) {
+            const workOrder = findById(state.data && state.data.workOrders, 'workOrderId', workOrderId);
+            clearWorkOrderNotification(workOrderId);
+            renderCompareModalLoading(workOrder);
+            $('#compareModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+            return callServer('getQuotationComparison', state.token, workOrderId).then(function (response) {
+                state.compareModal = response;
+                renderCompareModal();
+            }).catch(function (error) {
+                $('#compareCardsContainer').empty().append(
+                    $('<div>').addClass('rounded-3xl border border-dashed border-rose-200 bg-white px-8 py-14 text-center text-rose-600').text(error.message || 'Unable to load quotation comparison.')
+                );
+                handleError(error);
+            });
+        }
+
+        function renderCompareModalLoading(workOrder) {
+            $('#compareModalTitle').text(((workOrder && workOrder.workOrderNumber) || 'Work Order') + ' â€¢ Comparison');
+            $('#compareModalSubtitle').text((workOrder && workOrder.briefFromCustomer) || 'Loading quotations for comparison...');
+            setCompareModalLayoutMode('loading');
+            const $container = $('#compareCardsContainer').empty();
+
+            $container.append(
+                $('<div>').addClass('mx-auto flex min-h-[22rem] w-full max-w-xl flex-col items-center justify-center rounded-[1.75rem] border border-slate-200/80 bg-white/90 px-8 py-12 text-center shadow-soft').append(
+                    $('<div>').addClass('flex h-16 w-16 items-center justify-center rounded-full border border-brand/15 bg-brand/10').append(
+                        $('<div>').addClass('h-9 w-9 animate-spin rounded-full border-[3px] border-brand/20 border-t-brand')
+                    ),
+                    $('<p>').addClass('mt-6 font-display text-xl font-semibold text-slate-900').text('Loading quotation comparison'),
+                    $('<p>').addClass('mt-2 text-sm leading-6 text-slate-500').text('Preparing supplier cards, pricing details, attachments, and admin note fields.'),
+                    $('<div>').addClass('mt-6 w-full max-w-sm space-y-3').append(
+                        buildLoadingBar('mx-auto h-3 w-44'),
+                        buildLoadingBar('mx-auto h-3 w-60'),
+                        buildLoadingBar('mx-auto h-3 w-52')
+                    )
+                )
+            );
+
+            updateCompareScrollControls();
+        }
+
+        function setCompareModalLayoutMode(mode) {
+            const $toolbar = $('#compareScrollToolbar');
+            const $container = $('#compareCardsContainer');
+            const showScrollableCards = mode === 'cards';
+
+            $toolbar.toggleClass('hidden', !showScrollableCards);
+            $container.toggleClass('min-w-max', showScrollableCards);
+            $container.toggleClass('w-full justify-center', !showScrollableCards);
+        }
+
+        function getSelectedComparisonQuotationId(modal) {
+            return String(modal && modal.workOrder && modal.workOrder.selectedQuotationId || '').trim();
+        }
+
+        function sortComparisonQuotations(quotations, selectedQuotationId) {
+            const normalizedSelectedQuotationId = String(selectedQuotationId || '').trim();
+            return (quotations || []).slice().sort(function (left, right) {
+                const leftIsSelected = String(left && left.quotationId || '').trim() === normalizedSelectedQuotationId;
+                const rightIsSelected = String(right && right.quotationId || '').trim() === normalizedSelectedQuotationId;
+                return Number(rightIsSelected) - Number(leftIsSelected)
+                    || String(left && left.vendorName || '').localeCompare(String(right && right.vendorName || ''))
+                    || String(right && right.quotationDate || '').localeCompare(String(left && left.quotationDate || ''))
+                    || String(right && right.quotationId || '').localeCompare(String(left && left.quotationId || ''));
+            }).map(function (quote) {
+                const nextQuote = Object.assign({}, quote);
+                nextQuote.isSelected = String(nextQuote.quotationId || '').trim() === normalizedSelectedQuotationId;
+                return nextQuote;
+            });
+        }
+
+        function syncSelectedQuotationInCompareModal(quotationId) {
+            if (!state.compareModal || !state.compareModal.workOrder) {
+                return;
+            }
+
+            state.compareModal.workOrder.selectedQuotationId = String(quotationId || '').trim();
+            state.compareModal.quotations = sortComparisonQuotations(state.compareModal.quotations || [], state.compareModal.workOrder.selectedQuotationId);
+        }
+
+        function getCompareScrollMetrics() {
+            const viewport = document.getElementById('compareScrollViewport');
+            if (!viewport) {
+                return null;
+            }
+
+            const maxScrollLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+            return {
+                viewport: viewport,
+                maxScrollLeft: maxScrollLeft,
+                scrollLeft: viewport.scrollLeft,
+                canScroll: maxScrollLeft > 8
+            };
+        }
+
+        function updateCompareScrollControls() {
+            const metrics = getCompareScrollMetrics();
+            const $leftButton = $('#compareScrollLeftBtn');
+            const $rightButton = $('#compareScrollRightBtn');
+            if (!metrics) {
+                $leftButton.prop('disabled', true);
+                $rightButton.prop('disabled', true);
+                return;
+            }
+
+            const isAtStart = metrics.scrollLeft <= 8;
+            const isAtEnd = metrics.scrollLeft >= metrics.maxScrollLeft - 8;
+            $leftButton.prop('disabled', !metrics.canScroll || isAtStart);
+            $rightButton.prop('disabled', !metrics.canScroll || isAtEnd);
+        }
+
+        function scrollCompareCards(direction) {
+            const metrics = getCompareScrollMetrics();
+            if (!metrics || !metrics.canScroll) {
+                return;
+            }
+
+            const scrollDistance = Math.max(320, Math.round(metrics.viewport.clientWidth * 0.72));
+            metrics.viewport.scrollBy({
+                left: direction * scrollDistance,
+                behavior: 'smooth'
+            });
+            window.setTimeout(updateCompareScrollControls, 220);
+        }
+
+        function buildCompareSpecItem(label, value, highlight) {
+            const displayValue = String(value || '').trim() || '-';
+            return $('<div>').addClass('flex items-start justify-between gap-4 border-b border-slate-200/80 pb-2 last:border-b-0 last:pb-0').append(
+                $('<p>').addClass('min-w-0 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500').text(label),
+                $('<p>').addClass('min-w-0 text-right text-sm font-medium leading-6 ' + (highlight ? 'text-brandDark' : 'text-slate-800') + ' whitespace-pre-line').text(displayValue)
+            );
+        }
+
+        function renderCompareModal() {
+            const modal = state.compareModal;
+            if (!modal) {
+                return;
+            }
+
+            $('#compareModalTitle').text((modal.workOrder.workOrderNumber || '') + ' â€¢ ' + (modal.workOrder.briefFromCustomer || ''));
+            const selectedQuotationId = getSelectedComparisonQuotationId(modal);
+            $('#compareModalSubtitle').text(selectedQuotationId
+                ? ('Selected QT: ' + selectedQuotationId + ' â€¢ Compare supplier specs, pricing, lead time, and admin notes side by side.')
+                : 'Compare supplier specs, pricing, lead time, and admin notes side by side.');
+            const $container = $('#compareCardsContainer').empty();
+            const quotations = sortComparisonQuotations(modal.quotations || [], selectedQuotationId);
+            state.compareModal.quotations = quotations;
+
+            if (!quotations.length) {
+                setCompareModalLayoutMode('empty');
+                $container.append($('<div>').addClass('rounded-3xl border border-dashed border-slate-300 bg-white px-8 py-14 text-center text-slate-500').text('No quotations are available for this work order.'));
+                $('#compareModal').removeClass('hidden').addClass('flex');
+                updateCompareScrollControls();
+                refreshIcons();
+                return;
+            }
+
+            setCompareModalLayoutMode('cards');
+
+            quotations.forEach(function (quote) {
+                console.log("ðŸš€ ~ renderCompareModal ~ quote:", quote)
+                const $card = $($('#compareCardTemplate').html());
+                const isSelected = String(quote.quotationId || '').trim() === selectedQuotationId;
+                $card.find('[data-field="vendorName"]').text(quote.vendorName || '-');
+                $card.find('[data-field="vendorCode"]').text(quote.vendorCode || '');
+                $card.find('[data-field="quotationId"]').text(quote.quotationId || '-');
+                $card.find('[data-field="status"]').replaceWith(renderStatusPill(quote.status));
+                $card.find('[data-field="commercialSpecs"]').append(
+                    buildCompareSpecItem('Category', quote.category),
+                    buildCompareSpecItem('Price Range', quote.priceRange),
+                    buildCompareSpecItem('Target Price', formatCurrency(quote.targetPrice, 'RMB'), true),
+                    buildCompareSpecItem('CIF BKK', formatMultilineField(quote.cifBkk), true)
+                );
+                $card.find('[data-field="productionSpecs"]').append(
+                    buildCompareSpecItem('Quantity', formatMultilineField(quote.quantityPcs)),
+                    buildCompareSpecItem('Lead Time', quote.leadTime),
+                    buildCompareSpecItem('Sample', quote.sample),
+                    buildCompareSpecItem('Updated', formatDateTime(quote.updatedAt))
+                );
+                $card.find('[data-field="comment"]').text(quote.comment || '-');
+                $card.find('[name="quotationId"]').val(quote.quotationId);
+                $card.find('[name="thaiPrice"]').val(quote.thaiPrice || '');
+                $card.find('[name="adminNote"]').val(quote.adminNote || '');
+                $card.find('[data-field="selectedBadge"]').toggleClass('hidden', !isSelected);
+                const $selectionButton = $card.find('[data-action="select-quotation"]');
+                $selectionButton
+                    .attr('data-work-order-id', modal.workOrder.workOrderId || '')
+                    .attr('data-quotation-id', quote.quotationId || '')
+                    .prop('disabled', isSelected)
+                    .toggleClass('cursor-default border-slate-900 bg-slate-900 text-white hover:bg-slate-900 hover:border-slate-900', isSelected)
+                    .toggleClass('border-slate-300 bg-white text-slate-700 hover:border-brand hover:text-brandDark hover:bg-white', !isSelected)
+                    .html('<i data-lucide="heart" class="mr-2 inline-flex h-4 w-4"></i><span>' + (isSelected ? 'Selected QT' : 'Use This QT') + '</span>');
+                $card.find('[data-field="compareCard"]')
+                    .toggleClass('border-brandDark bg-gradient-to-br from-slate-100 via-brand/20 to-brandDark/10 shadow-[0_28px_90px_rgba(15,118,110,0.24)] ring-1 ring-brandDark/15', isSelected)
+                    .toggleClass('border-slate-200 bg-white shadow-soft', !isSelected);
+                $card.find('[data-field="selectedAccent"]').toggleClass('hidden', !isSelected);
+                $card.find('[data-field="selectionPanel"]')
+                    .toggleClass('border-brandDark/30 bg-slate-900/5', isSelected)
+                    .toggleClass('border-slate-200 bg-slate-50/90', !isSelected);
+                $card.find('.compare-detail-panel')
+                    .toggleClass('border-brandDark/20 bg-white/90', isSelected);
+                const attachments = Array.isArray(quote.images) ? quote.images : [];
+                const imageAttachments = attachments.filter(isImageFile).slice(0, 6);
+                const fileAttachments = attachments.filter(function (file) {
+                    return !isImageFile(file);
+                });
+                const $images = $card.find('[data-field="images"]');
+                const $files = $card.find('[data-field="files"]');
+                $card.find('[data-field="imageCount"]').text(imageAttachments.length ? String(imageAttachments.length) + ' preview' + (imageAttachments.length === 1 ? '' : 's') : 'No images');
+                $card.find('[data-field="fileCount"]').text(fileAttachments.length ? String(fileAttachments.length) + ' file' + (fileAttachments.length === 1 ? '' : 's') : 'No files');
+                if (!imageAttachments.length) {
+                    $images.append($('<div>').addClass('col-span-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs text-slate-400').text('No product images attached.'));
+                }
+                imageAttachments.forEach(function (image) {
+                    const previewSource = image.previewUrl || image.url || '';
+                    $images.append(
+                        $('<button>')
+                            .attr({
+                                type: 'button',
+                                'data-preview-image': previewSource,
+                                'data-preview-title': image.name || ((quote.vendorName || 'Supplier') + ' product image')
+                            })
+                            .addClass('group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 text-left')
+                            .append(
+                                $('<img>').attr({ src: previewSource, alt: image.name || 'product' }).addClass('h-36 w-full object-cover transition duration-200 group-hover:scale-[1.03]')
+                            )
+                    );
+                });
+                if (!fileAttachments.length) {
+                    $files.append($('<div>').addClass('rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-center text-xs text-slate-400').text('No additional attachments.'));
+                }
+                fileAttachments.forEach(function (file) {
+                    $files.append(
+                        $('<a>')
+                            .attr({ href: file.url || '#', target: '_blank', rel: 'noopener noreferrer' })
+                            .addClass('block truncate rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-brand/40 hover:text-brandDark')
+                            .text(file.name || 'Open attachment')
+                    );
+                });
+                $container.append($card);
+            });
+
+            $('#compareModal').removeClass('hidden').addClass('flex');
+            updateCompareScrollControls();
+            refreshIcons();
+        }
+
+        function confirmSelectedQuotation(workOrderId, quotationId) {
+            const normalizedWorkOrderId = String(workOrderId || '').trim();
+            const normalizedQuotationId = String(quotationId || '').trim();
+            if (!normalizedWorkOrderId || !normalizedQuotationId || !window.Swal || !state.compareModal) {
+                return;
+            }
+
+            const quote = findById(state.compareModal.quotations || [], 'quotationId', normalizedQuotationId);
+            if (!quote || quote.isSelected) {
+                return;
+            }
+
+            Swal.fire({
+                icon: 'question',
+                title: 'Use this quotation?',
+                text: 'Confirm QT ' + normalizedQuotationId + ' for work order ' + String(state.compareModal.workOrder.workOrderNumber || '').trim() + '.',
+                showCancelButton: true,
+                confirmButtonText: 'Confirm Selection',
+                cancelButtonText: 'Cancel',
+                customClass: getQuotationSwalModalClasses()
+            }).then(function (result) {
+                if (!result.isConfirmed) {
+                    return null;
+                }
+
+                setLoading(true);
+                return callServer('saveSelectedQuotation', state.token, {
+                    workOrderId: normalizedWorkOrderId,
+                    quotationId: normalizedQuotationId
+                }).then(function (response) {
+                    applyBootstrap(response.data, state.role, state.user);
+                    if (state.compareModal && state.compareModal.workOrder && state.compareModal.workOrder.workOrderId === normalizedWorkOrderId) {
+                        syncSelectedQuotationInCompareModal(response.quotationId || normalizedQuotationId);
+                        renderCompareModal();
+                    }
+                    flash('Success', 'Selected QT saved successfully.', 'success', true);
+                }).catch(handleError).finally(function () {
+                    setLoading(false);
+                });
+            });
+        }
+
+        function closeCompareModal() {
+            state.compareModal = null;
+            $('#compareModal').addClass('hidden').removeClass('flex');
+            $('#compareCardsContainer').empty();
+            $('#compareModalSubtitle').text('');
+            setCompareModalLayoutMode('empty');
+            const viewport = document.getElementById('compareScrollViewport');
+            if (viewport) {
+                viewport.scrollLeft = 0;
+            }
+            updateCompareScrollControls();
+        }
+
+        function openQuotationManagerModal(workOrderId) {
+            closeWorkspaceMenu();
+            const workOrder = findById(state.data && state.data.workOrders, 'workOrderId', workOrderId);
+            if (!workOrder) {
+                return;
+            }
+            clearWorkOrderNotification(workOrderId);
+            resetTableUi('quotationManager');
+            renderQuotationManagerLoading(workOrder);
+            $('#quotationManagerModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+            callServer('getVendorQuotationsForWorkOrder', state.token, workOrderId).then(function (response) {
+                state.quotationManager = response;
+                renderQuotationManagerModal(response);
+                refreshIcons();
+            }).catch(function (error) {
+                $('#quotationManagerTableBody').empty().append(
+                    $('<tr>').append(
+                        $('<td>')
+                            .attr('colspan', 6)
+                            .addClass('px-5 py-10 text-center text-sm text-rose-600')
+                            .text(error.message || 'Unable to load quotations.')
+                    )
+                );
+                handleError(error);
+            });
+        }
+
+        function closeQuotationManagerModal() {
+            state.returnToQuotationManagerOnClose = false;
+            state.quotationManager = null;
+            hideQuotationManagerModal();
+            $('#quotationManagerTableBody').empty();
+        }
+
+        function hideQuotationManagerModal() {
+            $('#quotationManagerModal').addClass('hidden').removeClass('flex');
+        }
+
+        function renderQuotationManagerLoading(workOrder) {
+            const $tbody = $('#quotationManagerTableBody').empty();
+            $('#quotationManagerTitle').text(((workOrder && workOrder.workOrderNumber) || 'Work Order') + ' â€¢ Manage QT');
+            $('#quotationManagerSubtitle').text((workOrder && workOrder.briefFromCustomer) || 'Loading quotations...');
+            $('#quotationManagerAddBtn').attr('data-work-order-id', workOrder && workOrder.workOrderId ? workOrder.workOrderId : '');
+            updateTableResultCount('quotationManager', 0, 0);
+
+            for (let rowIndex = 0; rowIndex < 4; rowIndex += 1) {
+                const $row = $('<tr>');
+                [
+                    'w-28',
+                    'w-24',
+                    'w-32',
+                    'w-16',
+                    'w-20',
+                    'w-24'
+                ].forEach(function (widthClass, columnIndex) {
+                    const isLastColumn = columnIndex === 5;
+                    const $cell = $('<td>').addClass('px-5 py-4 align-top' + (isLastColumn ? ' text-right' : ''));
+                    $cell.append(buildLoadingBar('h-4 ' + widthClass + (isLastColumn ? ' ml-auto' : '')));
+                    $row.append($cell);
+                });
+                $tbody.append($row);
+            }
+        }
+
+        function renderQuotationManagerModal(payload) {
+            const workOrder = payload && payload.workOrder ? payload.workOrder : null;
+            const quotations = applyTableUi('quotationManager', payload && Array.isArray(payload.quotations) ? payload.quotations : []);
+            const $tbody = $('#quotationManagerTableBody').empty();
+            $('#quotationManagerTitle').text(((workOrder && workOrder.workOrderNumber) || 'Work Order') + ' â€¢ Manage QT');
+            $('#quotationManagerSubtitle').text((workOrder && workOrder.briefFromCustomer) || '-');
+            $('#quotationManagerAddBtn').attr('data-work-order-id', workOrder && workOrder.workOrderId ? workOrder.workOrderId : '');
+
+            if (!quotations.length) {
+                $tbody.append(
+                    $('<tr>').append(
+                        $('<td>')
+                            .attr('colspan', 6)
+                            .addClass('px-5 py-10 text-center text-sm text-slate-500')
+                            .text(getTableUiState('quotationManager').searchQuery ? 'No quotations match your search.' : 'No quotations submitted for this work order yet.')
+                    )
+                );
+                return;
+            }
+
+            quotations.forEach(function (quote) {
+                const $row = $($('#quotationManagerRowTemplate').html());
+                $row.find('[data-field="number"]').text(quote.quotationId || '-');
+                $row.find('[data-field="meta"]').text('Updated ' + formatDateTime(quote.updatedAt));
+                $row.find('[data-field="category"]').text(quote.category || '-');
+                $row.find('[data-field="project"]').text(quote.customerProject || '-');
+                $row.find('[data-field="status"]').replaceWith(renderStatusPill(quote.status));
+                $row.find('[data-field="updatedAt"]').text(formatDateTime(quote.updatedAt));
+                $row.find('[data-action="delete-quotation"]').attr('data-quotation-id', quote.quotationId);
+                $row.find('[data-action="edit-quotation"]').attr('data-quotation-id', quote.quotationId);
+                $tbody.append($row);
+            });
+        }
+
+        function openWorkOrderDetailModal(workOrderId) {
+            closeWorkspaceMenu();
+            const workOrder = findById(state.data && state.data.workOrders, 'workOrderId', workOrderId);
+            if (!workOrder) {
+                return;
+            }
+            clearWorkOrderNotification(workOrderId);
+            renderWorkOrderDetailModal(workOrder);
+            $('#workOrderDetailModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function closeWorkOrderDetailModal() {
+            $('#workOrderDetailModal').addClass('hidden').removeClass('flex');
+        }
+
+        function renderWorkOrderDetailModal(workOrder) {
+            const attachments = Array.isArray(workOrder.attachments) ? workOrder.attachments : [];
+            const imageAttachments = attachments.filter(isImageFile);
+            const fileAttachments = attachments.filter(function (file) {
+                return !isImageFile(file);
+            });
+            $('#workOrderDetailTitle').text(workOrder.workOrderNumber || 'Work Order');
+            $('#workOrderDetailSubtitle').text(workOrder.briefFromCustomer || '-');
+            $('#workOrderDetailRemarks').text(workOrder.remarks || '-');
+            $('#workOrderDetailImageCount').text(String(imageAttachments.length) + ' image' + (imageAttachments.length === 1 ? '' : 's'));
+            $('#workOrderDetailFileCount').text(String(fileAttachments.length) + ' file' + (fileAttachments.length === 1 ? '' : 's'));
+
+            const $summary = $('#workOrderDetailSummary').empty();
+            [
+                { label: 'Status', value: String(workOrder.status || '-').toUpperCase(), dark: true },
+                { label: 'Deadline', value: formatDate(workOrder.deadlineToQuote) },
+                { label: 'Budget', value: formatCurrency(workOrder.budgetRmb, 'RMB') },
+                { label: 'Volume', value: [workOrder.volumeValue, workOrder.volumeUnit].filter(Boolean).join(' ') || '-' },
+                { label: 'Material', value: workOrder.material || '-' },
+                { label: 'Size', value: workOrder.size || '-' }
+            ].forEach(function (item) {
+                const $card = $('<article>').addClass('rounded-[1.35rem] border border-slate-200 p-4 ' + (item.dark ? 'bg-slate-900 text-white' : 'bg-white/85'));
+                $card.append(
+                    $('<p>').addClass('text-xs uppercase tracking-[0.18em] ' + (item.dark ? 'text-white/60' : 'text-slate-500')).text(item.label),
+                    $('<p>').addClass('mt-3 font-display text-xl font-semibold ' + (item.dark ? 'text-white' : 'text-slate-900')).text(item.value || '-')
+                );
+                $summary.append($card);
+            });
+
+            const $specs = $('#workOrderDetailSpecs').empty();
+            [
+                { label: 'Brief Date', value: formatDate(workOrder.briefDate) },
+                { label: 'Customer', value: workOrder.briefFromCustomer || '-' },
+                { label: 'Printing', value: workOrder.printing || '-' },
+                { label: 'Packing', value: workOrder.packing || '-' }
+            ].forEach(function (item) {
+                $specs.append(
+                    $('<div>').addClass('rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3').append(
+                        $('<p>').addClass('text-xs font-semibold uppercase tracking-[0.14em] text-slate-500').text(item.label),
+                        $('<p>').addClass('mt-2 text-sm font-medium leading-6 text-slate-800').text(item.value || '-')
+                    )
+                );
+            });
+
+            const $images = $('#workOrderDetailImages').empty();
+            if (!imageAttachments.length) {
+                $images.append($('<div>').addClass('rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-6 text-sm text-slate-500 sm:col-span-2').text('No image attachments.'));
+            } else {
+                imageAttachments.forEach(function (file) {
+                    const previewSource = getFilePreviewSource(file);
+                    $images.append(
+                        $('<article>').addClass('overflow-hidden rounded-[1.35rem] border border-slate-200 bg-slate-50/85').append(
+                            $('<button>')
+                                .attr({
+                                    type: 'button',
+                                    'data-preview-image': previewSource,
+                                    'data-preview-title': file.name || 'Image preview'
+                                })
+                                .addClass('block w-full bg-slate-100')
+                                .append($('<img>').attr({ src: previewSource, alt: file.name || 'Attachment image' }).addClass('h-52 w-full object-cover')),
+                            $('<div>').addClass('space-y-2 px-4 py-4').append(
+                                $('<p>').addClass('truncate text-sm font-semibold text-slate-800').text(file.name || 'Image attachment'),
+                                $('<p>').addClass('text-xs text-slate-500').text(buildUploadMetaLine(file, 'UPLOADED'))
+                            )
+                        )
+                    );
+                });
+            }
+
+            const $files = $('#workOrderDetailFiles').empty();
+            if (!fileAttachments.length) {
+                $files.append($('<div>').addClass('rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-6 text-sm text-slate-500').text('No additional files.'));
+            } else {
+                fileAttachments.forEach(function (file) {
+                    const $card = $('<div>').addClass('flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3');
+                    const $icon = $('<span>').addClass('inline-flex h-11 w-11 flex-none items-center justify-center rounded-full bg-brand/10 text-brand').html('<i data-lucide="paperclip" class="h-4 w-4"></i>');
+                    const $meta = $('<div>').addClass('min-w-0 flex-1').append(
+                        $('<p>').addClass('truncate text-sm font-semibold text-slate-800').text(file.name || 'Attachment'),
+                        $('<p>').addClass('mt-1 text-xs text-slate-500').text(buildUploadMetaLine(file, 'UPLOADED'))
+                    );
+                    if (file.url) {
+                        $meta.append(
+                            $('<a>')
+                                .attr({ href: file.url, target: '_blank', rel: 'noopener noreferrer' })
+                                .addClass('mt-3 inline-flex rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600')
+                                .text('Open file')
+                        );
+                    }
+                    $card.append($icon, $meta);
+                    $files.append($card);
+                });
+            }
+        }
+
+        function logout() {
+            discardPendingUploads(state.newImages);
+            discardPendingUploads(state.newWorkOrderFiles);
+            stopBackgroundRefresh();
+            dismissWorkOrderNotificationToast();
+            storageRemove(SESSION_KEY);
+            storageRemove(SESSION_ROLE_KEY);
+            state.token = '';
+            state.role = '';
+            state.user = null;
+            state.data = null;
+            state.bootstrapRefreshInFlight = false;
+            state.adminVendorUsers = null;
+            state.adminVendorUsersLoading = false;
+            state.compareModal = null;
+            state.returnToQuotationManagerOnClose = false;
+            state.workOrderDraft = null;
+            state.quotationDraft = null;
+            state.newImages = [];
+            state.newWorkOrderFiles = [];
+            clearWorkOrderForm();
+            clearQuotationForm();
+            closeWorkspaceMenu();
+            closeVendorsModal();
+            closeVendorEditorModal();
+            closeWorkOrderModal();
+            closeQuotationModal();
+            closeQuotationManagerModal();
+            closeWorkOrderDetailModal();
+            closeCompareModal();
+            redirectToAuthApp();
+        }
+
+        function openWorkspaceMenu() {
+            $('#workspaceMenuBackdrop').removeClass('hidden');
+            $('#workspaceMenu').removeClass('-translate-x-full').addClass('translate-x-0');
+            refreshIcons();
+        }
+
+        function closeWorkspaceMenu() {
+            $('#workspaceMenuBackdrop').addClass('hidden');
+            $('#workspaceMenu').addClass('-translate-x-full').removeClass('translate-x-0');
+        }
+
+        function openVendorsModal() {
+            closeWorkspaceMenu();
+            resetTableUi('vendors');
+            $('#vendorsModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+            if (Array.isArray(state.adminVendorUsers)) {
+                renderVendorsTable();
+                return;
+            }
+            renderVendorTableLoadingRows();
+            loadAdminVendorUsers({ force: false, showSkeleton: false }).catch(handleError);
+        }
+
+        function closeVendorsModal() {
+            $('#vendorsModal').addClass('hidden').removeClass('flex');
+        }
+
+        function openVendorEditorModal(userId) {
+            const user = findById(state.adminVendorUsers, 'userId', userId);
+            if (!user) {
+                return;
+            }
+            const $content = $('#vendorEditorContent').empty();
+            const $form = $($('#userAccessTemplate').html());
+            $form.find('[name="userId"]').val(user.userId);
+            $form.find('[name="username"]').val(user.username || '');
+            $form.find('[name="role"]').val(user.role || 'vendor');
+            $form.find('[name="displayName"]').val(user.displayName || '');
+            $form.find('[name="vendorName"]').val(user.vendorName || '');
+            $form.find('[name="email"]').val(user.email || '');
+            $form.find('[name="vendorSheetUrl"]').val(user.vendorSheetUrl || '');
+            $form.find('[name="isActive"]').prop('checked', !!user.isActive);
+            updateUserAccessRoleUi($form);
+            $content.append($form);
+            $('#vendorEditorTitle').text((user.displayName || user.username || user.vendorName || 'User') + ' Details');
+            $('#vendorEditorModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function updateUserAccessRoleUi(formOrJquery) {
+            const $form = formOrJquery && formOrJquery.jquery ? formOrJquery : $(formOrJquery);
+            const role = String($form.find('[name="role"]').val() || 'vendor').trim().toLowerCase();
+            const isVendor = role === 'vendor';
+            $form.find('[data-role-field="vendor"]').toggleClass('hidden', !isVendor);
+        }
+
+        function closeVendorEditorModal() {
+            $('#vendorEditorModal').addClass('hidden').removeClass('flex');
+            $('#vendorEditorContent').empty();
+        }
+
+        function loadAdminVendorUsers(options) {
+            const config = options || {};
+            if (!state.token || state.role !== 'admin') {
+                return Promise.resolve(null);
+            }
+            if (state.adminVendorUsersLoading) {
+                return Promise.resolve(null);
+            }
+            if (!config.force && Array.isArray(state.adminVendorUsers)) {
+                renderVendorsTable();
+                return Promise.resolve({ users: state.adminVendorUsers });
+            }
+
+            state.adminVendorUsersLoading = true;
+            if (config.showSkeleton) {
+                renderVendorTableLoadingRows();
+            }
+
+            return callServer('getAdminVendorUsers', state.token).then(function (response) {
+                state.adminVendorUsers = response && Array.isArray(response.users) ? response.users : [];
+                renderVendorsTable();
+                refreshIcons();
+                return response;
+            }).catch(function (error) {
+                $('#vendorsTableBody').empty().append(
+                    $('<tr>').append(
+                        $('<td>')
+                            .attr('colspan', 7)
+                            .addClass('py-8 text-center text-sm text-rose-600')
+                            .text(error.message || 'Unable to load users.')
+                    )
+                );
+                throw error;
+            }).finally(function () {
+                state.adminVendorUsersLoading = false;
+            });
+        }
+
+        function openWorkOrderModal() {
+            closeWorkspaceMenu();
+            $('#workOrderModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function closeWorkOrderModal() {
+            $('#workOrderModal').addClass('hidden').removeClass('flex');
+        }
+
+        function openQuotationModal() {
+            closeWorkspaceMenu();
+            $('#quotationModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function closeQuotationModal(options) {
+            const shouldRestoreManager = !(options && options.restoreManager === false)
+                && state.returnToQuotationManagerOnClose
+                && state.quotationManager;
+            $('#quotationModal').addClass('hidden').removeClass('flex');
+            state.returnToQuotationManagerOnClose = false;
+            if (shouldRestoreManager) {
+                $('#quotationManagerModal').removeClass('hidden').addClass('flex');
+                refreshIcons();
+            }
+        }
+
+        function openQuotationModalForWorkOrder(workOrderId) {
+            hideQuotationManagerModal();
+            discardPendingUploads(state.newImages);
+            state.newImages = [];
+            state.quotationDraft = workOrderId ? {
+                quotationId: '',
+                workOrderId: workOrderId,
+                images: []
+            } : null;
+            fillQuotationForm(state.quotationDraft);
+            if (workOrderId) {
+                $('#quotationForm [name="quotationId"]').val('');
+                $('#quotationForm [name="workOrderId"]').val(workOrderId);
+                syncQuotationCustomerProjectField(workOrderId);
+            }
+            openQuotationModal();
+        }
+
+        function formatMultilineField(value) {
+            const normalized = String(value || '').trim();
+            return normalized || '-';
+        }
+
+        function openImagePreviewModal(imageSrc, title) {
+            if (!imageSrc) {
+                return;
+            }
+            $('#imagePreviewModalImg').attr('src', imageSrc);
+            $('#imagePreviewModalCaption').text(title || 'Image preview');
+            $('#imagePreviewModal').removeClass('hidden').addClass('flex');
+            refreshIcons();
+        }
+
+        function closeImagePreviewModal() {
+            $('#imagePreviewModal').addClass('hidden').removeClass('flex');
+            $('#imagePreviewModalImg').attr('src', '');
+            $('#imagePreviewModalCaption').text('');
+        }
+
+        function callServer(functionName) {
+            console.log("ðŸš€ ~ callServer ~ functionName:", functionName)
+            const args = Array.prototype.slice.call(arguments, 1);
+            return new Promise(function (resolve, reject) {
+                if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                    reject(new Error('google.script.run is not available in this context. Please open the deployed Apps Script web app URL.'));
+                    return;
+                }
+                const runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+                runner[functionName].apply(runner, args);
+            });
+        }
+
+        function formToObject(form) {
+            const object = {};
+            $.each($(form).serializeArray(), function (_, field) {
+                object[field.name] = field.value;
+            });
+            return object;
+        }
+
+        function handleWorkOrderFileSelection(fileList) {
+            queueImmediateUploads('WORK_ORDER', fileList);
+        }
+
+        function handleQuotationImageSelection(fileList) {
+            queueImmediateUploads('QUOTATION', fileList);
+        }
+
+        function queueImmediateUploads(scope, fileList) {
+            const config = getUploadConfig(scope);
+            const currentCount = config.getExistingCount() + config.getPendingList().length;
+            const selectedFiles = Array.from(fileList || []);
+            if (!selectedFiles.length) {
+                return;
+            }
+
+            if (currentCount >= FILE_UPLOAD_LIMIT) {
+                flash('Limit Reached', 'You can upload up to ' + FILE_UPLOAD_LIMIT + ' files.', 'error', true);
+                return;
+            }
+
+            if (currentCount + selectedFiles.length > FILE_UPLOAD_LIMIT) {
+                flash('Limit Reached', 'This selection exceeds the ' + FILE_UPLOAD_LIMIT + '-file limit, so the latest selection was not added.', 'error', true);
+                config.render();
+                return;
+            }
+
+            const queuedUploads = selectedFiles.map(function (file) {
+                return enqueueImmediateUpload(scope, file);
+            });
+            config.render();
+
+            callServer('getDriveUploadAuthContext', state.token, { scope: scope }).then(function (uploadAuthContext) {
+                queuedUploads.forEach(function (queuedUpload) {
+                    startImmediateUpload(scope, queuedUpload.file, queuedUpload.clientId, uploadAuthContext);
+                });
+                config.render();
+            }).catch(function (error) {
+                queuedUploads.forEach(function (queuedUpload) {
+                    markPendingUploadError(scope, queuedUpload.clientId, error);
+                });
+                handleError(error);
+            });
+        }
+
+        function enqueueImmediateUpload(scope, file) {
+            const config = getUploadConfig(scope);
+            const clientId = nextUploadClientId();
+            const preview = createLocalUploadPreview(file);
+            const entry = {
+                clientId: clientId,
+                name: file.name,
+                type: file.type,
+                contentType: file.type,
+                sizeBytes: file.size || 0,
+                totalBytes: file.size || 0,
+                uploadedBytes: 0,
+                uploadPercent: 0,
+                preview: preview.preview,
+                previewUrl: '',
+                uploadStatus: 'PREPARING',
+                isTemp: true,
+                scope: scope,
+                errorMessage: '',
+                objectUrl: preview.objectUrl
+            };
+
+            config.getPendingList().push(entry);
+            return {
+                clientId: clientId,
+                file: file
+            };
+        }
+
+        function startImmediateUpload(scope, file, clientId, uploadAuthContext) {
+            const config = getUploadConfig(scope);
+            const currentEntry = findUploadEntry(config.getPendingList(), clientId);
+            if (currentEntry) {
+                currentEntry.uploadStatus = 'UPLOADING';
+                currentEntry.errorMessage = '';
+                config.render();
+            }
+
+            uploadFileToDriveSession(file, uploadAuthContext, function (progressState) {
+                const uploadingEntry = findUploadEntry(config.getPendingList(), clientId);
+                if (!uploadingEntry) {
+                    return;
+                }
+                updateUploadEntryProgress(uploadingEntry, progressState);
+                config.render();
+            }).then(function (result) {
+                const uploadedEntry = findUploadEntry(config.getPendingList(), clientId);
+                if (!uploadedEntry) {
+                    if (result && result.id) {
+                        deleteUploadedFileSilently(result.id, 'REMOVED_DURING_UPLOAD');
+                    }
+                    return;
+                }
+
+                cleanupUploadPreview(uploadedEntry);
+                $.extend(uploadedEntry, {
+                    fileId: result.id,
+                    name: result.name || uploadedEntry.name || file.name,
+                    url: result.webViewLink || buildDriveOpenUrl(result.id),
+                    preview: buildDrivePreviewUrl(result.id),
+                    previewUrl: buildDrivePreviewUrl(result.id),
+                    contentType: result.mimeType || uploadedEntry.contentType || file.type,
+                    sizeBytes: Number(result.size || uploadedEntry.sizeBytes || file.size || 0),
+                    uploadStatus: 'UPLOADED',
+                    errorMessage: '',
+                    uploadedBytes: Number(result.size || uploadedEntry.totalBytes || file.size || 0),
+                    totalBytes: Number(result.size || uploadedEntry.totalBytes || file.size || 0),
+                    uploadPercent: 100,
+                    isTemp: true,
+                    scope: scope,
+                    objectUrl: ''
+                });
+                config.render();
+            }).catch(function (error) {
+                const failedEntry = findUploadEntry(config.getPendingList(), clientId);
+                if (failedEntry) {
+                    failedEntry.uploadStatus = 'ERROR';
+                    failedEntry.errorMessage = getUploadErrorMessage(error);
+                    config.render();
+                }
+                handleError(error);
+            });
+        }
+
+        function markPendingUploadError(scope, clientId, error) {
+            const config = getUploadConfig(scope);
+            const failedEntry = findUploadEntry(config.getPendingList(), clientId);
+            if (!failedEntry) {
+                return;
+            }
+            failedEntry.uploadStatus = 'ERROR';
+            failedEntry.errorMessage = getUploadErrorMessage(error);
+            config.render();
+        }
+
+        function uploadFileToDriveSession(file, uploadAuthContext, onProgress) {
+            return new Promise(function (resolve, reject) {
+                const uploader = new ResumableUploadToGoogleDrive2();
+                uploader.Do({
+                    file: file,
+                    accessToken: uploadAuthContext.accessToken,
+                    folderId: uploadAuthContext.folderId,
+                    fields: 'id,name,mimeType,size,webViewLink',
+                    chunkSize: RESUMABLE_UPLOAD_CHUNK_SIZE
+                }, function (result, error) {
+                    if (error) {
+                        reject(normalizeUploadError(error));
+                        return;
+                    }
+                    if (!result) {
+                        return;
+                    }
+
+                    if (typeof onProgress === 'function') {
+                        onProgress(result);
+                    }
+
+                    if (result.status === 'Done') {
+                        resolve(result.result || {});
+                    }
+                });
+            });
+        }
+
+        function updateUploadEntryProgress(entry, progressState) {
+            if (!entry || !progressState) {
+                return;
+            }
+
+            if (progressState.status === 'initialize' || progressState.status === 'getLocation' || progressState.status === 'start') {
+                entry.uploadStatus = 'UPLOADING';
+                return;
+            }
+
+            if (progressState.status !== 'Uploading' || !progressState.progressByte) {
+                return;
+            }
+
+            const totalBytes = Number(progressState.progressByte.total || entry.totalBytes || entry.sizeBytes || 0);
+            const uploadedBytes = Math.min(totalBytes, Number(progressState.progressByte.end || -1) + 1);
+            entry.uploadStatus = 'UPLOADING';
+            entry.totalBytes = totalBytes;
+            entry.uploadedBytes = Math.max(0, uploadedBytes);
+            entry.uploadPercent = totalBytes > 0 ? Math.min(100, Math.round((entry.uploadedBytes / totalBytes) * 100)) : 0;
+        }
+
+        function createLocalUploadPreview(file) {
+            if (!file || !isImageFile({ name: file.name, type: file.type, contentType: file.type })) {
+                return { preview: '', objectUrl: '' };
+            }
+
+            if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+                return { preview: '', objectUrl: '' };
+            }
+
+            const objectUrl = URL.createObjectURL(file);
+            return {
+                preview: objectUrl,
+                objectUrl: objectUrl
+            };
+        }
+
+        function cleanupUploadPreview(entry) {
+            if (!entry || !entry.objectUrl || typeof URL === 'undefined' || typeof URL.revokeObjectURL !== 'function') {
+                return;
+            }
+            URL.revokeObjectURL(entry.objectUrl);
+            entry.objectUrl = '';
+        }
+
+        function normalizeUploadError(error) {
+            const message = getUploadErrorMessage(error);
+            return error instanceof Error ? new Error(message) : new Error(message);
+        }
+
+        function getUploadErrorMessage(error) {
+            if (!error) {
+                return 'Upload failed.';
+            }
+            if (typeof error === 'string') {
+                return error;
+            }
+            if (error.message) {
+                return error.message;
+            }
+            if (error.Error) {
+                return error.Error;
+            }
+            if (error.error && error.error.message) {
+                return error.error.message;
+            }
+            return 'Upload failed.';
+        }
+
+        function getUploadConfig(scope) {
+            if (scope === 'QUOTATION') {
+                return {
+                    getPendingList: function () { return state.newImages; },
+                    getExistingCount: function () { return state.quotationDraft && Array.isArray(state.quotationDraft.images) ? state.quotationDraft.images.length : 0; },
+                    render: renderQuotationPreviews,
+                    pickerSelector: '#quotationUploadPickerWrap',
+                    inputSelector: '#quotationImageInput',
+                    limitNoticeSelector: '#quotationUploadLimitNotice',
+                    clearButtonSelector: '#quotationRemoveAllBtn'
+                };
+            }
+            return {
+                getPendingList: function () { return state.newWorkOrderFiles; },
+                getExistingCount: function () { return state.workOrderDraft && Array.isArray(state.workOrderDraft.attachments) ? state.workOrderDraft.attachments.length : 0; },
+                render: renderWorkOrderAttachmentList,
+                pickerSelector: '#workOrderUploadPickerWrap',
+                inputSelector: '#workOrderFileInput',
+                limitNoticeSelector: '#workOrderUploadLimitNotice',
+                clearButtonSelector: '#workOrderRemoveAllBtn'
+            };
+        }
+
+        function updateUploadPickerVisibility(scope, count) {
+            const config = getUploadConfig(scope);
+            const totalCount = Number(count || 0);
+            $(config.pickerSelector).toggleClass('hidden', totalCount >= FILE_UPLOAD_LIMIT);
+            $(config.limitNoticeSelector).toggleClass('hidden', totalCount < FILE_UPLOAD_LIMIT);
+            $(config.clearButtonSelector).toggleClass('hidden', totalCount <= 0);
+            if (totalCount >= FILE_UPLOAD_LIMIT) {
+                $(config.inputSelector).val('');
+            }
+        }
+
+        function clearAllUploads(scope) {
+            if (scope === 'QUOTATION') {
+                discardPendingUploads(state.newImages);
+                state.newImages = [];
+                if (state.quotationDraft && Array.isArray(state.quotationDraft.images)) {
+                    state.quotationDraft.images = [];
+                }
+                $('#quotationImageInput').val('');
+                renderQuotationPreviews();
+                return;
+            }
+
+            discardPendingUploads(state.newWorkOrderFiles);
+            state.newWorkOrderFiles = [];
+            if (state.workOrderDraft && Array.isArray(state.workOrderDraft.attachments)) {
+                state.workOrderDraft.attachments = [];
+            }
+            $('#workOrderFileInput').val('');
+            renderWorkOrderAttachmentList();
+        }
+
+        function nextUploadClientId() {
+            state.uploadSequence += 1;
+            return 'upload-' + Date.now() + '-' + state.uploadSequence;
+        }
+
+        function findUploadEntry(list, clientId) {
+            return (list || []).find(function (item) {
+                return item && item.clientId === clientId;
+            }) || null;
+        }
+
+        function normalizeUploadedEntries(list) {
+            return (list || []).filter(function (item) {
+                return item && item.uploadStatus === 'UPLOADED' && item.fileId;
+            }).map(function (item) {
+                return {
+                    fileId: item.fileId,
+                    name: item.name,
+                    url: item.url,
+                    previewUrl: item.previewUrl || item.preview || '',
+                    contentType: item.contentType || item.type || '',
+                    sizeBytes: item.sizeBytes || 0,
+                    isTemp: item.isTemp === true,
+                    scope: item.scope || ''
+                };
+            });
+        }
+
+        function getUploadBlockingMessage(list, label) {
+            const uploads = list || [];
+            if (uploads.some(function (item) { return item.uploadStatus === 'PREPARING' || item.uploadStatus === 'PENDING' || item.uploadStatus === 'UPLOADING'; })) {
+                return 'Please wait for all ' + label + ' to finish uploading.';
+            }
+            if (uploads.some(function (item) { return item.uploadStatus === 'ERROR'; })) {
+                return 'Some ' + label + ' failed to upload. Remove them or try again.';
+            }
+            return '';
+        }
+
+        function removePendingUploadAt(stateKey, index, renderFn) {
+            const list = state[stateKey] || [];
+            const item = list[index];
+            if (!item) {
+                return;
+            }
+            cleanupUploadPreview(item);
+            list.splice(index, 1);
+            if (item.fileId && item.isTemp) {
+                deleteUploadedFileSilently(item.fileId, 'REMOVE_PENDING_UPLOAD');
+            }
+            renderFn();
+        }
+
+        function discardPendingUploads(list) {
+            (list || []).forEach(function (item) {
+                cleanupUploadPreview(item);
+                if (item && item.fileId && item.isTemp) {
+                    deleteUploadedFileSilently(item.fileId, 'DISCARD_PENDING_UPLOAD');
+                }
+            });
+        }
+
+        function deleteUploadedFileSilently(fileId, reason) {
+            if (!state.token || !fileId) {
+                return;
+            }
+            callServer('deleteUploadedFile', state.token, {
+                fileId: fileId,
+                reason: reason || 'DELETE_FILE'
+            }).catch(function () { });
+        }
+
+        function getQuotationSwalModalClasses() {
+            return {
+                popup: 'swal2-quotation-modal',
+                title: 'swal2-quotation-title',
+                htmlContainer: 'swal2-quotation-html',
+                actions: 'swal2-quotation-actions',
+                confirmButton: 'swal2-quotation-confirm',
+                cancelButton: 'swal2-quotation-cancel'
+            };
+        }
+
+        function flash(title, message, type, isToast, position) {
+            const iconMap = {
+                success: 'success',
+                error: 'error',
+                info: 'info'
+            };
+
+            if (!window.Swal) {
+                return;
+            }
+
+            Swal.close();
+            Swal.fire({
+                toast: true,
+                position: position || 'top-end',
+                icon: iconMap[type] || 'info',
+                title: title,
+                text: message,
+                showConfirmButton: false,
+                timer: type === 'error' ? 4500 : 3200,
+                timerProgressBar: true,
+                customClass: {
+                    popup: 'swal2-quotation-toast',
+                    title: 'swal2-quotation-title'
+                }
+            });
+        }
+
+        function handleError(error) {
+            const message = error && error.message ? error.message : 'An unexpected error occurred.';
+            if (!state.token && !state.data && window.Swal) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Unable to Login',
+                    text: message,
+                    confirmButtonText: 'OK',
+                    customClass: getQuotationSwalModalClasses()
+                });
+                return;
+            }
+            flash('Error', message, 'error', true);
+        }
+
+        function setLoading(value) {
+            $('#loadingOverlay').toggleClass('hidden', !value).toggleClass('flex', !!value);
+        }
+
+        function formatCurrency(value, currency) {
+            if (value === '' || value === null || value === undefined || Number.isNaN(Number(value))) {
+                return '-';
+            }
+            return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Number(value)) + ' ' + currency;
+        }
+
+        function formatDate(value) {
+            if (!value) {
+                return '-';
+            }
+            const parsed = moment(value);
+            return parsed.isValid() ? parsed.format('D MMM YYYY') : value;
+        }
+
+        function renderStatusPill(status) {
+            const normalized = String(status || '-').toUpperCase();
+            const map = {
+                OPEN: 'bg-teal-50 text-teal-700',
+                PUBLISHED: 'bg-sky-50 text-sky-700',
+                CLOSED: 'bg-slate-200 text-slate-700',
+                SUBMITTED: 'bg-emerald-50 text-emerald-700',
+                UPDATED: 'bg-amber-50 text-amber-700',
+                ON_HOLD: 'bg-rose-50 text-rose-700',
+                WAITING_SAMPLE: 'bg-fuchsia-50 text-fuchsia-700',
+                NOT_AVAILABLE: 'bg-slate-100 text-slate-600'
+            };
+            return $('<span>').addClass('inline-flex rounded-full px-3 py-1 text-xs font-semibold ' + (map[normalized] || 'bg-slate-100 text-slate-600')).text(normalized);
+        }
+
+        function renderWorkOrderAttachmentList() {
+            const $target = $('#workOrderAttachmentList').empty();
+            const existingFiles = state.workOrderDraft && Array.isArray(state.workOrderDraft.attachments) ? state.workOrderDraft.attachments : [];
+            const newFiles = state.newWorkOrderFiles || [];
+            const totalCount = existingFiles.length + newFiles.length;
+            updateUploadCounter('#workOrderUploadCounter', totalCount);
+            updateUploadPickerVisibility('WORK_ORDER', totalCount);
+
+            if (!existingFiles.length && !newFiles.length) {
+                $target.append(
+                    $('<div>')
+                        .addClass('rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 md:col-span-2')
+                        .text('No files attached yet.')
+                );
+                refreshIcons();
+                return;
+            }
+
+            existingFiles.forEach(function (file, index) {
+                $target.append(buildWorkOrderAttachmentCard(file, { index: index, isNew: false, status: 'UPLOADED' }));
+            });
+
+            newFiles.forEach(function (file, index) {
+                $target.append(buildWorkOrderAttachmentCard(file, { index: index, isNew: true, status: file.uploadStatus || 'PENDING' }));
+            });
+            refreshIcons();
+        }
+
+        function buildWorkOrderAttachmentCard(file, options) {
+            const config = options || {};
+            const isNew = !!config.isNew;
+            const $card = $('<div>').addClass('flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3');
+            const $icon = isImageFile(file)
+                ? buildInlineImagePreview(file)
+                : $('<span>').addClass('inline-flex h-10 w-10 flex-none items-center justify-center rounded-full bg-brand/10 text-brand').html('<i data-lucide="paperclip" class="h-4 w-4"></i>');
+            const $meta = $('<div>').addClass('min-w-0 flex-1');
+            const $title = $('<p>').addClass('truncate text-sm font-semibold text-slate-800').text(file.name || 'Attachment');
+            const $subtitle = $('<p>').addClass('mt-1 text-xs text-slate-500').text(buildUploadMetaLine(file, config.status));
+            const $progress = renderUploadProgress(file, config.status, 'default');
+            const $actions = $('<div>').addClass('mt-3 flex items-center gap-2');
+
+            $actions.append(renderUploadStatusBadge(config.status, file));
+
+            if (!isNew && file.url) {
+                $actions.append(
+                    $('<a>')
+                        .attr({ href: file.url, target: '_blank', rel: 'noopener noreferrer' })
+                        .addClass('inline-flex rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600')
+                        .text('Open file')
+                );
+            }
+
+            $actions.append(
+                $('<button>')
+                    .attr({ type: 'button' })
+                    .attr(isNew ? 'data-remove-workorder-new-file' : 'data-remove-workorder-existing-file', config.index)
+                    .addClass('inline-flex rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600')
+                    .text('Remove')
+            );
+
+            $meta.append($title, $subtitle);
+            if ($progress) {
+                $meta.append($progress);
+            }
+            $meta.append($actions);
+            $card.append($icon, $meta);
+            return $card;
+        }
+
+        function buildInlineImagePreview(file) {
+            const previewSource = getFilePreviewSource(file);
+            const $button = $('<button>')
+                .attr({
+                    type: 'button',
+                    'data-preview-image': previewSource,
+                    'data-preview-title': file.name || 'Image preview'
+                })
+                .addClass('flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-100');
+
+            $button.append(
+                $('<img>')
+                    .attr({ src: previewSource, alt: file.name || 'Attachment preview' })
+                    .addClass('h-full w-full object-cover')
+            );
+
+            return $button;
+        }
+
+        function getFilePreviewSource(file) {
+            return String((file && (file.preview || file.previewUrl || file.url)) || '').trim();
+        }
+
+        function isImageFile(file) {
+            const contentType = String(file && (file.contentType || file.type) || '').trim().toLowerCase();
+            const fileName = String(file && file.name || '').trim().toLowerCase();
+            return contentType.indexOf('image/') === 0 || /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif)$/i.test(fileName);
+        }
+
+        function updateUploadCounter(selector, count) {
+            $(selector).text(String(count || 0) + '/' + FILE_UPLOAD_LIMIT + ' files');
+        }
+
+        function buildUploadMetaLine(file, status) {
+            const parts = [];
+            if (file.contentType || file.type) {
+                parts.push(String(file.contentType || file.type));
+            }
+            if (file.sizeBytes) {
+                parts.push(formatFileSize(file.sizeBytes));
+            }
+            if (status === 'ERROR' && file.errorMessage) {
+                parts.push(file.errorMessage);
+            }
+            return parts.join(' â€¢ ') || 'File ready';
+        }
+
+        function appendUploadProgress($target, file, status, tone) {
+            const $progress = renderUploadProgress(file, status, tone);
+            $target.empty();
+            if ($progress) {
+                $target.append($progress);
+            }
+        }
+
+        function renderUploadProgress(file, status, tone) {
+            const normalized = String(status || '').toUpperCase();
+            if (normalized !== 'PREPARING' && normalized !== 'UPLOADING' && normalized !== 'PENDING') {
+                return null;
+            }
+
+            const totalBytes = Number(file.totalBytes || file.sizeBytes || 0);
+            const uploadedBytes = Number(file.uploadedBytes || 0);
+            const percent = Math.max(0, Math.min(100, Number(file.uploadPercent || 0)));
+            const isOverlay = String(tone || '').toLowerCase() === 'overlay';
+            const $wrap = $('<div>').addClass('mt-2 space-y-1.5');
+            const $track = $('<div>').addClass('h-1.5 overflow-hidden rounded-full ' + (isOverlay ? 'bg-white/20' : 'bg-slate-200'));
+            const $bar = $('<div>').addClass('h-full rounded-full transition-all duration-150 ' + (isOverlay ? 'bg-white/90' : 'bg-brand')).css('width', percent + '%');
+            const label = normalized === 'PREPARING'
+                ? 'Preparing upload...'
+                : totalBytes > 0
+                ? (formatFileSize(uploadedBytes) + ' / ' + formatFileSize(totalBytes) + ' (' + percent + '%)')
+                : (percent + '%');
+            const textClass = isOverlay
+                ? (normalized === 'PENDING' ? 'text-white/70' : 'text-white/80')
+                : 'text-slate-500';
+            const $label = $('<p>').addClass('text-[11px] ' + textClass).text(label);
+
+            $track.append($bar);
+            $wrap.append($track, $label);
+            return $wrap;
+        }
+
+        function renderUploadStatusBadge(status, file) {
+            const normalized = String(status || 'UPLOADED').toUpperCase();
+            const percent = Math.max(0, Math.min(100, Number(file && file.uploadPercent || 0)));
+            const map = {
+                PREPARING: { classes: 'bg-indigo-50 text-indigo-700', icon: 'loader-circle', label: 'Preparing upload', spin: true },
+                PENDING: { classes: 'bg-amber-50 text-amber-700', icon: 'clock-3', label: 'Pending upload', spin: false },
+                UPLOADING: { classes: 'bg-sky-50 text-sky-700', icon: 'loader-circle', label: 'Uploading ' + percent + '%', spin: true },
+                UPLOADED: { classes: 'bg-emerald-50 text-emerald-700', icon: 'check-circle-2', label: 'Uploaded', spin: false },
+                ERROR: { classes: 'bg-rose-50 text-rose-700', icon: 'triangle-alert', label: 'Upload failed', spin: false }
+            };
+            const meta = map[normalized] || map.UPLOADED;
+            const $badge = $('<span>').addClass('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ' + meta.classes);
+            const $icon = $('<i>').attr('data-lucide', meta.icon).addClass('h-3.5 w-3.5' + (meta.spin ? ' animate-spin' : ''));
+            return $badge.append($icon, $('<span>').text(meta.label));
+        }
+
+        function buildDrivePreviewUrl(fileId) {
+            const normalized = String(fileId || '').trim();
+            return normalized ? ('https://drive.google.com/thumbnail?id=' + encodeURIComponent(normalized) + '&sz=w1600') : '';
+        }
+
+        function buildDriveOpenUrl(fileId) {
+            const normalized = String(fileId || '').trim();
+            return normalized ? ('https://drive.google.com/open?id=' + encodeURIComponent(normalized)) : '';
+        }
+
+        function updateWorkOrderStatusControl(status) {
+            const normalized = String(status || 'OPEN').toUpperCase();
+            const meta = getWorkOrderStatusMeta(normalized);
+            const $control = $('#workOrderStatusControl');
+            const $iconWrap = $('#workOrderStatusIconWrap');
+            const $icon = $('#workOrderStatusIcon');
+            const $select = $('#workOrderForm [name="status"]');
+
+            $control.removeClass('border-teal-200 bg-teal-50/90 border-sky-200 bg-sky-50/90 border-rose-200 bg-rose-50/90 border-slate-300 bg-slate-100/90');
+            $iconWrap.removeClass('bg-teal-100 text-teal-700 bg-sky-100 text-sky-700 bg-rose-100 text-rose-700 bg-slate-200 text-slate-700');
+            $select.removeClass('text-teal-700 text-sky-700 text-rose-700 text-slate-700');
+
+            $control.addClass(meta.controlClass);
+            $iconWrap.addClass(meta.iconClass);
+            $select.addClass(meta.textClass).val(normalized);
+            $icon.attr('data-lucide', meta.icon);
+            refreshIcons();
+        }
+
+        function getWorkOrderStatusMeta(status) {
+            const map = {
+                OPEN: {
+                    icon: 'folder-open',
+                    controlClass: 'border-teal-200 bg-teal-50/90',
+                    iconClass: 'bg-teal-100 text-teal-700',
+                    textClass: 'text-teal-700'
+                },
+                PUBLISHED: {
+                    icon: 'send',
+                    controlClass: 'border-sky-200 bg-sky-50/90',
+                    iconClass: 'bg-sky-100 text-sky-700',
+                    textClass: 'text-sky-700'
+                },
+                ON_HOLD: {
+                    icon: 'pause',
+                    controlClass: 'border-rose-200 bg-rose-50/90',
+                    iconClass: 'bg-rose-100 text-rose-700',
+                    textClass: 'text-rose-700'
+                },
+                CLOSED: {
+                    icon: 'lock',
+                    controlClass: 'border-slate-300 bg-slate-100/90',
+                    iconClass: 'bg-slate-200 text-slate-700',
+                    textClass: 'text-slate-700'
+                }
+            };
+            return map[status] || map.OPEN;
+        }
+
+        function formatFileSize(value) {
+            const size = Number(value || 0);
+            if (!size) {
+                return '';
+            }
+            if (size < 1024) {
+                return size + ' B';
+            }
+            if (size < 1024 * 1024) {
+                return (size / 1024).toFixed(1) + ' KB';
+            }
+            return (size / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function renderVendorStatusBadge(isActive) {
+            const active = !!isActive;
+            return $('<span>')
+                .addClass('inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ' + (active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'))
+                .append(
+                    $('<span>').addClass('h-2 w-2 rounded-full ' + (active ? 'bg-emerald-500' : 'bg-rose-500')),
+                    document.createTextNode(active ? 'ACTIVE' : 'INACTIVE')
+                );
+        }
+
+        function renderUserRoleBadge(role) {
+            const normalizedRole = String(role || '').trim().toLowerCase();
+            const isAdmin = normalizedRole === 'admin';
+            return $('<span>')
+                .addClass('inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ' + (isAdmin ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-violet-200 bg-violet-50 text-violet-700'))
+                .append(
+                    $('<span>').addClass('h-2 w-2 rounded-full ' + (isAdmin ? 'bg-sky-500' : 'bg-violet-500')),
+                    document.createTextNode(isAdmin ? 'ADMIN' : 'VENDOR')
+                );
+        }
+
+        function renderQuotationCountBadge(count) {
+            return $('<span>')
+                .addClass('inline-flex rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700')
+                .text(String(count || 0) + ' QT');
+        }
+
+        function formatDateTime(value) {
+            if (!value) {
+                return '-';
+            }
+            if (/^\d{4}-\d{2}-\d{2}$/.test(String(value).trim())) {
+                const parsedDateOnly = moment(value, 'YYYY-MM-DD', true);
+                return parsedDateOnly.isValid() ? parsedDateOnly.format('D MMM YYYY') : value;
+            }
+            const parsed = moment(value);
+            return parsed.isValid() ? parsed.format('D MMM YYYY, HH:mm') : value;
+        }
+
+        function refreshIcons() {
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                window.lucide.createIcons();
+            }
+        }
+
+        function buildUserLabel(user) {
+            if (!user) {
+                return '';
+            }
+            const baseName = user.displayName || user.username || '';
+            return baseName + (user.vendorName ? ' â€¢ ' + user.vendorName : '');
+        }
+
+        function findById(list, field, value) {
+            return (list || []).find(function (item) {
+                return item && item[field] === value;
+            }) || null;
+        }
+
+        function storageGet(key) {
+            try {
+                return window.localStorage ? window.localStorage.getItem(key) || '' : (memoryStorage[key] || '');
+            } catch (error) {
+                return memoryStorage[key] || '';
+            }
+        }
+
+        function storageSet(key, value) {
+            memoryStorage[key] = value || '';
+            try {
+                if (window.localStorage) {
+                    window.localStorage.setItem(key, value || '');
+                }
+            } catch (error) { }
+        }
+
+        function storageRemove(key) {
+            delete memoryStorage[key];
+            try {
+                if (window.localStorage) {
+                    window.localStorage.removeItem(key);
+                }
+            } catch (error) { }
+        }
+        })();
+    </script>

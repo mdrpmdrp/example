@@ -18,7 +18,8 @@ function onFormSubitForLineStatusUpdate(e) {
     const COL_JOB_TYPE = 9; // I
     const COL_STATUS = 10; // J
     const COL_UUID = 13; // M
-    const COL_SYSTEM_RECOMMEND = 20; // T
+    const COL_LEAVE_REASON = 16; // P
+    const COL_SYSTEM_RECOMMEND = 22; // V
     let uuid = Utilities.getUuid();
     // save uuid ไว้ในคอลัมน์ที่ซ่อนอยู่ เพื่อใช้เป็น token ในการอัปเดตสถานะผ่าน Line
     sh.getRange(rowIndex, COL_UUID).setValue(uuid);
@@ -27,6 +28,7 @@ function onFormSubitForLineStatusUpdate(e) {
         employeeName: submitData[COL_NAME - 1],
         plate: submitData[COL_PLATE - 1],
         leaveType: submitData[COL_TYPE - 1],
+        leaveReason: submitData[COL_LEAVE_REASON - 1],
         startDate: submitData[COL_START - 1],
         endDate: submitData[COL_END - 1],
         jobType: submitData[COL_JOB_TYPE - 1],
@@ -146,6 +148,17 @@ function buildLeaveApprovalFlexMessage(payload) {
                     align: 'center',
 
                 }
+            ]
+        },
+        {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            paddingAll: '12px',
+            cornerRadius: '16px',
+            backgroundColor: '#ECFDF5',
+            contents: [
+                buildFlexHighlightBlock('เหตุผลการลา', payload.leaveReason)
             ]
         },
         {
@@ -355,7 +368,7 @@ function buildRegistrationSuccessFlexMessage(payload) {
 function buildFlexDetailRow(label, value, emphasize) {
     return {
         type: 'box',
-        layout: 'baseline',
+        layout: 'horizontal',
         spacing: 'sm',
         contents: [
             {
@@ -363,7 +376,7 @@ function buildFlexDetailRow(label, value, emphasize) {
                 text: label,
                 size: 'sm',
                 color: '#64748B',
-                flex: 1,
+                flex: 2,
                 align: 'start'
             },
             {
@@ -373,8 +386,33 @@ function buildFlexDetailRow(label, value, emphasize) {
                 color: emphasize ? '#0F172A' : '#334155',
                 weight: emphasize ? 'bold' : 'regular',
                 wrap: true,
-                flex: 1,
+                flex: 3,
                 align: 'end'
+            }
+        ]
+    };
+}
+
+function buildFlexHighlightBlock(label, value) {
+    return {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'xs',
+        contents: [
+            {
+                type: 'text',
+                text: label,
+                size: 'xs',
+                color: '#0F766E',
+                weight: 'bold'
+            },
+            {
+                type: 'text',
+                text: stringifyFlexValue(value),
+                size: 'sm',
+                color: '#0F172A',
+                weight: 'bold',
+                wrap: true
             }
         ]
     };
@@ -574,6 +612,7 @@ function handleLeaveApprovalPostback(webhook) {
                     employeeName: row[1],
                     plate: row[2],
                     leaveType: row[3],
+                    leaveReason: row[15],
                     startDate: row[4],
                     endDate: row[5],
                     jobType: row[8],
@@ -790,6 +829,7 @@ function autoSetStatus() {
     const jobTypeColIndex = 8;
     const statusColIndex = 9;
     const approvedAtColIndex = 11;
+    const leaveReasonColIndex = 15;
     const approverUserIdColIndex = 13;
     const approverDisplayNameColIndex = 14;
     const systemRecommendColIndex = 19;
@@ -842,6 +882,7 @@ function autoSetStatus() {
                 employeeName: row[employeeNameColIndex],
                 plate: row[plateColIndex],
                 leaveType: row[leaveTypeColIndex],
+                leaveReason: row[leaveReasonColIndex],
                 startDate: row[startDateColIndex],
                 endDate: row[endDateColIndex],
                 jobType: row[jobTypeColIndex],

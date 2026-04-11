@@ -1,0 +1,176 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/locale/th.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@2.0.2/resumableupload2_js.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#20B2AA',
+                        brandDark: '#0f766e',
+                        ink: '#16323a',
+                        mist: '#f8f9fa',
+                        line: '#d3d3d3'
+                    },
+                    boxShadow: {
+                        soft: '0 24px 80px rgba(15, 118, 110, 0.12)'
+                    },
+                    fontFamily: {
+                        display: ['Sora', 'sans-serif'],
+                        body: ['IBM Plex Sans Thai', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            background:
+                radial-gradient(circle at top left, rgba(32, 178, 170, 0.16), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.12), transparent 24%),
+                #f8f9fa;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(14px);
+        }
+
+        .card-enter {
+            animation: card-enter 0.35s ease-out;
+        }
+
+        .loading-shimmer {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(90deg, rgba(226, 232, 240, 0.78) 14%, rgba(248, 250, 252, 0.98) 48%, rgba(203, 213, 225, 0.9) 76%, rgba(248, 250, 252, 0.98) 100%);
+            background-size: 240% 100%;
+            animation: loading-shimmer 1.35s ease-in-out infinite;
+        }
+
+        .loading-shimmer-dark {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.12) 14%, rgba(255, 255, 255, 0.32) 48%, rgba(255, 255, 255, 0.18) 76%, rgba(255, 255, 255, 0.12) 100%);
+            background-size: 240% 100%;
+        }
+
+        .swal2-popup.swal2-quotation-toast,
+        .swal2-popup.swal2-quotation-modal {
+            border: 1px solid rgba(255, 255, 255, 0.78);
+            border-radius: 1.5rem;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 24px 80px rgba(15, 118, 110, 0.16);
+            color: #16323a;
+        }
+
+        .swal2-popup.swal2-quotation-toast {
+            width: fit-content;
+            max-width: min(calc(100vw - 1.5rem), 42rem);
+            min-width: 0;
+            padding: 0.95rem 1rem;
+        }
+
+        .swal2-container.swal2-top .swal2-popup.swal2-quotation-toast {
+            margin-inline: auto;
+        }
+
+        .swal2-popup.swal2-quotation-modal {
+            padding: 1.5rem;
+        }
+
+        .swal2-title.swal2-quotation-title {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #16323a;
+        }
+
+        .swal2-html-container.swal2-quotation-html {
+            margin-top: 0.5rem;
+            font-size: 0.95rem;
+            color: #475569;
+        }
+
+        .swal2-confirm.swal2-quotation-confirm {
+            border-radius: 9999px;
+            background: #20B2AA;
+            padding: 0.75rem 1.6rem;
+            font-weight: 600;
+            box-shadow: none;
+        }
+
+        .swal2-confirm.swal2-quotation-confirm:focus {
+            box-shadow: 0 0 0 4px rgba(32, 178, 170, 0.18);
+        }
+
+        .swal2-timer-progress-bar {
+            background: linear-gradient(90deg, #20B2AA, #0f766e);
+        }
+
+        @keyframes card-enter {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes loading-shimmer {
+            from {
+                background-position: 200% 0;
+            }
+
+            to {
+                background-position: -200% 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="font-body text-ink antialiased" data-auth-url="<?!= authUrl ?>">
+    <div id="loadingOverlay"
+        class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/20 backdrop-blur-sm">
+        <div class="glass rounded-[1.75rem] border border-white/80 px-6 py-5 shadow-soft">
+            <div class="flex items-center gap-4">
+                <div class="h-10 w-10 animate-spin rounded-full border-4 border-brand/20 border-t-brand"></div>
+                <div>
+                    <p class="font-display text-lg font-semibold text-slate-800">Processing</p>
+                    <p class="text-sm text-slate-500">Please wait a moment</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="imagePreviewModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-950/90 p-4">
+        <div class="relative flex max-h-full w-full max-w-6xl items-center justify-center">
+            <button id="closeImagePreviewModalBtn" type="button"
+                class="absolute right-0 top-0 z-10 inline-flex h-12 w-12 -translate-y-14 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20">
+                <i data-lucide="x" class="h-5 w-5"></i>
+            </button>
+            <img id="imagePreviewModalImg" src="" alt="Full preview"
+                class="max-h-[88vh] w-auto max-w-full rounded-[1.5rem] border border-white/10 bg-white/5 object-contain shadow-2xl">
+            <div id="imagePreviewModalCaption"
+                class="absolute inset-x-0 bottom-0 mx-auto max-w-3xl rounded-full bg-slate-950/55 px-5 py-2 text-center text-sm text-white/90 backdrop-blur-sm"></div>
+        </div>
+    </div>
+

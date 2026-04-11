@@ -3,7 +3,7 @@
 ## Current State
 
 - Project: Google Apps Script quotation bidding app in workplace/jobs/quotation_bidding.
-- Main backend/data logic is in code.js.
+- Main backend/data logic is in js/core/code.js and js/services/.
 - Admin UI is in admin.html, vendor UI is in vendor.html, entry/auth shell is in Index.html.
 - Runtime quotation source of truth is vendor-sheet-first. The legacy main Quotations sheet should not be treated as the active runtime source.
 - Main spreadsheet aggregates quotation references in WorkOrders.Quotations and WorkOrders.quotationCount.
@@ -24,7 +24,7 @@
 
 ## Server-Side Notes
 
-- code.js changes to review first:
+- js/core/code.js and related service files changes to review first:
   - APP_CONFIG.sheets.workOrders.headers now includes selectedQuotationId
   - saveSelectedQuotation()
   - getQuotationComparison()
@@ -73,10 +73,10 @@
 1. Remove remaining debug console logging in admin.html after confirming the compare flow is stable.
 2. Browser-test compare modal on desktop and narrow widths with 3+ quotations.
 3. If the Selected QT needs stronger visibility, consider making the table badge clickable to open compare modal directly.
-4. If compare loading remains slow, optimize server-side quotation resolution in code.js instead of adding more client loading UI.
+4. If compare loading remains slow, optimize server-side quotation resolution in js/core/code.js or js/services/WorkspaceService.js instead of adding more client loading UI.
 
 ## Working Assumptions
 
 - The project is managed with clasp.
 - The user does not want manual clasp push calls because they use push --watch already.
-- code.js and admin.html had no editor diagnostics errors at the last validation point.
+- js/core/code.js and admin.html had no editor diagnostics errors at the last validation point.
