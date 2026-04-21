@@ -225,10 +225,6 @@
                     event.preventDefault();
                     submitQuotation(this);
                 })
-                .on('submit', '.thai-price-form', function (event) {
-                    event.preventDefault();
-                    submitThaiPrice(this);
-                })
                 .on('change', '#quotationImageInput', function () {
                     handleQuotationImageSelection(this.files);
                     $(this).val('');
@@ -707,25 +703,6 @@
             });
         }
 
-        function submitThaiPrice(form) {
-            const payload = formToObject(form);
-            setLoading(true);
-            callServer('saveQuotationThaiPrice', state.token, payload).then(function (response) {
-                applyBootstrap(response.data, state.role, state.user);
-                if (state.compareModal && Array.isArray(state.compareModal.quotations)) {
-                    const quote = findById(state.compareModal.quotations, 'quotationId', payload.quotationId);
-                    if (quote) {
-                        const thaiPriceValue = String(payload.thaiPrice || '').trim();
-                        quote.thaiPrice = thaiPriceValue === '' ? '' : Number(thaiPriceValue);
-                        quote.adminNote = String(payload.adminNote || '').trim();
-                    }
-                    renderCompareModal();
-                }
-                flash('Success', 'THB price saved successfully.', 'success', true);
-            }).catch(handleError).finally(function () {
-                setLoading(false);
-            });
-        }
 
         function deleteQuotation(quotationId) {
             const normalizedQuotationId = String(quotationId || '').trim();
@@ -1649,161 +1626,7 @@
                 existingRemoveAttr: 'data-remove-existing-image'
             });
         }
-
-        function openComparison(workOrderId) {
-            const workOrder = findById(state.data && state.data.workOrders, 'workOrderId', workOrderId);
-            renderCompareModalLoading(workOrder);
-            $('#compareModal').removeClass('hidden').addClass('flex');
-            refreshIcons();
-            return callServer('getQuotationComparison', state.token, workOrderId).then(function (response) {
-                state.compareModal = response;
-                renderCompareModal();
-            }).catch(function (error) {
-                $('#compareCardsContainer').empty().append(
-                    $('<div>').addClass('rounded-3xl border border-dashed border-rose-200 bg-white px-8 py-14 text-center text-rose-600').text(error.message || 'Unable to load quotation comparison.')
-                );
-                handleError(error);
-            });
-        }
-
-        function renderCompareModalLoading(workOrder) {
-            $('#compareModalTitle').text(((workOrder && workOrder.workOrderNumber) || 'Work Order') + ' - Comparison');
-            $('#compareModalSubtitle').text((workOrder && workOrder.briefFromCustomer) || 'Loading quotations for comparison...');
-            const $container = $('#compareCardsContainer').empty();
-
-            for (let cardIndex = 0; cardIndex < 2; cardIndex += 1) {
-                const $card = $('<article>').addClass('flex w-[420px] flex-none flex-col rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-soft');
-                const $header = $('<div>').addClass('flex items-start justify-between gap-4');
-                const $title = $('<div>').addClass('space-y-2').append(buildLoadingBar('h-5 w-28'), buildLoadingBar('h-3 w-20'));
-                const $status = buildLoadingBar('h-6 w-20');
-                const $specStack = $('<div>').addClass('mt-4 space-y-3');
-
-                for (let sectionIndex = 0; sectionIndex < 2; sectionIndex += 1) {
-                    const $section = $('<div>').addClass('rounded-2xl border border-slate-200 bg-slate-50/70 p-4');
-                    $section.append(buildLoadingBar('h-3 w-20'));
-                    for (let lineIndex = 0; lineIndex < 4; lineIndex += 1) {
-                        $section.append(buildLoadingBar('mt-3 h-4 ' + (lineIndex % 2 === 0 ? 'w-full' : 'w-4/5')));
-                    }
-                    $specStack.append($section);
-                }
-
-                $card.append(
-                    $header.append($title, $status),
-                    $specStack,
-                    $('<div>').addClass('mt-3 rounded-2xl border border-slate-200 bg-white p-4').append(buildLoadingBar('h-3 w-16'), buildLoadingBar('mt-3 h-4 w-full'), buildLoadingBar('mt-2 h-4 w-3/4')),
-                    $('<div>').addClass('mt-3 rounded-2xl border border-slate-200 bg-white p-4').append(
-                        $('<div>').addClass('flex items-center justify-between gap-3').append(buildLoadingBar('h-3 w-24'), buildLoadingBar('h-3 w-12')),
-                        $('<div>').addClass('mt-3 grid grid-cols-2 gap-3').append(buildLoadingBar('h-36 w-full rounded-2xl'), buildLoadingBar('h-36 w-full rounded-2xl'))
-                    ),
-                    $('<div>').addClass('mt-3 rounded-2xl border border-slate-200 bg-white p-4').append(
-                        $('<div>').addClass('flex items-center justify-between gap-3').append(buildLoadingBar('h-3 w-20'), buildLoadingBar('h-3 w-10')),
-                        $('<div>').addClass('mt-3 space-y-2').append(buildLoadingBar('h-4 w-full'), buildLoadingBar('h-4 w-5/6'))
-                    ),
-                    $('<div>').addClass('mt-5 space-y-3 rounded-3xl bg-slate-50 p-4').append(buildLoadingBar('h-4 w-28'), buildLoadingBar('h-11 w-full rounded-2xl'), buildLoadingBar('h-4 w-24'), buildLoadingBar('h-20 w-full rounded-2xl'), buildLoadingBar('h-11 w-full rounded-full'))
-                );
-                $container.append($card);
-            }
-        }
-
-        function buildCompareSpecItem(label, value, highlight) {
-            const displayValue = String(value || '').trim() || '-';
-            return $('<div>').addClass('flex items-start justify-between gap-4 border-b border-slate-200/80 pb-2 last:border-b-0 last:pb-0').append(
-                $('<p>').addClass('min-w-0 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500').text(label),
-                $('<p>').addClass('min-w-0 text-right text-sm font-medium leading-6 ' + (highlight ? 'text-brandDark' : 'text-slate-800') + ' whitespace-pre-line').text(displayValue)
-            );
-        }
-
-        function renderCompareModal() {
-            const modal = state.compareModal;
-            if (!modal) {
-                return;
-            }
-
-            $('#compareModalTitle').text((modal.workOrder.workOrderNumber || '') + ' - ' + (modal.workOrder.briefFromCustomer || ''));
-            $('#compareModalSubtitle').text('Compare supplier specs, pricing, lead time, and admin notes side by side.');
-            const $container = $('#compareCardsContainer').empty();
-            const quotations = modal.quotations || [];
-
-            if (!quotations.length) {
-                $container.append($('<div>').addClass('rounded-3xl border border-dashed border-slate-300 bg-white px-8 py-14 text-center text-slate-500').text('No quotations are available for this work order.'));
-                $('#compareModal').removeClass('hidden').addClass('flex');
-                refreshIcons();
-                return;
-            }
-
-            quotations.forEach(function (quote) {
-                const $card = $($('#compareCardTemplate').html());
-                $card.find('[data-field="vendorName"]').text(quote.vendorName || '-');
-                $card.find('[data-field="vendorCode"]').text(quote.vendorCode || '');
-                $card.find('[data-field="status"]').replaceWith(renderStatusPill(quote.status));
-                $card.find('[data-field="commercialSpecs"]').append(
-                    buildCompareSpecItem('Category', quote.category),
-                    buildCompareSpecItem('Price Range', quote.priceRange),
-                    buildCompareSpecItem('Target Price', formatCurrency(quote.targetPrice, 'RMB'), true),
-                    buildCompareSpecItem('CIF BKK', formatMultilineField(quote.cifBkk), true)
-                );
-                $card.find('[data-field="productionSpecs"]').append(
-                    buildCompareSpecItem('Quantity', formatMultilineField(quote.quantityPcs)),
-                    buildCompareSpecItem('Lead Time', quote.leadTime),
-                    buildCompareSpecItem('Sample', quote.sample),
-                    buildCompareSpecItem('Updated', formatDateTime(quote.updatedAt))
-                );
-                $card.find('[data-field="comment"]').text(quote.comment || '-');
-                $card.find('[name="quotationId"]').val(quote.quotationId);
-                $card.find('[name="thaiPrice"]').val(quote.thaiPrice || '');
-                $card.find('[name="adminNote"]').val(quote.adminNote || '');
-                const attachments = Array.isArray(quote.images) ? quote.images : [];
-                const imageAttachments = attachments.filter(isImageFile).slice(0, 6);
-                const fileAttachments = attachments.filter(function (file) {
-                    return !isImageFile(file);
-                });
-                const $images = $card.find('[data-field="images"]');
-                const $files = $card.find('[data-field="files"]');
-                $card.find('[data-field="imageCount"]').text(imageAttachments.length ? String(imageAttachments.length) + ' preview' + (imageAttachments.length === 1 ? '' : 's') : 'No images');
-                $card.find('[data-field="fileCount"]').text(fileAttachments.length ? String(fileAttachments.length) + ' file' + (fileAttachments.length === 1 ? '' : 's') : 'No files');
-                if (!imageAttachments.length) {
-                    $images.append($('<div>').addClass('col-span-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs text-slate-400').text('No product images attached.'));
-                }
-                imageAttachments.forEach(function (image) {
-                    const previewSource = image.previewUrl || image.url || '';
-                    $images.append(
-                        $('<button>')
-                            .attr({
-                                type: 'button',
-                                'data-preview-image': previewSource,
-                                'data-preview-title': image.name || ((quote.vendorName || 'Supplier') + ' product image')
-                            })
-                            .addClass('group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 text-left')
-                            .append(
-                                $('<img>').attr({ src: previewSource, alt: image.name || 'product' }).addClass('h-36 w-full object-cover transition duration-200 group-hover:scale-[1.03]')
-                            )
-                    );
-                });
-                if (!fileAttachments.length) {
-                    $files.append($('<div>').addClass('rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-center text-xs text-slate-400').text('No additional attachments.'));
-                }
-                fileAttachments.forEach(function (file) {
-                    $files.append(
-                        $('<a>')
-                            .attr({ href: file.url || '#', target: '_blank', rel: 'noopener noreferrer' })
-                            .addClass('block truncate rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-brand/40 hover:text-brandDark')
-                            .text(file.name || 'Open attachment')
-                    );
-                });
-                $container.append($card);
-            });
-
-            $('#compareModal').removeClass('hidden').addClass('flex');
-            refreshIcons();
-        }
-
-        function closeCompareModal() {
-            state.compareModal = null;
-            $('#compareModal').addClass('hidden').removeClass('flex');
-            $('#compareCardsContainer').empty();
-            $('#compareModalSubtitle').text('');
-        }
-
+       
         function openQuotationManagerModal(workOrderId) {
             closeWorkspaceMenu();
             const workOrder = findById(state.data && state.data.workOrders, 'workOrderId', workOrderId);

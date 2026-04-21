@@ -55,7 +55,8 @@
                 'workOrderFolderId',
                 'quotationCount',
                 'Quotations',
-                'selectedQuotationId'
+                'selectedQuotationId',
+                'hasTHB'
             ]
         },
         quotations: {

@@ -92,7 +92,8 @@ function saveWorkOrder(token, payload) {
         attachmentJson: JSON.stringify(allAttachments),
         workOrderFolderId: rowInfo ? String(rowInfo.row.workOrderFolderId || '').trim() : '',
         quotationCount: rowInfo ? (normalizeNumber_(rowInfo.row.quotationCount) || 0) : 0,
-        selectedQuotationId: rowInfo ? String(rowInfo.row.selectedQuotationId || '').trim() : ''
+        selectedQuotationId: rowInfo ? String(rowInfo.row.selectedQuotationId || '').trim() : '',
+        hasTHB: rowInfo ? String(rowInfo.row.hasTHB || '').trim() : '',
     };
 
     if (input.workOrderId) {
@@ -259,13 +260,32 @@ function saveQuotationThaiPrice(token, payload) {
     if (!quotationRecord) {
         throw new Error('Quotation not found.');
     }
-
     const updatedRow = Object.assign({}, quotationRecord.row, {
         thaiPrice: normalizeNumber_(input.thaiPrice),
         adminNote: String(input.adminNote || '').trim(),
         updatedAt: nowIso_()
     });
     syncQuotationToVendorSheet_(quotationRecord.user, updatedRow);
+    const workOrder = findRequiredByField_(APP_CONFIG.sheets.workOrders.name, 'workOrderId', quotationRecord.row.workOrderId);
+    Logger.log(JSON.stringify(workOrder));
+    // Update hasTHB column logic
+    let hasTHB = String(workOrder.hasTHB || '').trim();
+    let hasTHBList = hasTHB ? hasTHB.split(',').map(function (id) { return id.trim(); }).filter(Boolean) : [];
+    const qtId = String(input.quotationId).trim();
+    const thaiPrice = normalizeNumber_(input.thaiPrice);
+    if (thaiPrice) {
+        // Add if not present
+        if (hasTHBList.indexOf(qtId) === -1) {
+            hasTHBList.push(qtId);
+        }
+    } else {
+        // Remove if present
+        hasTHBList = hasTHBList.filter(function (id) { return id !== qtId; });
+    }
+    // Save back to workOrder
+    updateRowByIndex_(APP_CONFIG.sheets.workOrders.name, workOrder._rowIndex + 2, {
+        hasTHB: hasTHBList.length > 0 ? [...new Set(hasTHBList.sort((a, b) => a.localeCompare(b)))].join(',') : '',
+    });
 
     appendActivity_({
         actorUserId: session.userId,
@@ -273,7 +293,7 @@ function saveQuotationThaiPrice(token, payload) {
         action: 'SAVE_THAI_PRICE',
         entityType: 'QUOTATION',
         entityId: input.quotationId,
-        detailJson: JSON.stringify({ thaiPrice: normalizeNumber_(input.thaiPrice) })
+        detailJson: JSON.stringify({ thaiPrice: thaiPrice, workOrderNumber: workOrder.workOrderNumber })
     });
 
     return {
@@ -1037,23 +1057,35 @@ function notifyWorkOrderOwnerOfNewQuotation_(workOrder, quotationRow, vendorUser
     const appUrl = getWebAppUrl_();
     const quotationId = String(quotationRow && quotationRow.quotationId || '').trim();
     const workOrderNumber = String(workOrder && workOrder.workOrderNumber || '').trim();
+
     const subject = APP_CONFIG.appName + ' new quotation ' + quotationId + ' for ' + workOrderNumber;
-    const detailRows = [
-        ['Work Order', workOrderNumber],
-        ['Quotation ID', quotationId],
-        ['Supplier', vendorUser && (vendorUser.vendorName || vendorUser.displayName) || quotationRow && quotationRow.vendorName],
-        ['Supplier Code', vendorUser && vendorUser.vendorCode || quotationRow && quotationRow.vendorCode],
-        ['Category', quotationRow && quotationRow.category],
-        ['Quotation Date', quotationRow && quotationRow.quotationDate],
-        ['Target Price', quotationRow && quotationRow.targetPrice !== '' && quotationRow && quotationRow.targetPrice !== null && quotationRow && quotationRow.targetPrice !== undefined
-            ? String(quotationRow.targetPrice) + ' RMB'
-            : ''],
-        ['Status', quotationRow && quotationRow.status],
-        ['Submitted At', quotationRow && quotationRow.updatedAt],
-        ['Customer Brief', workOrder && workOrder.briefFromCustomer]
-    ].filter(function (entry) {
+
+    // Prepare images as inline images
+    var images = [];
+    try {
+        images = normalizeStoredFiles_(quotationRow.productImageJson).filter(function(file) {
+            return file.contentType && String(file.contentType).toLowerCase().indexOf('image/') === 0 && file.previewUrl;
+        })
+    } catch (e) {
+        images = [];
+    }
+
+    var imageHtml = '';
+    if (images && images.length > 0) {
+        imageHtml = '<div style="margin: 16px 0;">' + images.map(function(file) {
+            return '<img src="' + escapeHtml_(file.previewUrl) + '" style="max-width:180px;max-height:180px;margin:4px;border-radius:8px;border:1px solid #eee;vertical-align:middle;display:inline-block;" />';
+        }).join('') + '</div>';
+    }
+
+    // Only show description, quantity, CIF BKK
+    var detailRows = [
+        ['Supplier', quotationRow && quotationRow.vendorName],
+        ['Description', quotationRow && quotationRow.description],
+        ['Quantity', quotationRow && quotationRow.quantityPcs],
+        ['CIF BKK', quotationRow && quotationRow.cifBkk]
+    ].filter(function(entry) {
         return String(entry[1] || '').trim();
-    }).map(function (entry) {
+    }).map(function(entry) {
         return '<tr><td style="padding:8px 12px;border:1px solid #dbe4e8;background:#f8f9fa;font-weight:600">'
             + escapeHtml_(entry[0])
             + '</td><td style="padding:8px 12px;border:1px solid #dbe4e8">'
@@ -1066,6 +1098,7 @@ function notifyWorkOrderOwnerOfNewQuotation_(workOrder, quotationRow, vendorUser
         '<h2 style="margin:0 0 12px;color:#20B2AA">New quotation submitted</h2>',
         '<p style="margin:0 0 12px">Hello ' + escapeHtml_(ownerUser.displayName || ownerUser.username || 'Admin') + ',</p>',
         '<p style="margin:0 0 12px">A supplier has submitted a new quotation for the work order you created. Review the details below in the admin workspace.</p>',
+        imageHtml,
         '<table style="border-collapse:collapse;margin:0 0 16px;width:100%;max-width:640px">',
         detailRows,
         '</table>',

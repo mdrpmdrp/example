@@ -1,7 +1,7 @@
 ﻿<?!= include('SharedTableUtils') ?>
 
-    <script>
-        (() => {
+<script>
+    (() => {
         const SESSION_KEY = 'quotation-bidding-session-token';
         const SESSION_ROLE_KEY = 'quotation-bidding-session-role';
         const TEMPLATE_ROLE = 'admin';
@@ -300,20 +300,9 @@
                     openWorkOrderModal();
                 })
                 .on('click', '#closeWorkOrderModalBtn', closeWorkOrderModal)
-                .on('click', '#closeQuotationModalBtn', closeQuotationModal)
-                .on('click', '#closeQuotationManagerModalBtn', closeQuotationManagerModal)
                 .on('click', '#closeWorkOrderDetailModalBtn', closeWorkOrderDetailModal)
                 .on('click', '#clearWorkOrderBtn', clearWorkOrderForm)
                 .on('click', '#clearQuotationBtn', clearQuotationForm)
-                .on('click', '#quotationManagerAddBtn', function () {
-                    state.returnToQuotationManagerOnClose = true;
-                    const workOrderId = $(this).attr('data-work-order-id')
-                        || (state.quotationManager && state.quotationManager.workOrder && state.quotationManager.workOrder.workOrderId)
-                        || '';
-                    if (workOrderId) {
-                        openQuotationModalForWorkOrder(workOrderId);
-                    }
-                })
                 .on('click', '#closeCompareBtn', closeCompareModal)
                 .on('click', '#compareScrollLeftBtn', function () {
                     scrollCompareCards(-1);
@@ -338,32 +327,6 @@
                 })
                 .on('click', '[data-action="open-compare"]', function () {
                     openComparison($(this).attr('data-work-order-id'));
-                })
-                .on('click', '[data-action="edit-quotation"]', function () {
-                    const quotationId = $(this).attr('data-quotation-id');
-                    const modalQuotations = state.quotationManager && Array.isArray(state.quotationManager.quotations)
-                        ? state.quotationManager.quotations
-                        : [];
-                    const recentQuotations = state.data && Array.isArray(state.data.recentQuotations)
-                        ? state.data.recentQuotations
-                        : [];
-                    const managerQuote = findById(modalQuotations, 'quotationId', quotationId);
-                    const quote = managerQuote || findById(recentQuotations, 'quotationId', quotationId);
-                    state.returnToQuotationManagerOnClose = Boolean(managerQuote);
-                    state.quotationDraft = quote ? $.extend(true, {}, quote) : null;
-                    fillQuotationForm(state.quotationDraft);
-                    hideQuotationManagerModal();
-                    openQuotationModal();
-                })
-                .on('click', '[data-action="delete-quotation"]', function () {
-                    deleteQuotation($(this).attr('data-quotation-id'));
-                })
-                .on('click', '[data-action="add-quotation"]', function () {
-                    state.returnToQuotationManagerOnClose = false;
-                    openQuotationModalForWorkOrder($(this).attr('data-work-order-id'));
-                })
-                .on('click', '[data-action="manage-quotations"]', function () {
-                    openQuotationManagerModal($(this).attr('data-work-order-id'));
                 })
                 .on('click', '[data-action="edit-vendor"]', function () {
                     openVendorEditorModal($(this).attr('data-user-id'));
@@ -712,40 +675,6 @@
             });
         }
 
-        function submitQuotation(form) {
-            const quotationUploadError = getUploadBlockingMessage(state.newImages, 'product images');
-            if (quotationUploadError) {
-                flash('Upload Incomplete', quotationUploadError, 'error', true);
-                return;
-            }
-            const payload = formToObject(form);
-            if (!(state.quotationDraft && state.quotationDraft.quotationId)) {
-                delete payload.quotationId;
-                $(form).find('[name="quotationId"]').val('');
-            }
-            payload.existingImages = JSON.stringify((state.quotationDraft && state.quotationDraft.images) || []);
-            payload.newImages = normalizeUploadedEntries(state.newImages);
-            setLoading(true);
-            callServer('saveVendorQuotation', state.token, payload).then(function (response) {
-                state.quotationDraft = null;
-                state.newImages = [];
-                fillQuotationForm(null);
-                renderQuotationPreviews();
-                closeQuotationModal({ restoreManager: false });
-                flash('Success', 'Quotation saved successfully.', 'success', true);
-                refreshBootstrap({ silent: true, skipVendorSheetSync: true });
-                if (response && response.finalizeJob) {
-                    callServer('finalizeVendorQuotationSave', state.token, response.finalizeJob)
-                        .then(function () {
-                            refreshBootstrap({ silent: true, skipVendorSheetSync: true });
-                        })
-                        .catch(function () { });
-                }
-            }).catch(handleError).finally(function () {
-                setLoading(false);
-            });
-        }
-
         function submitThaiPrice(form) {
             const payload = formToObject(form);
             setLoading(true);
@@ -763,56 +692,6 @@
                 flash('Success', 'THB price saved successfully.', 'success', true);
             }).catch(handleError).finally(function () {
                 setLoading(false);
-            });
-        }
-
-        function deleteQuotation(quotationId) {
-            const normalizedQuotationId = String(quotationId || '').trim();
-            if (!normalizedQuotationId || !window.Swal) {
-                return;
-            }
-
-            Swal.fire({
-                icon: 'warning',
-                title: 'Delete quotation?',
-                text: 'This will remove the quotation from the supplier sheet, purge its work order reference, and trash uploaded files.',
-                showCancelButton: true,
-                confirmButtonText: 'Delete',
-                cancelButtonText: 'Cancel',
-                customClass: getQuotationSwalModalClasses()
-            }).then(function (result) {
-                if (!result.isConfirmed) {
-                    return null;
-                }
-
-                setLoading(true);
-                return callServer('deleteVendorQuotation', state.token, { quotationId: normalizedQuotationId }).then(function (response) {
-                    if (state.quotationDraft && state.quotationDraft.quotationId === normalizedQuotationId) {
-                        clearQuotationForm();
-                        closeQuotationModal();
-                    }
-
-                    return loadVendorWorkspaceData({
-                        silent: true,
-                        suppressError: false,
-                        invalidateSession: false,
-                        showSuccess: false
-                    }).then(function () {
-                        if (response && response.workOrderId) {
-                            return callServer('getVendorQuotationsForWorkOrder', state.token, response.workOrderId).then(function (managerResponse) {
-                                state.quotationManager = managerResponse;
-                                renderQuotationManagerModal(managerResponse);
-                                $('#quotationManagerModal').removeClass('hidden').addClass('flex');
-                                refreshIcons();
-                            });
-                        }
-                        return null;
-                    }).then(function () {
-                        flash('Success', 'Quotation deleted successfully.', 'success', true);
-                    });
-                }).catch(handleError).finally(function () {
-                    setLoading(false);
-                });
             });
         }
 
@@ -1231,18 +1110,6 @@
             ], 4, true);
         }
 
-        function renderVendorWorkOrderLoadingRows() {
-            renderLoadingTableRows('#vendorWorkOrdersTable', [
-                'w-28',
-                'w-32',
-                'w-20',
-                'w-16',
-                'w-16',
-                'w-14',
-                'w-24'
-            ], 4, true);
-        }
-
         function renderQuotationCardsLoading() {
             const $target = $('#myQuotationsList').empty();
 
@@ -1338,15 +1205,15 @@
             const form = $('#workOrderForm')[0];
             discardPendingUploads(state.newWorkOrderFiles);
             const draft = workOrder || {};
-                if (!form) {
-                    if (state.workOrderDraft && draft.workOrderId) {
-                        state.workOrderDraft.attachments = $.extend(true, [], draft.attachments || []);
-                    }
-                    state.newWorkOrderFiles = [];
-                    renderWorkOrderAttachmentList();
-                    return;
+            if (!form) {
+                if (state.workOrderDraft && draft.workOrderId) {
+                    state.workOrderDraft.attachments = $.extend(true, [], draft.attachments || []);
                 }
-                form.reset();
+                state.newWorkOrderFiles = [];
+                renderWorkOrderAttachmentList();
+                return;
+            }
+            form.reset();
             Object.keys(draft).forEach(function (key) {
                 $(form).find('[name="' + key + '"]').val(draft[key]);
             });
@@ -1372,12 +1239,12 @@
             const form = $('#quotationForm')[0];
             discardPendingUploads(state.newImages);
             const draft = quotation || {};
-                if (!form) {
-                    state.newImages = [];
-                    renderQuotationPreviews();
-                    return;
-                }
-                form.reset();
+            if (!form) {
+                state.newImages = [];
+                renderQuotationPreviews();
+                return;
+            }
+            form.reset();
             $(form).find('[name="quotationId"]').val('');
             Object.keys(draft).forEach(function (key) {
                 if (key === 'images') {
@@ -1389,16 +1256,6 @@
             syncQuotationCustomerProjectField(draft.workOrderId, draft.customerProject);
             const isEditMode = !!draft.quotationId;
             $('#saveQuotationBtn').text(isEditMode ? 'Save Changes' : 'Submit Quotation');
-            $('#quotationModalTitle').text(isEditMode ? 'Edit Quotation' : 'Add Quotation');
-            $('#quotationModalModeBadge')
-                .text(isEditMode ? 'Edit Mode' : 'Create Mode')
-                .toggleClass('border-emerald-200 bg-emerald-50 text-emerald-700', !isEditMode)
-                .toggleClass('border-amber-200 bg-amber-50 text-amber-700', isEditMode);
-            $('#quotationModalHint').text(
-                isEditMode
-                    ? 'You are editing an existing quotation. Saving will update the current QT record.'
-                    : 'Create a new quotation for this work order. A new QT number will be generated when you save.'
-            );
             renderQuotationPreviews();
         }
 
@@ -1485,6 +1342,7 @@
                 return;
             }
             workOrders.forEach(function (row) {
+                console.log("🚀 ~ renderAdminWorkOrders ~ row:", row)
                 const quoteCount = Number(row.quoteCount || 0);
                 const selectedQuotationId = String(row.selectedQuotationId || '').trim();
                 const $tr = $($('#adminWorkOrderRowTemplate').html());
@@ -1513,18 +1371,41 @@
                 $tr.find('[data-action="edit-workorder"]').attr('data-work-order-id', row.workOrderId);
                 const $compareButton = $tr.find('[data-action="open-compare"]');
                 $compareButton.attr('data-work-order-id', row.workOrderId);
-                if (quoteCount > 0) {
+                const quotations = row.quotations || []
+                const hasTHB = row.hasTHB || []
+                // count how many hasTHB members are in quotations list
+                const hasTHBCount = quotations.reduce(function (count, quotationId) {
+                    return count + (hasTHB.indexOf(quotationId) !== -1 ? 1 : 0);
+                }, 0);
+                // Custom logic for compare button label and state
+                if (quoteCount === 0) {
+                    // No quotations yet
+                    $compareButton
+                        .prop('disabled', true)
+                        .removeClass('bg-brand text-white bg-brand text-white')
+                        .addClass('bg-slate-200 text-slate-500 cursor-not-allowed')
+                        .find('[data-field="compare-label"]').text('Waiting for QT');
+                } else if (hasTHBCount === quoteCount) {
+                    // All quotations have Thai price
                     $compareButton
                         .prop('disabled', false)
                         .removeClass('bg-slate-200 text-slate-500 cursor-not-allowed')
                         .addClass('bg-brand text-white')
                         .find('[data-field="compare-label"]').text('Compare (' + quoteCount + ')');
-                } else {
+                } else if (hasTHBCount === 0) {
+                    // All quotations missing Thai price
                     $compareButton
-                        .prop('disabled', true)
-                        .removeClass('bg-brand text-white')
-                        .addClass('bg-slate-200 text-slate-500 cursor-not-allowed')
-                        .find('[data-field="compare-label"]').text('Waiting for QT');
+                        .prop('disabled', false)
+                        .removeClass('bg-slate-200 text-slate-500 cursor-not-allowed')
+                        .addClass('bg-brand text-white')
+                        .find('[data-field="compare-label"]').text('wait THB (' + quoteCount + ')');
+                } else {
+                    // Some quotations missing Thai price
+                    $compareButton
+                        .prop('disabled', false)
+                        .removeClass('bg-slate-200 text-slate-500 cursor-not-allowed')
+                        .addClass('bg-brand text-white')
+                        .find('[data-field="compare-label"]').text('wait THB (' + (quoteCount - hasTHBCount) + ' / ' + quoteCount + ')');
                 }
                 $tbody.append($tr);
             });
@@ -1788,20 +1669,18 @@
             setCompareModalLayoutMode('cards');
 
             quotations.forEach(function (quote) {
+                console.log("🚀 ~ renderCompareModal ~ quote:", quote)
                 const $card = $($('#compareCardTemplate').html());
                 const isSelected = String(quote.quotationId || '').trim() === selectedQuotationId;
                 $card.find('[data-field="vendorName"]').text(quote.vendorName || '-');
                 $card.find('[data-field="vendorCode"]').text(quote.vendorCode || '');
                 $card.find('[data-field="quotationId"]').text(quote.quotationId || '-');
                 $card.find('[data-field="status"]').replaceWith(renderStatusPill(quote.status));
-                $card.find('[data-field="commercialSpecs"]').append(
-                    buildCompareSpecItem('Category', quote.category),
-                    buildCompareSpecItem('Price Range', quote.priceRange),
-                    buildCompareSpecItem('Target Price', formatCurrency(quote.targetPrice, 'RMB'), true),
-                    buildCompareSpecItem('CIF BKK', formatMultilineField(quote.cifBkk), true)
-                );
                 $card.find('[data-field="productionSpecs"]').append(
+                    buildCompareSpecItem('Category', quote.category),
+                    buildCompareSpecItem('Description', quote.description),
                     buildCompareSpecItem('Quantity', formatMultilineField(quote.quantityPcs)),
+                    buildCompareSpecItem('CIF BKK', formatMultilineField(quote.cifBkk), true),
                     buildCompareSpecItem('Lead Time', quote.leadTime),
                     buildCompareSpecItem('Sample', quote.sample),
                     buildCompareSpecItem('Updated', formatDateTime(quote.updatedAt))
@@ -2164,8 +2043,6 @@
             closeVendorsModal();
             closeVendorEditorModal();
             closeWorkOrderModal();
-            closeQuotationModal();
-            closeQuotationManagerModal();
             closeWorkOrderDetailModal();
             closeCompareModal();
             redirectToAuthApp();
@@ -2281,41 +2158,6 @@
             $('#workOrderModal').addClass('hidden').removeClass('flex');
         }
 
-        function openQuotationModal() {
-            closeWorkspaceMenu();
-            $('#quotationModal').removeClass('hidden').addClass('flex');
-            refreshIcons();
-        }
-
-        function closeQuotationModal(options) {
-            const shouldRestoreManager = !(options && options.restoreManager === false)
-                && state.returnToQuotationManagerOnClose
-                && state.quotationManager;
-            $('#quotationModal').addClass('hidden').removeClass('flex');
-            state.returnToQuotationManagerOnClose = false;
-            if (shouldRestoreManager) {
-                $('#quotationManagerModal').removeClass('hidden').addClass('flex');
-                refreshIcons();
-            }
-        }
-
-        function openQuotationModalForWorkOrder(workOrderId) {
-            hideQuotationManagerModal();
-            discardPendingUploads(state.newImages);
-            state.newImages = [];
-            state.quotationDraft = workOrderId ? {
-                quotationId: '',
-                workOrderId: workOrderId,
-                images: []
-            } : null;
-            fillQuotationForm(state.quotationDraft);
-            if (workOrderId) {
-                $('#quotationForm [name="quotationId"]').val('');
-                $('#quotationForm [name="workOrderId"]').val(workOrderId);
-                syncQuotationCustomerProjectField(workOrderId);
-            }
-            openQuotationModal();
-        }
 
         function formatMultilineField(value) {
             const normalized = String(value || '').trim();
@@ -2962,8 +2804,8 @@
             const label = normalized === 'PREPARING'
                 ? 'Preparing upload...'
                 : totalBytes > 0
-                ? (formatFileSize(uploadedBytes) + ' / ' + formatFileSize(totalBytes) + ' (' + percent + '%)')
-                : (percent + '%');
+                    ? (formatFileSize(uploadedBytes) + ' / ' + formatFileSize(totalBytes) + ' (' + percent + '%)')
+                    : (percent + '%');
             const textClass = isOverlay
                 ? (normalized === 'PENDING' ? 'text-white/70' : 'text-white/80')
                 : 'text-slate-500';
@@ -3157,5 +2999,5 @@
                 }
             } catch (error) { }
         }
-        })();
-    </script>
+    })();
+</script>

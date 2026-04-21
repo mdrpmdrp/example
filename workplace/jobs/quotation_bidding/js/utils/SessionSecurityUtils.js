@@ -163,7 +163,7 @@ function findRowByField_(table, field, value) {
         return null;
     }
     return {
-        row: table.rows[rowIndex],
+        row: Object.assign({}, table.rows[rowIndex], { _rowIndex: rowIndex }),
         rowIndex: rowIndex + 2
     };
 }
@@ -226,9 +226,11 @@ function mapWorkOrderForUi_(row, quoteCount) {
         status: row.status,
         attachments: normalizeStoredFiles_(row.attachmentJson),
         quoteCount: normalizedQuoteCount || 0,
+        quotations: String(row.Quotations || '').split(',').map(function (item) { return String(item || '').trim(); }).filter(Boolean),
         selectedQuotationId: String(row.selectedQuotationId || '').trim(),
         createdAt: row.createdAt,
-        updatedAt: row.updatedAt
+        updatedAt: row.updatedAt,
+        hasTHB: String(row.hasTHB || '').split(',').map(function (item) { return String(item || '').trim(); }).filter(Boolean)
     };
 }
 
