@@ -1,405 +1,516 @@
-function sendData() {
-  let ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName("รายการ");
-  let selected_rows = sheet.getRange("R2:R" + SuperScript.getRealLastRow('R', sheet)).getValues()
-    .map((e, i) => {
-      return {
-        row: i + 2,
-        cell: e[0]
-      }
-    }).filter(e => e.cell == true)
+/**
+ * Main entry point and menu functions
+ * Depends on: constants.js, utils.js, fileOperations.js, sheetOperations.js,
+ *             dailyRecordUtils.js, summaryBuilder.js, sheetFormatter.js
+ */
 
-  let group_id = ss.getSheetByName("Group ID").getDataRange().getValues().reduce((acc, row) => {
-    acc[row[0]] = row[1];
-    return acc;
-  }, {});
-  let error_data = []
-  selected_rows.forEach(e => {
-    let row = e.row
-    if (row == 1) return
-    let data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues().map(row => {
-      return formatData(row)
-    })[0]
-    if (data && !group_id[data.branch]) {
-      group_id[data.branch] = group_id['main group id']
-    }
-    if (data && data.branch && group_id[data.branch]) {
-      sendMessages(group_id[data.branch], data)
-      sheet.getRange(row, 18).removeCheckboxes()
-      sheet.getRange(row, 1, 1, 18).setBackground("lightgreen")
-      sheet.getRange(row, 18).setNumberFormat('').setValue('ส่งไลน์แล้ว')
-    } else {
-      error_data.push(data.work_id)
-    }
-  })
-  if (error_data.length > 0) {
-    SpreadsheetApp.getUi().alert(`ไม่พบ Group ID สำหรับงานเลข\n-  ${error_data.join("\n- ")}\n\nกรุณาตรวจสอบข้อมูลสาขาให้ถูกต้อง`)
-  }
+function onOpen() {
+    let ui = SpreadsheetApp.getUi();
+    ui.createMenu('จัดการใบส่งของ')
+        .addItem('ย้ายไฟล์ที่เปลี่ยนชื่อแล้ว', 'moveAlreadyRenamedFiles')
+        .addItem('ย้ายไฟล์ที่จ่ายเงินแล้ว', 'saveAlreadyPaidFileToPaidSheet')
+        .addSeparator()
+        .addItem('ย้าย_ใบค้างส่วนลด', 'moveDiscountBillFiles')
+        .addItem('ลบ_ใบค้างส่วนลดที่จ่ายเงินแล้ว', 'deletePaidDiscountBillFiles')
+        .addSeparator()
+        .addItem('ย้าย_ใบรับของ', 'moveReceivedBillFiles')
+        .addItem('ย้าย_ใบรับของ_ที่จ่ายเงินแล้ว', 'saveAlreadyPaidReceivedBillFiles')
+        .addSeparator()
+        .addItem('อัปเดต Daily Records', 'updateDailyRecordSummary')
+        .addSeparator()
+        .addItem('อัปเดตสรุปรายปี', 'updateYearSummary')
+        .addToUi();
 }
 
+function updateYearSummary() {
+    updateSentYearSummary();
+    updateReceivedYearSummary();
+}
 
-const update_url = 'https://liff.line.me/2006601191-QGe1GayY';
-function sendMessages(id, data, resend = false) {
-  const messages = [
-    {
-      type: 'text',
-      text: `📍เลขใบงาน: ${data.work_id}
-    
-    👉สถานะ: ${data.status}
-    
-    📅วันที่: ${data.date}
-    แหล่งที่มา: ${data.source}
-    ผู้ส่ง: ${data.sender}
-    สาขาทีลูกค้าสนใจ: ${data.branch}
-    สินค้าที่สนใจ: ${data.product}
-    
-    📁 ข้อมูลลูกค้า
-    ชื่อ-สกุล: ${data.customer.fname} ${data.customer.lname}
-    เลข ปชช: ${data.customer.nationid}
-    อายุ: ${data.customer.age} ปี
-    เบอร์โทร: ${data.customer.phone}
-    Line ID: ${data.customer.lineid}
-    จังหวัด: ${data.customer.province}
-    อาชีพ: ${data.customer.occupation}
-    งบเงินดาวน์: ${Number(data.customer.downpayment).toLocaleString()} บาท
-    ${data.remark == '' ? '' : ('\n📝 หมายเหตุ: ' + data.remark + '\n')}
-    👉 อัพเดทข้อมูล
-    ${update_url}?wid=${data.work_id}`
+function moveAlreadyRenamedFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let masterSheet = ss.getSheetByName(SHEET_MASTER);
+        let move_files = [];
+
+        let processFile = (file) => {
+            let file_name = file.getName();
+            let parsedData = parseFileName(file_name);
+
+            if (!parsedData) {
+                Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
+                return null;
+            }
+
+            let fileId = file.getId();
+            let row_data = createRowData(parsedData, fileId);
+            masterSheet.appendRow(row_data);
+
+            let yearFolder = getFolder(parsedData.year, UPLOAD_FOLDER_ID);
+            let monthFolder = getFolder(parsedData.month, yearFolder.getId());
+
+            return {
+                id: fileId,
+                parent: ACHIVE_FOLDER_ID,
+                target: monthFolder.getId()
+            };
+        };
+
+        move_files = processFilesFromFolder(ACHIVE_FOLDER_ID, processFile);
+
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
+
+        sortSheet(masterSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
+
+        updateSentYearSummary();
+    });
+}
+
+function moveDiscountBillFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let masterSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
+        let move_files = [];
+
+        let processFile = (file) => {
+            let file_name = file.getName();
+            let parsedData = parseFileName(file_name);
+
+            if (!parsedData) {
+                Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
+                return null;
+            }
+
+            let fileId = file.getId();
+            let row_data = createRowData(parsedData, fileId);
+            masterSheet.appendRow(row_data);
+
+            let yearFolder = getFolder(parsedData.year, DISCOUNT_BILL_WAITING_PAY_FOLDER_ID);
+            let monthFolder = getFolder(parsedData.month, yearFolder.getId());
+
+            return {
+                id: fileId,
+                parent: ACHIVE_DISCOUNT_BILL_FOLDER_ID,
+                target: monthFolder.getId()
+            };
+        };
+
+        move_files = processFilesFromFolder(ACHIVE_DISCOUNT_BILL_FOLDER_ID, processFile);
+
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
+
+        sortSheet(masterSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
+
+        updateSentYearSummary();
+    });
+}
+
+function moveReceivedBillFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let masterSheet = ss.getSheetByName(SHEET_RECEIVED_BILL);
+        let move_files = [];
+        let processFile = (file) => {
+            let file_name = file.getName();
+            let parsedData = parseFileName(file_name);
+            if (!parsedData) {
+                Logger.log(`ข้ามไฟล์ ${file_name} เนื่องจากชื่อไฟล์ไม่ถูกต้อง`);
+                return null;
+            }
+            let fileId = file.getId();
+            let row_data = createRowData(parsedData, fileId, true);
+            masterSheet.appendRow(row_data);
+            let yearFolder = getFolder(parsedData.year, UPLOAD_RECEIVED_BILL_FOLDER_ID);
+            let monthFolder = getFolder(parsedData.month, yearFolder.getId());
+            return {
+                id: fileId,
+                parent: ACHIVE_RECEIVED_BILL_FOLDER_ID,
+                target: monthFolder.getId()
+            };
+        };
+        move_files = processFilesFromFolder(ACHIVE_RECEIVED_BILL_FOLDER_ID, processFile);
+
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
+
+        sortSheet(masterSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
+
+        updateReceivedYearSummary();
+    });
+}
+
+function saveAlreadyPaidFileToPaidSheet() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let masterSheet = ss.getSheetByName(SHEET_MASTER);
+        let paidSheet = ss.getSheetByName(SHEET_PAID);
+
+        let move_files = movePaidRecords(masterSheet, paidSheet);
+
+        sortSheet(paidSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
+
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
+
+        updateSentYearSummary();
+    });
+}
+
+function deletePaidDiscountBillFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
+        let discountAlreadyPaidSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL_ALREADY_PAID);
+        let discountData = discountBillSheet.getDataRange().getValues();
+        let delete_fileIds = [];
+
+        for (let i = discountData.length - 1; i >= 1; i--) {
+            let row = discountData[i];
+            if (row[COL_PAIDFLAG - 1] === 'Y') {
+                let fileId = row[COL_FILEID - 1];
+                delete_fileIds.push(fileId);
+                discountBillSheet.getRange(i + 1, 1, 1, discountData[0].length - 1).copyTo(discountAlreadyPaidSheet.getRange(discountAlreadyPaidSheet.getLastRow() + 1, 1));
+                discountBillSheet.deleteRow(i + 1);
+            }
+        }
+
+        if (delete_fileIds.length > 0) {
+            deleteFiles(delete_fileIds);
+        }
+        updateSentYearSummary();
+    });
+}
+
+function saveAlreadyPaidReceivedBillFiles() {
+    withLock(30000, () => {
+        let ss = getSpreadsheet();
+        let masterSheet = ss.getSheetByName(SHEET_RECEIVED_BILL);
+        let paidSheet = ss.getSheetByName(SHEET_RECEIVED_BILL_PAID);
+
+        let move_files = moveReceivePaidRecords(masterSheet, paidSheet);
+
+        sortSheet(paidSheet, [
+            { column: COL_CODE, ascending: true },
+            { column: COL_YEAR, ascending: true },
+            { column: COL_MONTH, ascending: true },
+            { column: COL_INVOICE, ascending: true }
+        ]);
+
+        if (move_files.length > 0) {
+            moveFilesToFolder(move_files);
+        }
+
+        updateReceivedYearSummary();
+    });
+}
+
+function updateSentYearSummary() {
+    let ss = getSpreadsheet();
+    let masterSheet = ss.getSheetByName(SHEET_MASTER);
+    let paidSheet = ss.getSheetByName(SHEET_PAID);
+    let discountBillSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL);
+    let discountAlreadyPaidSheet = ss.getSheetByName(SHEET_DISCOUNT_BILL_ALREADY_PAID);
+    let yearSheet = ss.getSheetByName(SHEET_YEAR);
+    let paidSummaryYearlySheet = ss.getSheetByName(SHEET_PAID_SUMMARY_YEARLY);
+
+    // Get all data at once
+    let masterData = masterSheet.getDataRange().getValues().slice(1);
+    let paidData = paidSheet.getDataRange().getValues().slice(1);
+    let discountData = [...discountBillSheet.getDataRange().getValues().slice(1), ...discountAlreadyPaidSheet.getDataRange().getValues().slice(1)];
+
+    // Calculate summary
+    let summary = calculateYearSummary(masterData, paidData, discountData);
+
+    // Prepare data for paid summary yearly sheet
+    let data_to_calculate = masterData.concat(paidData).filter(row => row[COL_YEAR - 1] !== '');
+    let groupByYear = groupBy(data_to_calculate, row => row[COL_YEAR - 1]);
+
+    // Clear and setup headers
+    paidSummaryYearlySheet.getDataRange().clearContent();
+    let COL_YEAR_MAP = {};
+    if(Object.keys(groupByYear).length === 0) {
+        const currentYear = new Date().getFullYear().toString();
+        groupByYear[currentYear] = [];
     }
-  ];
-  Logger.log(messages)
-  if (resend) {
-    messages.push({
-      type: 'text',
-      text: `📌 กรุณาอัพเดทสถานะของใบงานเลขที่ ${data.work_id} ในลิงค์ด้านบน`
-    })
-    messages[0].text = '⚠️⚠️⚠️ แจ้งเตือน ใบงานเลขที่ ' + data.work_id + ' ไม่มีการอัพเดทเกิน 2 วัน ⚠️⚠️⚠️\n\n' + messages[0].text
-  }
-  LineBotWebhook.push(id, LINE_ACCESS_TOKEN, messages)
+    Object.keys(groupByYear).sort().forEach((year, i) => {
+        const colIndex = 2 + (i * 4);
+        paidSummaryYearlySheet.getRange(1, colIndex, 3, 4).setValues([
+            [year, "", "", ""],
+            ["ใบส่งของ", "", "ใบจ่ายเงิน", ""],
+            ["จำนวน", "ยอดเงิน", "จำนวน", "ยอดเงิน"]
+        ]).setFontWeight("bold");
 
-}
+        paidSummaryYearlySheet.getRange(1, colIndex, 1, 4).merge().setHorizontalAlignment("center");
+        paidSummaryYearlySheet.getRange(2, colIndex, 1, 2).merge().setHorizontalAlignment("center");
+        paidSummaryYearlySheet.getRange(2, colIndex + 2, 1, 2).merge().setHorizontalAlignment("center");
 
-function hanDleAPI(e) {
-  Logger = BetterLog.useSpreadsheet()
-  try {
-    switch (e.parameter.action) {
-      case 'login':
-        return login(e)
-      case 'getDropdown':
-        return getDropdown(e)
-      case 'saveData':
-        return saveData(e)
-      case 'editData':
-        return editData(e)
-      case 'saveResponse':
-        return saveResponse(e)
-      case 'getUpdateData':
-        return getUpdateData(e)
-      case 'getTableData':
-        return getTableData(e)
+        COL_YEAR_MAP[year] = colIndex;
+    });
+
+    // Generate and format monthly summary
+    let summaryData = generateMonthlySummary(data_to_calculate, COL_YEAR_MAP);
+    formatPaidSummarySheet(paidSummaryYearlySheet, summaryData, COL_YEAR_MAP);
+
+    // Write summary to year sheet
+    yearSheet.getRange(2, 1, yearSheet.getLastRow(), yearSheet.getLastColumn()).clearContent();
+    if (summary.length > 0) {
+        yearSheet.getRange(2, 1, summary.length, summary[0].length).setValues(summary);
     }
-  } catch (e) { //with stack tracing if your exceptions bubble up to here
-    e = (typeof e === 'string') ? new Error(e) : e;
-    Logger.severe('%s: %s (line %s, file "%s"). Stack: "%s" .', e.name || '',
-      e.message || '', e.lineNumber || '', e.fileName || '', e.stack || '');
-    throw e;
-  }
+
+    sortSheet(yearSheet, [
+        { column: 1, ascending: true },
+        { column: 3, ascending: true }
+    ]);
 }
 
-function login(e) {
-  let user = e.parameter.u
-  let pass = e.parameter.p
-  let ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName("Users");
-  let user_data = sheet.getDataRange().getValues()
-    .reduce((acc, row, i) => {
-      acc[row[0]] = {
-        pass: row[1],
-        name: row[2],
-        branch: row[3],
-        role: row[4],
-        uuid: row[5],
-        index: i + 1
-      }
-      return acc;
-    }, {});
-  if (user_data[user]?.pass == pass) {
-    if (user_data[user].uuid == '') {
-      user_data[user].uuid = Utilities.getUuid()
-      sheet.getRange(user_data[user].index, 6).setValue(user_data[user].uuid)
+function updateReceivedYearSummary() {
+    let ss = getSpreadsheet();
+    let masterSheet = ss.getSheetByName(SHEET_RECEIVED_BILL);
+    let paidSheet = ss.getSheetByName(SHEET_RECEIVED_BILL_PAID);
+    let yearSheet = ss.getSheetByName(SHEET_RECEIVE_YEAR);
+    let paidSummaryYearlySheet = ss.getSheetByName(SHEET_RECEIVED_PAID_SUMMARY_YEARLY);
+
+    // Get all data at once
+    let masterData = masterSheet.getDataRange().getValues().slice(1);
+    let paidData = paidSheet.getDataRange().getValues().slice(1);
+    // Calculate summary
+    let summary = calculateReceiveYearSummary(masterData, paidData, []);
+
+    // Prepare data for paid summary yearly sheet
+    let data_to_calculate = masterData.concat(paidData).filter(row => row[COL_YEAR - 1] !== '');
+    let groupByYear = groupBy(data_to_calculate, row => row[COL_YEAR - 1]);
+
+    // Clear and setup headers
+    paidSummaryYearlySheet.getDataRange().clearContent();
+    let COL_YEAR_MAP = {};
+
+    if(Object.keys(groupByYear).length === 0) {
+        const currentYear = new Date().getFullYear().toString();
+        groupByYear[currentYear] = [];
     }
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: 'success', role: user_data[user].role, uuid: user_data[user].uuid, branch: user_data[user].branch, name: user_data[user].name }))
-      .setMimeType(ContentService.MimeType.JSON)
-  }
-  return ContentService.createTextOutput(JSON.stringify({ status: 'error' })).setMimeType(ContentService.MimeType.JSON)
-}
-function getDropdown(e) {
-  let ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName("dropdown");
-  let branch = [...new Set(sheet.getRange("B2:B" + SuperScript.getRealLastRow('B', sheet)).getValues().flat())].filter(e => e != '')
-  let product = [...new Set(sheet.getRange("C2:C" + SuperScript.getRealLastRow('C', sheet)).getValues().flat())].filter(e => e != '')
-  let customer_province = [...new Set(sheet.getRange("D2:D" + SuperScript.getRealLastRow('D', sheet)).getValues().flat())].filter(e => e != '')
-  let status = [...new Set(sheet.getRange("E2:E" + SuperScript.getRealLastRow('E', sheet)).getValues().flat())].filter(e => e != '')
-  let source = [...new Set(sheet.getRange("F2:F" + SuperScript.getRealLastRow('F', sheet)).getValues().flat())].filter(e => e != '')
-  return ContentService.createTextOutput(JSON.stringify({ product, source, customer_province, status, branch })).setMimeType(ContentService.MimeType.JSON)
+
+    Object.keys(groupByYear).sort().forEach((year, i) => {
+        const colIndex = 2 + (i * 4);
+        paidSummaryYearlySheet.getRange(1, colIndex, 3, 4).setValues([
+            [year, "", "", ""],
+            ["ใบรับของ", "", "ใบจ่ายเงิน", ""],
+            ["จำนวน", "ยอดเงิน", "จำนวน", "ยอดเงิน"]
+        ]).setFontWeight("bold");
+
+        paidSummaryYearlySheet.getRange(1, colIndex, 1, 4).merge().setHorizontalAlignment("center");
+        paidSummaryYearlySheet.getRange(2, colIndex, 1, 2).merge().setHorizontalAlignment("center");
+        paidSummaryYearlySheet.getRange(2, colIndex + 2, 1, 2).merge().setHorizontalAlignment("center");
+
+        COL_YEAR_MAP[year] = colIndex;
+    });
+
+    // Generate and format monthly summary
+    let summaryData = generateMonthlySummary(data_to_calculate, COL_YEAR_MAP, true);
+    formatPaidSummarySheet(paidSummaryYearlySheet, summaryData, COL_YEAR_MAP);
+
+    // Write summary to year sheet
+    yearSheet.getRange(2, 1, yearSheet.getLastRow(), yearSheet.getLastColumn()).clearContent();
+    if (summary.length > 0) {
+        yearSheet.getRange(2, 1, summary.length, summary[0].length).setValues(summary);
+    }
+
+    sortSheet(yearSheet, [
+        { column: 1, ascending: true },
+        { column: 3, ascending: true }
+    ]);
 }
 
-function saveData(e) {
-  const getID = (sheet) => {
-    let last_row = SuperScript.getRealLastRow('A', sheet)
-    if (last_row <= 2) return { row: last_row, id: 'AD0001' }
-    let last_id = sheet.getRange(last_row, 1).getValue()
-    let last_id_num = last_id.replace('AD', '')
-    let new_id = 'AD' + ('0000' + (parseInt(last_id_num) + 1)).slice(-4)
-    return { row: last_row, id: new_id }
-  }
+function updateDailyRecordSummary() {
+    const ss = getSpreadsheet();
 
-  let lock = LockService.getScriptLock();
-  lock.tryLock(10000);
-  if (lock.hasLock()) {
-    let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName("รายการ");
-    let last = getID(sheet)
-    let data = [
-      last.id,
-      new Date(e.parameter.date),
-      e.parameter.uuid,
-      e.parameter.source,
-      e.parameter.sender,
-      e.parameter.branch,
-      e.parameter.product,
-      e.parameter.customer_fname,
-      e.parameter.customer_lname,
-      e.parameter.customer_nationid,
-      e.parameter.customer_age,
-      e.parameter.customer_phone,
-      e.parameter.customer_lineid,
-      e.parameter.customer_province,
-      e.parameter.customer_occupation,
-      e.parameter.customer_downpayment,
-      e.parameter.remark,
-      false,
-      e.parameter.status
+    // Load data from sheets
+    const listSheet = ss.getSheetByName(SHEET_LISTS);
+    const [header, ...data] = listSheet.getDataRange().getValues();
+    const lists = buildListsFromSheet(header, data);
+
+    const dailyRecordSheet = ss.getSheetByName(SHEET_DAILY_RECORD);
+    const dailyRecordData = dailyRecordSheet.getDataRange().getValues().filter(row => row[0]);
+    const dailyHeader = dailyRecordData.shift();
+
+    // Generate year and month columns
+    const yearColumns = generateYearColumns(dailyRecordData);
+    const monthColumn = generateMonthColumns();
+    const monthColumnLength = monthColumn.length;
+    const totalCols = yearColumns.length * monthColumnLength;
+
+    // Build header rows
+    const [yearRow, monthRow] = buildSummaryHeaders(yearColumns, monthColumn);
+
+    // Initialize summary structure
+    const {
+        summary_array,
+        formatListNameRow,
+        formatSumRow,
+        sumIncomeRowIndex,
+        sumExpenseRowIndex
+    } = initializeSummaryStructure(lists, totalCols);
+
+    // Add calculated rows (net income, carried forward, total)
+    const { netAmountRow, grandNetRow } = addCalculatedRows(
+        summary_array,
+        sumIncomeRowIndex,
+        sumExpenseRowIndex,
+        totalCols,
+        formatSumRow
+    );
+
+    // Transform and populate data
+    const headerIndexMap = createHeaderIndexMap(dailyHeader);
+    const transformedData = transformDailyRecords(dailyRecordData, headerIndexMap);
+    const monthIndexMap = createMonthIndexMap(yearColumns, monthColumn);
+
+    populateSummaryData(
+        summary_array,
+        transformedData,
+        monthIndexMap,
+        monthColumn,
+        summary_array[grandNetRow - 2],
+        lists
+    );
+
+    // Prepend header rows
+    summary_array.unshift(yearRow, monthRow);
+
+    // Build yearly and bank summaries
+    const year_summary_array = buildYearlySummary(summary_array, yearColumns, monthColumnLength);
+    const bank_summary_array = buildBankSummary(yearColumns, lists, dailyRecordData, headerIndexMap);
+
+    // Get sheets
+    const dailyRecordSummarySheet = ss.getSheetByName(SHEET_DAILY_RECORD_SUMMARY);
+    const yearlySummarySheet = ss.getSheetByName(SHEET_YEARLY_SUMMARY);
+    const bankSummarySheet = ss.getSheetByName(SHEET_BANK_SUMMARY);
+
+    // Clear and write data (batch operations)
+    batchClearAndWrite(
+        dailyRecordSummarySheet,
+        yearlySummarySheet,
+        bankSummarySheet,
+        summary_array,
+        year_summary_array,
+        bank_summary_array
+    );
+
+    // Apply all formatting
+    formatAllSummarySheets(
+        dailyRecordSummarySheet,
+        yearlySummarySheet,
+        bankSummarySheet,
+        {
+            formatListNameRow,
+            formatSumRow,
+            netAmountRow: netAmountRow ? netAmountRow + 2 : null, // +2 for header rows
+            summary_array_length: summary_array.length,
+            year_summary_array_length: year_summary_array.length
+        },
+        yearColumns
+    );
+}
+
+/**
+ * Batch clear and write operations for better performance
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} dailySheet - Daily summary sheet
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} yearlySheet - Yearly summary sheet
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} bankSheet - Bank summary sheet
+ * @param {Array} dailyData - Daily summary data
+ * @param {Array} yearlyData - Yearly summary data
+ * @param {Array} bankData - Bank summary data
+ */
+function batchClearAndWrite(dailySheet, yearlySheet, bankSheet, dailyData, yearlyData, bankData) {
+    // keep existing Data
+    const bankExistingData = bankSheet.getDataRange().getValues();
+
+    // Clear all sheets at once
+    dailySheet.getRange(1, 1, dailySheet.getMaxRows(), dailySheet.getMaxColumns()).clear();
+    yearlySheet.getRange(1, 1, yearlySheet.getMaxRows(), yearlySheet.getMaxColumns()).clear();
+    bankSheet.getRange(1, 1, bankSheet.getMaxRows(), bankSheet.getMaxColumns()).clear();
+
+    // Write all data at once
+    if (dailyData.length > 0 && dailyData[0].length > 0) {
+        dailySheet.getRange(1, 1, dailyData.length, dailyData[0].length).setValues(dailyData);
+    }
+
+    if (yearlyData.length > 0 && yearlyData[0].length > 0) {
+        yearlySheet.getRange(1, 1, yearlyData.length, yearlyData[0].length).setValues(yearlyData);
+    }
+
+    if (bankData.length > 0 && bankData[0].length > 0) {
+        bankData = bankData.map((row, rowIndex) => {
+            if (rowIndex < 2) return row; // Keep header rows
+            let findIndex = bankExistingData.findIndex(existingRow => existingRow[0] === row[0]);
+            if (findIndex === -1) return row; // New bank, keep as is
+            // Existing bank, keep current balance
+            let existingBalance = bankExistingData[findIndex][1];
+            let newRow = [...row];
+            newRow[1] = existingBalance;
+            return newRow;
+        })
+        bankSheet.getRange(1, 1, bankData.length, bankData[0].length).setValues(bankData);
+
+    }
+}
+
+function generateYearColumns(dailyRecordData) {
+    let years = new Set();
+    dailyRecordData.forEach(row => {
+        let year = new Date(row[0]).getFullYear();
+        years.add(year);
+    });
+    return Array.from(years).sort();
+}
+
+function generateMonthColumns() {
+    return [
+        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
     ]
-    sheet.getRange(last.row + 1, 1, 1, data.length)
-      .setNumberFormats([['@', 'dd/MM/yyyy', '@', '@', '@', '@', '@', '@', '@', '@', '#', '@', '@', '@', '@', '@', '#', 'boolean', '@']])
-      .setValues([data])
-    sheet.getRange(last.row + 1, 18).insertCheckboxes()
-    lock.releaseLock();
-    data = {
-      work_id: last.id,
-      date: Utilities.formatDate(new Date(e.parameter.date), 'GMT+7', 'dd/MM/yyyy'),
-      source: data[3],
-      sender: data[4],
-      branch: data[5],
-      product: data[6],
-      remark: data[16],
-      status: data[18],
-      customer: {
-        fname: data[7],
-        lname: data[8],
-        nationid: data[9],
-        age: data[10],
-        phone: data[11],
-        lineid: data[12],
-        province: data[13],
-        occupation: data[14],
-        downpayment: data[15],
-      }
+}
+
+function createSummaryFormula(startRow, endRow, colIndex) {
+    return `=SUM(${getColumnLetter(colIndex)}${startRow}:${getColumnLetter(colIndex)}${endRow})`;
+}
+
+function getColumnLetter(colIndex) {
+    // Cache common column letters for performance
+    if (colIndex <= 26) {
+        return String.fromCharCode(64 + colIndex);
     }
-    let group_id = ss.getSheetByName("Group ID").getDataRange().getValues().reduce((acc, row) => {
-      acc[row[0]] = row[1];
-      return acc;
-    }, {});
-    if (data && !group_id[data.branch]) {
-      group_id[data.branch] = group_id['main group id']
+
+    let letter = '';
+    while (colIndex > 0) {
+        const mod = (colIndex - 1) % 26;
+        letter = String.fromCharCode(65 + mod) + letter;
+        colIndex = Math.floor((colIndex - mod) / 26);
     }
-    if (group_id[data.branch]) {
-      sendMessages(group_id[data.branch], data)
-      sheet.getRange(last.row + 1, 18).removeCheckboxes()
-      sheet.getRange(last.row + 1, 18)
-        .setNumberFormat('')
-        .setValue('ส่งไลน์แล้ว')
-      sheet.getRange(last.row + 1, 1, 1, 18).setBackground("lightgreen")
-    }
-    return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON)
-  }
-  return ContentService.createTextOutput(JSON.stringify({ status: 'error' })).setMimeType(ContentService.MimeType.JSON)
-}
-
-function editData(e) {
-  let lock = LockService.getScriptLock();
-  lock.tryLock(10000);
-  if (lock.hasLock()) {
-    let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName("รายการ");
-    let work_id = e.parameter.work_id
-    let finder = sheet.getRange("A2:A" + SuperScript.getRealLastRow('A', sheet)).createTextFinder(work_id).findNext()
-    if (finder == null) return ContentService.createTextOutput(JSON.stringify({ status: 'notfound', text: 'ไม่พบข้อมูลใบงานเลขที่ ' + work_id })).setMimeType(ContentService.MimeType.JSON)
-    let row = finder.getRow()
-    let editrow = [
-      e.parameter.date,
-      e.parameter.uuid,
-      e.parameter.source,
-      e.parameter.sender,
-      e.parameter.branch,
-      e.parameter.product,
-      e.parameter.customer_fname,
-      e.parameter.customer_lname,
-      e.parameter.customer_nationid,
-      e.parameter.customer_age,
-      e.parameter.customer_phone,
-      e.parameter.customer_lineid,
-      e.parameter.customer_province,
-      e.parameter.customer_occupation,
-      e.parameter.customer_downpayment,
-      e.parameter.remark,
-    ]
-    sheet.getRange(row, 2, 1, editrow.length).setValues([editrow])
-    lock.releaseLock();
-    if (e.parameter.isSendLine) {
-      let data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues().flat()
-      data = formatData(data)
-      let group_id = ss.getSheetByName("Group ID").getDataRange().getValues().reduce((acc, row) => {
-        acc[row[0]] = row[1];
-        return acc;
-      }, {});
-      if (group_id[data.branch]) {
-        sendMessages(group_id[data.branch], data)
-        sheet.getRange(row, 18).removeCheckboxes()
-        sheet.getRange(row, 18)
-          .setNumberFormat('@')
-          .setValue('ส่งไลน์แล้ว')
-        sheet.getRange(row, 1, 1, 18).setBackground("lightgreen")
-      }
-    }
-    return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON)
-  }
-  return ContentService.createTextOutput(JSON.stringify({ status: 'error' })).setMimeType(ContentService.MimeType.JSON)
-}
-
-function saveResponse(e) {
-  let lock = LockService.getScriptLock();
-  lock.tryLock(10000);
-  if (lock.hasLock()) {
-    let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName("รายการ");
-    let finder = sheet.getRange("A2:A" + SuperScript.getRealLastRow('A', sheet)).createTextFinder(e.parameter.wid).findNext()
-    if (finder == null) return ContentService.createTextOutput(JSON.stringify({ status: 'notfound', text: 'ไม่พบข้อมูลใบงานเลขที่ ' + e.parameter.wid })).setMimeType(ContentService.MimeType.JSON)
-    let row = finder.getRow()
-    let update_row = [
-      e.parameter.status,
-      e.parameter.sell_price,
-      e.parameter.contract_no,
-      new Date(e.parameter.close_date),
-      e.parameter.seller
-    ]
-    sheet.getRange(row, 19, 1, update_row.length).setValues([update_row])
-    sheet.getRange(row, 22).setNumberFormat('dd/MM/yyyy')
-    lock.releaseLock();
-    return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON)
-  }
-}
-
-function getUpdateData(e) {
-  let { branch, wid, role } = e.parameter
-  console.log(branch)
-  let ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName("รายการ");
-  let finder = sheet.getRange("A2:A" + SuperScript.getRealLastRow('A', sheet)).createTextFinder(wid).findNext()
-  if (finder == null) return ContentService.createTextOutput(JSON.stringify({ status: 'notfound', text: 'ไม่พบข้อมูลใบงานเลขที่ ' + wid })).setMimeType(ContentService.MimeType.JSON)
-  let row = finder.getRow()
-  let data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues().flat()
-  data = formatData(data)
-  if (data.branch != branch && role != 'admin') {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'noauth', text: 'ไม่สามารถแก้ไขข้อมูลใบงานเลขที่ ' + wid + ' ได้ เนื่องจากสาขาของ User ไม่ตรงกับงาน', data, e_data: e.parameter })).
-      setMimeType(ContentService.MimeType.JSON)
-  }
-  return ContentService.createTextOutput(JSON.stringify({ status: 'success', data })).setMimeType(ContentService.MimeType.JSON)
-}
-
-function getTableData(e) {
-  let { uuid, role } = e.parameter
-  // let uuid = 'b170fd86-26f7-415e-9d25-eabb926abce3'
-  // let role = 'admin'
-  let ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName("รายการ");
-  let data = sheet.getRange("A2:V" + SuperScript.getRealLastRow('A', sheet)).getValues().slice(1)
-    .filter(row => row[1] != "")
-    .filter(row => role == 'admin' || row[2] == uuid)
-    .map(row => {
-      return formatData(row)
-    })
-  return ContentService.createTextOutput(JSON.stringify({ status: 'success', data })).setMimeType(ContentService.MimeType.JSON)
-}
-
-function formatData(row) {
-  return {
-    work_id: row[0],
-    date: row[1] != '' ? Utilities.formatDate(row[1], 'GMT+7', 'yyyy-MM-dd') : '',
-    source: row[3],
-    sender: row[4],
-    branch: row[5],
-    product: row[6],
-    remark: row[16],
-    status: row[18],
-    sell_price: row[19],
-    contract_no: row[20],
-    close_date: row[21] != '' ? Utilities.formatDate(row[21], 'GMT+7', 'yyyy-MM-dd') : '',
-    seller: row[22],
-    customer: {
-      fname: row[7],
-      lname: row[8],
-      nationid: row[9],
-      age: row[10],
-      phone: row[11],
-      lineid: row[12],
-      province: row[13],
-      occupation: row[14],
-      downpayment: row[15],
-    }
-  }
-}
-
-// function to re-send message if no update in 2 days
-function checkUpdate() {
-  let ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName("รายการ");
-  let group_id = ss.getSheetByName("Group ID").getDataRange().getValues().reduce((acc, row) => {
-    acc[row[0]] = row[1];
-    return acc;
-  }, {});
-  let data = sheet.getRange("A2:W" + SuperScript.getRealLastRow('A', sheet)).getValues().slice(1)
-    .filter(row => row[16] == 'ส่งไลน์แล้ว' && row[20] == '' && getDiffDate(row[1]) > 2)
-    .map(row => {
-      return formatData(row)
-    })
-  data.forEach(e => {
-    if (group_id[e.branch]) {
-      sendMessages(group_id[e.branch], e, true)
-    }
-  })
-}
-
-// function to summary data for each branch only not update
-function summaryData() {
-  let ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName("รายการ");
-  let group_id = ss.getSheetByName("Group ID").getDataRange().getValues().slice(1).reduce((acc, row) => {
-    acc[row[0]] = row[1];
-    return acc;
-  }, {});
-  let data = sheet.getRange("A2:V" + SuperScript.getRealLastRow('A', sheet)).getValues().slice(1)
-    .filter(row => row[17] == 'ส่งไลน์แล้ว' && row[21] == '')
-    .map(row => {
-      return formatData(row)
-    })
-  let group_data = Object.groupBy(data, (e) => e.branch)
-  let message = `⚠️⚠️สรุปงานค้างรายสาขา⚠️⚠️
-    📆วันที่ ${Utilities.formatDate(new Date(), 'GPT+&', 'dd/MM/yyyy')}\n`
-  Object.keys(group_data).sort().forEach(branch => {
-    message += `\n ${branch} = ${group_data[branch].length} งาน`
-  })
-  LineBotWebhook.push(Object.values(group_id)[0], LINE_ACCESS_TOKEN, [{ type: 'text', text: message }])
+    return letter;
 }
