@@ -64,12 +64,17 @@
   <style>
     /* Hide scrollbar for tab bar container */
     .scrollbar-hide {
-      scrollbar-width: none; /* Firefox */
-      -ms-overflow-style: none; /* IE and Edge */
+      scrollbar-width: none;
+      /* Firefox */
+      -ms-overflow-style: none;
+      /* IE and Edge */
     }
+
     .scrollbar-hide::-webkit-scrollbar {
-      display: none; /* Chrome, Safari, Opera */
+      display: none;
+      /* Chrome, Safari, Opera */
     }
+
     * {
       font-family: 'Noto Sans Thai', sans-serif;
     }
@@ -434,15 +439,23 @@
             <button id="vn-tab-cash-vnphone"
               class="tab-active flex-1 pb-3 text-sm font-semibold text-slate-400 transition-all min-w-[100px]"
               onclick="vnSwitchMode('สดvnphone')">ซื้อสด</button>
-            <button id="vn-tab-installment" class="flex-1 pb-3 text-sm font-semibold text-blue-400 transition-all min-w-[100px]"
+            <button id="vn-tab-installment"
+              class="flex-1 pb-3 text-sm font-semibold text-blue-400 transition-all min-w-[100px]"
               onclick="vnSwitchMode('ผ่อน')">ผ่อนชำระ</button>
-            <button id="vn-tab-used" class="flex-1 pb-3 text-sm font-semibold text-slate-400 transition-all min-w-[100px]"
+            <button id="vn-tab-used"
+              class="flex-1 pb-3 text-sm font-semibold text-slate-400 transition-all min-w-[100px]"
               onclick="vnSwitchMode('มือสอง')">ผ่อนมือสอง</button>
-            <button id="vn-tab-freedown" class="flex-1 pb-3 text-sm font-semibold text-slate-400 transition-all min-w-[100px]"
+            <button id="vn-tab-freedown"
+              class="flex-1 pb-3 text-sm font-semibold text-slate-400 transition-all min-w-[100px]"
               onclick="vnSwitchMode('Freedown')">Freedown</button>
-            <button id="vn-tab-interest" class="flex-1 pb-3 text-sm font-semibold text-slate-400 transition-all min-w-[100px]"
+            <button id="vn-tab-interest"
+              class="flex-1 pb-3 text-sm font-semibold text-slate-400 transition-all min-w-[100px]"
               onclick="vnSwitchMode('Interest')"><i data-lucide="calculator" class="w-4 h-4 inline-block"></i>
               ดอกเบี้ย</button>
+            <button id="vn-tab-asset-tag"
+              class="flex-1 pb-3 text-sm font-semibold text-slate-400 transition-all min-w-[100px]"
+              onclick="vnSwitchMode('รหัสผ่อนครบ')">
+              รหัสผ่อนครบ</button>
           </div>
         </div>
         <h2 id="vn-title" class="text-xl md:text-2xl font-bold text-slate-100 mb-2">ค้นหาราคาผ่อนชำระ</h2>
@@ -639,6 +652,19 @@
 
         </div><!-- /vn-steps-interest -->
 
+        <div id="vn-steps-asset-tag" class="hidden space-y-4 md:space-y-6">
+
+          <!-- Step 1: รหัสผ่อนครบ -->
+          <div class="flex gap-3 md:gap-4 items-start group">
+            <div class="flex-1">
+              <label class="block text-sm font-bold text-slate-300 mb-2">รหัสผ่อนครบ</label>
+              <input id="vn-asset-tag" type="text" class="inp" placeholder="เช่น ABC123XYZ" />
+            </div>
+          </div>
+          <button class="btn-primary" id="asset-tag-search-btn" onclick="searchUnlock()">
+            <i data-lucide="search" class="w-4 h-4 inline-block -translate-y-px mr-2"></i>ค้นหา
+          </button>
+        </div><!-- /vn-steps-asset-tag -->
       </div>
 
       <!-- VN Result -->
@@ -1133,6 +1159,12 @@
         desc: 'เลือกรุ่นมือถือเพื่อเช็คราคาโปรโมชั่น',
         resultTitle: 'สรุปราคาเครื่องเปล่า',
         logType: 'สดvnphone'
+      },
+      'รหัสผ่อนครบ': {
+        title: 'ค้นหารหัสผ่อนครบ',
+        desc: 'กรอกรหัส ASSET TAG เพื่อค้นหารหัสปลดล็อค',
+        resultTitle: 'สรุปรหัสผ่อนครบ',
+        logType: 'รหัสผ่อนครบ'
       }
     };
     var vnMode = 'สดvnphone';
@@ -1222,7 +1254,7 @@
       $('#vn-desc').text(cfg.desc);
       $('#vn-result-title').text(cfg.resultTitle);
 
-      $('#vn-tab-installment, #vn-tab-used, #vn-tab-freedown, #vn-tab-interest, #vn-tab-cash-vnphone').removeClass('tab-active text-blue-400').addClass('text-slate-400');
+      $('#vn-tab-installment, #vn-tab-used, #vn-tab-freedown, #vn-tab-interest, #vn-tab-cash-vnphone, #vn-tab-asset-tag').removeClass('tab-active text-blue-400').addClass('text-slate-400');
       if (vnMode === 'ผ่อน') {
         $('#vn-tab-installment').addClass('tab-active text-blue-400').removeClass('text-slate-400');
       } else if (vnMode === 'มือสอง') {
@@ -1233,11 +1265,13 @@
         $('#vn-tab-interest').addClass('tab-active text-blue-400').removeClass('text-slate-400');
       } else if (vnMode === 'สดvnphone') {
         $('#vn-tab-cash-vnphone').addClass('tab-active text-blue-400').removeClass('text-slate-400');
+      } else if (vnMode === 'รหัสผ่อนครบ') {
+        $('#vn-tab-asset-tag').addClass('tab-active text-blue-400').removeClass('text-slate-400');
       }
     }
 
     function vnSwitchMode(mode) {
-      if (mode !== 'ผ่อน' && mode !== 'มือสอง' && mode !== 'Freedown' && mode !== 'Interest' && mode !== 'สดvnphone') return;
+      if (['ผ่อน', 'มือสอง', 'Freedown', 'Interest', 'สดvnphone', 'รหัสผ่อนครบ'].indexOf(mode) === -1) return;
       vnMode = mode;
       vnInit();
     }
@@ -1245,12 +1279,17 @@
     function vnInit() {
       vnApplyModeUI();
       if (vnMode === 'Interest') {
-        $('#vn-steps-cash').hide();
-        $('#vn-steps-search').hide();
+        $('#vn-steps-cash, #vn-steps-search, #vn-steps-asset-tag').hide();
         $('#vn-steps-interest').show();
         $('#vn-result').addClass('hidden');
         return;
+      } else if (vnMode === 'รหัสผ่อนครบ') {
+        $('#vn-steps-cash, #vn-steps-search, #vn-steps-interest').hide();
+        $('#vn-steps-asset-tag').show();
+        $('#vn-result').addClass('hidden');
+        return;
       }
+
 
       var pd = _vnSheet();
       var brands = Object.keys(pd).sort();
@@ -1310,6 +1349,7 @@
       $('#vn-storage').html(opts).prop('disabled', false);
       autoSelect('#vn-storage', vnLoadDownPayments);
     }
+
     function vnLoadModelsCash() {
       var brand = $('#vn-cash-brand').val(), pd = _vnSheet();
       $('#vn-cash-model').html('<option value="">-- เลือกรุ่น --</option>').prop('disabled', true);
@@ -1336,8 +1376,6 @@
       $('#vn-cash-storage').html(opts).prop('disabled', false);
     }
 
-    
-    
     function vnLoadDownPayments() {
       var brand = $('#vn-brand').val(), model = $('#vn-model').val(), storage = $('#vn-storage').val();
       var pd = _vnSheet();
@@ -1464,7 +1502,7 @@
       }), function () { });
     }
 
-      function vnSearchCash() {
+    function vnSearchCash() {
       var brand = $('#vn-cash-brand').val(), model = $('#vn-cash-model').val(), storage = $('#vn-cash-storage').val();
       if (!brand || !model || !storage) { return; }
       var pd = _vnSheet();
@@ -1497,6 +1535,76 @@
         firstName: currentUser.firstName, email: currentUser.email, branch: currentUser.branch,
         brand: brand, model: model, storage: storage, price: price
       }), function () { });
+    }
+
+    async function searchUnlock(){
+      $('#vn-result').addClass('hidden');
+      showToast('กำลังค้นหารหัสปลดล็อค...', 'info');
+      $('#asset-tag-search-btn').html('<div class="w-4 h-4 border-2 border-t-2 border-gray-200 rounded-full animate-spin mx-auto"></div>').prop('disabled', true);
+      lucide.createIcons({ el: document.getElementById('asset-tag-search-btn') });
+      let assetTag = $('#vn-asset-tag').val().trim();
+      if (!assetTag) {
+        showToast('กรุณากรอกข้อมูลให้ครบ', 'error'); return;
+      }
+      let result;
+      try{
+        result = await gasCallPromise('searchUnlock', {assetTag});
+      }catch(err){
+        console.error('Error searching unlock code', err);
+        showToast('เกิดข้อผิดพลาดในการค้นหา', 'error');
+        $('#asset-tag-search-btn').html('ค้นหา').prop('disabled', false);
+        return;
+      }
+      $('#asset-tag-search-btn').html('ค้นหา').prop('disabled', false);
+      if (result.data.found) {
+        let html = [
+          row(
+            icon('key') + ' รหัสปลดล็อค',
+            '<span id="unlock-code-value">' + result.data.unlockCode + '</span>' +
+            '<button id="copy-unlock-code-btn" class="ml-2 p-1 rounded hover:bg-slate-200 focus:outline-none" title="คัดลอก">' +
+              '<i data-lucide="copy" class="w-4 h-4 align-middle"></i>' +
+            '</button>'
+          ),
+          '<div class="mt-4 text-xs text-slate-500 inline-flex items-center justify-end w-full"><i data-lucide="clock" class="w-3 h-3 inline-block -translate-y-px mr-1"></i>ค้นหา ณ วันที่ ' + moment().format('LLL') + '</div>',
+        ].join('');
+        $('#vn-result-body').html(html);
+        $('#vn-result-title').text((VN_MODE_LABELS[vnMode] || VN_MODE_LABELS['ผ่อน']).resultTitle);
+        lucide.createIcons({ el: document.getElementById('vn-result-body') });
+        // Add copy to clipboard functionality
+        setTimeout(function() {
+          $('#copy-unlock-code-btn').on('click', function() {
+            var code = $('#unlock-code-value').text();
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(code).then(function() {
+                showToast('คัดลอกรหัสแล้ว', 'success');
+              }, function() {
+                showToast('ไม่สามารถคัดลอกได้', 'error');
+              });
+            } else {
+              // fallback for older browsers
+              var temp = $('<input>');
+              $('body').append(temp);
+              temp.val(code).select();
+              try {
+                document.execCommand('copy');
+                showToast('คัดลอกรหัสแล้ว', 'success');
+              } catch (e) {
+                showToast('ไม่สามารถคัดลอกได้', 'error');
+              }
+              temp.remove();
+            }
+          });
+        }, 0);
+        $('#vn-result').removeClass('hidden');
+        $('#vn-result')[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        gasCall('logSearch', JSON.stringify({
+          type: _vnLogType(), company: currentUser.company, nickname: currentUser.nickname,
+          firstName: currentUser.firstName, email: currentUser.email, branch: currentUser.branch,
+          assetTag: assetTag, found: true
+        }), function () { });
+      } else {
+        showToast(result.message, 'error');
+      }
     }
 
     // ── สยามชัย ──────────────────────────────────────────────────

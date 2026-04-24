@@ -749,3 +749,30 @@ function getPriceData() {
     return jsonError(e.message);
   }
 }
+
+
+function searchUnlock(payload) {
+  const asset_tag = String(payload?.assetTag || '').trim();
+  if (!asset_tag) return jsonError('กรุณาระบุ Asset Tag');
+
+  try {
+    const sheet = SS.getSheetByName('รหัสผ่อนครบ');
+    if (!sheet) return jsonError('ไม่พบฐานข้อมูล');
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return jsonSuccess({ found: false, message: 'ไม่พบรหัสนี้ในฐานข้อมูล' });
+
+    // Read only the first two columns, skip header
+    const data = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+    const search = asset_tag.toLowerCase();
+
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === search) {
+        const unlockCode = String(data[i][1]).trim();
+        return jsonSuccess({ found: true, unlockCode, message: 'พบรหัสนี้ในฐานข้อมูล' });
+      }
+    }
+    return jsonSuccess({ found: false, message: 'ไม่พบรหัสนี้ในฐานข้อมูล' });
+  } catch (e) {
+    return jsonError(e.message);
+  }
+}
