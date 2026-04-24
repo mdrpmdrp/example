@@ -275,11 +275,12 @@
                     fillWorkOrderForm(null);
                     openWorkOrderModal();
                 })
-                .on('click', '#closeWorkOrderModalBtn', closeWorkOrderModal)
+                 .on('click', '[data-action="view-workorder"]', function () {
+                    openWorkOrderDetailModal($(this).attr('data-work-order-id'));
+                })
                 .on('click', '#closeQuotationModalBtn', closeQuotationModal)
                 .on('click', '#closeQuotationManagerModalBtn', closeQuotationManagerModal)
                 .on('click', '#closeWorkOrderDetailModalBtn', closeWorkOrderDetailModal)
-                .on('click', '#clearWorkOrderBtn', clearWorkOrderForm)
                 .on('click', '#clearQuotationBtn', clearQuotationForm)
                 .on('click', '#quotationManagerAddBtn', function () {
                     state.returnToQuotationManagerOnClose = true;
@@ -289,19 +290,6 @@
                     if (workOrderId) {
                         openQuotationModalForWorkOrder(workOrderId);
                     }
-                })
-                .on('click', '#closeCompareBtn', closeCompareModal)
-                .on('click', '[data-action="view-workorder"]', function () {
-                    openWorkOrderDetailModal($(this).attr('data-work-order-id'));
-                })
-                .on('click', '[data-action="edit-workorder"]', function () {
-                    const row = findById(state.data.workOrders, 'workOrderId', $(this).attr('data-work-order-id'));
-                    state.workOrderDraft = row ? $.extend(true, {}, row) : null;
-                    fillWorkOrderForm(state.workOrderDraft);
-                    openWorkOrderModal();
-                })
-                .on('click', '[data-action="open-compare"]', function () {
-                    openComparison($(this).attr('data-work-order-id'));
                 })
                 .on('click', '[data-action="edit-quotation"]', function () {
                     const quotationId = $(this).attr('data-quotation-id');
@@ -332,9 +320,6 @@
                 })
                 .on('click', '[data-action="sync-vendor-admin"]', function () {
                     syncVendorAsAdmin($(this).attr('data-user-id'));
-                })
-                .on('click', '[data-action="edit-vendor"]', function () {
-                    openVendorEditorModal($(this).attr('data-user-id'));
                 })
                 .on('click', '[data-remove-existing-image]', function () {
                     if (!state.quotationDraft || !Array.isArray(state.quotationDraft.images)) {
@@ -1295,13 +1280,6 @@
             $('#saveWorkOrderBtn').text(draft.workOrderId ? 'Save Changes' : 'Create Work Order');
         }
 
-        function clearWorkOrderForm() {
-            discardPendingUploads(state.newWorkOrderFiles);
-            state.workOrderDraft = null;
-            state.newWorkOrderFiles = [];
-            fillWorkOrderForm(null);
-        }
-
         function fillQuotationForm(quotation) {
             const form = $('#quotationForm')[0];
             discardPendingUploads(state.newImages);
@@ -1925,7 +1903,6 @@
             state.quotationDraft = null;
             state.newImages = [];
             state.newWorkOrderFiles = [];
-            clearWorkOrderForm();
             clearQuotationForm();
             closeWorkspaceMenu();
             closeVendorsModal();
@@ -1935,7 +1912,6 @@
             closeQuotationManagerModal();
             closeMyQuotationsModal();
             closeWorkOrderDetailModal();
-            closeCompareModal();
             redirectToAuthApp();
         }
 
