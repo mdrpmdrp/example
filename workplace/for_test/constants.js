@@ -36,6 +36,7 @@ const COL_AMOUNT = 6;
 const COL_FILEURL = 7;
 const COL_PAIDFLAG = 8;
 const COL_PARTIAL_PAID_AMOUNT = 9; // New column for partial paid amount
+const COL_DISCOUNT_AMOUNT = 10; // New column for discount amount
 const COL_FILEID = 9;
 
 // Month Names

@@ -186,22 +186,36 @@ function calculateReceiveYearSummary(masterData, paidData, discountData) {
             let totalAmount = rows.reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
             let totalFiles = rows.length;
 
-            let paidRows = rows.filter(row => row[COL_PAIDFLAG - 1] === 'Y' || row[COL_PAIDFLAG - 1] === 'P');
+            let paidRows = rows.filter(row => ['Y', 'P'].includes(row[COL_PAIDFLAG - 1]));
             let paidFiles = paidRows.length;
             let paidAmount = paidRows.reduce((sum, row) => {
-                let partialPaidAmount = parseFloat(row[COL_PARTIAL_PAID_AMOUNT - 1] || 0);
-                return sum + (partialPaidAmount > 0 ? partialPaidAmount : parseFloat(row[COL_AMOUNT - 1]));
+                let amount = 0
+                let discountAmount = parseFloat(row[COL_DISCOUNT_AMOUNT - 1] || 0);
+                if (row[COL_PAIDFLAG - 1] === 'Y') {
+                    amount = parseFloat(row[COL_AMOUNT - 1]);
+                } else if (row[COL_PAIDFLAG - 1] === 'P') {
+                    amount = parseFloat(row[COL_PARTIAL_PAID_AMOUNT - 1] || 0)
+                }
+                return sum + amount;
             }, 0);
 
-            let unpaidRows = rows.filter(row => row[COL_PAIDFLAG - 1] !== 'Y');
+            let unpaidRows = rows.filter(row => ['N', 'P'].includes(row[COL_PAIDFLAG - 1]));
             let unpaidFiles = unpaidRows.length;
-            let unpaidAmount = unpaidRows.reduce((sum, row) => sum + (parseFloat(row[COL_AMOUNT - 1]) - parseFloat(row[COL_PARTIAL_PAID_AMOUNT - 1] || 0)), 0);
+            let unpaidAmount = unpaidRows.reduce((sum, row) => {
+                let amount = 0                
+                let discountAmount = parseFloat(row[COL_DISCOUNT_AMOUNT - 1] || 0);
+                if (row[COL_PAIDFLAG - 1] === 'P') {
+                    amount = parseFloat(row[COL_AMOUNT - 1]) - parseFloat(row[COL_PARTIAL_PAID_AMOUNT - 1] || 0)
+                } else {
+                    amount = parseFloat(row[COL_AMOUNT - 1]);
+                }
+                return sum + amount - discountAmount;
+            }, 0);
 
             let discountYearRows = discountGroupByYear[year] || [];
             let discountCount = discountYearRows.length;
             let discountRemaining = discountYearRows
-                .filter(row => row[COL_PAIDFLAG - 1] !== 'Y')
-                .reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
+                .reduce((sum, row) => sum + parseFloat(row[COL_DISCOUNT_AMOUNT - 1]), 0);
 
             summary.push([
                 code, name, year, totalFiles, totalAmount,
@@ -220,8 +234,7 @@ function calculateReceiveYearSummary(masterData, paidData, discountData) {
             let discountYearRows = discountGroupByYear[year] || [];
             let discountCount = discountYearRows.length;
             let discountRemaining = discountYearRows
-                .filter(row => row[COL_PAIDFLAG - 1] !== 'Y')
-                .reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
+                .reduce((sum, row) => sum + parseFloat(row[COL_DISCOUNT_AMOUNT - 1]), 0);
             let name = discountYearRows[0][COL_NAME - 1];
             summary.push([
                 code, name, year, 0, 0,
@@ -235,7 +248,7 @@ function calculateReceiveYearSummary(masterData, paidData, discountData) {
 }
 
 
-function generateMonthlySummary(data, yearColMap, isReceive = false) {
+function generateMonthlySummary(data, yearColMap) {
     let groupByMonth = groupBy(data, row => row[COL_MONTH - 1]);
     let summaryData = [];
 
@@ -257,12 +270,71 @@ function generateMonthlySummary(data, yearColMap, isReceive = false) {
             let totalFiles = yearRows.length;
             let totalPaidFiles = paidRows.length;
             let totalAmount = yearRows.reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
-            let totalPaidAmount = 0;
-            if(!isReceive){
-                totalPaidAmount = paidRows.reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
-            }else{
-                totalPaidAmount = paidRows.reduce((sum, row) => sum + parseFloat(row[COL_PARTIAL_PAID_AMOUNT - 1] || 0), 0);
-            }
+            let totalPaidAmount = paidRows.reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
+
+            let colIndex = yearColMap[year];
+            newRow[colIndex - 1] = totalFiles;
+            newRow[colIndex] = totalAmount;
+            newRow[colIndex + 1] = totalPaidFiles;
+            newRow[colIndex + 2] = totalPaidAmount;
+        });
+
+        summaryData.push(newRow);
+    });
+
+    // Add footer row with totals
+    let footerRow = new Array(Object.keys(yearColMap).length * 4 + 1).fill('');
+    footerRow[0] = 'ยอดรวม';
+
+    Object.keys(yearColMap).forEach(year => {
+        let colIndex = yearColMap[year];
+        let totalFiles = summaryData.reduce((sum, row) => sum + parseInt(row[colIndex - 1]), 0);
+        let totalPaidFiles = summaryData.reduce((sum, row) => sum + parseInt(row[colIndex + 1]), 0);
+        let totalAmount = summaryData.reduce((sum, row) => sum + parseFloat(row[colIndex]), 0);
+        let totalPaidAmount = summaryData.reduce((sum, row) => sum + parseFloat(row[colIndex + 2]), 0);
+
+        footerRow[colIndex - 1] = totalFiles;
+        footerRow[colIndex] = totalAmount;
+        footerRow[colIndex + 1] = totalPaidFiles;
+        footerRow[colIndex + 2] = totalPaidAmount;
+    });
+
+    summaryData.push(footerRow);
+    return summaryData;
+}
+
+function generateMonthlyReceiveSummary(data, yearColMap) {
+    let groupByMonth = groupBy(data, row => row[COL_MONTH - 1]);
+    let summaryData = [];
+
+    Object.keys(monthHeaderMap).forEach(month => {
+        let newRow = new Array(Object.keys(yearColMap).length * 4 + 1).fill('0');
+        newRow[0] = monthHeaderMap[month];
+
+        if (!groupByMonth[month]) {
+            summaryData.push(newRow);
+            return;
+        }
+
+        let rows = groupByMonth[month];
+
+        Object.keys(yearColMap).forEach(year => {
+            let yearRows = rows.filter(row => row[COL_YEAR - 1] == year);
+            let paidRows = yearRows.filter(row => row[COL_PAIDFLAG - 1] !== 'N');
+
+            let totalFiles = yearRows.length;
+            let totalPaidFiles = paidRows.length;
+            let totalAmount = yearRows.reduce((sum, row) => sum + parseFloat(row[COL_AMOUNT - 1]), 0);
+            let totalPaidAmount = paidRows.reduce((sum, row) => {
+                let amount = 0
+                let discountAmount = parseFloat(row[COL_DISCOUNT_AMOUNT - 1] || 0);
+                if (row[COL_PAIDFLAG - 1] === 'Y') {
+                    amount = parseFloat(row[COL_AMOUNT - 1])
+                } else if (row[COL_PAIDFLAG - 1] === 'P') {
+                    amount = parseFloat(row[COL_PARTIAL_PAID_AMOUNT - 1] || 0) + discountAmount;
+                }
+                return sum + amount;
+            }, 0);
 
             let colIndex = yearColMap[year];
             newRow[colIndex - 1] = totalFiles;

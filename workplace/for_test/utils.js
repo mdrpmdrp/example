@@ -64,7 +64,8 @@ function createRowData(parsedData, fileId, withPartialPaidAmount = false) {
     ];
     if(withPartialPaidAmount) {
         // insert before fileId
-        rowData.splice(8, 0, ""); // Placeholder for partial paid amount
+        rowData.splice(8, 0, ''); // Placeholder for partial paid amount
+        rowData.splice(8, 0, ''); // Placeholder for discount amount
     }
     return rowData;
 }

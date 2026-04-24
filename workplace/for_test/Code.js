@@ -299,8 +299,9 @@ function updateReceivedYearSummary() {
     // Get all data at once
     let masterData = masterSheet.getDataRange().getValues().slice(1);
     let paidData = paidSheet.getDataRange().getValues().slice(1);
+    let discountData = [...masterData, ...paidData].filter(row => row[COL_DISCOUNT_AMOUNT - 1] !== '' && row[COL_DISCOUNT_AMOUNT - 1] !== 0);
     // Calculate summary
-    let summary = calculateReceiveYearSummary(masterData, paidData, []);
+    let summary = calculateReceiveYearSummary(masterData, paidData, discountData);
 
     // Prepare data for paid summary yearly sheet
     let data_to_calculate = masterData.concat(paidData).filter(row => row[COL_YEAR - 1] !== '');
@@ -331,7 +332,7 @@ function updateReceivedYearSummary() {
     });
 
     // Generate and format monthly summary
-    let summaryData = generateMonthlySummary(data_to_calculate, COL_YEAR_MAP, true);
+    let summaryData = generateMonthlyReceiveSummary(data_to_calculate, COL_YEAR_MAP);
     formatPaidSummarySheet(paidSummaryYearlySheet, summaryData, COL_YEAR_MAP);
 
     // Write summary to year sheet
