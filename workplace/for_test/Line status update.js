@@ -11,16 +11,18 @@ function onFormSubitForLineStatusUpdate(e) {
     const COL_NAME = 2; // B
     const COL_PLATE = 3; // C
     const COL_TYPE = 4; // D
-    const COL_START = 5; // E
-    const COL_END = 6; // F
-    const COL_USERNAME = 7; // G
-    const COL_LEAVE_REASON = 8; // H
-    const COL_DAYS = 9; // I
-    const COL_JOB_TYPE = 10; // J
-    const COL_STATUS = 11; // K
-    const COL_REASON = 12; // L
-    const COL_DATE_APPROVED = 13; // M
-    const COL_UUID = 14; // N
+    const COL_START_DATE = 5; // E
+    const COL_START_TIME = 6; // F
+    const COL_END_DATE = 7; // G
+    const COL_END_TIME = 8; // H
+    const COL_USERNAME = 9; // I
+    const COL_LEAVE_REASON = 10; // J
+    const COL_DAYS = 11; // K
+    const COL_JOB_TYPE = 12; // L
+    const COL_STATUS = 13; // M
+    const COL_REASON = 14; // N
+    const COL_DATE_APPROVED = 15; // O
+    const COL_UUID = 16; // P
     const dateApprove = new Date();
     sheet.getRange(rowIndex, COL_DATE_APPROVED).setValue(dateApprove);
     const flex_data = {
@@ -29,8 +31,10 @@ function onFormSubitForLineStatusUpdate(e) {
         plate: submitData[COL_PLATE - 1],
         leaveType: submitData[COL_TYPE - 1],
         leaveReason: submitData[COL_LEAVE_REASON - 1],
-        startDate: submitData[COL_START - 1],
-        endDate: submitData[COL_END - 1],
+        startDate: submitData[COL_START_DATE - 1],
+        startTime: submitData[COL_START_TIME - 1],
+        endDate: submitData[COL_END_DATE - 1],
+        endTime: submitData[COL_END_TIME - 1],
         jobType: submitData[COL_JOB_TYPE - 1],
         leaveDays: submitData[COL_DAYS - 1],
         status: submitData[COL_STATUS - 1] || 'รออนุมัติ',
@@ -182,7 +186,8 @@ function buildLeaveApprovalFlexMessage(payload) {
                 },
                 buildFlexDetailRow('พนักงาน', payload.employeeName),
                 buildFlexDetailRow('วันที่แจ้ง', payload.notifyDate),
-                buildFlexDetailRow('ช่วงลา', `${stringifyFlexValue(payload.startDate)} - ${stringifyFlexValue(payload.endDate)}`),
+                buildFlexDetailRow('ตั้งแต่', `${stringifyFlexValue(payload.startDate)} ${stringifyFlexValue(payload.startTime)}`),
+                buildFlexDetailRow('จนถึง', `${stringifyFlexValue(payload.endDate)} ${stringifyFlexValue(payload.endTime)}`),
                 buildFlexDetailRow('จำนวนวัน', `${stringifyFlexValue(payload.leaveDays)} วัน`, true),
                 buildFlexDetailRow('ทะเบียนรถ', payload.plate)
             ]
@@ -671,7 +676,9 @@ function sendLeaveStatusToUser(payload) {
             leaveType: payload.leaveType,
             leaveReason: payload.leaveReason,
             startDate: payload.startDate,
+            startTime: payload.startTime,
             endDate: payload.endDate,
+            endTime: payload.endTime,
             jobType: payload.jobType,
             leaveDays: payload.leaveDays,
             status: currentStatus,
