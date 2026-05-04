@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNPHONE - ระบบสร้างป้ายผ่อน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <style>
+        :root {
+            --a4-width: 210mm;
+            --a4-height: 297mm;
+            --card-width: calc(var(--a4-width) / 3);
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        #viewport-container {
+            width: 100%;
+            min-height: 100%;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #preview-pane {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #main-container {
+            transform-origin: top center;
+        }
+
+        .page {
+            width: var(--a4-width);
+            height: var(--a4-height);
+            background: white;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, var(--card-height));
+            row-gap: 0;
+            column-gap: 0;
+            align-content: start;
+            justify-content: start;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            page-break-after: always;
+            box-sizing: border-box;
+        }
+
+        .page:last-child {
+            margin-bottom: 0;
+        }
+
+        .card {
+            position: relative;
+            width: var(--card-width);
+            overflow: hidden;
+            box-sizing: border-box;
+            border: 0.1mm dashed #ccc;
+        }
+
+        .bg-template {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+        }
+
+        .data-field {
+            position: absolute;
+            font-weight: 700;
+            color: #000;
+            font-size: 11pt;
+            white-space: nowrap;
+        }
+
+        .field-id {
+            top: 16%;
+            left: 32%;
+        }
+
+        .field-model {
+            top: 24%;
+            left: 32%;
+            max-width: 55%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .field-down {
+            top: 30%;
+            left: 32%;
+        }
+
+        .field-install {
+            top: 36.1%;
+            left: 32%;
+            font-size: 14pt;
+            color: #ee0000;
+        }
+
+        .field-period {
+            top: 36.1%;
+            left: 63%;
+            font-size: 14pt;
+            color: #ee0000;
+        }
+
+        .field-battery {
+            top: 44.2%;
+            left: 35%;
+        }
+
+        .field-warranty {
+            top: 51.2%;
+            left: 40.4%;
+        }
+
+        .field-imei {
+            top: 60.2%;
+            left: 19%;
+            font-size: 9pt;
+        }
+
+        .field-barcode {
+            top: 67%;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 48%;
+        }
+
+        .field-barcode svg {
+            width: 100%;
+            height: auto;
+        }
+
+        .search-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .search-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 99px;
+        }
+
+        @media print {
+            body {
+                background: none;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            #preview-pane {
+                overflow: visible !important;
+                padding: 0 !important;
+            }
+
+            #viewport-container {
+                padding: 0;
+            }
+
+            #main-container {
+                transform: none !important;
+                zoom: 1 !important;
+            }
+
+            .page {
+                margin: 0;
+                box-shadow: none;
+                border: none;
+            }
+
+            @page {
+                size: A4;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+
+<body
+    class="min-h-screen bg-slate-950 bg-[radial-gradient(circle_at_15%_20%,rgba(14,165,233,0.15),transparent_45%),radial-gradient(circle_at_85%_0%,rgba(251,191,36,0.15),transparent_42%),linear-gradient(180deg,#0f172a_0%,#020617_100%)]">
+
+    <div id="app-shell" class="flex min-h-screen w-full flex-col lg:flex-row">
+        <aside id="control-pane"
+            class="no-print w-full overflow-y-auto border-b border-white/15 bg-slate-900/85 p-4 backdrop-blur-md sm:p-6 lg:h-screen lg:max-w-md lg:border-b-0 lg:border-r">
+            <div class="mx-auto w-full">
+                <div class="mb-4 flex flex-col gap-3">
+                    <div class="flex items-center gap-3">
+                        <img src="https://img2.pic.in.th/LOGO-VN-PHONE--edit_1.png" alt="VNPHONE Logo"
+                            class="h-12 w-12 rounded-xl border border-white/20 bg-white/90 p-1 object-contain shadow-lg">
+                        <div>
+                            <h1 class="text-xl font-bold text-yellow-500">VNPHONE</h1>
+                            <p class="text-xs text-slate-300">Sticker Label Generator</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid gap-3 rounded-2xl border border-white/15 bg-white/5 p-3 shadow-xl">
+                    <div class="space-y-2">
+                        <label for="search-input" class="text-sm font-bold text-white">ค้นหาจากรหัสสินค้า</label>
+                        <div class="relative">
+                            <i data-lucide="search"
+                                class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"></i>
+                            <input id="search-input" type="text" placeholder="พิมพ์รหัส เช่น VN-001"
+                                class="w-full rounded-xl border border-slate-600 bg-slate-950/70 py-2 pl-10 pr-10 text-sm text-white outline-none ring-sky-400 placeholder:text-slate-400 focus:ring-2">
+                            <button id="clear-search"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs text-slate-300 hover:bg-slate-700">ล้าง</button>
+                            <div id="search-results"
+                                class="search-scrollbar absolute left-0 right-0 top-[calc(100%+6px)] z-20 hidden max-h-56 overflow-y-auto rounded-xl border border-slate-300 bg-white p-2 shadow-2xl">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="min-w-44 space-y-2">
+                        <div class="rounded-xl border border-sky-300/25 bg-sky-400/10 p-3 text-sky-100">
+                            <p class="text-xs">รายการที่เลือก</p>
+                            <p class="text-2xl font-bold"><span id="selected-count">0</span></p>
+                        </div>
+                        <div id="selected-list"
+                            class="search-scrollbar max-h-40 overflow-y-auto rounded-xl border border-white/15 bg-white/5 p-2 text-xs text-slate-200">
+                        </div>
+                        <button id="clear-all"
+                            class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-bold text-rose-200 transition hover:bg-rose-500/20">
+                            <i data-lucide="eraser" class="h-4 w-4"></i>
+                            ล้างรายการเลือก
+                        </button>
+                    </div>
+                </div>
+                <button id="print-btn"
+                    class="inline-flex items-center mt-4 w-full justify-center gap-2 rounded-xl bg-amber-300 px-4 py-2 font-bold text-slate-900 transition hover:bg-amber-200">
+                    <i data-lucide="printer" class="h-4 w-4"></i>
+                    พิมพ์
+                </button>
+
+            </div>
+        </aside>
+
+        <main id="preview-pane" class="min-h-[60vh] flex-1 overflow-auto lg:h-screen">
+            <div id="viewport-container">
+                <div id="main-container">
+                    <!-- generated pages -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const imageUrl = 'https://img2.pic.in.th/1000048333.jpg';
+        let templateImageSrc = imageUrl;
+        const allData = <?!= JSON.stringify(getAllData()) ?>;
+        const selectedIds = new Set();
+
+
+        let debouncedSearchHandler;
+
+        function debounce(fn, delay) {
+            let timer;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn(...args), delay);
+            };
+        }
+
+        function getFilteredRows(keyword) {
+            const query = keyword.trim().toLowerCase();
+            if (!query) return [];
+            return allData.filter(row => (row[0] || '').toLowerCase().includes(query));
+        }
+
+        function hideSearchResults() {
+            $('#search-results').addClass('hidden').empty();
+        }
+
+        function renderSelectedList() {
+            const $list = $('#selected-list');
+            const selectedRows = allData.filter(row => selectedIds.has(row[0]));
+
+            if (!selectedRows.length) {
+                $list.html('<div class="rounded-lg bg-slate-800/40 px-2 py-2 text-slate-400">ยังไม่มีรายการที่เลือก</div>');
+                return;
+            }
+
+            const html = selectedRows.map(row => {
+                const id = row[0] || '';
+                const model = row[1] || '';
+                return `
+                    <div class="mb-1 flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-800/60 px-2 py-1.5 last:mb-0">
+                        <div class="min-w-0">
+                            <div class="font-bold text-slate-100">${id}</div>
+                            <div class="truncate text-[11px] text-slate-400">${model}</div>
+                        </div>
+                        <button type="button" class="remove-selected inline-flex items-center rounded-md border border-rose-400/40 px-2 py-1 text-[11px] font-bold text-rose-300 hover:bg-rose-500/20" data-id="${id}">
+                            ลบ
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            $list.html(html);
+        }
+
+        function updateSelectedCount() {
+            $('#selected-count').text(String(selectedIds.size));
+        }
+
+        function refreshSelectionViews() {
+            updateSelectedCount();
+            renderSelectedCards();
+            renderSelectedList();
+        }
+
+        function setCardHeightByImageSize(width, height) {
+            if (!width || !height) return;
+            const ratio = height / width;
+            document.documentElement.style.setProperty('--template-aspect-ratio', String(ratio));
+        }
+
+        function prepareTemplateImage() {
+            return new Promise(resolve => {
+                const probe = new Image();
+                probe.crossOrigin = 'anonymous';
+
+                probe.onload = () => {
+                    setCardHeightByImageSize(probe.naturalWidth, probe.naturalHeight);
+
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = probe.naturalWidth;
+                        canvas.height = probe.naturalHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(probe, 0, 0);
+                        templateImageSrc = canvas.toDataURL('image/jpeg', 0.95);
+                    } catch (error) {
+                        templateImageSrc = imageUrl;
+                    }
+
+                    resolve();
+                };
+
+                probe.onerror = () => {
+                    templateImageSrc = imageUrl;
+                    resolve();
+                };
+
+                probe.src = imageUrl;
+            });
+        }
+
+        function renderSelectedCards() {
+            const selectedRows = allData.filter(row => selectedIds.has(row[0]));
+            renderPages(selectedRows, templateImageSrc);
+            adjustScale();
+        }
+
+        function renderSearchResults(keyword) {
+            const rows = getFilteredRows(keyword);
+            const $box = $('#search-results');
+
+            if (!keyword.trim()) {
+                hideSearchResults();
+                return;
+            }
+
+            if (rows.length === 0) {
+                $box.removeClass('hidden').html('<div class="flex items-center gap-2 rounded-lg bg-slate-50 p-2 text-sm text-slate-500"><i data-lucide="search-x" class="h-4 w-4"></i>ไม่พบรหัสที่ตรงกัน</div>');
+                lucide.createIcons();
+                return;
+            }
+
+            const html = rows.slice(0, 8).map(row => {
+                const id = row[0] || '';
+                const model = row[1] || '';
+                const isSelected = selectedIds.has(id);
+                return `
+                    <button type="button" class="result-option mb-1 flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 text-left text-sm hover:bg-sky-50 last:mb-0" data-id="${id}">
+                        <i data-lucide="${isSelected ? 'check-circle-2' : 'plus-circle'}" class="h-4 w-4 ${isSelected ? 'text-emerald-600' : 'text-slate-400'}"></i>
+                        <span class="font-bold text-slate-700">${id}</span>
+                        <span class="truncate text-slate-500">${model}</span>
+                    </button>
+                `;
+            }).join('');
+            $box.removeClass('hidden').html(html);
+            lucide.createIcons();
+        }
+
+        function attachEvents() {
+            $('#print-btn').on('click', () => {
+                hideSearchResults();
+                window.print();
+            });
+
+            $('#clear-search').on('click', () => {
+                $('#search-input').val('');
+                hideSearchResults();
+            });
+
+            $('#clear-all').on('click', () => {
+                selectedIds.clear();
+                refreshSelectionViews();
+                hideSearchResults();
+            });
+
+            $('#search-results').on('click', '.result-option', function () {
+                const id = $(this).data('id');
+                if (selectedIds.has(id)) {
+                    selectedIds.delete(id);
+                } else {
+                    selectedIds.add(id);
+                }
+                refreshSelectionViews();
+                $('#search-input').val('');
+                hideSearchResults();
+            });
+
+            $('#selected-list').on('click', '.remove-selected', function () {
+                const id = $(this).data('id');
+                selectedIds.delete(id);
+                refreshSelectionViews();
+            });
+
+            debouncedSearchHandler = debounce(value => renderSearchResults(value), 280);
+            $('#search-input').on('input', function () {
+                debouncedSearchHandler($(this).val());
+            });
+
+            $('#search-input').on('keydown', function (event) {
+                if (event.key !== 'Enter') return;
+
+                const keyword = $(this).val();
+                const rows = getFilteredRows(keyword);
+                if (rows.length !== 1) return;
+
+                event.preventDefault();
+                selectedIds.add(rows[0][0]);
+                refreshSelectionViews();
+                $(this).val('');
+                hideSearchResults();
+            });
+
+            $(document).on('click', event => {
+                const isInsideSearch = $(event.target).closest('#search-input, #search-results, #clear-search').length > 0;
+                if (!isInsideSearch) {
+                    hideSearchResults();
+                }
+            });
+
+            $(window).on('resize', () => {
+                adjustScale();
+            });
+        }
+
+        function adjustScale() {
+            const mainContainer = document.getElementById('main-container');
+            const previewPane = document.getElementById('preview-pane');
+            const paneWidth = previewPane ? previewPane.clientWidth : window.innerWidth;
+            const paneHeight = previewPane ? previewPane.clientHeight : window.innerHeight;
+            const a4WidthPx = 210 * (96 / 25.4);
+            const a4HeightPx = 297 * (96 / 25.4);
+            const availableWidth = Math.max(paneWidth - 32, 120);
+            const availableHeight = Math.max(paneHeight - 32, 120);
+            const widthScale = availableWidth / a4WidthPx;
+            const heightScale = availableHeight / a4HeightPx;
+            const scale = Math.min(widthScale, heightScale, 1);
+
+            // Use zoom to keep visual size and layout size consistent, avoiding extra blank scroll area.
+            mainContainer.style.transform = 'none';
+            mainContainer.style.zoom = `${scale}`;
+        }
+
+        function renderPages(data, imageUrl) {
+            const container = document.getElementById('main-container');
+            container.innerHTML = '';
+
+            if (!data.length) {
+                container.innerHTML = `
+                    <div class="page !block p-8">
+                        <div class="flex h-full items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 text-center text-slate-500">
+                            <div>
+                                <p class="text-lg font-bold">ยังไม่มีรายการที่เลือก</p>
+                                <p class="text-sm">เลือกข้อมูลจากกล่องค้นหาด้านบนเพื่อสร้างการ์ด</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let currentPage;
+            data.forEach((row, index) => {
+                if (index % 9 === 0) {
+                    currentPage = document.createElement('div');
+                    currentPage.className = 'page';
+                    container.appendChild(currentPage);
+                }
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <img src="${imageUrl}" class="bg-template">
+                    <div class="data-field field-id">${row[0] || ''}</div>
+                    <div class="data-field field-model">${row[1] || ''}</div>
+                    <div class="data-field field-down">${row[4] || ''}</div>
+                    <div class="data-field field-install">${row[5] || ''}</div>
+                    <div class="data-field field-period">${row[6] || ''}</div>
+                    <div class="data-field field-battery">${row[7] || ''}</div>
+                    <div class="data-field field-warranty">${row[8] || ''}</div>
+                    <div class="data-field field-imei">${row[3] || ''}</div>
+                    <div class="data-field field-barcode">
+                        <svg class="barcode-svg" data-value="${row[2] || ''}"></svg>
+                    </div>
+                `;
+                currentPage.appendChild(card);
+            });
+
+            autoFitModelText(container);
+
+            document.querySelectorAll('.barcode-svg').forEach(svg => {
+                const val = svg.dataset.value;
+                if (val) {
+                    JsBarcode(svg, val, {
+                        format: 'CODE128',
+                        width: 1.2,
+                        height: 20,
+                        displayValue: true,
+                        fontSize: 8,
+                        margin: 2
+                    });
+                }
+            });
+        }
+
+        function autoFitModelText(container) {
+            const minFontPx = 9;
+            const modelFields = container.querySelectorAll('.field-model');
+
+            modelFields.forEach(field => {
+                const storedBase = field.dataset.baseFontPx;
+                const baseFontPx = storedBase ? parseFloat(storedBase) : parseFloat(getComputedStyle(field).fontSize);
+
+                if (!storedBase) {
+                    field.dataset.baseFontPx = String(baseFontPx);
+                }
+
+                field.style.fontSize = `${baseFontPx}px`;
+
+                while (field.scrollWidth > field.clientWidth && parseFloat(field.style.fontSize) > minFontPx) {
+                    const current = parseFloat(field.style.fontSize);
+                    field.style.fontSize = `${(current - 0.1).toFixed(2)}px`;
+                    console.log(field.style.top);
+                }
+            });
+        }
+
+        function initAfterImageProbe() {
+            attachEvents();
+            refreshSelectionViews();
+            lucide.createIcons();
+        }
+
+        window.onload = () => {
+            prepareTemplateImage().finally(() => {
+                initAfterImageProbe();
+            });
+        };
+    </script>
+</body>
+
+</html>
