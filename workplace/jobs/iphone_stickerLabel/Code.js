@@ -14,3 +14,10 @@ function getAllData() {
     let data = sheet.getDataRange().getValues().slice(1)
     return data;
 }
+
+function getSheetData(sheetName) {
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(sheetName);
+    let data = sheet.getDataRange().getValues().slice(1).filter(row => row[0] !== "");  
+    return data;
+}

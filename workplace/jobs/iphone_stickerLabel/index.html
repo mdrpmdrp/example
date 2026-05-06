@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root {
             --a4-width: 210mm;
@@ -27,14 +28,14 @@
             padding: 16px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
         }
 
         #preview-pane {
             display: flex;
-            align-items: center;
-            justify-content: center;
+            align-items: flex-start;
+            justify-content: flex-start;
         }
 
         #main-container {
@@ -95,9 +96,14 @@
         .field-model {
             top: 24%;
             left: 32%;
-            max-width: 55%;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            width: 65%;
+            max-width: 65%;
+            /* white-space: normal; */
+            overflow: visible;
+            text-overflow: clip;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.1;
         }
 
         .field-down {
@@ -105,18 +111,20 @@
             left: 32%;
         }
 
+        .field-down-free {
+            color: #ee0000;
+        }
+
         .field-install {
             top: 36.1%;
             left: 32%;
             font-size: 14pt;
-            color: #ee0000;
         }
 
         .field-period {
             top: 36.1%;
             left: 63%;
             font-size: 14pt;
-            color: #ee0000;
         }
 
         .field-battery {
@@ -157,6 +165,71 @@
         .search-scrollbar::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 99px;
+        }
+
+        /* ── SweetAlert2 theme ── */
+        .swal2-popup.swal-dark {
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 1rem;
+            color: #e2e8f0;
+            font-family: 'Sarabun', sans-serif;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+        }
+
+        .swal2-popup.swal-dark .swal2-title {
+            color: #fbbf24;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .swal2-popup.swal-dark .swal2-html-container {
+            color: #cbd5e1;
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+
+        .swal2-popup.swal-dark .swal2-icon.swal2-success {
+            border-color: #fbbf24;
+            color: #fbbf24;
+        }
+
+        .swal2-popup.swal-dark .swal2-icon.swal2-success [class^='swal2-success-line'] {
+            background-color: #fbbf24;
+        }
+
+        .swal2-popup.swal-dark .swal2-icon.swal2-success .swal2-success-ring {
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+
+        .swal2-popup.swal-dark .swal2-icon.swal2-warning {
+            border-color: #f97316;
+            color: #f97316;
+        }
+
+        .swal2-popup.swal-dark .swal2-confirm {
+            background-color: #fbbf24;
+            color: #0f172a;
+            font-weight: 700;
+            border-radius: 0.75rem;
+            padding: 0.5rem 1.5rem;
+            font-family: 'Sarabun', sans-serif;
+            box-shadow: none;
+        }
+
+        .swal2-popup.swal-dark .swal2-confirm:hover {
+            background-color: #fde68a;
+        }
+
+        .swal2-popup.swal-dark .swal2-confirm:focus {
+            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.4);
+        }
+
+        /* backdrop */
+        .swal2-container.swal2-backdrop-show,
+        .swal2-container.swal2-noanimation {
+            background: rgba(2, 6, 23, 0.75) !important;
+            backdrop-filter: blur(4px);
         }
 
         @media print {
@@ -266,7 +339,7 @@
     <script>
         const imageUrl = 'https://img2.pic.in.th/1000048333.jpg';
         let templateImageSrc = imageUrl;
-        const allData = <?!= JSON.stringify(getAllData()) ?>;
+        const allData = []
         const selectedIds = new Set();
 
 
@@ -286,6 +359,50 @@
             return allData.filter(row => (row[0] || '').toLowerCase().includes(query));
         }
 
+        function parseInputCodes(rawInput) {
+            return rawInput
+                .split(/[\s,]+/)
+                .map(code => code.trim())
+                .filter(Boolean);
+        }
+
+        function findRowsByExactCode(code) {
+            const query = code.trim().toLowerCase();
+            return allData.filter(row => (row[0] || '').toLowerCase() === query);
+        }
+
+        function showBatchResult(foundCodes, notFoundCodes, addedCount) {
+            const foundText = foundCodes.length ? foundCodes.join(', ') : '-';
+            const notFoundText = notFoundCodes.length ? notFoundCodes.join(', ') : '-';
+
+            const html = `
+                <div style="text-align:left;font-size:14px;line-height:1.5;">
+                    <div><b>เพิ่มเข้าในรายการ:</b> ${addedCount} รายการ</div>
+                    <div><b>พบรหัส:</b> ${foundCodes.length} รายการ</div>
+                    <div>${foundText}</div>
+                    <div style="margin-top:8px;"><b>ไม่พบรหัส:</b> ${notFoundCodes.length} รายการ</div>
+                    <div>${notFoundText}</div>
+                </div>
+            `;
+
+            if (window.Swal) {
+                Swal.fire({
+                    icon: notFoundCodes.length ? 'warning' : 'success',
+                    title: 'ผลการค้นหารหัสสินค้า',
+                    html,
+                    confirmButtonText: 'ตกลง',
+                    customClass: {
+                        popup: 'swal-dark',
+                        confirmButton: '',
+                    },
+                    buttonsStyling: false,
+                });
+                return;
+            }
+
+            alert(`พบ ${foundCodes.length} รายการ\\nไม่พบ ${notFoundCodes.length} รายการ`);
+        }
+
         function hideSearchResults() {
             $('#search-results').addClass('hidden').empty();
         }
@@ -293,7 +410,6 @@
         function renderSelectedList() {
             const $list = $('#selected-list');
             const selectedRows = allData.filter(row => selectedIds.has(row[0]));
-
             if (!selectedRows.length) {
                 $list.html('<div class="rounded-lg bg-slate-800/40 px-2 py-2 text-slate-400">ยังไม่มีรายการที่เลือก</div>');
                 return;
@@ -337,7 +453,6 @@
         function prepareTemplateImage() {
             return new Promise(resolve => {
                 const probe = new Image();
-                probe.crossOrigin = 'anonymous';
 
                 probe.onload = () => {
                     setCardHeightByImageSize(probe.naturalWidth, probe.naturalHeight);
@@ -445,15 +560,38 @@
             $('#search-input').on('keydown', function (event) {
                 if (event.key !== 'Enter') return;
 
-                const keyword = $(this).val();
-                const rows = getFilteredRows(keyword);
-                if (rows.length !== 1) return;
-
                 event.preventDefault();
-                selectedIds.add(rows[0][0]);
+
+                const rawInput = String($(this).val() || '');
+                const tokens = parseInputCodes(rawInput);
+                if (!tokens.length) return;
+
+                const uniqueCodes = [...new Set(tokens.map(code => code.toLowerCase()))];
+                const foundCodes = [];
+                const notFoundCodes = [];
+                let addedCount = 0;
+
+                uniqueCodes.forEach(code => {
+                    const rows = findRowsByExactCode(code);
+                    if (!rows.length) {
+                        notFoundCodes.push(code);
+                        return;
+                    }
+
+                    foundCodes.push(code);
+                    rows.forEach(row => {
+                        const id = row[0] || '';
+                        if (!selectedIds.has(id)) {
+                            selectedIds.add(id);
+                            addedCount += 1;
+                        }
+                    });
+                });
+
                 refreshSelectionViews();
                 $(this).val('');
                 hideSearchResults();
+                showBatchResult(foundCodes, notFoundCodes, addedCount);
             });
 
             $(document).on('click', event => {
@@ -512,13 +650,16 @@
                     container.appendChild(currentPage);
                 }
 
+                const downValue = row[4] || '';
+                const isFreeDown = String(downValue).trim().toLowerCase() === 'free down';
+
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
                     <img src="${imageUrl}" class="bg-template">
                     <div class="data-field field-id">${row[0] || ''}</div>
                     <div class="data-field field-model">${row[1] || ''}</div>
-                    <div class="data-field field-down">${row[4] || ''}</div>
+                    <div class="data-field field-down ${isFreeDown ? 'field-down-free' : ''}">${downValue}</div>
                     <div class="data-field field-install">${row[5] || ''}</div>
                     <div class="data-field field-period">${row[6] || ''}</div>
                     <div class="data-field field-battery">${row[7] || ''}</div>
@@ -529,6 +670,17 @@
                     </div>
                 `;
                 currentPage.appendChild(card);
+            });
+
+            container.querySelectorAll('.page').forEach(page => {
+                const cardCount = page.children.length;
+                if (cardCount >= 7) {
+                    page.style.alignContent = 'center';
+                    page.style.paddingTop = '';
+                } else {
+                    page.style.alignContent = 'start';
+                    page.style.paddingTop = '10mm';
+                }
             });
 
             autoFitModelText(container);
@@ -549,7 +701,9 @@
         }
 
         function autoFitModelText(container) {
-            const minFontPx = 9;
+            const minFontPx = 10;
+            const baseTopPercent = 24;
+            const twoLineTopPercent = baseTopPercent - 2;
             const modelFields = container.querySelectorAll('.field-model');
 
             modelFields.forEach(field => {
@@ -561,12 +715,31 @@
                 }
 
                 field.style.fontSize = `${baseFontPx}px`;
+                field.style.top = `${baseTopPercent}%`;
 
                 while (field.scrollWidth > field.clientWidth && parseFloat(field.style.fontSize) > minFontPx) {
                     const current = parseFloat(field.style.fontSize);
-                    field.style.fontSize = `${(current - 0.1).toFixed(2)}px`;
-                    console.log(field.style.top);
+                    const newSize = Math.max(minFontPx, current - 0.1);
+                    if (newSize === current) break; // Prevent infinite loop if we hit min font size
+                    if (newSize <= minFontPx) {
+                        field.style.fontSize = `${minFontPx}px`;
+                        field.style.top = `${twoLineTopPercent}%`;
+                        field.style.whiteSpace = 'normal';
+                    } else {
+                        field.style.fontSize = `${newSize.toFixed(2)}px`;
+                    }
                 }
+
+                // const computed = getComputedStyle(field);
+                // const lineHeight = parseFloat(computed.lineHeight);
+                // console.log('Line height:', lineHeight, 'Scroll height:', field.scrollHeight, 'Client height:', field.clientHeight);
+                // const lineCount = lineHeight > 0 ? Math.round(field.scrollHeight / lineHeight) : 1;
+
+                // if (lineCount >= 2) {
+                //     const reducedFontPx = Math.max(minFontPx, baseFontPx - 3);
+                //     field.style.fontSize = `${reducedFontPx}px`;
+                //     field.style.top = `${twoLineTopPercent}%`;
+                // }
             });
         }
 
@@ -580,7 +753,31 @@
             prepareTemplateImage().finally(() => {
                 initAfterImageProbe();
             });
+            Swal.fire({
+                title: 'กำลังโหลดข้อมูล...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                customClass: {
+                    popup: 'rounded-2xl',
+                }
+            });
+            Promise.all([
+                fetchSheetData('REF68'),
+                fetchSheetData('REF69'),
+                fetchSheetData('REF70')
+            ]).then(results => {
+                allData.push(...results.flat());
+                Swal.close();
+            });
         };
+
+        function fetchSheetData(sheetName) {
+            return new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler(data => resolve(data)).withFailureHandler(error => reject(error)).getSheetData(sheetName);
+            });
+        }
     </script>
 </body>
 
