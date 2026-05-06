@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
 
     <style>
         [v-cloak] { display: none; }
@@ -592,30 +593,295 @@
                     html2pdf().set(opt).from(document.getElementById('print-area')).save();
                 };
 
-                const exportToWord = () => {
-                    const element = document.getElementById('print-area').innerHTML;
-                    const header = `
-                        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-                        <head><meta charset='utf-8'><title>Lesson Plan</title>
-                        <style>
-                            @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
-                            body { font-family: 'Sarabun', sans-serif; font-size: 16pt; line-height: 1.5; color: black; }
-                            .a4-page { page-break-after: always; margin-bottom: 20px; }
-                            .doc-title { text-align: center; font-weight: bold; font-size: 18pt; margin-bottom: 1rem; }
-                            .doc-section { margin-bottom: 1rem; }
-                            .doc-header { font-weight: bold; margin-bottom: 0.5rem; font-size: 16pt; }
-                            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                            th, td { border: 1px solid black; padding: 5px; vertical-align: top; }
-                        </style></head><body>
-                    `;
-                    const footer = "</body></html>";
-                    const blob = new Blob(['\ufeff', header + element + footer], { type: 'application/msword' });
+                const exportToWord = async () => {
+                    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+                            WidthType, AlignmentType, PageBreak, ShadingType,
+                            VerticalAlign, TableLayoutType } = window.docx;
+
+                    const FONT = 'TH Sarabun New';
+                    const SIZE = 32;    // 16pt in half-points
+                    const SIZE_SM = 28; // 14pt
+                    const SIZE_LG = 36; // 18pt
+                    const INDENT = 720; // 0.5 inch in twips
+                    // A4 page width (11906) minus left+right margins (2 * 1134)
+                    const PAGE_WIDTH = 9638;
+
+                    // Split text on newlines → array of Paragraphs
+                    const textToParagraphs = (text, opts = {}) => {
+                        const lines = (text || '').trim() ? (text || '').split('\n') : ['-'];
+                        return lines.map(line => new Paragraph({
+                            children: [new TextRun({ text: line || ' ', font: FONT, size: SIZE, bold: opts.bold || false })],
+                            indent: opts.indent,
+                            spacing: { after: 0 }
+                        }));
+                    };
+
+                    // Bold section header paragraph
+                    const sectionHeader = (text) => new Paragraph({
+                        children: [new TextRun({ text, font: FONT, size: SIZE, bold: true })],
+                        spacing: { before: 240, after: 80 }
+                    });
+
+                    // Table cell — splits text on newlines into multiple paragraphs
+                    const makeCell = (text, opts = {}) => {
+                        const lines = (text || '').split('\n');
+                        const paras = lines.map((line, i) => new Paragraph({
+                            children: [new TextRun({ text: line || ' ', font: FONT, size: SIZE_SM, bold: opts.bold || false })],
+                            alignment: opts.align || AlignmentType.LEFT,
+                            spacing: { after: i === lines.length - 1 ? 0 : 40 }
+                        }));
+                        return new TableCell({
+                            children: paras,
+                            shading: opts.header ? { fill: 'F3F4F6', type: ShadingType.CLEAR, color: 'auto' } : undefined,
+                            verticalAlign: VerticalAlign.TOP,
+                            width: opts.width ? { size: opts.width, type: WidthType.DXA } : undefined
+                        });
+                    };
+
+                    const children = [];
+
+                    // ── PAGE 1: Lesson Plan ──────────────────────────────────────
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: 'แผนการจัดการเรียนรู้', font: FONT, size: SIZE_LG, bold: true })],
+                        alignment: AlignmentType.CENTER, spacing: { after: 80 }
+                    }));
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: plan.value.title || '................................................', font: FONT, size: SIZE, bold: true })],
+                        alignment: AlignmentType.CENTER, spacing: { after: 60 }
+                    }));
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: `ชั้น ${plan.value.grade} | วิชา ${plan.value.subjectCode || '..................'} | ภาคเรียนที่ ${plan.value.semester || '......'} | เวลา ${plan.value.time || '......'}`, font: FONT, size: SIZE })],
+                        alignment: AlignmentType.CENTER, spacing: { after: 80 }
+                    }));
+                    if (plan.value.unit) {
+                        children.push(new Paragraph({
+                            children: [new TextRun({ text: `หน่วยการเรียนรู้: ${plan.value.unit}`, font: FONT, size: SIZE })],
+                            alignment: AlignmentType.CENTER, spacing: { after: 200 }
+                        }));
+                    }
+
+                    // 1. Standards
+                    children.push(sectionHeader('1. มาตรฐานการเรียนรู้ / ตัวชี้วัด'));
+                    children.push(...textToParagraphs(plan.value.standards, { indent: { left: INDENT } }));
+
+                    // 2. Concept
+                    children.push(sectionHeader('2. สาระสำคัญ / ความคิดรวบยอด'));
+                    children.push(...textToParagraphs(plan.value.concept, { indent: { left: INDENT } }));
+
+                    // 3. KPA
+                    children.push(sectionHeader('3. จุดประสงค์การเรียนรู้'));
+                    [['ด้านความรู้ (K): ', plan.value.kpa.k],
+                     ['ด้านทักษะกระบวนการ (P): ', plan.value.kpa.p],
+                     ['ด้านเจตคติ (A): ', plan.value.kpa.a]].forEach(([label, val]) => {
+                        const lines = (val || '-').split('\n');
+                        children.push(new Paragraph({
+                            children: [new TextRun({ text: label, font: FONT, size: SIZE, bold: true }),
+                                       new TextRun({ text: lines[0], font: FONT, size: SIZE })],
+                            indent: { left: INDENT }, spacing: { after: 0 }
+                        }));
+                        lines.slice(1).forEach(l => children.push(new Paragraph({
+                            children: [new TextRun({ text: l, font: FONT, size: SIZE })],
+                            indent: { left: INDENT * 2 }, spacing: { after: 0 }
+                        })));
+                    });
+
+                    // 4. Content
+                    children.push(sectionHeader('4. สาระการเรียนรู้'));
+                    children.push(...textToParagraphs(plan.value.content, { indent: { left: INDENT } }));
+
+                    // 5. Characteristics
+                    children.push(sectionHeader('5. คุณลักษณะอันพึงประสงค์'));
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: plan.value.characteristics.length ? plan.value.characteristics.join(', ') : '-', font: FONT, size: SIZE })],
+                        indent: { left: INDENT }, spacing: { after: 0 }
+                    }));
+
+                    // 6. Competencies
+                    children.push(sectionHeader('6. สมรรถนะสำคัญของผู้เรียน'));
+                    (dynamicCompNames.value.length > 0 ? dynamicCompNames.value.map(n => `- ${n}`) : ['-'])
+                        .forEach(t => children.push(new Paragraph({
+                            children: [new TextRun({ text: t, font: FONT, size: SIZE })],
+                            indent: { left: INDENT }, spacing: { after: 0 }
+                        })));
+
+                    // 7. Media
+                    children.push(sectionHeader('7. สื่อและแหล่งเรียนรู้'));
+                    children.push(...textToParagraphs(plan.value.media, { indent: { left: INDENT } }));
+
+                    // 8. Activities
+                    children.push(sectionHeader('8. กิจกรรมการเรียนรู้'));
+                    plan.value.activities.forEach((step, idx) => {
+                        children.push(new Paragraph({
+                            children: [new TextRun({ text: step.name || `ขั้นตอนที่ ${idx + 1}`, font: FONT, size: SIZE, bold: true })],
+                            indent: { left: INDENT }, spacing: { before: 80, after: 40 }
+                        }));
+                        children.push(...textToParagraphs(step.detail, { indent: { left: INDENT * 2 } }));
+                    });
+
+                    // 9. Evaluation table
+                    children.push(sectionHeader('9. การวัดและการประเมินผล'));
+                    // Distribute column widths so they sum exactly to PAGE_WIDTH
+                    const COL_W = Math.floor(PAGE_WIDTH / 4);
+                    const EVAL_COLS = [COL_W, COL_W, COL_W, PAGE_WIDTH - COL_W * 3];
+                    const evalRows = [
+                        new TableRow({
+                            tableHeader: true,
+                            children: ['รายการวัด','วิธีการวัด','เครื่องมือวัด','เกณฑ์การประเมิน']
+                                .map((t, i) => makeCell(t, { bold: true, header: true, width: EVAL_COLS[i] }))
+                        }),
+                        ...plan.value.evalList.map(ev => new TableRow({
+                            children: [ev.target, ev.method, ev.tool, ev.criteria]
+                                .map((t, i) => makeCell(t, { width: EVAL_COLS[i] }))
+                        }))
+                    ];
+                    if (selectedCompIds.value.length > 0) evalRows.push(new TableRow({
+                        children: [dynamicCompTarget.value, plan.value.evalAuto.comp.method,
+                                   plan.value.evalAuto.comp.tool, plan.value.evalAuto.comp.criteria]
+                            .map((t, i) => makeCell(t, { width: EVAL_COLS[i] }))
+                    }));
+                    if (plan.value.characteristics.length > 0) evalRows.push(new TableRow({
+                        children: [dynamicCharTarget.value, plan.value.evalAuto.char.method,
+                                   plan.value.evalAuto.char.tool, plan.value.evalAuto.char.criteria]
+                            .map((t, i) => makeCell(t, { width: EVAL_COLS[i] }))
+                    }));
+                    children.push(new Table({ rows: evalRows, width: { size: PAGE_WIDTH, type: WidthType.DXA }, columnWidths: EVAL_COLS, layout: TableLayoutType.FIXED }));
+
+                    // ── PAGE 2: Competency Rubric ────────────────────────────────
+                    if (filteredRubricData.value.length > 0) {
+                        children.push(new Paragraph({ children: [new PageBreak()] }));
+                        children.push(new Paragraph({
+                            children: [new TextRun({ text: 'เกณฑ์คุณภาพในการประเมินสมรรถนะสำคัญของผู้เรียน (Rubric)', font: FONT, size: SIZE_LG, bold: true })],
+                            alignment: AlignmentType.CENTER, spacing: { after: 200 }
+                        }));
+                        const _rc = [0.28, 0.18, 0.18, 0.18].map(r => Math.floor(PAGE_WIDTH * r));
+                        const RC = [..._rc, PAGE_WIDTH - _rc.reduce((a,b) => a+b, 0)];
+                        filteredRubricData.value.forEach(comp => {
+                            children.push(new Paragraph({
+                                children: [new TextRun({ text: comp.name, font: FONT, size: SIZE, bold: true })],
+                                spacing: { before: 240, after: 80 }
+                            }));
+                            comp.indicators.forEach(ind => {
+                                children.push(new Paragraph({
+                                    children: [new TextRun({ text: ind.name, font: FONT, size: SIZE, bold: true, color: '1E40AF' })],
+                                    indent: { left: INDENT }, spacing: { before: 80, after: 80 }
+                                }));
+                                children.push(new Table({
+                                    rows: [
+                                        new TableRow({
+                                            tableHeader: true,
+                                            children: ['พฤติกรรมบ่งชี้','ดีเยี่ยม (3)','ดี (2)','ผ่านเกณฑ์ (1)','ปรับปรุง (0)']
+                                                .map((t, i) => makeCell(t, { bold: true, header: true, width: RC[i] }))
+                                        }),
+                                        ...ind.behaviors.map(beh => new TableRow({
+                                            children: [beh.text, beh.levels[0], beh.levels[1], beh.levels[2], beh.levels[3]]
+                                                .map((t, i) => makeCell(t, { width: RC[i] }))
+                                        }))
+                                    ],
+                                    width: { size: PAGE_WIDTH, type: WidthType.DXA },
+                                    columnWidths: RC,
+                                    layout: TableLayoutType.FIXED
+                                }));
+                                children.push(new Paragraph({ children: [], spacing: { after: 160 } }));
+                            });
+                        });
+                    }
+
+                    // ── PAGE 3: Characteristics Rubric ──────────────────────────
+                    if (plan.value.characteristics.length > 0) {
+                        children.push(new Paragraph({ children: [new PageBreak()] }));
+                        children.push(new Paragraph({
+                            children: [new TextRun({ text: 'เกณฑ์คุณภาพในการประเมินคุณลักษณะอันพึงประสงค์ (Rubric)', font: FONT, size: SIZE_LG, bold: true })],
+                            alignment: AlignmentType.CENTER, spacing: { after: 200 }
+                        }));
+                        const _rc2 = [0.28, 0.18, 0.18, 0.18].map(r => Math.floor(PAGE_WIDTH * r));
+                        const RC2 = [..._rc2, PAGE_WIDTH - _rc2.reduce((a,b) => a+b, 0)];
+                        plan.value.characteristics.forEach(char => {
+                            const spaceIdx = char.indexOf(' ');
+                            const charNum = char.substring(0, char.indexOf('.'));
+                            const charName = char.substring(spaceIdx + 1);
+                            children.push(new Paragraph({
+                                children: [new TextRun({ text: `ข้อที่ ${charNum} ${charName}`, font: FONT, size: SIZE, bold: true })],
+                                spacing: { before: 240, after: 80 }
+                            }));
+                            children.push(new Paragraph({
+                                children: [new TextRun({ text: 'ตัวชี้วัดที่.....', font: FONT, size: SIZE, bold: true, color: '1E40AF' })],
+                                indent: { left: INDENT }, spacing: { after: 80 }
+                            }));
+                            children.push(new Table({
+                                rows: [
+                                    new TableRow({
+                                        tableHeader: true,
+                                        children: ['พฤติกรรมบ่งชี้','ดีเยี่ยม (3)','ดี (2)','ผ่านเกณฑ์ (1)','ปรับปรุง (0)']
+                                            .map((t, i) => makeCell(t, { bold: true, header: true, width: RC2[i] }))
+                                    }),
+                                    new TableRow({
+                                        children: Array(5).fill(null).map((_, i) =>
+                                            makeCell(i === 0 ? '\n\n' : '', { width: RC2[i] })
+                                        )
+                                    })
+                                ],
+                                width: { size: PAGE_WIDTH, type: WidthType.DXA },
+                                columnWidths: RC2,
+                                layout: TableLayoutType.FIXED
+                            }));
+                            children.push(new Paragraph({ children: [], spacing: { after: 160 } }));
+                        });
+                    }
+
+                    // ── PAGE 4: Reflection ───────────────────────────────────────
+                    children.push(new Paragraph({ children: [new PageBreak()] }));
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: '10. บันทึกผลหลังการจัดการเรียนรู้', font: FONT, size: SIZE_LG, bold: true })],
+                        alignment: AlignmentType.CENTER, spacing: { after: 400 }
+                    }));
+                    [['สรุปผลการสอน:', plan.value.reflection.result],
+                     ['ปัญหา / อุปสรรค:', plan.value.reflection.problem],
+                     ['แนวทางแก้ไข / ข้อเสนอแนะ:', plan.value.reflection.solution]].forEach(([label, val]) => {
+                        children.push(new Paragraph({
+                            children: [new TextRun({ text: label, font: FONT, size: SIZE, bold: true })],
+                            spacing: { before: 200 }
+                        }));
+                        children.push(...textToParagraphs(val || '......................................................', { indent: { left: INDENT } }));
+                    });
+                    // Signature block
+                    children.push(new Paragraph({ children: [], spacing: { before: 1440 } }));
+                    ['ลงชื่อ....................................................................ผู้สอน',
+                     '(..................................................................)',
+                     'วันที่.......เดือน.......................พ.ศ. ...........'].forEach(line =>
+                        children.push(new Paragraph({
+                            children: [new TextRun({ text: line, font: FONT, size: SIZE })],
+                            alignment: AlignmentType.RIGHT, indent: { right: INDENT }
+                        }))
+                    );
+
+                    // Build and download .docx
+                    const doc = new Document({
+                        styles: {
+                            default: {
+                                document: {
+                                    run: { font: FONT, size: SIZE },
+                                    paragraph: { spacing: { line: 360 } }
+                                }
+                            }
+                        },
+                        sections: [{
+                            properties: {
+                                page: {
+                                    size: { width: 11906, height: 16838 },
+                                    margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 }
+                                }
+                            },
+                            children
+                        }]
+                    });
+
+                    const blob = await Packer.toBlob(doc);
                     const url = URL.createObjectURL(blob);
-                    
-                    const fileDownload = document.createElement("a");
-                    fileDownload.href = url; fileDownload.download = `แผนการสอน_${plan.value.title || 'ไม่มีชื่อ'}.doc`;
-                    document.body.appendChild(fileDownload); fileDownload.click();
-                    document.body.removeChild(fileDownload); URL.revokeObjectURL(url);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `แผนการสอน_${plan.value.title || 'ไม่มีชื่อ'}.docx`;
+                    document.body.appendChild(a); a.click();
+                    document.body.removeChild(a); URL.revokeObjectURL(url);
                 };
 
                 return { 
