@@ -359,50 +359,6 @@
             return allData.filter(row => (row[0] || '').toLowerCase().includes(query));
         }
 
-        function parseInputCodes(rawInput) {
-            return rawInput
-                .split(/[\s,]+/)
-                .map(code => code.trim())
-                .filter(Boolean);
-        }
-
-        function findRowsByExactCode(code) {
-            const query = code.trim().toLowerCase();
-            return allData.filter(row => (row[0] || '').toLowerCase() === query);
-        }
-
-        function showBatchResult(foundCodes, notFoundCodes, addedCount) {
-            const foundText = foundCodes.length ? foundCodes.join(', ') : '-';
-            const notFoundText = notFoundCodes.length ? notFoundCodes.join(', ') : '-';
-
-            const html = `
-                <div style="text-align:left;font-size:14px;line-height:1.5;">
-                    <div><b>เพิ่มเข้าในรายการ:</b> ${addedCount} รายการ</div>
-                    <div><b>พบรหัส:</b> ${foundCodes.length} รายการ</div>
-                    <div>${foundText}</div>
-                    <div style="margin-top:8px;"><b>ไม่พบรหัส:</b> ${notFoundCodes.length} รายการ</div>
-                    <div>${notFoundText}</div>
-                </div>
-            `;
-
-            if (window.Swal) {
-                Swal.fire({
-                    icon: notFoundCodes.length ? 'warning' : 'success',
-                    title: 'ผลการค้นหารหัสสินค้า',
-                    html,
-                    confirmButtonText: 'ตกลง',
-                    customClass: {
-                        popup: 'swal-dark',
-                        confirmButton: '',
-                    },
-                    buttonsStyling: false,
-                });
-                return;
-            }
-
-            alert(`พบ ${foundCodes.length} รายการ\\nไม่พบ ${notFoundCodes.length} รายการ`);
-        }
-
         function hideSearchResults() {
             $('#search-results').addClass('hidden').empty();
         }
@@ -719,27 +675,9 @@
 
                 while (field.scrollWidth > field.clientWidth && parseFloat(field.style.fontSize) > minFontPx) {
                     const current = parseFloat(field.style.fontSize);
-                    const newSize = Math.max(minFontPx, current - 0.1);
-                    if (newSize === current) break; // Prevent infinite loop if we hit min font size
-                    if (newSize <= minFontPx) {
-                        field.style.fontSize = `${minFontPx}px`;
-                        field.style.top = `${twoLineTopPercent}%`;
-                        field.style.whiteSpace = 'normal';
-                    } else {
-                        field.style.fontSize = `${newSize.toFixed(2)}px`;
-                    }
+                    field.style.fontSize = `${(current - 0.1).toFixed(2)}px`;
+                    console.log(field.style.top);
                 }
-
-                // const computed = getComputedStyle(field);
-                // const lineHeight = parseFloat(computed.lineHeight);
-                // console.log('Line height:', lineHeight, 'Scroll height:', field.scrollHeight, 'Client height:', field.clientHeight);
-                // const lineCount = lineHeight > 0 ? Math.round(field.scrollHeight / lineHeight) : 1;
-
-                // if (lineCount >= 2) {
-                //     const reducedFontPx = Math.max(minFontPx, baseFontPx - 3);
-                //     field.style.fontSize = `${reducedFontPx}px`;
-                //     field.style.top = `${twoLineTopPercent}%`;
-                // }
             });
         }
 
