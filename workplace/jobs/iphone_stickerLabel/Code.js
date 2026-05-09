@@ -18,6 +18,6 @@ function getAllData() {
 function getSheetData(sheetName) {
   let ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName(sheetName);
-    let data = sheet.getDataRange().getValues().slice(1).filter(row => row[0] !== "");  
-    return data;
+    let data = sheet.getDataRange().getDisplayValues().slice(1).filter(row => row[0] !== "") 
+    return data
 }
