@@ -7,7 +7,6 @@ const CONFIG = {
         'https://script.google.com/macros/s/AKfycbzA5TKaFjk2nbEdXQ7nu81h6os5y1m8WQ-et8jm0afWxzBHyBT1zfu8asfGNbrPAM59Wg/exec',
     LINE_PUSH_API: 'https://api.line.me/v2/bot/message/push',
     LINE_REPLY_API: 'https://api.line.me/v2/bot/message/reply',
-    INTER_SCRIPT_TOKEN_KEY: 'INTER_SCRIPT_TOKEN'
 };
 
 /**
@@ -58,12 +57,9 @@ function doPost(e) {
         return ContentService.createTextOutput('invalid action').setMimeType(ContentService.MimeType.TEXT);
     }
 
-    const auth = validateInterScriptToken(p);
-    if (!auth.ok) {
-        return ContentService
-            .createTextOutput(JSON.stringify(auth))
-            .setMimeType(ContentService.MimeType.JSON);
-    }
+    return ContentService
+        .createTextOutput(JSON.stringify(auth))
+        .setMimeType(ContentService.MimeType.JSON);
 
     const result = processBookingRequest(p);
     return ContentService
@@ -71,31 +67,6 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
 }
 
-function validateInterScriptToken(params) {
-    const expectedToken = getInterScriptToken();
-    if (!expectedToken) {
-        return {
-            ok: false,
-            message: 'INTER_SCRIPT_TOKEN is not configured'
-        };
-    }
-
-    const actualToken = pickFirst(params, ['token', 'authToken', 'apiToken']);
-    if (!actualToken || actualToken !== expectedToken) {
-        return {
-            ok: false,
-            message: 'unauthorized'
-        };
-    }
-
-    return { ok: true };
-}
-
-function getInterScriptToken() {
-    return (
-        PropertiesService.getScriptProperties().getProperty(CONFIG.INTER_SCRIPT_TOKEN_KEY) || ''
-    ).toString().trim();
-}
 
 function handleLineWebhookEvents(events) {
     events.forEach(function (event) {
@@ -235,7 +206,7 @@ function parseReminderFromFormEvent(e) {
 function buildReminderFlexMessage(data) {
     const color = getBubbleColor(data.reminderType);
     const tone = getStatusTone(data.reminderType);
-    const bookingUrl = WEB_APP_URL + '?username=' + encodeURIComponent(data.username || '') + '&action=book';
+    const bookingUrl =CONFIG.WEB_APP_URL + '?username=' + encodeURIComponent(data.username || '') + '&action=book';
 
     return {
         type: 'flex',
@@ -338,7 +309,7 @@ function buildReminderFlexMessage(data) {
                         color: '#2563EB',
                         action: {
                             type: 'uri',
-                            label: 'จองคิวเลย',
+                            label: 'จองคิวซ่อม',
                             uri: bookingUrl
                         }
                     },
