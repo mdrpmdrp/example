@@ -57,6 +57,29 @@ function getComplainData() {
 }
 
 /**
+ * Normalize images value before writing to sheet.
+ * Supports newline string and array inputs.
+ */
+function normalizeImagesForSheet(images) {
+  if (!images) return '';
+
+  if (Array.isArray(images)) {
+    return images
+      .filter(Boolean)
+      .map(item => String(item).trim())
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  if (typeof images === 'string') {
+    const normalized = images.trim();
+    return normalized === '[]' ? '' : normalized;
+  }
+
+  return String(images).trim();
+}
+
+/**
  * Add new data to sheet
  */
 function addComplainData(formData) {
@@ -68,6 +91,7 @@ function addComplainData(formData) {
 
     // Convert solutions array to JSON string
     const solutionsJson = formData.solutions ? JSON.stringify(formData.solutions) : '';
+    const imagesCellValue = normalizeImagesForSheet(formData.images);
 
     const rowData = [
       nextId,
@@ -86,7 +110,7 @@ function addComplainData(formData) {
       solutionsJson,
       formData.pipeline,
       timestamp,
-      formData.images || []
+      imagesCellValue
     ];
 
     sheet.appendRow(rowData);
@@ -135,7 +159,7 @@ function addComplainData(formData) {
         solutions: formData.solutions || [],
         pipeline: formData.pipeline,
         timestamp: timestamp,
-        images: formData.images ? formData.images.split('\n') : []
+        images: imagesCellValue ? imagesCellValue.split('\n') : []
       }
     });
 
@@ -167,6 +191,7 @@ function updateComplainData(formData) {
 
     // Convert solutions array to JSON string
     const solutionsJson = formData.solutions ? JSON.stringify(formData.solutions) : '';
+    const imagesCellValue = normalizeImagesForSheet(formData.images);
     const rowData = [
       formData.id,
       formData.date,
@@ -184,7 +209,7 @@ function updateComplainData(formData) {
       solutionsJson,
       formData.pipeline,
       timestamp,
-      formData.images || []
+      imagesCellValue
     ];
 
     sheet.getRange(actualRow, 1, 1, 17).setValues([rowData]);

@@ -1190,7 +1190,8 @@
         <!-- List Tab -->
         <div id="listSection"
             class="card-minimal rounded-3xl shadow-2xl p-10 mb-8 hidden slide-in border-2 border-gray-100/50">
-            <div class="mb-10">
+            <div class="mb-10 space-y-4">
+                <!-- Top row: title + search/actions aligned right -->
                 <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     <div class="flex items-center">
                         <div
@@ -1200,14 +1201,14 @@
                         <h2 class="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">รายการข้อมูล Complain
                         </h2>
                     </div>
-                    <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto action-buttons-mobile">
+                    <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto lg:ml-auto lg:justify-end action-buttons-mobile">
                         <div class="relative group w-full sm:flex-1 lg:w-auto">
                             <input type="text" id="searchInput" placeholder="ค้นหา..."
                                 class="pl-9 pr-4 py-3 input-minimal rounded-xl font-medium w-full lg:w-56 xl:w-64 transition-all duration-300 text-sm h-[46px]">
                             <i
                                 class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 gray-accent group-focus-within:text-gray-700 transition-colors text-sm"></i>
                         </div>
-                        <div class="flex gap-2 w-full sm:w-auto">
+                        <div class="flex gap-2 w-full sm:w-auto lg:justify-end">
                             <button onclick="searchData()"
                                 class="w-full sm:w-auto px-4 py-3 btn-primary rounded-xl font-medium flex items-center justify-center gap-2 whitespace-nowrap h-[46px]">
                                 <i class="fas fa-search"></i>
@@ -1220,6 +1221,60 @@
                             </button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Bottom row: filters -->
+                <div id="filterContainer" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 w-full">
+                    <!-- Store Filter -->
+                    <div class="relative min-w-0">
+                        <select id="filterStore" class="pl-12 pr-4 py-3.5 input-minimal rounded-xl font-medium w-full" onchange="applyFilters()">
+                            <option value="">ทั้งหมด - ร้านค้า</option>
+                        </select>
+                        <i class="fas fa-store absolute left-4 top-1/2 transform -translate-y-1/2 gray-accent"></i>
+                    </div>
+
+                    <!-- Type Filter -->
+                    <div class="relative min-w-0">
+                        <select id="filterType" class="pl-12 pr-4 py-3.5 input-minimal rounded-xl font-medium w-full" onchange="applyFilters()">
+                            <option value="">ทั้งหมด - ประเภท</option>
+                            <option value="A">Order ผิด</option>
+                            <option value="B">ส่งสินค้าไม่ครบ/ผิด</option>
+                            <option value="C">สินค้าไม่ได้คุณภาพ</option>
+                            <option value="D">ส่งไม่ถูกต้อง</option>
+                            <option value="E">เอกสารผิด</option>
+                            <option value="F">ตกเครื่อง</option>
+                        </select>
+                        <i class="fas fa-tags absolute left-4 top-1/2 transform -translate-y-1/2 gray-accent"></i>
+                    </div>
+
+                    <!-- Severity Filter -->
+                    <div class="relative min-w-0">
+                        <select id="filterSeverity" class="pl-12 pr-4 py-3.5 input-minimal rounded-xl font-medium w-full" onchange="applyFilters()">
+                            <option value="">ทั้งหมด - ความรุนแรง</option>
+                            <option value="1">ต่ำ</option>
+                            <option value="2">ปานกลาง</option>
+                            <option value="3">สูง</option>
+                        </select>
+                        <i class="fas fa-exclamation-circle absolute left-4 top-1/2 transform -translate-y-1/2 gray-accent"></i>
+                    </div>
+
+                    <!-- Status/Pipeline Filter -->
+                    <div class="relative min-w-0">
+                        <select id="filterStatus" class="pl-12 pr-4 py-3.5 input-minimal rounded-xl font-medium w-full" onchange="applyFilters()">
+                            <option value="">ทั้งหมด - สถานะ</option>
+                            <option value="reported">แจ้งเรื่อง</option>
+                            <option value="in_progress">กำลังแก้ไข</option>
+                            <option value="pending_close">รอปิดเคส</option>
+                            <option value="closed">ปิดเคสแล้ว</option>
+                        </select>
+                        <i class="fas fa-route absolute left-4 top-1/2 transform -translate-y-1/2 gray-accent"></i>
+                    </div>
+
+                    <!-- Clear Filters Button -->
+                    <button onclick="clearFilters()" class="px-4 py-3.5 btn-warning rounded-xl font-medium flex items-center justify-center gap-2 w-full">
+                        <i class="fas fa-times"></i>
+                        <span>ล้างตัวกรอง</span>
+                    </button>
                 </div>
             </div>
 
@@ -1516,6 +1571,20 @@
         // Performance optimization constants
         const DOM_CACHE = {};
         const DEBOUNCE_DELAY = 300;
+        const IMG_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22320%22 height=%22200%22 viewBox=%220 0 320 200%22%3E%3Crect width=%22320%22 height=%22200%22 fill=%22%23e5e7eb%22/%3E%3Cg fill=%22none%22 stroke=%22%239ca3af%22 stroke-width=%224%22%3E%3Crect x=%2292%22 y=%2258%22 width=%22136%22 height=%2284%22 rx=%228%22/%3E%3Cpath d=%22M108 126l30-30 22 22 18-18 34 26%22/%3E%3Ccircle cx=%22146%22 cy=%2288%22 r=%228%22/%3E%3C/g%3E%3Ctext x=%2250%25%22 y=%22172%22 text-anchor=%22middle%22 fill=%22%236b7280%22 font-family=%22Arial,sans-serif%22 font-size=%2218%22%3ENo Image%3C/text%3E%3C/svg%3E';
+
+        // Global image fallback: if any image fails to load, replace it with a placeholder
+        function applyGlobalImageFallback() {
+            document.addEventListener('error', function (event) {
+                const target = event.target;
+                if (!(target instanceof HTMLImageElement)) return;
+                if (target.dataset.fallbackApplied === 'true') return;
+
+                target.dataset.fallbackApplied = 'true';
+                target.src = IMG_PLACEHOLDER;
+                target.alt = 'Image unavailable';
+            }, true);
+        }
 
         // Utility: Debounce function for performance
         function debounce(func, wait) {
@@ -1556,6 +1625,8 @@
         const originalComplainImageLabelHTML = $('#image-label').html(), originalComplainImageLabeClass = $('#solution-image-label').attr('class');
         const originalSolutionImageLabelHTML = $('#solution-image-label').html(), originalSolutionImageLabeClass = $('#solution-image-label').attr('class');
         $(document).ready(function () {
+            applyGlobalImageFallback();
+
             NProgress.configure({
                 showSpinner: false,
                 trickleSpeed: 200,
@@ -2398,6 +2469,15 @@
         let pageSize = 25;
         let totalPages = 1;
 
+        // Filter state variables
+        let filterState = {
+            store: '',
+            type: '',
+            severity: '',
+            status: ''
+        };
+        let uniqueStores = []; // Store unique store values for the dropdown
+
         // Google Apps Script Integration Functions using google.script.run
         function loadDataFromSheets() {
             if (isLoading) {
@@ -2415,6 +2495,7 @@
                         complainData = data.data || [];
                         filteredData = complainData;
                         currentPage = 1;
+                        populateStoreFilter(); // Populate store filter dropdown
                         updateDataTable();
                         updateLoadingMessage('โหลดข้อมูลสำเร็จ!', 'success');
                         $('#listTab, #reportTab').removeClass('hidden');
@@ -2825,6 +2906,7 @@
                     $tempImgs.val('');
                     $complainImage.val('');
                     updateImageLabel();
+                    populateStoreFilter(); // Update store filter dropdown
                     updateDataTable();
                 })
                 .catch(error => {
@@ -2996,8 +3078,8 @@
             batchDOMUpdate(() => {
                 tbody.empty();
 
-                // Use filtered data if available, otherwise use all data
-                const dataToDisplay = filteredData.length > 0 || complainData.length === 0 ? filteredData : complainData;
+                // Always render from filteredData so active filters/search are respected even when result is empty
+                const dataToDisplay = filteredData;
                 dataToDisplay.sort((a, b) => {
                     const dateA = new Date(a.date);
                     const dateB = new Date(b.date);
@@ -3340,33 +3422,112 @@
             });
         }
 
-        // Search data (optimized with debouncing)
-        const searchDataDebounced = debounce(function () {
-            const searchTerm = getCached('#searchInput').val().toLowerCase();
-
-            if (!searchTerm) {
-                filteredData = complainData;
-                currentPage = 1;
-                updateDataTable();
-                return;
-            }
-
-            // Filter data based on search term
-            filteredData = complainData.filter(item => {
-                return (
-                    String(item.date || '').toLowerCase().includes(searchTerm) ||
-                    String(item.product || '').toLowerCase().includes(searchTerm) ||
-                    String(item.store || '').toLowerCase().includes(searchTerm) ||
-                    String(item.type || '').toLowerCase().includes(searchTerm) ||
-                    String(item.problem || '').toLowerCase().includes(searchTerm) ||
-                    String(item.responsibleTeam || '').toLowerCase().includes(searchTerm) ||
-                    String(item.teamRepresentative || '').toLowerCase().includes(searchTerm) ||
-                    String(item.id || '').toLowerCase().includes(searchTerm)
-                );
+        // Populate store filter dropdown with unique stores
+        function populateStoreFilter() {
+            const stores = new Set();
+            complainData.forEach(item => {
+                if (item.store) {
+                    stores.add(item.store);
+                }
             });
+            
+            uniqueStores = Array.from(stores).sort();
+            const select = getCached('#filterStore');
+            const currentValue = select.val();
+            
+            // Clear existing options except the first one
+            select.find('option:not(:first)').remove();
+            
+            // Add sorted stores
+            uniqueStores.forEach(store => {
+                select.append(`<option value="${store}">${store}</option>`);
+            });
+            
+            // Restore previous selection if it still exists
+            if (uniqueStores.includes(currentValue)) {
+                select.val(currentValue);
+            }
+        }
 
+        // Apply filters - combines search term with filter selections
+        function applyFilters() {
+            // Get current filter values
+            filterState.store = getCached('#filterStore').val();
+            filterState.type = getCached('#filterType').val();
+            filterState.severity = getCached('#filterSeverity').val();
+            filterState.status = getCached('#filterStatus').val();
+            // Get search term
+            const searchTerm = getCached('#searchInput').val().toLowerCase();
+            
+            // Filter data based on all criteria
+            filteredData = complainData.filter(item => {
+                // Check store filter
+                if (filterState.store && item.store !== filterState.store) {
+                    return false;
+                }
+                
+                // Check type filter
+                if (filterState.type && item.type !== filterState.type) {
+                    return false;
+                }
+                
+                // Check severity filter (normalize to string to handle numeric/string value differences)
+                if (filterState.severity && String(item.severity ?? '').trim() !== String(filterState.severity).trim()) {
+                    return false;
+                }
+                
+                // Check status/pipeline filter
+                if (filterState.status && item.pipeline !== filterState.status) {
+                    return false;
+                }
+                
+                // Check search term
+                if (searchTerm) {
+                    return (
+                        String(item.date || '').toLowerCase().includes(searchTerm) ||
+                        String(item.product || '').toLowerCase().includes(searchTerm) ||
+                        String(item.store || '').toLowerCase().includes(searchTerm) ||
+                        String(item.type || '').toLowerCase().includes(searchTerm) ||
+                        String(item.problem || '').toLowerCase().includes(searchTerm) ||
+                        String(item.responsibleTeam || '').toLowerCase().includes(searchTerm) ||
+                        String(item.teamRepresentative || '').toLowerCase().includes(searchTerm) ||
+                        String(item.id || '').toLowerCase().includes(searchTerm)
+                    );
+                }
+                
+                return true;
+            });
+            
             currentPage = 1;
             updateDataTable();
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            // Reset filter state
+            filterState = {
+                store: '',
+                type: '',
+                severity: '',
+                status: ''
+            };
+            
+            // Reset UI
+            getCached('#filterStore').val('');
+            getCached('#filterType').val('');
+            getCached('#filterSeverity').val('');
+            getCached('#filterStatus').val('');
+            getCached('#searchInput').val('');
+            
+            // Reset data
+            filteredData = complainData;
+            currentPage = 1;
+            updateDataTable();
+        }
+
+        // Search data (optimized with debouncing)
+        const searchDataDebounced = debounce(function () {
+            applyFilters();
         }, DEBOUNCE_DELAY);
 
         function searchData() {
@@ -3658,6 +3819,9 @@
         $('#searchInput').on('keyup', function (e) {
             if (e.key === 'Enter') {
                 searchData();
+            } else {
+                // Apply filters in real-time as user types
+                searchDataDebounced();
             }
         });
 
