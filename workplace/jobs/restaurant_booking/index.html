@@ -1077,6 +1077,10 @@
                                 <span>17:00</span>
                                 <small class="availability-text">กรุณาเลือกวันที่ก่อน</small>
                             </button>
+                            <button type="button" class="btn-time-slot unavailable" data-time="18:00" disabled>
+                                <span>18:00</span>
+                                <small class="availability-text">กรุณาเลือกวันที่ก่อน</small>
+                            </button>
                             <button type="button" class="btn-time-slot unavailable" data-time="19:30" disabled>
                                 <span>19:30</span>
                                 <small class="availability-text">กรุณาเลือกวันที่ก่อน</small>
@@ -1111,6 +1115,10 @@
                                 <span>10 ที่นั่ง</span>
                                 <small class="availability-text">เลือกเวลาก่อน</small>
                             </button>
+                            <button type="button" class="btn-guest-count unavailable" data-guests="12" disabled style="grid-column: span 2;">
+                                <span>12 ที่นั่ง</span>
+                                <small class="availability-text">เลือกเวลาก่อน</small>
+                            </button>
                         </div>
                     </div>
 
@@ -1125,6 +1133,19 @@
                                 style="width: 60px; height: 3px; background: #997e45; border-radius: 10px;"></div>
                         </div>
                         <div class="location-buttons d-flex justify-content-center gap-3">
+                            <button type="button" class="btn-location unavailable" data-location="firstFloor" disabled>
+                                <span>ชั้น 1</span>
+                                <small class="availability-text">เลือกจำนวนที่นั่งก่อน</small>
+                            </button>
+                            <button type="button" class="btn-location unavailable" data-location="secondFloor" disabled>
+                                <span>ชั้น 2</span>
+                                <small class="availability-text">เลือกจำนวนที่นั่งก่อน</small>
+                            </button>
+                            <button type="button" class="btn-location unavailable" data-location="thirdFloor" disabled>
+                                <span>ชั้น 3</span>
+                                <small class="availability-text">เลือกจำนวนที่นั่งก่อน</small>
+                            </button>
+
                             <button type="button" class="btn-location unavailable" data-location="downstairs" disabled>
                                 <span>ชั้นล่าง</span>
                                 <small class="availability-text">เลือกจำนวนที่นั่งก่อน</small>
@@ -1468,7 +1489,7 @@
                 let location = $(this).data('location').split(',')
 
                 // After selecting guest count, check location availability
-                checkLocationAvailability(selectedDate, selectedGuests, location);
+                checkLocationAvailability(selectedDate, selectedTime, selectedGuests, location);
 
                 // Scroll to table location section
                 setTimeout(() => {
@@ -1484,7 +1505,8 @@
                 $('.btn-time-slot').removeClass('selected');
                 $(this).addClass('selected');
                 selectedTime = $(this).data('time');
-
+                console.log('selected date', selectedDate);
+                console.log('selected time', selectedTime);
                 // After selecting time, check available table types
                 checkAvailableTableTypes(selectedDate, selectedTime);
 
@@ -1573,8 +1595,8 @@
                 const cellDate = new Date(year, month, day);
                 const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-                let status = 'available';
-                let clickable = true;
+                let status = 'closed';
+                let clickable = false;
 
                 // Check if date is in the past
                 if (cellDate < new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0)) {
@@ -1774,7 +1796,8 @@
             google.script.run
                 .withSuccessHandler(function (response) {
                     response = JSON.parse(response);
-                    avilableTableTypes = response.map(t => t.guests)
+                    console.log("🚀 ~ checkAvailableTableTypes ~ response:", response)
+                    avilableTableTypes = response;
                     console.log('Available table types:', response);
                     // Reset guest count buttons
                     $('.btn-guest-count').removeClass('unavailable selected').prop('disabled', false);
@@ -1782,9 +1805,9 @@
                     // Update each guest count button based on availability
                     $('.btn-guest-count').each(function () {
                         const guestCount = $(this).data('guests');
-                        if (response.some(t => t.guests === guestCount)) {
+                        if (response.some(t =>  t.guests.min <= guestCount && t.guests.max >= guestCount)) {
                             $(this).find('span').text(`${guestCount} ${window.appLanguage === 'en' ? 'Persons' : 'ที่นั่ง'}`);
-                            $(this).data('location', response.filter(t => t.guests === guestCount).map(t => t.location).join(','))
+                            $(this).data('location', response.filter(t => t.guests.min <= guestCount && t.guests.max >= guestCount).map(t => t.location).join(','))
                             $(this).find('.availability-text').hide(); // Hide availability text when available
                         } else {
                             $(this).addClass('unavailable').prop('disabled', true);
@@ -1809,8 +1832,11 @@
                 })
                 .checkAvailableTableTypes(date, time);
         }
-        function checkLocationAvailability(date, guestCount, location) {
+        
+        function checkLocationAvailability(date, time, guestCount, location) {
+            console.log("🚀 ~ checkLocationAvailability ~ guestCount:", guestCount)
             console.log("🚀 ~ checkLocationAvailability ~ location:", location)
+            console.log("🚀 ~ checkLocationAvailability ~ avilableTableTypes:", avilableTableTypes)
             location = [...new Set(location)]; // Ensure unique locations
             // location [บน, ล่าง]
             $('.btn-location').removeClass('unavailable selected');
@@ -1821,9 +1847,78 @@
                 $('.btn-location .availability-text').text(window.appLanguage === 'en' ? 'Select guests first' : 'เลือกจำนวนที่นั่งก่อน');
                 return;
             }
-            if (guestCount === 10 && avilableTableTypes.includes(4) && avilableTableTypes.includes(6)) {
-                // If 10 guests, both locations are available
-                location.push('ล่าง')
+            if (time === '18:00') {
+                if(guestCount === 10 && avilableTableTypes.some(t => t.guests.min == 4 && t.guests.max == 4) && avilableTableTypes.some(t => t.guests.min == 6 && t.guests.max == 6)){
+                    location.push('ล่าง')
+                }
+            }else{
+                const groupByLocation = avilableTableTypes.reduce((acc, table) => {
+                    const loc = table.location;
+                    if (!acc[loc]) {
+                        acc[loc] = [];
+                    }
+                    acc[loc].push(table);
+                    return acc;
+                }, {});
+                switch(guestCount) {
+                   
+                    case 8:
+                        Object.keys(groupByLocation).forEach(loc => {
+                            if (groupByLocation[loc].filter(t => t.guests.min == 4 && t.guests.max == 4).length == 2 || groupByLocation[loc].filter(t => t.guests.min == 8 && t.guests.max == 8).length >= 1) {
+                                // If there are at least two 4-person tables available in this location, consider it available for 8 guests or if there is at least one 8-person table available, consider it available for 8 guests
+                                location.push(loc);
+                            }
+                        });
+                        break;
+                    case 10:
+                        Object.keys(groupByLocation).forEach(loc => {
+                            if ((groupByLocation[loc].filter(t => t.guests.min == 4 && t.guests.max == 4).length >= 1 &&
+                                groupByLocation[loc].filter(t => t.guests.min == 6 && t.guests.max == 6).length >= 1) || groupByLocation[loc].filter(t => t.guests.min == 10 && t.guests.max == 10).length >= 1) {
+                                // If there is at least one 4-person table and at least one 6-person table available in this location, consider it available for 10 guests or if there is at least one 10-person table available, consider it available for 10 guests
+                                location.push(loc);
+                            }
+                        });
+                        break;
+                    case 12:
+                        Object.keys(groupByLocation).forEach(loc => {
+                            if ((groupByLocation[loc].filter(t => t.guests.min == 4 && t.guests.max == 4).length >= 1 &&
+                                groupByLocation[loc].filter(t => t.guests.min == 6 && t.guests.max == 6).length >= 1 )) {
+                                location.push(loc);
+                            }
+                        });
+                        break;
+                }
+            }
+
+            // Update 1st floor button
+            const firstFloorBtn = $('.btn-location[data-location="firstFloor"]');
+            if (location.includes('1')) {
+                firstFloorBtn.removeClass('unavailable');
+                firstFloorBtn.find('.availability-text').text(window.appLanguage === 'en' ? 'Available' : 'ว่าง');
+                availableLocations.push('firstFloor');
+            } else {
+                firstFloorBtn.addClass('unavailable');
+                firstFloorBtn.find('.availability-text').text(window.appLanguage === 'en' ? 'Fully booked' : 'เต็มแล้ว');
+            }
+
+            const secondFloorBtn = $('.btn-location[data-location="secondFloor"]');
+            if (location.includes('2')) {
+                secondFloorBtn.removeClass('unavailable');
+                secondFloorBtn.find('.availability-text').text(window.appLanguage === 'en' ? 'Available' : 'ว่าง');
+                availableLocations.push('secondFloor');
+            } else {
+                secondFloorBtn.addClass('unavailable');
+                secondFloorBtn.find('.availability-text').text(window.appLanguage === 'en' ? 'Fully booked' : 'เต็มแล้ว');
+            }
+
+            const thirdFloorBtn = $('.btn-location[data-location="thirdFloor"]');
+            if (location.includes('3')) {
+                thirdFloorBtn.removeClass('unavailable');
+                thirdFloorBtn.find('.availability-text').text(window.appLanguage === 'en' ? 'Available' : 'ว่าง');
+                availableLocations.push('thirdFloor');
+            } else {
+                thirdFloorBtn.addClass('unavailable');
+                thirdFloorBtn.find('.availability-text').text(window.appLanguage === 'en' ? 'Fully booked' : 'เต็มแล้ว');
             }
 
             // Update upstairs button
@@ -1875,7 +1970,26 @@
             let locale = window.appLanguage === 'en' ? 'en-GB' : 'th-TH';
             $('#summary-date').text(date.toLocaleDateString(locale, options) + (window.appLanguage === 'en' ? ' at ' : ' เวลา ') + selectedTime);
             $('#summary-guests').text(selectedGuests + (window.appLanguage === 'en' ? ' Persons' : ' ที่นั่ง'));
-            $('#summary-location').text(selectedLocation === 'upstairs' ? (window.appLanguage === 'en' ? 'Upstairs' : 'ชั้นบน') : (window.appLanguage === 'en' ? 'Downstairs' : 'ชั้นล่าง'));
+            // $('#summary-location').text(selectedLocation === 'upstairs' ? (window.appLanguage === 'en' ? 'Upstairs' : 'ชั้นบน') : (window.appLanguage === 'en' ? 'Downstairs' : 'ชั้นล่าง'));
+            switch(selectedLocation) {
+                case 'firstFloor':
+                    $('#summary-location').text(window.appLanguage === 'en' ? '1st Floor' : 'ชั้น 1');
+                    break;
+                case 'secondFloor':
+                    $('#summary-location').text(window.appLanguage === 'en' ? '2nd Floor' : 'ชั้น 2');
+                    break;
+                case 'thirdFloor':
+                    $('#summary-location').text(window.appLanguage === 'en' ? '3rd Floor' : 'ชั้น 3');
+                    break;
+                case 'upstairs':
+                    $('#summary-location').text(window.appLanguage === 'en' ? 'Upstairs' : 'ชั้นบน');
+                    break;
+                case 'downstairs':
+                    $('#summary-location').text(window.appLanguage === 'en' ? 'Downstairs' : 'ชั้นล่าง');
+                    break;
+                default:
+                    $('#summary-location').text(selectedLocation);
+            }
         }
 
         function submitBooking() {

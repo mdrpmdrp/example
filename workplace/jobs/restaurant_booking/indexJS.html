@@ -1,0 +1,344 @@
+<script>
+  // Initialize AOS animation library
+AOS.init();
+
+// DOM ready and window load event handlers
+document.addEventListener("DOMContentLoaded", function () {
+    NProgress.start();
+    NProgress.inc();
+    initializeApp();
+});
+
+window.addEventListener("load", function () {
+    NProgress.done();
+});
+
+// Global variables
+let currentDate = new Date();
+let selectedDate = null;
+let selectedGuests = null;
+let selectedLocation = null;
+
+// Sample restaurant data (in real app, this would come from Google Apps Script)
+const restaurantData = {
+    // Sample closed days (0 = Sunday, 1 = Monday, etc.)
+    closedDays: [1], // Monday closed
+    
+    // Sample full days (format: YYYY-MM-DD)
+    fullDays: [],
+    
+    // Sample available locations
+    availableLocations: {
+        firstFloor: { name: 'ชั้น 1', available: true },
+        secondFloor: { name: 'ชั้น 2', available: true },
+        thirdFloor: { name: 'ชั้น 3', available: true },
+        upstairs: { name: 'ชั้นบน', available: true },
+        downstairs: { name: 'ชั้นล่าง', available: true }
+    }
+};
+
+function initializeApp() {
+    generateCalendar();
+    setupEventListeners();
+}
+
+function setupEventListeners() {
+    // Welcome page - Start booking button
+    $('#start-booking').click(function() {
+        $('#welcome-page').fadeOut(500, function() {
+            $('#booking-steps').fadeIn(500);
+        });
+    });
+
+    // Calendar navigation
+    $('#prev-month').click(() => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        generateCalendar();
+    });
+
+    $('#next-month').click(() => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        generateCalendar();
+    });
+
+    // Step navigation
+    $('#next-to-step2').click(() => goToStep(2));
+    $('#back-to-step1').click(() => goToStep(1));
+    $('#next-to-step3').click(() => goToStep(3));
+    $('#back-to-step2').click(() => goToStep(2));
+
+    // Guest count selection
+    $('#guest-count').change(function() {
+        selectedGuests = $(this).val();
+        if (selectedGuests) {
+            checkAvailability();
+        } else {
+            $('#table-options').hide();
+            $('#next-to-step3').prop('disabled', true);
+        }
+    });
+
+    // Form submission
+    $('#booking-form').submit(function(e) {
+        e.preventDefault();
+        submitBooking();
+    });
+}
+
+
+
+function generateCalendar() {
+    console.log(AVAILABLE_DATES);
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    // Update month header
+    const monthNames = [
+        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+    ];
+    $('#current-month').text(`${monthNames[month]} ${year + 543}`);
+
+    // Clear calendar
+    $('#calendar').empty();
+
+    // Add day headers
+    const dayHeaders = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+    dayHeaders.forEach(day => {
+        $('#calendar').append(`<div class="calendar-header">${day}</div>`);
+    });
+
+    // Get first day of month and number of days
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+
+    // Add empty cells for days before month starts
+    for (let i = 0; i < firstDay; i++) {
+        $('#calendar').append('<div class="calendar-day"></div>');
+    }
+
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+        const cellDate = new Date(year, month, day);
+        const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        
+        let status = 'available';
+        let clickable = true;
+
+        // Check if date is in the past
+        if (cellDate < today.setHours(0, 0, 0, 0)) {
+            status = 'closed';
+            clickable = false;
+        }
+        // Check if restaurant is closed on this day
+        else if (restaurantData.closedDays.includes(cellDate.getDay())) {
+            status = 'closed';
+            clickable = false;
+        }
+        // Check if day is fully booked
+        else if (restaurantData.fullDays.includes(dateString)) {
+            status = 'full';
+            clickable = false;
+        }
+
+        const dayElement = $(`
+            <div class="calendar-day ${status}" data-date="${dateString}" ${clickable ? 'style="cursor: pointer;"' : ''}>
+                ${day}
+            </div>
+        `);
+
+        if (clickable) {
+            dayElement.click(function() {
+                $('.calendar-day').removeClass('selected');
+                $(this).addClass('selected');
+                selectedDate = $(this).data('date');
+                $('#next-to-step2').prop('disabled', false);
+            });
+        }
+
+        $('#calendar').append(dayElement);
+    }
+}
+
+function goToStep(step) {
+    // Update step indicators
+    $('.step').removeClass('active completed');
+    $('.step-content').removeClass('active');
+
+    for (let i = 1; i < step; i++) {
+        $(`#step-${i}`).addClass('completed');
+    }
+    $(`#step-${step}`).addClass('active');
+    $(`#content-${step}`).addClass('active');
+
+    // Update summary if going to step 3
+    if (step === 3) {
+        updateBookingSummary();
+    }
+}
+
+function checkAvailability() {
+    // Show loading state
+    $('#table-options').show();
+    $('#seat-selection').html('<div class="text-center"><div class="spinner-border" role="status"></div></div>');
+
+    // Simulate API call to Google Apps Script
+    setTimeout(() => {
+        // In real implementation, this would be an AJAX call to Google Apps Script
+        // For now, we'll simulate the response
+        const mockResponse = {
+            upstairs: { available: true, tables: 5 },
+            downstairs: { available: true, tables: 3 }
+        };
+
+        displayTableOptions(mockResponse);
+    }, 1000);
+}
+
+function displayTableOptions(availability) {
+    let html = '';
+
+    if (availability.firstFloor.available) {
+        html += `
+            <div class="seat-option" data-location="firstFloor">
+                <i class="bi bi-building" style="font-size: 2rem; color: #FF6B6B;"></i>
+                <h5 class="mt-2">ชั้น 1</h5>
+                <p class="text-muted">มีโต๊ะว่าง ${availability.firstFloor.tables} โต๊ะ</p>
+            </div>
+        `;
+    }
+    if (availability.secondFloor.available) {
+        html += `
+            <div class="seat-option" data-location="secondFloor">
+                <i class="bi bi-building" style="font-size: 2rem; color: #4ECDC4;"></i>
+                <h5 class="mt-2">ชั้น 2</h5>
+                <p class="text-muted">มีโต๊ะว่าง ${availability.secondFloor.tables} โต๊ะ</p>
+            </div>
+        `;
+    }
+    if (availability.thirdFloor.available) {
+        html += `
+            <div class="seat-option" data-location="thirdFloor">
+                <i class="bi bi-building" style="font-size: 2rem; color: #1A535C;"></i>
+                <h5 class="mt-2">ชั้น 3</h5>
+                <p class="text-muted">มีโต๊ะว่าง ${availability.thirdFloor.tables} โต๊ะ</p>
+            </div>
+        `;
+    }
+
+    if (availability.upstairs.available) {
+        html += `
+            <div class="seat-option" data-location="upstairs">
+                <i class="bi bi-building" style="font-size: 2rem; color: #FF6B6B;"></i>
+                <h5 class="mt-2">ชั้นบน</h5>
+                <p class="text-muted">มีโต๊ะว่าง ${availability.upstairs.tables} โต๊ะ</p>
+            </div>
+        `;
+    }
+
+    if (availability.downstairs.available) {
+        html += `
+            <div class="seat-option" data-location="downstairs">
+                <i class="bi bi-shop" style="font-size: 2rem; color: #4ECDC4;"></i>
+                <h5 class="mt-2">ชั้นล่าง</h5>
+                <p class="text-muted">มีโต๊ะว่าง ${availability.downstairs.tables} โต๊ะ</p>
+            </div>
+        `;
+    }
+
+    if (!html) {
+        html = '<div class="text-center text-muted">ไม่มีโต๊ะว่างสำหรับจำนวนที่นั่งที่เลือก</div>';
+    }
+
+    $('#seat-selection').html(html);
+
+    // Add click handlers for table options
+    $('.seat-option').click(function() {
+        $('.seat-option').removeClass('selected');
+        $(this).addClass('selected');
+        selectedLocation = $(this).data('location');
+        $('#next-to-step3').prop('disabled', false);
+    });
+}
+
+function updateBookingSummary() {
+    const date = new Date(selectedDate);
+    const options = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        locale: 'th-TH'
+    };
+    
+    $('#summary-date').text(date.toLocaleDateString('th-TH', options));
+    $('#summary-guests').text(selectedGuests);
+    // $('#summary-location').text(selectedLocation === 'upstairs' ? 'ชั้นบน' : 'ชั้นล่าง');
+    switch (selectedLocation) {
+        case 'firstFloor':
+            $('#summary-location').text(window.appLanguage === 'en' ? '1st Floor' : 'ชั้น 1');
+            break;
+        case 'secondFloor':
+            $('#summary-location').text(window.appLanguage === 'en' ? '2nd Floor' : 'ชั้น 2');
+            break;
+        case 'thirdFloor':
+            $('#summary-location').text(window.appLanguage === 'en' ? '3rd Floor' : 'ชั้น 3');
+            break;
+        case 'upstairs':
+            $('#summary-location').text(window.appLanguage === 'en' ? 'Upstairs' : 'ชั้นบน');
+            break;
+        case 'downstairs':
+            $('#summary-location').text(window.appLanguage === 'en' ? 'Downstairs' : 'ชั้นล่าง');
+            break;
+        default:
+            $('#summary-location').text('');
+    }
+}
+
+function submitBooking() {
+    const bookingData = {
+        date: selectedDate,
+        guests: selectedGuests,
+        location: selectedLocation,
+        name: $('#customer-name').val(),
+        phone: $('#customer-phone').val(),
+        email: $('#customer-email').val(),
+        specialRequest: $('#special-request').val()
+    };
+
+    // Show loading
+    Swal.fire({
+        title: 'กำลังประมวลผล...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    // In real implementation, send data to Google Apps Script
+    setTimeout(() => {
+        Swal.fire({
+            icon: 'success',
+            title: 'จองสำเร็จ!',
+            text: 'เราจะติดต่อกลับเพื่อยืนยันการจองภายใน 30 นาที',
+            confirmButtonText: 'ตกลง'
+        }).then(() => {
+            // Reset form or redirect
+            location.reload();
+        });
+    }, 2000);
+}
+
+// Google Apps Script integration function (to be implemented)
+function sendToGoogleAppsScript(data) {
+    // Example implementation:
+    /*
+    return $.ajax({
+        url: 'YOUR_GOOGLE_APPS_SCRIPT_URL',
+        method: 'POST',
+        data: JSON.stringify(data),
+        contentType: 'application/json'
+    });
+    */
+}
+</script>
