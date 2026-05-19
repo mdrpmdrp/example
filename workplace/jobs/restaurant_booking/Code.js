@@ -101,6 +101,18 @@ function checkAvailableTableTypes(dateString = "2026-05-26", time = "18:00") {
 }
 
 function submitBooking(data) {
+  // data = {
+  //   "date": "2026-05-26",
+  //   "time": "13:00",
+  //   "guests": 18,
+  //   "location": "thirdFloor",
+  //   "title": "นาย",
+  //   "fname": "test",
+  //   "lname": "fwefsdfw",
+  //   "phone": "8978987978",
+  //   "email": "mdrpdeveloper@gmail.com",
+  //   "menuImage": "https://lh3.googleusercontent.com/d/1y5mYt64Wt7IR8lpy17b3TNny549t7INi"
+  // }
   let lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) {
     throw new Error('Could not acquire lock, please try again later.');
@@ -173,58 +185,200 @@ function updateSchedule(date = '2025-07-17', time = '13:00', location = 'downsta
     return { success: false, message: 'วันที่ท่านเลือกยังไม่เปิดให้จองโต๊ะ', messageEn: 'The selected date is not available for booking.' };
   }
 
-  // Fixed the array syntax and values
-  const tablesIndex = [
-    [4, 'downstairs'],
-    [6, 'downstairs'],
-    [6, 'downstairs'],
-    [6, 'downstairs'],
-    [8, 'upstairs'],
-    [10, 'upstairs']
-  ];
-
   if (!timesIndex[time]) {
-    return false;
+    return { success: false, message: 'รอบเวลานี้ไม่ถูกต้อง', messageEn: 'Invalid time slot.' };
   }
 
   const row = finder.getRow();
-  const currentBookingStatus = sheet.getRange(row, timesIndex[time].start, 1, timesIndex[time].count).getValues()[0];
-
-  if (guests == 10 && location === 'downstairs') {
-    if (currentBookingStatus[0] === 'จองแล้ว' || currentBookingStatus.slice(1, 3).every(status => status === 'จองแล้ว')) {
-      return {
-        success: false,
-        message: 'โต๊ะสำหรับ 10 คน ชั้นล่าง ถูกจองไปแล้ว',
-        messageEn: 'The table for 10 persons downstairs has already been booked.'
-      };
+  const startCol = timesIndex[time].start;
+  const countCol = timesIndex[time].count;
+  const currentBookingStatus = sheet.getRange(row, startCol, 1, countCol).getValues()[0];
+  const header = sheet.getRange(2, startCol, 1, countCol).getValues()[0];
+  const toColumnLetter = (colNumber) => {
+    let temp = colNumber;
+    let letter = '';
+    while (temp > 0) {
+      const mod = (temp - 1) % 26;
+      letter = String.fromCharCode(65 + mod) + letter;
+      temp = Math.floor((temp - mod) / 26);
     }
-    currentBookingStatus[0] = 'จองแล้ว';
-    for (let i = 1; i < currentBookingStatus.length; i++) {
-      if (currentBookingStatus[i] === 'ว่าง') {
-        currentBookingStatus[i] = 'จองแล้ว';
-        break;
+    return letter;
+  };
+
+  const normalizedLocationMap = {
+    firstFloor: 'ชั้น 1',
+    secondFloor: 'ชั้น 2',
+    thirdFloor: 'ชั้น 3',
+    downstairs: 'ชั้นล่าง',
+    upstairs: 'ชั้นบน',
+    'ชั้น 1': 'ชั้น 1',
+    'ชั้น 2': 'ชั้น 2',
+    'ชั้น 3': 'ชั้น 3',
+    'ชั้นล่าง': 'ชั้นล่าง',
+    'ชั้นบน': 'ชั้นบน'
+  };
+
+  const targetLocation = normalizedLocationMap[location] || location;
+  const targetGuests = Number(guests);
+
+  const tables = header.map((h, index) => {
+    const raw = String(h || '').trim();
+    const parts = raw.split('(');
+    const seatText = (parts[0] || '').trim();
+    const locText = ((parts[1] || '').replace(')', '')).trim();
+    const seatRange = seatText.includes('-') ? seatText.split('-').map(Number) : [Number(seatText), Number(seatText)];
+    const min = seatRange[0];
+    const max = seatRange[1];
+    return {
+      index,
+      min,
+      max,
+      location: locText,
+      isAvailable: currentBookingStatus[index] === 'ว่าง'
+    };
+  });
+
+  const canSeat = (table, seats) => table.min <= seats && table.max >= seats;
+  const getAvailableBy = (loc, predicate) => tables.filter(t => t.isAvailable && t.location === loc && predicate(t));
+
+  const selectedTableIndexes = [];
+  const pick = (table) => {
+    if (!table) return false;
+    if (selectedTableIndexes.includes(table.index)) return false;
+    selectedTableIndexes.push(table.index);
+    return true;
+  };
+
+  if (time === '18:00') {
+    if (targetLocation === 'ชั้นล่าง') {
+      const exact4 = getAvailableBy('ชั้นล่าง', t => canSeat(t, 4));
+      const exact6 = getAvailableBy('ชั้นล่าง', t => canSeat(t, 6));
+      if (targetGuests === 4) pick(exact4[0]);
+      if (targetGuests === 6) pick(exact6[0]);
+      if (targetGuests === 10) {
+        if (exact6.length > 0 && exact4.length > 0) {
+          selectedTableIndexes.length = 0;
+          pick(exact4[0]);
+          pick(exact6[0]);
+        }
+      }
+    }
+
+    if (targetLocation === 'ชั้นบน') {
+      const can8 = getAvailableBy('ชั้นบน', t => canSeat(t, 8));
+      if (targetGuests === 8 || targetGuests === 10) {
+        pick(can8[0]);
       }
     }
   } else {
-    let found = false;
-    for (let i = 0; i < currentBookingStatus.length; i++) {
-      if (currentBookingStatus[i] === 'ว่าง' && tablesIndex[i][0] === guests && tablesIndex[i][1] === location) {
-        currentBookingStatus[i] = 'จองแล้ว';
-        found = true;
-        break;
+    if (targetLocation === 'ชั้น 1') {
+      const exact4 = getAvailableBy('ชั้น 1', t => t.min === 4 && t.max === 4);
+      const sixToEight = getAvailableBy('ชั้น 1', t => t.min === 6 && t.max === 8);
+      const can8 = getAvailableBy('ชั้น 1', t => canSeat(t, 8));
+      const can10 = getAvailableBy('ชั้น 1', t => canSeat(t, 10));
+
+      if (targetGuests === 4) pick(exact4[0]);
+      if (targetGuests === 6) pick(sixToEight[0]);
+      if (targetGuests === 8) {
+        if (can8.length > 0) {
+          selectedTableIndexes.length = 0;
+          pick(can8[0]);
+        } else if (exact4.length >= 2) {
+          selectedTableIndexes.length = 0;
+          pick(exact4[0]);
+          pick(exact4[1]);
+        } else if (sixToEight.length > 0) {
+          selectedTableIndexes.length = 0;
+          pick(sixToEight[0]);
+        }
+      }
+      if (targetGuests === 10) {
+        if (can10.length > 0) {
+          selectedTableIndexes.length = 0;
+          pick(can10[0]);
+        } else if (sixToEight.length > 0 && exact4.length > 0) {
+          selectedTableIndexes.length = 0;
+          pick(sixToEight[0]);
+          pick(exact4[0]);
+        }
+      }
+      if (targetGuests === 12) {
+        if (sixToEight.length > 0 && exact4.length > 0) {
+          selectedTableIndexes.length = 0;
+          pick(sixToEight[0]);
+          pick(exact4[0]);
+        }
       }
     }
-    if (!found) {
-      return {
-        success: false,
-        message: `โต๊ะสำหรับ ${guests} คน ชั้น ${location === 'downstairs' ? 'ล่าง' : 'บน'} ถูกจองไปแล้ว`,
-        messageEn: `The table for ${guests} persons on the ${location === 'downstairs' ? 'downstairs' : 'upstairs'} has already been booked.`
-      };
+
+    if (targetLocation === 'ชั้น 2') {
+      const can6 = getAvailableBy('ชั้น 2', t => canSeat(t, 6));
+      const can8 = getAvailableBy('ชั้น 2', t => canSeat(t, 8));
+      const can10 = getAvailableBy('ชั้น 2', t => canSeat(t, 10));
+      if (targetGuests === 6) pick(can6[0]);
+      if (targetGuests === 8) pick(can8[0]);
+      if (targetGuests === 10) pick(can10[0]);
+    }
+
+    if (targetLocation === 'ชั้น 3') {
+      const exact4 = getAvailableBy('ชั้น 3', t => t.min === 4 && t.max === 4);
+      const sixToEight = getAvailableBy('ชั้น 3', t => t.min === 6 && t.max === 8);
+      const allFloor3 = getAvailableBy('ชั้น 3', () => true);
+      if (targetGuests === 4) pick(exact4[0]);
+      if (targetGuests === 6 || targetGuests === 8) pick(sixToEight[0]);
+      if (targetGuests === 18 && allFloor3.length >= 4) {
+        allFloor3.forEach(t => pick(t));
+      }
     }
   }
 
+  if (selectedTableIndexes.length === 0) {
+    Logger.log(
+      '[updateSchedule] No table matched | date=%s time=%s location=%s guests=%s row=%s startCol=%s count=%s',
+      parsedDate,
+      time,
+      targetLocation,
+      targetGuests,
+      row,
+      startCol,
+      countCol
+    );
+    return {
+      success: false,
+      message: `โต๊ะสำหรับ ${targetGuests} คน ${targetLocation} ถูกจองไปแล้ว`,
+      messageEn: `The table for ${targetGuests} persons at ${targetLocation} has already been booked.`
+    };
+  }
+
+  const selectedDebug = selectedTableIndexes
+    .slice()
+    .sort((a, b) => a - b)
+    .map(i => {
+      const sheetCol = startCol + i;
+      return {
+        indexInSlot: i,
+        sheetColumnNumber: sheetCol,
+        sheetColumnA1: toColumnLetter(sheetCol),
+        header: String(header[i] || '').trim()
+      };
+    });
+
+  Logger.log(
+    '[updateSchedule] Reserve columns | date=%s time=%s location=%s guests=%s row=%s details=%s',
+    parsedDate,
+    time,
+    targetLocation,
+    targetGuests,
+    row,
+    JSON.stringify(selectedDebug)
+  );
+
+  selectedTableIndexes.forEach(i => {
+    currentBookingStatus[i] = 'จองแล้ว';
+  });
+
   // Write the updated values back to the sheet
-  sheet.getRange(row, timesIndex[time].start, 1, timesIndex[time].count).setValues([currentBookingStatus]);
+  sheet.getRange(row, startCol, 1, countCol).setValues([currentBookingStatus]);
 
   return { success: true, message: 'โต๊ะถูกจองเรียบร้อยแล้ว' }
 }
@@ -415,22 +569,3 @@ https://line.me/R/oaMessage/@sangthatien/?${data.bookingId}
 
 }
 
-// ปรับ logic การเลือกโต๊ะ เงื่อนไขดังนี้
-
-// ชั้น1 มี4โต๊ะ
-// โต๊ะ 1: 6-8 คน
-// โต๊ะ 2: 4 คน
-// โต๊ะ 3: 4 คน
-// โต๊ะ 4: 6-8 คน
-// สามารถรวมโต๊ะเป็น 8 10 12 (ถ้า 6+4 จะสามาถนั่งได้ 12 คน)
-
-// ชั้น2 มี2โต๊ะ
-// โต๊ะ 1: 8- 10 คน
-// โต๊ะ 2: 6 คน
-
-// ชั้น3 มี4โต๊ะ
-// โต๊ะ 1: 6-8 คน
-// โต๊ะ 2: 6-8 คน
-// โต๊ะ 3: 4 คน
-// โต๊ะ 4: 4 คน
-// สามารถรวมโต๊ะเป็น 8 10 คนได้
