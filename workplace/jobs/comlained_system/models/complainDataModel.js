@@ -80,6 +80,18 @@ function normalizeImagesForSheet(images) {
 }
 
 /**
+ * Ensure weekOfYear always has a value before writing to sheet.
+ */
+function normalizeWeekOfYearForSheet(weekOfYear, dateValue) {
+  const normalizedWeek = String(weekOfYear || '').trim();
+  if (normalizedWeek) return normalizedWeek;
+
+  const parsedDate = dateValue ? new Date(dateValue) : new Date();
+  const safeDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+  return String(getWeekOfYear(safeDate)) + '/' + String(safeDate.getFullYear());
+}
+
+/**
  * Add new data to sheet
  */
 function addComplainData(formData) {
@@ -92,11 +104,12 @@ function addComplainData(formData) {
     // Convert solutions array to JSON string
     const solutionsJson = formData.solutions ? JSON.stringify(formData.solutions) : '';
     const imagesCellValue = normalizeImagesForSheet(formData.images);
+    const weekOfYear = normalizeWeekOfYearForSheet(formData.weekOfYear, formData.date);
 
     const rowData = [
       nextId,
       formData.date,
-      formData.weekOfYear,
+      weekOfYear,
       formData.product,
       formData.quantity,
       formData.unit,
@@ -145,7 +158,7 @@ function addComplainData(formData) {
       newRecord: {
         id: nextId,
         date: formData.date,
-        weekOfYear: formData.weekOfYear,
+        weekOfYear: weekOfYear,
         product: formData.product,
         quantity: formData.quantity,
         unit: formData.unit,
@@ -173,11 +186,6 @@ function addComplainData(formData) {
  * Update existing data in sheet
  */
 function updateComplainData(formData) {
-  const getWeekOfYear = (date) => {
-    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-    const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
-    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-  }
   try {
     const sheet = getOrCreateSheet();
     const rowIndex = findRowIndexById(sheet, formData.id);
@@ -192,10 +200,11 @@ function updateComplainData(formData) {
     // Convert solutions array to JSON string
     const solutionsJson = formData.solutions ? JSON.stringify(formData.solutions) : '';
     const imagesCellValue = normalizeImagesForSheet(formData.images);
+    const weekOfYear = normalizeWeekOfYearForSheet(formData.weekOfYear, formData.date);
     const rowData = [
       formData.id,
       formData.date,
-      formData.weekOfYear,
+      weekOfYear,
       formData.product,
       formData.quantity,
       formData.unit,

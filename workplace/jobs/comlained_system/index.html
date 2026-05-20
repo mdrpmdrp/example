@@ -1620,6 +1620,13 @@
             return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
         }
 
+        function setWeekOfYearFromDate(dateValue) {
+            const parsedDate = dateValue ? new Date(dateValue) : new Date();
+            const safeDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+            const weekOfYear = getWeekNumber(safeDate);
+            $('#weekOfYear').val(weekOfYear + '/' + safeDate.getFullYear());
+        }
+
         // Initialize
         let dateInput, reportDateStartInput, reportDateEndInput, modalDateInput;
         const originalComplainImageLabelHTML = $('#image-label').html(), originalComplainImageLabeClass = $('#solution-image-label').attr('class');
@@ -1670,8 +1677,7 @@
             });
 
             dateInput._input.setAttribute('disabled', 'disabled');
-            const weekOfYear = getWeekNumber(new Date());
-            $('#weekOfYear').val(weekOfYear + '/' + new Date().getFullYear());
+            setWeekOfYearFromDate(new Date());
             showTab('form');
 
             $('#reportType, #reportStore, #reportSeverity').on('change', generateReport);
@@ -2533,6 +2539,8 @@
         }
 
         function saveDataToSheets(formData, isEdit = false) {
+            console.log('Saving data to Sheets:', formData, 'Is Edit:', isEdit);
+            return;
             return new Promise((resolve, reject) => {
                 if (isEdit) {
                     callScript({
@@ -2844,6 +2852,11 @@
                 folderId: folder_id,
             };
 
+            if (!String(formData.weekOfYear || '').trim()) {
+                setWeekOfYearFromDate(formData.date);
+                formData.weekOfYear = $('#weekOfYear').val();
+            }
+
             console.log(formData)
 
             const editId = $('#editId').val();
@@ -2949,6 +2962,7 @@
             $('#complainForm')[0].reset();
             $('#editId').val('');
             $('#date').val(new Date().toISOString().split('T')[0]);
+            setWeekOfYearFromDate($('#date').val());
             currentEditId = null;
             currentSolutions = []; // Clear solutions
             renderSolutions(); // Re-render empty state
