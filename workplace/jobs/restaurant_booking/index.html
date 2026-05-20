@@ -1280,13 +1280,25 @@
                             เพื่อให้การจองสมบูรณ์ <b>คุณต้อง</b> คลิกลิงก์ด้านล่างและส่งรหัสการจองให้เจ้าหน้าที่ทาง
                             LINE
                         </div>
-                        <a href="https://line.me/R/oaMessage/@sangthatien/?${{bookingId}}" target="_blank"
+                        <!-- for mobile -->
+                        <a id="booking-confirmation-line-link" href="#" target="_blank"
                             style="display: inline-block; background: #01c301; color: #fff; font-weight: 700; font-size: 1.1rem; padding: 12px 28px; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 10px rgba(28,66,0,0.12); transition: background 0.2s;">
                             <i class="bi bi-line me-2"></i>
                             <span id="booking-confirmation-link">
                                 คลิกเพื่อยืนยันการจองผ่าน LINE
                             </span>
                         </a>
+
+                        <!-- for PC -->
+                        <!-- show QRcode เพื่อให้ใช้มือถือสแกน -->
+                        <div id="booking-confirmation-qrcode-container" style="display: none; margin-top: 12px; text-align: center;">
+                            <img id="booking-confirmation-qrcode" src="" alt="LINE QR Code"
+                                style="width: 220px; max-width: 100%; border-radius: 10px; border: 1px solid #e5dcc8; padding: 8px; background: #fff;">
+                            <div id="booking-confirmation-qrcode-caption" style="font-size: 0.95rem; color: #666; margin-top: 8px;">
+                                เปิดกล้องมือถือแล้วสแกน QR Code เพื่อยืนยันผ่าน LINE
+                            </div>
+                        </div>
+
                         <div style="font-size: 0.98rem; color: #997e45; margin-top: 10px;"
                             id="booking-confirmation-note">
                             การจองจะได้รับการยืนยันหลังจากคุณติดต่อเจ้าหน้าที่ทางบัญชี Line Official ของเรา.
@@ -2244,6 +2256,28 @@
             // Auto-close loading alerts are handled by the calling function
         }
 
+        function updateLineConfirmationDisplay(bookingId, rootElement = document) {
+            const lineUrl = "https://line.me/R/oaMessage/@sangthatien/?" + encodeURIComponent(bookingId);
+            const isDesktop = window.matchMedia('(min-width: 769px)').matches;
+
+            const lineLink = rootElement.querySelector('#booking-confirmation-line-link');
+            const qrContainer = rootElement.querySelector('#booking-confirmation-qrcode-container');
+            const qrImage = rootElement.querySelector('#booking-confirmation-qrcode');
+
+            if (lineLink) {
+                lineLink.href = lineUrl;
+                lineLink.style.display = isDesktop ? 'none' : 'inline-block';
+            }
+
+            if (qrContainer) {
+                qrContainer.style.display = isDesktop ? 'block' : 'none';
+            }
+
+            if (qrImage) {
+                qrImage.src = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(lineUrl);
+            }
+        }
+
         // Function to show booking success summary page
         function showBookingSummaryPage(bookingData) {
             // Hide booking steps
@@ -2265,6 +2299,10 @@
 
                 // Fade in summary page
                 $('#booking-success-page').hide().fadeIn(500);
+
+                // On desktop, show QR code for mobile scan. On mobile, keep LINE button.
+                const renderedSuccessPage = $('.booking-card #booking-success-page').last().get(0);
+                updateLineConfirmationDisplay(bookingData.bookingId, renderedSuccessPage || document);
 
                 // Scroll to top
                 window.scrollTo({
@@ -2316,8 +2354,6 @@
 
         function sendToGoogleSheets(data) {
             console.log("🚀 ~ sendToGoogleSheets ~ data:", data);
-            // Call Google Apps Script function to handle booking
-            return;
             google.script.run
                 .withSuccessHandler(function (response) {
                     response = JSON.parse(response);
@@ -2391,6 +2427,7 @@
             $('#booking-confirmation-title').text('Please Confirm Your Booking');
             $('#booking-confirmation-message').html('To complete your reservation, you <b>MUST</b> click the link below and send your booking ID to our staff via LINE chat.');
             $('#booking-confirmation-link').text('Click to confirm booking via LINE');
+            $('#booking-confirmation-qrcode-caption').text('Open your phone camera and scan this QR code to confirm via LINE.');
             $('#booking-confirmation-note').text('Your booking will be confirmed only after you contact our staff via Line Official Account.');
             $('#booking-details-title').text('Booking Details');
             $('#booking-id-label').text('Booking ID:');
