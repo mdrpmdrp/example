@@ -102,10 +102,10 @@ function checkAvailableTableTypes(dateString = "2026-05-26", time = "18:00") {
 
 function submitBooking(data) {
   // data = {
-  //   "date": "2026-05-26",
-  //   "time": "13:00",
-  //   "guests": 18,
-  //   "location": "thirdFloor",
+  //   "date": "2026-05-27",
+  //   "time": "18:00",
+  //   "guests": 8,
+  //   "location": "upstairs",
   //   "title": "นาย",
   //   "fname": "test",
   //   "lname": "fwefsdfw",
