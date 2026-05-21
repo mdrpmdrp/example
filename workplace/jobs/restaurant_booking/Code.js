@@ -1,8 +1,8 @@
 const timesIndex = {
-  '13:00': { start: 4, count: 10 },
-  '17:00': { start: 15, count: 10 },
-  '18:00': { start: 26, count: 6 },
-  '19:30': { start: 33, count: 10 }
+  '13:00': { start: 4, count: 10 }, // Column D to M
+  '17:00': { start: 15, count: 10 }, // Column O to X
+  '18:00': { start: 26, count: 8 }, // Column Z to AG
+  '19:30': { start: 35, count: 10 } // Column AI to AR
 };
 
 function doGet(e) {
@@ -265,9 +265,14 @@ function updateSchedule(date = '2025-07-17', time = '13:00', location = 'downsta
     }
 
     if (targetLocation === 'ชั้นบน') {
-      const can8 = getAvailableBy('ชั้นบน', t => canSeat(t, 8));
-      if (targetGuests === 8 || targetGuests === 10) {
-        pick(can8[0]);
+      const exact4Up = getAvailableBy('ชั้นบน', t => t.min === 4 && t.max === 4);
+      if (targetGuests === 4) {
+        pick(exact4Up[0]);
+      }
+      if (targetGuests === 8 && exact4Up.length >= 2) {
+        selectedTableIndexes.length = 0;
+        pick(exact4Up[0]);
+        pick(exact4Up[1]);
       }
     }
   } else {
@@ -455,6 +460,23 @@ function getMenuImage() {
 function sendEmailToCustomer(data, lang = 'th') {
   Logger = BetterLog.useSpreadsheet();
   Logger.log('Sending email to customer with booking data:', data);
+  switch (data.location) {
+    case 'firstFloor':
+      data.location = 'ชั้น 1';
+      break;
+    case 'secondFloor':
+      data.location = 'ชั้น 2';
+      break;
+    case 'thirdFloor':
+      data.location = 'ชั้น 3';
+      break;
+    case 'downstairs':
+      data.location = 'ชั้นล่าง';
+      break;
+    case 'upstairs':
+      data.location = 'ชั้นบน';
+      break;
+  };
   try {
     const subject = "ยืนยันการจองโต๊ะที่ Sang ท่าเตียน";
     const sender = "Sang ท่าเตียน";
@@ -471,7 +493,7 @@ https://line.me/R/oaMessage/@sangthatien/?${data.bookingId}
 เวลา: ${data.time}
 จำนวนแขก: ${data.guests} คน
 ตำแหน่งโต๊ะ: ${data.location}
-ชื่อผู้จอง: ${data.name}
+ชื่อผู้จอง: ${data.title} ${data.fname} ${data.lname}
 เบอร์โทร: ${data.phone}
 อีเมล: ${data.email}
   `;
