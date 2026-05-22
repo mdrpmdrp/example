@@ -1,0 +1,58 @@
+graph TD
+    %% 1. เริ่มต้นและหน้า Welcome
+    Start(["เข้าสู่เว็บไซต์"]) --> Welcome{"หน้า Welcome"}
+    Welcome -->|เลือกภาษา| Lang["ตั้งค่า window.appLanguage <br/>TH / EN"]
+    Lang --> Welcome
+    Welcome -->|กดเริ่มจองโต๊ะ| Step1["เข้าสู่ Step 1: เลือกวันที่และโต๊ะ"]
+
+    %% 2. Step 1: Selection Logic
+    subgraph Step_1 ["Step 1: Selection Logic"]
+        Step1 --> Cal["แสดงปฏิทิน - generateCalendar"]
+        Cal --> DateCheck{"เลือกวันที่?"}
+        DateCheck -->|ตรวจสอบ AVAILABLE_DATES| TimeSlot["แสดงรอบเวลาที่ว่าง"]
+        
+        TimeSlot --> TimeSel{"เลือกเวลา?"}
+        
+        %% กฎการแสดงจำนวนที่นั่ง
+        TimeSel --> Rule1{"เป็นเวลา 18:00?"}
+        Rule1 -- ใช่ --> Guest18["แสดงปุ่ม 4, 6, 8, 10 ที่นั่ง <br/>*ซ่อน 12, 18 ที่นั่ง*"]
+        Rule1 -- ไม่ใช่ --> GuestOther["แสดงปุ่ม 4, 6, 8, 10, 12, 18 ที่นั่ง"]
+        
+        Guest18 & GuestOther --> CallAPI["เรียก checkAvailableTableTypes <br/>(Server Call)"]
+        
+        CallAPI --> GuestCheck{"เลือกจำนวนแขก?"}
+        
+        %% กฎการเลือกตำแหน่งโต๊ะ (getAvailableLocationsByRules)
+        GuestCheck --> Rule2{"เป็นเวลา 18:00?"}
+        Rule2 -- ใช่ --> Loc18["แสดงปุ่ม: ชั้นบน / ชั้นล่าง"]
+        Rule2 -- ไม่ใช่ --> LocOther["แสดงปุ่ม: ชั้น 1 / ชั้น 2 / ชั้น 3"]
+        
+        Loc18 & LocOther --> LocCheck{"เลือกตำแหน่งโต๊ะ?"}
+        LocCheck --> NextBtn["เปิดปุ่ม 'ถัดไป'"]
+    end
+
+    %% 3. Step 2: Customer Info
+    NextBtn -->|กดปุ่มถัดไป| Step2["เข้าสู่ Step 2: ข้อมูลการจอง"]
+    
+    subgraph Step_2 ["Step 2: Customer Info"]
+        Step2 --> Summary["แสดงสรุปการจอง <br/>วันที่/เวลา/แขก/ตำแหน่ง"]
+        Summary --> Menu["แสดงรูปเมนูประจำเดือน"]
+        Menu --> Form["กรอกชื่อ/เบอร์โทร/อีเมล"]
+        Form --> Confirm{"กดปุ่มยืนยันการจอง"}
+    end
+
+    %% 4. Submission & Success
+    Confirm -->|เรียก google.script.run.submitBooking| Loading["แสดง Swal Loading"]
+    Loading --> Res{"จองสำเร็จ?"}
+    
+    Res -- ไม่สำเร็จ --> Error["แสดง Error / ให้แก้ไขข้อมูล"]
+    Res -- สำเร็จ --> Success["แสดงหน้า Success Template"]
+    
+    subgraph Success_Page ["Success Page"]
+        Success --> ShowID["แสดง Booking ID <br/>และรายละเอียดทั้งหมด"]
+        ShowID --> LineBtn["ปุ่มยืนยันผ่าน LINE <br/>(แนบ Booking ID ในลิงก์)"]
+        ShowID --> QR["แสดง QR Code <br/>สำหรับเครื่อง PC"]
+    end
+
+    Error --> Form
+    Success_Page --> NewBooking(["จบกระบวนการ / จองเพิ่ม"])

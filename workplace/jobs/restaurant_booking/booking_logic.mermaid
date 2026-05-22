@@ -1,0 +1,58 @@
+graph TD
+    Start(["เริ่มการจอง"]) --> Step1["เลือกวันที่และรอบเวลา"]
+    Step1 --> Step2["เลือกจำนวนแขกและตำแหน่งโต๊ะ"]
+    Step2 --> Submit{"กดปุ่มจอง"}
+    
+    subgraph Server_Logic ["Logic ฝั่ง Server - submitBooking"]
+        Submit --> Lock["Lock Script - กันการจองซ้อน"]
+        Lock --> DupCheck{"เช็คข้อมูลซ้ำ<br/>เบอร์โทร/อีเมล"}
+        
+        DupCheck -- ซ้ำ --> ErrorDup(["แจ้งเตือน: มีการจองซ้ำ"])
+        DupCheck -- ไม่ซ้ำ --> UpdateSched["เรียก updateSchedule"]
+        
+        subgraph Table_Assignment ["การจัดสรรโต๊ะ - updateSchedule"]
+            UpdateSched --> TimeCheck{"เช็คเวลา?"}
+            
+            %% Logic รอบ 18:00
+            TimeCheck -- "รอบ 18:00" --> Loc18{"ตำแหน่ง?"}
+            
+            Loc18 -- "ชั้นล่าง" --> Guest18L{"จำนวนแขก?"}
+            Guest18L -- "4 คน" --> T4L["เลือกโต๊ะ 4 ที่ 1 ตัว"]
+            Guest18L -- "6 คน" --> T6L["เลือกโต๊ะ 6 ที่ 1 ตัว"]
+            Guest18L -- "10 คน" --> T10L["เลือกโต๊ะ 4 + 6 ที่ อย่างละตัว"]
+            
+            Loc18 -- "ชั้นบน" --> Guest18U{"จำนวนแขก?"}
+            Guest18U -- "4 คน" --> T4U["เลือกโต๊ะ 4 ที่ 1 ตัว"]
+            Guest18U -- "8 คน" --> T8U["เลือกโต๊ะ 4 ที่ 2 ตัว"]
+            
+            %% Logic รอบอื่นๆ
+            TimeCheck -- "รอบอื่นๆ" --> LocOther{"ตำแหน่ง?"}
+            
+            LocOther -- "ชั้น 1" --> GuestF1{"จำนวนแขก?"}
+            GuestF1 -- "4 คน" --> TF1_4["เลือกโต๊ะ 4 ที่"]
+            GuestF1 -- "6 คน" --> TF1_6["เลือกโต๊ะ 6-8 ที่"]
+            GuestF1 -- "8 คน" --> TF1_8["เลือกโต๊ะ 8 ที่ / 4+4 ที่ / 6-8 ที่"]
+            GuestF1 -- "10-12 คน" --> TF1_10["เลือกโต๊ะ 10 ที่ / 6-8 + 4 ที่"]
+            
+            LocOther -- "ชั้น 2" --> GuestF2{"จำนวนแขก?"}
+            GuestF2 -- "6/8/10 คน" --> TF2_X["เลือกโต๊ะตามขนาด"]
+            
+            LocOther -- "ชั้น 3" --> GuestF3{"จำนวนแขก?"}
+            GuestF3 -- "4 คน" --> TF3_4["เลือกโต๊ะ 4 ที่"]
+            GuestF3 -- "6-8 คน" --> TF3_6["เลือกโต๊ะ 6-8 ที่"]
+            GuestF3 -- "18 คน" --> TF3_18["เลือกโต๊ะทั้งหมดของชั้น 3"]
+        end
+        
+        T4L & T6L & T10L & T4U & T8U & TF1_4 & TF1_6 & TF1_8 & TF1_10 & TF2_X & TF3_4 & TF3_6 & TF3_18 --> MatchCheck{"หาโต๊ะได้ไหม?"}
+        
+        MatchCheck -- ไม่ได้ --> ErrorFull(["แจ้งเตือน: โต๊ะเต็ม"])
+        MatchCheck -- ได้ --> SaveDB["บันทึกลง Google Sheet"]
+        
+        SaveDB --> GenID["สร้าง Booking ID"]
+        GenID --> Notify["ส่ง Email / Telegram"]
+        Notify --> Success(["จองสำเร็จ!"])
+    end
+    
+    ErrorDup --> Unlock["คลาย Lock"]
+    ErrorFull --> Unlock
+    Success --> Unlock
