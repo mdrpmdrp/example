@@ -1,9 +1,9 @@
-// 24/4/2026 18:30
+// 22/5/2026 09:30
 
 var SS = SpreadsheetApp.getActiveSpreadsheet();
 
 // Column counts for known price sheets — avoids reading unused columns
-var _SHEET_COLS = { 'ผ่อน': 8, 'มือสอง': 8, 'Freedown': 8, 'ซื้อสด': 4, 'สดvnphone': 6 };
+var _SHEET_COLS = { 'ผ่อน': 8, 'มือสอง': 8, 'Freedown': 8, 'ขายส่ง': 4, 'สดvnphone': 6 };
 var _INSTALLMENT = { 'ผ่อน': true, 'มือสอง': true, 'Freedown': true };
 var _USERS_HEADERS = ['Company', 'First Name', 'Last Name', 'Nickname', 'Email', 'Phone', 'Status', 'Created At', 'Role', 'Branch'];
 var _STOCK_REQUEST_HEADERS = [
@@ -54,7 +54,7 @@ function sheetData(sheetName) {
       return String(r[0]).trim() !== '' && !isNaN(Number(r[3])) &&
         (r[4] !== '' || r[5] !== '' || r[6] !== '' || r[7] !== '');
     });
-  } else if (sheetName === 'ซื้อสด') {
+  } else if (sheetName === 'ขายส่ง') {
     result = all.filter(function (r) {
       return String(r[0]).trim() !== '' && r[3] !== '' && !isNaN(Number(r[3]));
     });
@@ -204,7 +204,7 @@ function logSearch(payload) {
     } else if (p.type && p.type.indexOf('ดาวน์โหลด') === 0) {
       eventStr = p.type + ': ' + p.brand + ' ' + p.model + ' ' + p.storage;
     } else {
-      eventStr = 'Search ซื้อสด: ' + p.brand + ' ' + p.model + ' ' + p.storage
+      eventStr = 'Search ขายส่ง: ' + p.brand + ' ' + p.model + ' ' + p.storage
         + ' | ' + p.price + ' บาท';
     }
     logEvent(eventStr, {
@@ -700,7 +700,7 @@ function rowToRequest(row) {
 
 function getPriceData() {
   try {
-    var result = { 'ผ่อน': {}, 'มือสอง': {}, 'Freedown': {}, 'ซื้อสด': {}, 'สดvnphone': {}, vn_stock: {} };
+    var result = { 'ผ่อน': {}, 'มือสอง': {}, 'Freedown': {}, 'ขายส่ง': {}, 'สดvnphone': {}, vn_stock: {} };
 
     // Installment sheets: brand | model | storage | down | 6mo | 8mo | 10mo | 12mo
     ['ผ่อน', 'มือสอง', 'Freedown'].forEach(function (sn) {
@@ -714,14 +714,14 @@ function getPriceData() {
       });
     });
 
-    // ซื้อสด: brand | model | storage | price
+    // ขายส่ง: brand | model | storage | price
     // Read H1 (MDM+service fee) and H2 (delivery fee) in one batch call
-    var scSheet = SS.getSheetByName('ซื้อสด');
+    var scSheet = SS.getSheetByName('ขายส่ง');
     var scFees = scSheet ? scSheet.getRange(1, 8, 2, 1).getValues() : [[0], [0]];
     result.scMdmFee = Number(scFees[0][0]) || 0;
     result.scDeliveryFee = Number(scFees[1][0]) || 0;
-    var sc = result['ซื้อสด'];
-    sheetData('ซื้อสด').forEach(function (r) {
+    var sc = result['ขายส่ง'];
+    sheetData('ขายส่ง').forEach(function (r) {
       var b = String(r[0]), m = String(r[1]), s = String(r[2]), price = Number(r[3]);
       if (!price || isNaN(price)) return;
       if (!sc[b]) sc[b] = {};
