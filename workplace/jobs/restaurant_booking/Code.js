@@ -149,11 +149,11 @@ function isFloor1EightBlocked_(ss, dateString, time) {
     if (guests === 12) count12++;
   }
 
-  const has844 = count8 >= 1 && count4 >= 2;
+  const has84 = count8 >= 1 && count4 >= 1;
   const has104 = count10 >= 1 && count4 >= 1;
   const has12 = count12 >= 1;
   const has88 = count8 >= 2;
-  return has844 || has12 || has104 || has88;
+  return has84 || has12 || has104 || has88;
 }
 
 function checkAvailableTableTypes(dateString = "2026-06-04", time = "17:00") {
