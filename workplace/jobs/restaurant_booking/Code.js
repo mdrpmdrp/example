@@ -19,7 +19,7 @@ function doGet(e) {
 
 function getAvailableDates() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("schedule");
+  const sheet = ss.getSheetByName("Schedule");
   const [rounds, , ...data] = sheet.getDataRange().getValues().filter(r => r[0] !== '');
   const filteredRounds = rounds.filter(r => r !== '').slice(2);
 
@@ -38,10 +38,10 @@ function getAvailableDates() {
     }
 
     const roundsGrouped = [
-      row.slice(3, 13),
-      row.slice(14, 24),
-      row.slice(25, 31),
-      row.slice(32, 42)
+      row.slice(timesIndex['13:00'].start-1, timesIndex['13:00'].start - 1 + timesIndex['13:00'].count),
+      row.slice(timesIndex['17:00'].start-1, timesIndex['17:00'].start - 1 + timesIndex['17:00'].count),
+      row.slice(timesIndex['18:00'].start-1, timesIndex['18:00'].start - 1 + timesIndex['18:00'].count),
+      row.slice(timesIndex['19:30'].start-1, timesIndex['19:30'].start - 1 + timesIndex['19:30'].count)
     ];
 
     filteredRounds.forEach((round, index) => {
@@ -61,7 +61,102 @@ function include(filename) {
     .evaluate().getContent();
 }
 
-function checkAvailableTableTypes(dateString = "2026-05-26", time = "18:00") {
+function normalizeHeaderKey_(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[._-]/g, '');
+}
+
+function findColumnIndex_(headers, aliases) {
+  const normalizedAliases = aliases.map(normalizeHeaderKey_);
+  return headers.findIndex(header => normalizedAliases.includes(normalizeHeaderKey_(header)));
+}
+
+function getHelperFloor1Bookings_(ss, dateString, time) {
+  const helperSheet = ss.getSheetByName('Helper Floor1');
+  if (!helperSheet) {
+    Logger.log('[Helper Floor1] Sheet not found. Skip floor 1 helper checks.');
+    return [];
+  }
+
+  const values = helperSheet.getDataRange().getValues();
+  if (values.length <= 1) {
+    return [];
+  }
+
+  const headers = values[0];
+  const rows = values.slice(1);
+  const dateColumnIndex = 0;
+  const timeColumnIndex = 1;
+  const guestsColumnIndex = 2;
+  const floorColumnIndex = 3;
+
+  if (dateColumnIndex === -1 || guestsColumnIndex === -1) {
+    Logger.log('[Helper Floor1] Required columns not found. headers=%s', JSON.stringify(headers));
+    return [];
+  }
+
+  const formattedDate = dateString.split('-').reverse().join('/');
+  const normalizedTime = String(time || '').trim();
+
+  return rows.reduce((guestCounts, row) => {
+    const floorValue = String(row[floorColumnIndex] || '').trim().toLowerCase();
+    if (floorValue !== 'firstfloor') {
+      return guestCounts;
+    }
+
+    const rowDate = row[dateColumnIndex] instanceof Date
+      ? Utilities.formatDate(row[dateColumnIndex], 'Asia/Bangkok', 'dd/MM/yyyy')
+      : String(row[dateColumnIndex] || '').trim();
+    if (rowDate !== formattedDate) {
+      return guestCounts;
+    }
+
+    const rowTime = row[timeColumnIndex] instanceof Date
+      ? Utilities.formatDate(row[timeColumnIndex], 'Asia/Bangkok', 'HH:mm')
+      : String(row[timeColumnIndex] || '').trim();
+    if (rowTime !== normalizedTime) {
+      return guestCounts;
+    }
+
+    const guests = Number(row[guestsColumnIndex]);
+    if (!Number.isNaN(guests)) {
+      guestCounts.push(guests);
+    }
+
+    return guestCounts;
+  }, []);
+}
+
+function isFloor1EightBlocked_(ss, dateString, time) {
+  const guestCounts = getHelperFloor1Bookings_(ss, dateString, time);
+  if (guestCounts.length === 0) {
+    return false;
+  }
+
+  let count4 = 0;
+  let count8 = 0;
+  let count10 = 0;
+  let count12 = 0;
+
+  for (let i = 0; i < guestCounts.length; i++) {
+    const guests = guestCounts[i];
+    if (guests === 4) count4++;
+    if (guests === 8) count8++;
+    if (guests === 10) count10++;
+    if (guests === 12) count12++;
+  }
+
+  const has844 = count8 >= 1 && count4 >= 2;
+  const has104 = count10 >= 1 && count4 >= 1;
+  const has12 = count12 >= 1;
+  const has88 = count8 >= 2;
+  return has844 || has12 || has104 || has88;
+}
+
+function checkAvailableTableTypes(dateString = "2026-06-04", time = "17:00") {
   const parsedDate = dateString.split('-').reverse().join('/');
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("Schedule");
@@ -86,13 +181,15 @@ function checkAvailableTableTypes(dateString = "2026-05-26", time = "18:00") {
     location.push(parts[1].replace(')', '').trim());
   });
 
+  const floor1EightBlocked = isFloor1EightBlocked_(ss, dateString, time);
   const availableTables = [];
   for (let i = 0; i < tables.length; i++) {
     if (tables[i] === 'ว่าง') {
       const [min, max] = seats[i].includes('-') ? seats[i].split('-').map(Number) : [Number(seats[i]), Number(seats[i])];
       availableTables.push({
         guests: { min, max },
-        location: location[i]
+        location: location[i],
+        blockedForEight: floor1EightBlocked && location[i] === 'ชั้น 1'
       });
     }
   }
@@ -220,6 +317,9 @@ function updateSchedule(date = '2025-07-17', time = '13:00', location = 'downsta
 
   const targetLocation = normalizedLocationMap[location] || location;
   const targetGuests = Number(guests);
+  const floor1EightBlocked = targetLocation === 'ชั้น 1' && targetGuests === 8
+    ? isFloor1EightBlocked_(ss, date, time)
+    : false;
 
   const tables = header.map((h, index) => {
     const raw = String(h || '').trim();
@@ -285,7 +385,9 @@ function updateSchedule(date = '2025-07-17', time = '13:00', location = 'downsta
       if (targetGuests === 4) pick(exact4[0]);
       if (targetGuests === 6) pick(sixToEight[0]);
       if (targetGuests === 8) {
-        if (can8.length > 0) {
+        if (floor1EightBlocked) {
+          Logger.log('[updateSchedule] Floor 1 8-seat booking blocked by Helper Floor1 | date=%s time=%s', date, time);
+        } else if (can8.length > 0) {
           selectedTableIndexes.length = 0;
           pick(can8[0]);
         } else if (exact4.length >= 2) {
@@ -327,10 +429,12 @@ function updateSchedule(date = '2025-07-17', time = '13:00', location = 'downsta
 
     if (targetLocation === 'ชั้น 3') {
       const exact4 = getAvailableBy('ชั้น 3', t => t.min === 4 && t.max === 4);
-      const sixToEight = getAvailableBy('ชั้น 3', t => t.min === 6 && t.max === 8);
+      const can6 = getAvailableBy('ชั้น 3', t => canSeat(t, 6));
+      const can8 = getAvailableBy('ชั้น 3', t => canSeat(t, 8));
       const allFloor3 = getAvailableBy('ชั้น 3', () => true);
       if (targetGuests === 4) pick(exact4[0]);
-      if (targetGuests === 6 || targetGuests === 8) pick(sixToEight[0]);
+      if (targetGuests === 6) pick(can6[0]);
+      if (targetGuests === 8) pick(can8[0]);
       if (targetGuests === 18 && allFloor3.length >= 4) {
         allFloor3.forEach(t => pick(t));
       }

@@ -569,6 +569,10 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
         }
 
+        .btn-location.unavailable .private-zone-badge {
+            display: none;
+        }
+
         @media (max-width: 768px) {
 
             .guest-count-buttons,
@@ -1142,7 +1146,10 @@
                                 <small class="availability-text">เลือกจำนวนที่นั่งก่อน</small>
                             </button>
                             <button type="button" class="btn-location unavailable" data-location="secondFloor" disabled>
-                                <span>ชั้น 2</span>
+                                <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                    <span>ชั้น 2</span>
+                                    <strong class="private-zone-badge" style="font-size: 0.72rem; font-weight: 700; color: #fff; background: #7a1f1f; border-radius: 999px; padding: 2px 10px;">Private Zone</strong>
+                                </div>
                                 <small class="availability-text">เลือกจำนวนที่นั่งก่อน</small>
                             </button>
                             <button type="button" class="btn-location unavailable" data-location="thirdFloor" disabled>
@@ -1428,6 +1435,7 @@
         let selectedTime = null;
         let selectedGuests = null;
         let selectedLocation = null;
+        let hasAlignedInitialCalendarMonth = false;
 
         // Sample restaurant data (in real app, this would come from Google Apps Script)
         const restaurantData = {
@@ -1454,6 +1462,10 @@
             $('#start-booking').click(function () {
                 $('#welcome-page').fadeOut(500, function () {
                     $('#booking-steps').fadeIn(500);
+                    if (!hasAlignedInitialCalendarMonth) {
+                        alignCalendarToNearestAvailableMonth();
+                        hasAlignedInitialCalendarMonth = true;
+                    }
                     generateCalendar();
                     // Scroll to calendar section
                     setTimeout(() => {
@@ -1521,8 +1533,8 @@
                 $('.btn-time-slot').removeClass('selected');
                 $(this).addClass('selected');
                 selectedTime = $(this).data('time');
-                console.log('selected date', selectedDate);
-                console.log('selected time', selectedTime);
+                
+                
                 // After selecting time, check available table types
                 checkAvailableTableTypes(selectedDate, selectedTime);
 
@@ -1569,10 +1581,40 @@
             }
         });
 
+        function getNearestBookableDate() {
+            const now = new Date();
+            const todayAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+            const shouldBlockToday = now.getHours() >= 19;
+
+            const availableDates = Array.from(new Set((AVAILABLE_DATES.available || []).map(item => item.date)))
+                .map(dateText => new Date(dateText + 'T00:00:00'))
+                .filter(dateObj => !Number.isNaN(dateObj.getTime()))
+                .filter(dateObj => {
+                    if (dateObj < todayAtMidnight) {
+                        return false;
+                    }
+                    if (shouldBlockToday && dateObj.toDateString() === todayAtMidnight.toDateString()) {
+                        return false;
+                    }
+                    return true;
+                })
+                .sort((a, b) => a - b);
+
+            return availableDates[0] || null;
+        }
+
+        function alignCalendarToNearestAvailableMonth() {
+            const nearestDate = getNearestBookableDate();
+            if (!nearestDate) {
+                return;
+            }
+            currentDate = new Date(nearestDate.getFullYear(), nearestDate.getMonth(), 1);
+        }
+
 
 
         function generateCalendar() {
-            console.log(AVAILABLE_DATES);
+            
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
 
@@ -1841,14 +1883,16 @@
             }
 
             const floor1Tables = groupByLocation['ชั้น 1'] || [];
+            console.log("🚀 ~ getAvailableLocationsByRules ~ floor1Tables:", floor1Tables)
             const floor1Count4 = floor1Tables.filter(isExact4).length;
             const floor1Count68 = floor1Tables.filter(isSixToEight).length;
             const floor1Has8 = floor1Tables.some(t => canSeat(t, 8));
             const floor1Has10 = floor1Tables.some(t => canSeat(t, 10));
+            const floor1EightBlocked = floor1Tables.some(t => t.blockedForEight);
 
             if (guestCount === 4 && floor1Count4 >= 1) available.push('ชั้น 1');
             if (guestCount === 6 && floor1Count68 >= 1) available.push('ชั้น 1');
-            if (guestCount === 8 && (floor1Has8 || floor1Count4 >= 2 || (floor1Count68 >= 1 && floor1Count4 >= 1))) available.push('ชั้น 1');
+            if (guestCount === 8 && !floor1EightBlocked && (floor1Has8 || floor1Count4 >= 2 || (floor1Count68 >= 1 && floor1Count4 >= 1))) available.push('ชั้น 1');
             if (guestCount === 10 && (floor1Has10 || floor1Count68 >= 2 || (floor1Count68 >= 1 && floor1Count4 >= 1))) available.push('ชั้น 1');
             if (guestCount === 12 && (floor1Count68 >= 2 || (floor1Count68 >= 1 && floor1Count4 >= 1))) available.push('ชั้น 1');
 
@@ -1862,11 +1906,12 @@
 
             const floor3Tables = groupByLocation['ชั้น 3'] || [];
             const floor3Count4 = floor3Tables.filter(isExact4).length;
-            const floor3Count68 = floor3Tables.filter(isSixToEight).length;
+            const floor3Has6 = floor3Tables.some(t => canSeat(t, 6));
+            const floor3Has8 = floor3Tables.some(t => canSeat(t, 8));
             const floor3AllTablesAvailable = floor3Tables.length >= 4;
             if (guestCount === 4 && floor3Count4 >= 1) available.push('ชั้น 3');
-            if (guestCount === 6 && floor3Count68 >= 1) available.push('ชั้น 3');
-            if (guestCount === 8 && floor3Count68 >= 1) available.push('ชั้น 3');
+            if (guestCount === 6 && floor3Has6) available.push('ชั้น 3');
+            if (guestCount === 8 && floor3Has8) available.push('ชั้น 3');
             if (guestCount === 18 && floor3AllTablesAvailable) available.push('ชั้น 3');
 
             return [...new Set(available)];
@@ -1891,9 +1936,9 @@
             google.script.run
                 .withSuccessHandler(function (response) {
                     response = JSON.parse(response);
-                    console.log("🚀 ~ checkAvailableTableTypes ~ response:", response)
+                    
                     avilableTableTypes = response;
-                    console.log('Available table types:', response);
+                    
                     // Reset guest count buttons
                     $('.btn-guest-count').removeClass('unavailable selected').prop('disabled', false);
                     applyGuestButtonVisibilityByTime(time);
@@ -1941,9 +1986,9 @@
         }
         
         function checkLocationAvailability(date, time, guestCount, location) {
-            console.log("🚀 ~ checkLocationAvailability ~ guestCount:", guestCount)
-            console.log("🚀 ~ checkLocationAvailability ~ location:", location)
-            console.log("🚀 ~ checkLocationAvailability ~ avilableTableTypes:", avilableTableTypes)
+            
+            
+            
             const availableByRule = getAvailableLocationsByRules(time, guestCount, avilableTableTypes);
             location = [...new Set([...(location || []), ...availableByRule])];
             $('.btn-location').removeClass('unavailable selected');
@@ -2352,7 +2397,7 @@
         }
 
         function sendToGoogleSheets(data) {
-            console.log("🚀 ~ sendToGoogleSheets ~ data:", data);
+            
             google.script.run
                 .withSuccessHandler(function (response) {
                     response = JSON.parse(response);
