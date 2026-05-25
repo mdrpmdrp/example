@@ -34,8 +34,8 @@ function addSolution({ complainId, solutionData }) {
 
     // Batch update: solutions and timestamp together
     const now = new Date();
-    sheet.getRange(actualRow, 13).setValue(JSON.stringify(solutions));
-    sheet.getRange(actualRow, 15).setValue(now);
+    sheet.getRange(actualRow, 14).setValue(JSON.stringify(solutions));
+    sheet.getRange(actualRow, 16).setValue(now);
     if (solutionData.folderId) {
       let folder = DriveApp.getFolderById(solutionData.folderId);
       if (folder) {
@@ -70,7 +70,7 @@ function updateSolution({ complainId, solutionId, solutionData }) {
     const actualRow = rowIndex + 2;
 
     // Get current solutions using helper
-    const solutionsStr = sheet.getRange(actualRow, 13).getValue();
+    const solutionsStr = sheet.getRange(actualRow, 14).getValue();
     const solutions = parseSolutionsJson(solutionsStr);
 
     if (solutions.length === 0) {
@@ -97,11 +97,11 @@ function updateSolution({ complainId, solutionId, solutionData }) {
     };
 
     // Save back to sheet
-    const solutionsCell = sheet.getRange(actualRow, 13);
+    const solutionsCell = sheet.getRange(actualRow, 14);
     solutionsCell.setValue(JSON.stringify(solutions));
 
-    // Update timestamp in column 15
-    sheet.getRange(actualRow, 15).setValue(new Date());
+    // Update timestamp in column 16
+    sheet.getRange(actualRow, 16).setValue(new Date());
 
     // Rename folder if folderId provided
     if (solutionData.folderId) {
@@ -137,7 +137,7 @@ function deleteSolution({ complainId, solutionId }) {
     const actualRow = rowIndex + 2;
 
     // Get current solutions using helper
-    const solutionsStr = sheet.getRange(actualRow, 13).getValue();
+    const solutionsStr = sheet.getRange(actualRow, 14).getValue();
     const solutions = parseSolutionsJson(solutionsStr);
 
     if (solutions.length === 0) {
@@ -161,11 +161,11 @@ function deleteSolution({ complainId, solutionId }) {
     solutions.splice(solutionIndex, 1);
 
     // Save back to sheet
-    const solutionsCell = sheet.getRange(actualRow, 13);
+    const solutionsCell = sheet.getRange(actualRow, 14);
     solutionsCell.setValue(JSON.stringify(solutions));
 
-    // Update timestamp in column 15
-    sheet.getRange(actualRow, 15).setValue(new Date());
+    // Update timestamp in column 16
+    sheet.getRange(actualRow, 16).setValue(new Date());
 
     return JSON.stringify({
       success: true,
@@ -193,7 +193,7 @@ function getSolutions(complainId) {
     const actualRow = rowIndex + 2;
 
     // Get solutions using helper
-    const solutionsStr = sheet.getRange(actualRow, 13).getValue();
+    const solutionsStr = sheet.getRange(actualRow, 14).getValue();
     const solutions = parseSolutionsJson(solutionsStr);
 
     return JSON.stringify({
