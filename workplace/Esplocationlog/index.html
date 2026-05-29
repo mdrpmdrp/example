@@ -1,37 +1,217 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-    <title>Beacon Scanner</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0f172a">
+    <title>Beacon Scanner</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f4f7fb;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --primary: #2563eb;
+            --primary-strong: #1d4ed8;
+            --success: #15803d;
+            --danger: #b91c1c;
+            --border: #dbe4f0;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(circle at top, #dbeafe 0%, var(--bg) 35%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 1.25rem;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 1.25rem;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.07);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(1.3rem, 2.4vw, 1.8rem);
+        }
+
+        p { margin: 0.4rem 0 0; color: var(--muted); }
+
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        button {
+            border: 0;
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.05s ease, background 0.2s ease;
+        }
+
+        button:active { transform: translateY(1px); }
+
+        #scanBtn {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        #scanBtn:hover { background: var(--primary-strong); }
+
+        #installBtn {
+            background: #0f172a;
+            color: #fff;
+        }
+
+        #installBtn[hidden] { display: none; }
+
+        .status {
+            margin-top: 1rem;
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e3a8a;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: var(--success);
+        }
+
+        .status.error {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: var(--danger);
+        }
+
+        .log {
+            margin-top: 1rem;
+            padding-left: 1.2rem;
+            color: #334155;
+        }
+
+        .log li { margin: 0.4rem 0; line-height: 1.45; }
+
+        .muted { color: var(--muted); font-size: 0.95rem; }
+    </style>
 </head>
 <body>
-    <h2>Android Beacon Monitor</h2>
-    <button id="scanBtn">เริ่มสแกน Beacon</button>
-    <div id="status" style="margin-top:20px;"></div>
-    <ul id="logList"></ul>
+    <main class="container">
+        <section class="card">
+            <h1>Android Beacon Monitor</h1>
+            <p>สแกนหา iBeacon พร้อมบันทึกสถานะล่าสุด และติดตั้งเป็นแอปได้บนอุปกรณ์ของคุณ</p>
+
+            <div class="actions">
+                <button id="scanBtn" type="button">เริ่มสแกน Beacon</button>
+                <button id="installBtn" type="button" hidden>ติดตั้งแอป</button>
+            </div>
+
+            <p id="installHint" class="muted">รองรับการติดตั้ง PWA ในเบราว์เซอร์ที่รองรับเท่านั้น</p>
+            <div id="status" class="status" aria-live="polite">พร้อมเริ่มสแกน</div>
+            <ul id="logList" class="log"></ul>
+        </section>
+    </main>
 
     <script>
-        document.getElementById('scanBtn').addEventListener('click', async () => {
+        const scanBtn = document.getElementById('scanBtn');
+        const installBtn = document.getElementById('installBtn');
+        const installHint = document.getElementById('installHint');
+        const statusEl = document.getElementById('status');
+        const logList = document.getElementById('logList');
+        let deferredPrompt = null;
+
+        function addLog(message) {
+            const item = document.createElement('li');
+            item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logList.prepend(item);
+        }
+
+        function setStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = 'status' + (type ? ` ${type}` : '');
+        }
+
+        function onDisconnected() {
+            setStatus('การเชื่อมต่ออุปกรณ์ถูกตัด', 'error');
+            addLog('อุปกรณ์ตัดการเชื่อมต่อ');
+        }
+
+        scanBtn.addEventListener('click', async () => {
             try {
-                // สแกนหาอุปกรณ์ (ใช้ Manufacturer Data 0x004C สำหรับ iBeacon)
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ manufacturerData: [{ companyIdentifier: 0x004C }] }],
                     optionalServices: []
                 });
 
-                document.getElementById('status').innerText = "กำลังรับข้อมูลจาก: " + device.name;
-
-                // เมื่อมีการโฆษณาข้อมูลเข้ามา
+                const name = device.name || 'Unknown Beacon';
+                setStatus(`กำลังรับข้อมูลจาก: ${name}`, 'success');
+                addLog(`พบอุปกรณ์: ${name}`);
                 device.addEventListener('gattserverdisconnected', onDisconnected);
-                
-                // สำหรับ Web Bluetooth รุ่นปัจจุบัน ต้องเชื่อมต่อเพื่ออ่านค่า (ถ้าไม่ได้ทำ Advertising ธรรมดา)
-                // หมายเหตุ: การดึงค่า Manufacturer Data อาจต้องใช้ Chrome Flags
-                console.log("Device found:", device);
+                console.log('Device found:', device);
             } catch (error) {
-                alert("สแกนล้มเหลว: " + error);
+                setStatus(`สแกนล้มเหลว: ${error}`, 'error');
+                addLog(`สแกนล้มเหลว: ${error}`);
+                alert('สแกนล้มเหลว: ' + error);
             }
         });
+
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            deferredPrompt = event;
+            installBtn.hidden = false;
+            installHint.textContent = 'พร้อมติดตั้ง: กดปุ่ม "ติดตั้งแอป"';
+            addLog('สามารถติดตั้งแอปได้');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) {
+                setStatus('เบราว์เซอร์นี้ยังไม่พร้อมแสดงคำขอติดตั้ง', 'error');
+                return;
+            }
+
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            const accepted = outcome === 'accepted';
+            addLog(accepted ? 'ผู้ใช้ยืนยันติดตั้งแอป' : 'ผู้ใช้ยกเลิกการติดตั้งแอป');
+            installHint.textContent = accepted
+                ? 'ติดตั้งแอปสำเร็จหรือกำลังดำเนินการ'
+                : 'ยังไม่ได้ติดตั้งแอป';
+            deferredPrompt = null;
+            installBtn.hidden = true;
+        });
+
+        window.addEventListener('appinstalled', () => {
+            installHint.textContent = 'ติดตั้งแอปเรียบร้อยแล้ว';
+            addLog('ติดตั้งแอปเรียบร้อยแล้ว');
+        });
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js').catch((error) => {
+                console.error('Service Worker registration failed:', error);
+            });
+        }
     </script>
 </body>
 </html>
-
