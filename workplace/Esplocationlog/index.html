@@ -115,13 +115,34 @@
         .log li { margin: 0.4rem 0; line-height: 1.45; }
 
         .muted { color: var(--muted); font-size: 0.95rem; }
+
+        .details {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #f8fbff;
+        }
+
+        .details h2 {
+            margin: 0 0 0.75rem;
+            font-size: 1.05rem;
+        }
+
+        .details pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 0.92rem;
+            color: #334155;
+        }
     </style>
 </head>
 <body>
     <main class="container">
         <section class="card">
             <h1>Android Beacon Monitor</h1>
-            <p>สแกนหา beacon ชื่อ <strong>S3_Mon</strong> พร้อมบันทึกสถานะล่าสุด และติดตั้งเป็นแอปได้บนอุปกรณ์ที่รองรับ</p>
+            <p>สแกนหา beacon ชื่อ <strong>S3_Mon</strong> แบบไม่สนใจตัวพิมพ์เล็ก/ใหญ่ พร้อมบันทึกสถานะล่าสุด และติดตั้งเป็นแอปได้บนอุปกรณ์ที่รองรับ</p>
 
             <div class="actions">
                 <button id="scanBtn" type="button">เริ่มสแกน Beacon</button>
@@ -130,6 +151,10 @@
 
             <p id="installHint" class="muted">รองรับการติดตั้ง PWA ในเบราว์เซอร์ที่รองรับเท่านั้น</p>
             <div id="status" class="status" aria-live="polite">พร้อมเริ่มสแกน</div>
+            <div id="details" class="details" hidden>
+                <h2>Beacon Details</h2>
+                <pre id="detailsPre"></pre>
+            </div>
             <ul id="logList" class="log"></ul>
         </section>
     </main>
@@ -140,6 +165,8 @@
         const installHint = document.getElementById('installHint');
         const statusEl = document.getElementById('status');
         const logList = document.getElementById('logList');
+        const detailsBox = document.getElementById('details');
+        const detailsPre = document.getElementById('detailsPre');
         let deferredPrompt = null;
 
         function addLog(message) {
@@ -158,25 +185,60 @@
             addLog('อุปกรณ์ตัดการเชื่อมต่อ');
         }
 
+        function normalizeName(name) {
+            return (name || '').trim().toLowerCase();
+        }
+
+        function startsWithS3Mon(name) {
+            return normalizeName(name).startsWith('s3_mon');
+        }
+
+        function bytesToHex(bytes) {
+            return Array.from(new Uint8Array(bytes || [])).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        }
+
+        function formatManufacturerData(device) {
+            const entries = [];
+            if (!device.adDataView) return 'ไม่พบ manufacturer data';
+            return 'ไม่รองรับการอ่าน manufacturer data จาก device object โดยตรงในเบราว์เซอร์นี้';
+        }
+
+        function showDetails(lines) {
+            detailsBox.hidden = false;
+            detailsPre.textContent = lines.join('\n');
+        }
+
         scanBtn.addEventListener('click', async () => {
             try {
                 const device = await navigator.bluetooth.requestDevice({
-                    filters: [
-                        { name: 'S3_Mon' },
-                        { namePrefix: 'S3_Mon' }
-                    ],
+                    acceptAllAdvertisements: true,
                     optionalServices: []
                 });
 
-                const name = device.name || 'S3_Mon';
-                setStatus(`กำลังรับข้อมูลจาก: ${name}`, 'success');
-                addLog(`พบอุปกรณ์: ${name}`);
+                const name = device.name || '';
+                if (!startsWithS3Mon(name)) {
+                    setStatus('พบอุปกรณ์ แต่ชื่อไม่ตรงกับ S3_Mon', 'error');
+                    addLog(`ละเลยอุปกรณ์ชื่อ: ${name || 'Unknown'}`);
+                    return;
+                }
+
+                const displayName = name || 'S3_Mon';
+                setStatus(`กำลังรับข้อมูลจาก: ${displayName}`, 'success');
+                addLog(`พบอุปกรณ์: ${displayName}`);
                 device.addEventListener('gattserverdisconnected', onDisconnected);
+
+                const lines = [
+                    `Name: ${displayName}`,
+                    `UUID: ${device.id || 'ไม่พบ'}`,
+                    `RSSI: ไม่พร้อมใช้งานผ่าน requestDevice()`,
+                    `Manufacturer Data: ${formatManufacturerData(device)}`
+                ];
+                showDetails(lines);
                 console.log('Device found:', device);
             } catch (error) {
                 setStatus(`สแกนล้มเหลว: ${error}`, 'error');
                 addLog(`สแกนล้มเหลว: ${error}`);
-                alert('สแกนล้มเหลว: ' + error);
+                alert('สแกนล้���เหลว: ' + error);
             }
         });
 
