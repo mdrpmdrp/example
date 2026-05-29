@@ -42,7 +42,9 @@ self.addEventListener('fetch', (event) => {
           }
 
           const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          event.waitUntil(
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone))
+          );
           return response;
         })
         .catch(() => caches.match('./index.html'));
