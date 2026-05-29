@@ -1,1 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Beacon Scanner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+    <h2>Android Beacon Monitor</h2>
+    <button id="scanBtn">เริ่มสแกน Beacon</button>
+    <div id="status" style="margin-top:20px;"></div>
+    <ul id="logList"></ul>
+
+    <script>
+        document.getElementById('scanBtn').addEventListener('click', async () => {
+            try {
+                // สแกนหาอุปกรณ์ (ใช้ Manufacturer Data 0x004C สำหรับ iBeacon)
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ manufacturerData: [{ companyIdentifier: 0x004C }] }],
+                    optionalServices: []
+                });
+
+                document.getElementById('status').innerText = "กำลังรับข้อมูลจาก: " + device.name;
+
+                // เมื่อมีการโฆษณาข้อมูลเข้ามา
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+                
+                // สำหรับ Web Bluetooth รุ่นปัจจุบัน ต้องเชื่อมต่อเพื่ออ่านค่า (ถ้าไม่ได้ทำ Advertising ธรรมดา)
+                // หมายเหตุ: การดึงค่า Manufacturer Data อาจต้องใช้ Chrome Flags
+                console.log("Device found:", device);
+            } catch (error) {
+                alert("สแกนล้มเหลว: " + error);
+            }
+        });
+    </script>
+</body>
+</html>
 
