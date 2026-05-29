@@ -7,8 +7,12 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
-  self.skipWaiting();
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -25,29 +29,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
+  event.respondWith((async () => {
+    const cached = await caches.match(event.request);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const response = await fetch(event.request);
+      if (
+        !response ||
+        response.status !== 200 ||
+        (response.type !== 'basic' && response.type !== 'cors')
+      ) {
+        return response;
       }
 
-      return fetch(event.request)
-        .then((response) => {
-          if (
-            !response ||
-            response.status !== 200 ||
-            (response.type !== 'basic' && response.type !== 'cors')
-          ) {
-            return response;
-          }
-
-          const responseClone = response.clone();
-          event.waitUntil(
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone))
-          );
-          return response;
-        })
-        .catch(() => caches.match('./index.html'));
-    })
-  );
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(event.request, response.clone());
+      return response;
+    } catch (error) {
+      return caches.match('./index.html');
+    }
+  })());
 });
