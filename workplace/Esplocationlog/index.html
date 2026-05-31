@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0f172a">
+    <title>Beacon Scanner</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f4f7fb;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --primary: #2563eb;
+            --primary-strong: #1d4ed8;
+            --success: #15803d;
+            --danger: #b91c1c;
+            --border: #dbe4f0;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(circle at top, #dbeafe 0%, var(--bg) 35%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 1.25rem;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 1.25rem;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.07);
+        }
+
+        h1 { margin: 0; font-size: clamp(1.3rem, 2.4vw, 1.8rem); }
+        p { margin: 0.4rem 0 0; color: var(--muted); }
+
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        button {
+            border: 0;
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.05s ease, background 0.2s ease;
+        }
+
+        button:active { transform: translateY(1px); }
+
+        #scanBtn { background: var(--primary); color: #fff; }
+        #scanBtn:hover { background: var(--primary-strong); }
+
+        #installBtn { background: #0f172a; color: #fff; }
+        #installBtn[hidden] { display: none; }
+
+        .status {
+            margin-top: 1rem;
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e3a8a;
+            font-weight: 500;
+        }
+
+        .status.success { background: #f0fdf4; border-color: #bbf7d0; color: var(--success); }
+        .status.error { background: #fef2f2; border-color: #fecaca; color: var(--danger); }
+
+        .log { margin-top: 1rem; padding-left: 1.2rem; color: #334155; }
+        .log li { margin: 0.4rem 0; line-height: 1.45; }
+        .muted { color: var(--muted); font-size: 0.95rem; }
+
+        .details {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #f8fbff;
+        }
+
+        .details h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+        .details pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 0.92rem; color: #334155; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <section class="card">
+            <h1>Android Beacon Monitor</h1>
+            <p>สแกนหา beacon ชื่อ <strong>S3_Mon</strong> แบบไม่สนใจตัวพิมพ์เล็ก/ใหญ่ พร้อมบันทึกสถานะล่าสุด และติดตั้งเป็นแอปได้บนอุปกรณ์ที่รองรับ</p>
+
+            <div class="actions">
+                <button id="scanBtn" type="button">เริ่มสแกน Beacon</button>
+                <button id="installBtn" type="button" hidden>ติดตั้งแอป</button>
+            </div>
+
+            <p id="installHint" class="muted">รองรับการติดตั้ง PWA ในเบราว์เซอร์ที่รองรับเท่านั้น</p>
+            <div id="status" class="status" aria-live="polite">พร้อมเริ่มสแกน</div>
+            <div id="details" class="details" hidden>
+                <h2>Beacon Details</h2>
+                <pre id="detailsPre"></pre>
+            </div>
+            <ul id="logList" class="log"></ul>
+        </section>
+    </main>
+
+    <script>
+        const scanBtn = document.getElementById('scanBtn');
+        const installBtn = document.getElementById('installBtn');
+        const installHint = document.getElementById('installHint');
+        const statusEl = document.getElementById('status');
+        const logList = document.getElementById('logList');
+        const detailsBox = document.getElementById('details');
+        const detailsPre = document.getElementById('detailsPre');
+        let deferredPrompt = null;
+        let watchedDevice = null;
+
+        function addLog(message) {
+            const item = document.createElement('li');
+            item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logList.prepend(item);
+        }
+
+        function setStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = 'status' + (type ? ` ${type}` : '');
+        }
+
+        function normalizeName(name) {
+            return (name || '').trim().toLowerCase();
+        }
+
+        function startsWithS3Mon(name) {
+            return normalizeName(name).startsWith('s3_mon');
+        }
+
+        function bytesToHex(dataView) {
+            if (!dataView) return '';
+            const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        }
+
+        function parseIBeaconMajorMinor(event) {
+            const appleCompanyId = 0x004C;
+            const data = event.manufacturerData?.get(appleCompanyId);
+            if (!data || data.byteLength < 24) {
+                return { major: null, minor: null };
+            }
+
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            return {
+                major: view.getUint16(20, false),
+                minor: view.getUint16(22, false)
+            };
+        }
+
+        function formatManufacturerData(event) {
+            if (!event.manufacturerData) return 'ไม่พบ manufacturer data';
+
+            const entries = [];
+            for (const [companyId, value] of event.manufacturerData.entries()) {
+                entries.push(`Company ${companyId}: ${bytesToHex(value) || 'empty'}`);
+            }
+
+            return entries.length ? entries.join('\n') : 'ไม่พบ manufacturer data';
+        }
+
+        function formatServiceData(event) {
+            if (!event.serviceData) return 'ไม่พบ service data';
+
+            const entries = [];
+            for (const [uuid, value] of event.serviceData.entries()) {
+                entries.push(`${uuid}: ${bytesToHex(value) || 'empty'}`);
+            }
+
+            return entries.length ? entries.join('\n') : 'ไม่พบ service data';
+        }
+
+        function showDetails(lines) {
+            detailsBox.hidden = false;
+            detailsPre.textContent = lines.join('\n');
+        }
+
+        function onDisconnected() {
+            setStatus('การเชื่อมต่ออุปกรณ์ถูกตัด', 'error');
+            addLog('อุปกรณ์ตัดการเชื่อมต่อ');
+        }
+
+        async function scanWithAdvertisements() {
+            if (!navigator.bluetooth) {
+                throw new Error('เบราว์เซอร์นี้ไม่รองรับ Web Bluetooth');
+            }
+
+            const device = await navigator.bluetooth.requestDevice({
+                filters: [{ namePrefix: 'S3_Mon' }],
+                optionalServices: []
+            });
+
+            if (!startsWithS3Mon(device.name)) {
+                setStatus('พบอุปกรณ์ แต่ชื่อไม่ตรงกับ S3_Mon', 'error');
+                addLog(`ละเลยอุปกรณ์ชื่อ: ${device.name || 'Unknown'}`);
+                return;
+            }
+
+            watchedDevice = device;
+            device.addEventListener('gattserverdisconnected', onDisconnected);
+
+            setStatus(`เชื่อมต่อกับ: ${device.name}`, 'success');
+            addLog(`พบอุปกรณ์: ${device.name}`);
+
+            if (!device.watchAdvertisements) {
+                showDetails([
+                    `Name: ${device.name || 'S3_Mon'}`,
+                    `UUID: ${device.id || 'ไม่พบ'}`,
+                    'RSSI: ไม่รองรับ watchAdvertisements() ในเบราว์เซอร์นี้',
+                    'Major: ไม่พบ',
+                    'Minor: ไม่พบ',
+                    'Manufacturer Data: ไม่รองรับ',
+                    'Service Data: ไม่รองรับ'
+                ]);
+                return;
+            }
+
+            await device.watchAdvertisements();
+            addLog('เริ่ม watchAdvertisements() แล้ว');
+
+            device.addEventListener('advertisementreceived', (event) => {
+                const name = event.device?.name || device.name || 'S3_Mon';
+                if (!startsWithS3Mon(name)) return;
+
+                const { major, minor } = parseIBeaconMajorMinor(event);
+
+                const lines = [
+                    `Name: ${name}`,
+                    `UUID: ${event.device?.id || device.id || 'ไม่พบ'}`,
+                    `RSSI: ${typeof event.rssi === 'number' ? event.rssi : 'ไม่พบ'}`,
+                    `Major: ${major ?? 'ไม่พบ'}`,
+                    `Minor: ${minor ?? 'ไม่พบ'}`,
+                    `Manufacturer Data:\n${formatManufacturerData(event)}`,
+                    `Service Data:\n${formatServiceData(event)}`
+                ];
+
+                setStatus(`ได้รับโฆษณาจาก: ${name}`, 'success');
+                addLog(`advertisementreceived: ${name} RSSI=${typeof event.rssi === 'number' ? event.rssi : 'n/a'}`);
+                showDetails(lines);
+                console.log('Advertisement received:', event);
+            });
+        }
+
+        scanBtn.addEventListener('click', async () => {
+            try {
+                await scanWithAdvertisements();
+            } catch (error) {
+                setStatus(`สแกนล้มเหลว: ${error}`, 'error');
+                addLog(`สแกนล้มเหลว: ${error}`);
+                alert('สแกนล้มเหลว: ' + error);
+            }
+        });
+
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            deferredPrompt = event;
+            installBtn.hidden = false;
+            installHint.textContent = 'พร้อมติดตั้ง: กดปุ่ม "ติดตั้งแอป"';
+            addLog('สามารถติดตั้งแอปได้');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) {
+                setStatus('เบราว์เซอร์นี้ยังไม่พร้อมแสดงคำขอติดตั้ง', 'error');
+                return;
+            }
+
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            const accepted = outcome === 'accepted';
+            addLog(accepted ? 'ผู้ใช้ยืนยันติดตั้งแอป' : 'ผู้ใช้ยกเลิกการติดตั้งแอป');
+            installHint.textContent = accepted ? 'ติดตั้งแอปสำเร็จหรือกำลังดำเนินการ' : 'ยังไม่ได้ติดตั้งแอป';
+            deferredPrompt = null;
+            installBtn.hidden = true;
+        });
+
+        window.addEventListener('appinstalled', () => {
+            installHint.textContent = 'ติดตั้งแอปเรียบร้อยแล้ว';
+            addLog('ติดตั้งแอปเรียบร้อยแล้ว');
+        });
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js').catch((error) => {
+                console.error('Service Worker registration failed:', error);
+            });
+        }
+    </script>
+</body>
+</html>
