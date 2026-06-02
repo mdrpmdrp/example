@@ -49,6 +49,50 @@
             flex: 1;
             text-align: center;
         }
+
+        .progress-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            padding: 0 8px;
+            padding-bottom: 10px;
+            padding-top: 10px;
+            box-sizing: border-box;
+            scrollbar-width: thin;
+            scrollbar-color: #a80c8a #f3e8f7;
+        }
+
+        .progress-scroll-wrapper {
+            margin-bottom: 2rem;
+        }
+
+        .progress-scroll::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .progress-scroll::-webkit-scrollbar-track {
+            background: #f3e8f7;
+            border-radius: 9999px;
+        }
+
+        .progress-scroll::-webkit-scrollbar-thumb {
+            background: linear-gradient(90deg, #a80c8a 0%, #c7911b 100%);
+            border-radius: 9999px;
+        }
+
+        .progress-scroll::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(90deg, #961681 0%, #b28317 100%);
+        }
+
+        .progress-track {
+            display: flex;
+            align-items: flex-start;
+            min-width: max-content;
+        }
+
+        .progress-track .progress-step {
+            flex: 0 0 130px;
+        }
         
         .progress-step::before {
             content: '';
@@ -288,6 +332,12 @@
             font-size: 14px;
             transform: rotate(45deg);
         }
+
+        @media (max-width: 768px) {
+            .progress-scroll {
+                padding: 0 6px;
+            }
+        }
     </style>
 </head>
 
@@ -373,6 +423,11 @@
                         <p class="text-sm text-gray-600 mb-1">วันที่ยื่นคำร้อง</p>
                         <p id="requestDate" class="font-semibold text-gray-800"></p>
                     </div>
+                    <div class="p-3 md:p-4 bg-purple-100 rounded-lg md:col-span-2">
+                        <p class="text-sm text-gray-600 mb-1">กำหนดแล้วเสร็จ (10 วัน)</p>
+                        <p id="completionDate" class="font-semibold text-gray-800"></p>
+                        <p id="completionIndicator" class="text-sm mt-1 font-semibold text-gray-500"></p>
+                    </div>
                       <div class="p-3 md:p-4 bg-gray-50 rounded-lg md:col-span-2 gap-3">
                         <p class="text-sm text-gray-600 mb-3">สถานที่/พิกัด</p>
                         <div id="map" class="mb-2"></div>
@@ -387,7 +442,9 @@
                 <div class="border-t pt-6">
                     <h4 class="text-xl font-bold text-gray-800 mb-6">สถานะความคืบหน้า</h4>
                     
-                    <div class="flex items-start mb-8">
+                    <div class="progress-scroll-wrapper">
+                        <div id="progressScrollContainer" class="progress-scroll">
+                        <div class="progress-track">
                         <div class="progress-step" id="step1">
                             <div class="step-circle">
                                 <i class="fas fa-file-alt"></i>
@@ -418,6 +475,24 @@
                             </div>
                             <p class="text-xs md:text-sm font-semibold text-gray-700">ผชฟ.<br>ชำระเงินแล้ว</p>
                             <p id="date4" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+
+                        <div class="progress-step" id="step5">
+                            <div class="step-circle">
+                                <i class="fas fa-tools"></i>
+                            </div>
+                            <p class="text-xs md:text-sm font-semibold text-gray-700">ก่อสร้างระบบจำหน่าย</p>
+                            <p id="date5" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+
+                        <div class="progress-step" id="step6">
+                            <div class="step-circle">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </div>
+                            <p class="text-xs md:text-sm font-semibold text-gray-700">ติดตั้งมิเตอร์</p>
+                            <p id="date6" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+                        </div>
                         </div>
                     </div>
                     
@@ -492,6 +567,7 @@
                     searchJob();
                 }
             });
+
         });
         
         function searchJob() {
@@ -521,6 +597,81 @@
                 .withFailureHandler(handleError)
                 .getJobStatus(trackingId.toUpperCase());
         }
+
+        function parseRequestDateToMoment(dateValue) {
+            if (!dateValue) return null;
+
+            const value = dateValue.toString().trim();
+            let parsed = null;
+
+            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                const [yearStr, monthStr, dayStr] = value.split('-');
+                let year = parseInt(yearStr, 10);
+                if (year >= 2500) year -= 543;
+                parsed = moment({
+                    year: year,
+                    month: parseInt(monthStr, 10) - 1,
+                    day: parseInt(dayStr, 10)
+                });
+            } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value)) {
+                const [dayStr, monthStr, yearStr] = value.split('/');
+                let year = parseInt(yearStr, 10);
+                if (year >= 2500) year -= 543;
+                parsed = moment({
+                    year: year,
+                    month: parseInt(monthStr, 10) - 1,
+                    day: parseInt(dayStr, 10)
+                });
+            } else {
+                parsed = moment(value);
+                if (parsed.isValid() && parsed.year() >= 2500) {
+                    parsed = parsed.clone().year(parsed.year() - 543);
+                }
+            }
+
+            return parsed && parsed.isValid() ? parsed : null;
+        }
+
+        function updateCompletionInfo(requestMoment, currentStep, workStatus) {
+            const $completionDate = $('#completionDate');
+            const $completionIndicator = $('#completionIndicator');
+
+            if (!requestMoment || !requestMoment.isValid()) {
+                $completionDate.text('-');
+                $completionIndicator
+                    .text('ไม่สามารถคำนวณกำหนดแล้วเสร็จได้')
+                    .removeClass('text-green-600 text-yellow-700 text-red-600')
+                    .addClass('text-gray-500');
+                return;
+            }
+
+            const completionMoment = requestMoment.clone().add(10, 'days');
+            const today = moment().startOf('day');
+            const dueDate = completionMoment.clone().startOf('day');
+            const remainingDays = dueDate.diff(today, 'days');
+            const isCompleted = currentStep >= 6 || (workStatus || '').toString().trim() === 'ติดตั้งมิเตอร์';
+
+            $completionDate.text(completionMoment.locale('th').format('LL'));
+
+            $completionIndicator.removeClass('text-gray-500 text-green-600 text-yellow-700 text-red-600');
+            if (isCompleted) {
+                $completionIndicator
+                    .html('ดำเนินการแล้วเสร็จ <i class="fas fa-check-circle ml-1 text-green-600"></i>')
+                    .addClass('text-green-600');
+            } else if (remainingDays > 0) {
+                $completionIndicator
+                    .html('เหลืออีก ' + remainingDays + ' วัน <i class="fas fa-hourglass-half ml-1 text-green-600"></i>')
+                    .addClass('text-green-600');
+            } else if (remainingDays === 0) {
+                $completionIndicator
+                    .html('ครบกำหนดวันนี้ <i class="fas fa-exclamation-circle ml-1 text-yellow-700"></i>')
+                    .addClass('text-yellow-700');
+            } else {
+                $completionIndicator
+                    .html('เกินกำหนดแล้ว ' + Math.abs(remainingDays) + ' วัน <i class="fas fa-times-circle ml-1 text-red-600"></i>')
+                    .addClass('text-red-600');
+            }
+        }
         
         function displayResult(data) {
             data = JSON.parse(data);
@@ -549,7 +700,9 @@
             $('#displayTrackingId').text(data.trackingId);
             $('#patternNumber').text(data.patternNumber || '-');
             $('#jobName').text(data.jobName || '-');
-            $('#requestDate').text(moment(data.requestDate).format('LL'));
+            const requestMoment = parseRequestDateToMoment(data.requestDate);
+            $('#requestDate').text(requestMoment ? requestMoment.locale('th').format('LL') : '-');
+            updateCompletionInfo(requestMoment, data.currentStep, data.workStatus);
             $('#jobType').text(data.jobType || '-');
             
             // Display coordinates with Google Maps link
@@ -609,21 +762,28 @@
                 'ทีมงานได้รับคำร้องของท่านแล้ว กำลังดำเนินการตรวจสอบข้อมูล',
                 'ได้นัดหมายเจ้าหน้าที่สำรวจหน้างานแล้ว กรุณารอการติดต่อกลับ',
                 'ได้แจ้งค่าใช้จ่ายให้ ผชฟ. ทราบแล้ว รอการชำระเงิน',
-                'ผชฟ. ชำระเงินเรียบร้อยแล้ว'
+                'ผชฟ. ชำระเงินเรียบร้อยแล้ว',
+                'อยู่ระหว่างก่อสร้างระบบจำหน่าย',
+                'ติดตั้งมิเตอร์'
             ];
-            $('#currentStatusText').text(statusTexts[data.currentStep - 1]);
+            const currentStatusText = statusTexts[data.currentStep - 1] || statusTexts[statusTexts.length - 1];
+            $('#currentStatusText').text(currentStatusText);
             
             // Show result section
             $('#searchSection').addClass('hidden');
             $('#resultSection').removeClass('hidden').hide().fadeIn(300);
+
+            // Re-center once section is visible (width is measurable)
+            setTimeout(() => centerCurrentProgressStep(data.currentStep, 6), 320);
             
             // Scroll to top smoothly
             $('html, body').animate({ scrollTop: 0 }, 600);
         }
         
         function updateProgressSteps(currentStep, stepDates) {
+            const totalSteps = 6;
             // Reset all steps
-            for (let i = 1; i <= 4; i++) {
+            for (let i = 1; i <= totalSteps; i++) {
                 const $step = $('#step' + i);
                 $step.removeClass('completed active');
                 
@@ -641,9 +801,32 @@
             }
             
             // Update current step
-            if (currentStep <= 4) {
+            if (currentStep <= totalSteps) {
                 $('#step' + currentStep).addClass('active');
             }
+
+            centerCurrentProgressStep(currentStep, totalSteps);
+        }
+
+        function centerCurrentProgressStep(currentStep, totalSteps) {
+            const $container = $('#progressScrollContainer');
+            const safeStep = Math.min(Math.max(currentStep, 1), totalSteps);
+            const $currentStep = $('#step' + safeStep);
+
+            if (!$container.length || !$currentStep.length) return;
+
+            const container = $container.get(0);
+            const stepElement = $currentStep.get(0);
+            if (container.clientWidth === 0) return;
+
+            const containerRect = container.getBoundingClientRect();
+            const stepRect = stepElement.getBoundingClientRect();
+            const stepCenterInContainer = (stepRect.left - containerRect.left) + container.scrollLeft + (stepRect.width / 2);
+            const targetLeft = stepCenterInContainer - (container.clientWidth / 2);
+            const maxScroll = container.scrollWidth - container.clientWidth;
+            const boundedLeft = Math.max(0, Math.min(targetLeft, maxScroll));
+
+            container.scrollTo({ left: boundedLeft, behavior: 'smooth' });
         }
         
         function handleError(error) {

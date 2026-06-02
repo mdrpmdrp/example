@@ -49,7 +49,7 @@ function validatePhoneNumber(phoneNumber){
 
 // Get current sheet name based on Buddhist year
 function getCurrentSheetName() {
-  return `งานขยายเขตฯ ${getBuddhistYear()}`;
+  return `งานขยายเขตฯ${getBuddhistYear()}`;
 }
 
 // Column mapping based on headers
@@ -59,20 +59,22 @@ const COLUMNS = {
   'หมายเลขผัง': 2,
   'ชื่องาน': 3,
   'ประเภทงาน': 4,
-  'สถานที่/พิกัด': 5,
-  'ชื่อผู้ใช้ไฟ': 6,
-  'เบอร์โทร': 7,
-  'วันรับคำร้อง': 8,
-  'เลขคำร้อง': 9,
-  'วันที่นัดสำรวจ (Survey Date)': 10,
-  'สถานะงาน (Work Status)': 11,
-  'เลขที่อนุมัติงาน': 12,
-  'วันที่แจ้งค่าใช้จ่าย ผชฟ.': 13,
-  'วันที่ ผชฟ. ชำระเงิน': 14,
-  'ส่งแฟ้มงาน ผกส.': 15,
-  'สถานะผู้ใช้': 16,
-  'มูลค่าประมาณการ': 17,
-  'หมายเหตุ': 18
+  'สถานที่/พิกัด': 7,
+  'ชื่อผู้ใช้ไฟ': 8,
+  'เบอร์โทร': 9,
+  'วันรับคำร้อง': 10,
+  'เลขคำร้อง': 11,
+  'วันที่นัดสำรวจ': 12,
+  'สถานะงาน (Work Status)': 5,
+  'เลขที่อนุมัติงาน': 13,
+  'วันที่แจ้งค่าใช้จ่าย ผชฟ.': 14,
+  'วันที่ ผชฟ. ชำระเงิน': 15,
+  'วันที่ก่อสร้างระบบจำหน่าย': 16,
+  'วันที่ติดตั้งมิเตอร์': 17,
+  'ส่งแฟ้มงาน ผกส.': 18,
+  'สถานะผู้ใช้': 19,
+  'มูลค่าประมาณการ': 20,
+  'หมายเหตุ': 21
 };
 
 // Serve the web app
@@ -95,7 +97,7 @@ function doGet(e) {
 }
 
 // Calculate current step based on filled dates
-function calculateCurrentStep(stepDates) {
+function calculateCurrentStep(stepDates, workStatus = '') {
   let currentStep = 1;
   for (let i = 0; i < stepDates.length; i++) {
     if (stepDates[i]) {
@@ -104,18 +106,26 @@ function calculateCurrentStep(stepDates) {
       break;
     }
   }
-  // If all steps are filled, we're at step 4
-  if (stepDates[3]) currentStep = 4;
+
+  // Extend progress by using the explicit work status from the sheet
+  const normalizedStatus = (workStatus || '').toString().trim();
+  if (normalizedStatus === 'ก่อสร้างระบบจำหน่าย') {
+    currentStep = 5;
+  } else if (normalizedStatus === 'ติดตั้งมิเตอร์') {
+    currentStep = 6;
+  }
+
   return currentStep;
 }
 
 // Get job status by tracking ID (เลขคำร้อง)
-function getJobStatus(trackingId="PEA2026012400001") {
+function getJobStatus(trackingId="120001610206") {
   try {
     const sheetName = getCurrentSheetName();
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().find(s => s.getName().replace(/\s/g, '') === sheetName.replace(/\s/g, ''));
     
-    if (!sheet) {
+    
+    if (!sheet || trackingId == "") {
       return { error: `ไม่พบข้อมูลในระบบ (${sheetName}) กรุณาติดต่อเจ้าหน้าที่` };
     }
     
@@ -123,12 +133,14 @@ function getJobStatus(trackingId="PEA2026012400001") {
     
     // Find job by tracking ID (เลขคำร้อง in column 9)
     for (let i = 1; i < data.length; i++) {
-      if (data[i][COLUMNS["เลขคำร้อง"]].toUpperCase() === trackingId) {
+      if (data[i][COLUMNS["เลขคำร้อง"]].toString().toUpperCase() === trackingId) {
         const stepDates = [
           validateDate(data[i][COLUMNS["วันรับคำร้อง"]]),
-          validateDate(data[i][COLUMNS['วันที่นัดสำรวจ (Survey Date)']]),
+          validateDate(data[i][COLUMNS['วันที่นัดสำรวจ']]),
           validateDate(data[i][COLUMNS['วันที่แจ้งค่าใช้จ่าย ผชฟ.']]),
-          validateDate(data[i][COLUMNS['วันที่ ผชฟ. ชำระเงิน']])
+          validateDate(data[i][COLUMNS['วันที่ ผชฟ. ชำระเงิน']]),
+          validateDate(data[i][COLUMNS['วันที่ก่อสร้างระบบจำหน่าย']]),
+          validateDate(data[i][COLUMNS['วันที่ติดตั้งมิเตอร์']])
         ];
         
         return JSON.stringify({
@@ -137,8 +149,9 @@ function getJobStatus(trackingId="PEA2026012400001") {
           jobName: data[i][COLUMNS["ชื่องาน"]] || null,
           customerCoords: data[i][COLUMNS['สถานที่/พิกัด']] || null,
           requestDate: validateDate(data[i][COLUMNS["วันรับคำร้อง"]]) || null,
-          currentStep: calculateCurrentStep(stepDates),
+          currentStep: calculateCurrentStep(stepDates, data[i][COLUMNS['สถานะงาน (Work Status)']]),
           stepDates: stepDates,
+          workStatus: data[i][COLUMNS['สถานะงาน (Work Status)']] || null,
         });
       }
     }
@@ -155,7 +168,7 @@ function getJobStatus(trackingId="PEA2026012400001") {
 function getStaffList() {
   try {
     const sheetName = getCurrentSheetName();
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().find(s => s.getName().replace(/\s/g, '') === sheetName.replace(/\s/g, ''));
     
     if (!sheet) {
       return JSON.stringify([]);
@@ -190,7 +203,7 @@ function getStaffList() {
 function getJobsByStaff(staffName) {
   try {
     const sheetName = getCurrentSheetName();
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().find(s => s.getName().replace(/\s/g, '') === sheetName.replace(/\s/g, ''));
     
     if (!sheet) {
       return (JSON.stringify([]));
@@ -201,12 +214,14 @@ function getJobsByStaff(staffName) {
     
     // Find all jobs for this staff member
     for (let i = 1; i < data.length; i++) {
-      if (data[i][COLUMNS['ผู้รับผิดชอบแฟ้มงาน']] === staffName && data[i][COLUMNS['เลขคำร้อง']] && data[i][COLUMNS['วันที่นัดสำรวจ (Survey Date)']]) {
+      if (data[i][COLUMNS['ผู้รับผิดชอบแฟ้มงาน']] === staffName && data[i][COLUMNS['เลขคำร้อง']] && data[i][COLUMNS['วันที่นัดสำรวจ']]) {
         const stepDates = [
           validateDate(data[i][COLUMNS['วันรับคำร้อง']], false),
-          validateDate(data[i][COLUMNS['วันที่นัดสำรวจ (Survey Date)']], false),
+          validateDate(data[i][COLUMNS['วันที่นัดสำรวจ']], false),
           validateDate(data[i][COLUMNS['วันที่แจ้งค่าใช้จ่าย ผชฟ.']], false),
-          validateDate(data[i][COLUMNS['วันที่ ผชฟ. ชำระเงิน']], false)
+          validateDate(data[i][COLUMNS['วันที่ ผชฟ. ชำระเงิน']], false),
+          validateDate(data[i][COLUMNS['วันที่ก่อสร้างระบบจำหน่าย']], false),
+          validateDate(data[i][COLUMNS['วันที่ติดตั้งมิเตอร์']], false)
         ];
         
         jobs.push({
@@ -217,9 +232,9 @@ function getJobsByStaff(staffName) {
           customerName: data[i][COLUMNS['ชื่อผู้ใช้ไฟ']] || null,
           customerPhone: validatePhoneNumber(data[i][COLUMNS['เบอร์โทร']]) || null,
           requestDate: validateDate(data[i][COLUMNS['วันรับคำร้อง']], false) || null,
-          appointmentDate: validateDate(data[i][COLUMNS['วันที่นัดสำรวจ (Survey Date)']], false) || null,
+          appointmentDate: validateDate(data[i][COLUMNS['วันที่นัดสำรวจ']], false) || null,
           jobType: data[i][COLUMNS['ประเภทงาน']] || 'ไม่ระบุ',
-          currentStep: calculateCurrentStep(stepDates),
+          currentStep: calculateCurrentStep(stepDates, data[i][COLUMNS['สถานะงาน (Work Status)']]),
           stepDates: stepDates,
           workStatus: data[i][COLUMNS['สถานะงาน (Work Status)']] || null,
           notes: data[i][COLUMNS['หมายเหตุ']] || null

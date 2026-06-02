@@ -733,7 +733,8 @@
                     // Show first 3 jobs
                     const displayJobs = dayJobs.slice(0, 3);
                     displayJobs.forEach(function (job) {
-                        html += '<div class="week-job-item" onclick="showJobDetail(\'' + job.trackingId + '\')"><i class="fas fa-briefcase mr-2"></i>' + job.jobName + '</div>';
+                        const trackingIdEscaped = escapeForSingleQuote(job.trackingId);
+                        html += '<div class="week-job-item" onclick="showJobDetail(\'' + trackingIdEscaped + '\')"><i class="fas fa-briefcase mr-2"></i>' + job.jobName + '</div>';
                     });
                     
                     if (dayJobs.length > 1) {
@@ -771,7 +772,8 @@
                 html += '</div>';
             } else {
                 dayJobs.forEach(function (job) {
-                    html += '<div class="border-l-4 border-purple-primary bg-gray-50 p-4 mb-3 rounded cursor-pointer hover:shadow-md transition" onclick="showJobDetail(\'' + job.trackingId + '\')">';
+                    const trackingIdEscaped = escapeForSingleQuote(job.trackingId);
+                    html += '<div class="border-l-4 border-purple-primary bg-gray-50 p-4 mb-3 rounded cursor-pointer hover:shadow-md transition" onclick="showJobDetail(\'' + trackingIdEscaped + '\')">';
                     html += '<div class="font-semibold text-purple-primary">' + job.jobName + '</div>';
                     html += '<div class="text-sm text-gray-600 mt-1">';
                     html += '<i class="fas fa-map-marker-alt mr-1"></i> ' + (job.patternNumber || '-');
@@ -798,6 +800,11 @@
                 return appointmentDate.isSame(date, 'day');
             });
         }
+
+        // Escape values used in single-quoted inline handlers
+        function escapeForSingleQuote(value) {
+            return (value || '').toString().replace(/'/g, "\\'");
+        }
         
         // Show jobs for a specific day in a table
         function showDayJobs(dayStr) {
@@ -822,7 +829,8 @@
             tableHtml += '<tbody>';
             
             dayJobs.forEach(function(job, index) {
-                tableHtml += '<tr class="border-t hover:bg-purple-50 cursor-pointer transition" onclick="showJobDetail(\'' + job.trackingId + '\', \'' + dayStr + '\')">';
+                const trackingIdEscaped = escapeForSingleQuote(job.trackingId);
+                tableHtml += '<tr class="border-t hover:bg-purple-50 cursor-pointer transition" onclick="showJobDetail(\'' + trackingIdEscaped + '\', \'' + dayStr + '\')">';
                 tableHtml += '<td class="py-3 px-3">' + (index + 1) + '</td>';
                 tableHtml += '<td class="py-3 px-3 text-purple-primary font-semibold">' + job.trackingId + '</td>';
                 tableHtml += '<td class="py-3 px-3">' + (job.jobName || '-') + '</td>';
@@ -858,7 +866,10 @@
 
         // Show job detail
         function showJobDetail(trackingId, returnToDayStr) {
-            const job = staffJobs.find(function (j) { return j.trackingId === trackingId; });
+            const normalizedTrackingId = (trackingId || '').toString().trim();
+            const job = staffJobs.find(function (j) {
+                return (j.trackingId || '').toString().trim() === normalizedTrackingId;
+            });
 
             if (!job) return;
 
