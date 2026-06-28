@@ -1,6 +1,6 @@
-function exportData() {
+function exportThermoHygroData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("รายการ Ecert");
+  const sheet = ss.getSheetByName("Ecert");
   const data = sheet.getDataRange().getValues().slice(1); // Skip header row
 
   // Use object literal for faster data collection
@@ -9,7 +9,7 @@ function exportData() {
   // Process main sheet data
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
-    let [date, , , location_dept, location_detail, code, name, form_pm, form_cal] = row;
+    let [date, , , , location_dept, uut_temp, uut_hum, std_temp, std_hum, location_detail, code, name, , , , , form_pm, form_cal] = row;
 
     if (!code) continue; // Skip entries without codes
     if (date instanceof Date && date.getMonth() === 4) {
@@ -26,86 +26,82 @@ function exportData() {
     };
   }
 
-  // Process other sheets in a single loop
-  const sheets = ['MONITOR', 'SPHYMO', 'FLOW,O2', 'FLOW,Air', 'REG, High', 'SUC, Thoracic', 'SUC, Low', 'OXIMETERS, PULSE'];
-  const processorMap = {
-    'MONITOR': getMonitorData,
-    'SPHYMO': getSphyData,
-    'FLOW,O2': getFlowO2Data,
-    'FLOW,Air': getFlowAirData,
-    'REG, High': getRegHighData,
-    'SUC, Thoracic': getSucthoracicData,
-    'SUC, Low': getSucLowData,
-    'OXIMETERS, PULSE': getOximetersPulseData,
-    'EKG RECORDER': getEKGData
-  };
+  // // Process other sheets in a single loop
+  // const sheets = ['MONITOR', 'SPHYMO', 'FLOW,O2', 'FLOW,Air', 'REG, High', 'SUC, Thoracic', 'SUC, Low', 'OXIMETERS, PULSE'];
+  // const processorMap = {
+  //   'MONITOR': getMonitorData,
+  //   'SPHYMO': getSphyData,
+  //   'FLOW,O2': getFlowO2Data,
+  //   'FLOW,Air': getFlowAirData,
+  //   'REG, High': getRegHighData,
+  //   'SUC, Thoracic': getSucthoracicData,
+  //   'SUC, Low': getSucLowData,
+  //   'OXIMETERS, PULSE': getOximetersPulseData,
+  //   'EKG RECORDER': getEKGData
+  // };
 
-  const sliceSize = {
-    'MONITOR': 9,
-    'SPHYMO': 13,
-    'FLOW,O2': 11,
-    'FLOW,Air': 11,
-    'REG, High': 11,
-    'SUC, Thoracic': 11,
-    'SUC, Low': 11,
-    'OXIMETERS, PULSE': 9,
-    'EKG RECORDER': 9
-  };
+  // const sliceSize = {
+  //   'MONITOR': 9,
+  //   'SPHYMO': 13,
+  //   'FLOW,O2': 11,
+  //   'FLOW,Air': 11,
+  //   'REG, High': 11,
+  //   'SUC, Thoracic': 11,
+  //   'SUC, Low': 11,
+  //   'OXIMETERS, PULSE': 9,
+  //   'EKG RECORDER': 9
+  // };
 
-  for (let s = 0; s < sheets.length; s++) {
-    const sheetName = sheets[s];
-    const currentSheet = ss.getSheetByName(sheetName);
-    if (!currentSheet) continue;
+  const sheetName = "Ecert";
+  const currentSheet = ss.getSheetByName(sheetName);
+  if (!currentSheet) return Logger.log('Sheet not found: ' + sheetName);
 
-    const sheet_data = currentSheet.getDataRange().getValues();
-    Logger.log('Processing sheet: ' + sheetName);
-    // Quick check if sheet has relevant data
-    let hasData = false;
-    for (let i = 0; i < sheet_data.length; i++) {
-      if (sheet_data[i][0] === "CODE" && sheet_data[i][1] !== '') {
-        hasData = true;
-        break;
-      }
+  const sheet_data = currentSheet.getDataRange().getValues();
+
+  // Process entries
+  for (let i = 0; i < sheet_data.length; i++) {
+    if (sheet_data[i][0] === '' || sheet_data[i][1] === '') continue; // Skip empty rows
+
+    let codeValue = sheet_data[i][10].toString().trim().replace('PYT3D_', '').replace('PYT3_', '').replace('D_', '');
+    const hasUnderscore = codeValue.indexOf('_') !== -1;
+
+    // Generate both possible codes
+    let suffix
+    if (hasUnderscore) {
+      suffix = codeValue.padStart(7, '0');
+    } else {
+      suffix = codeValue.padStart(5, '0');
     }
-    if (!hasData) continue;
 
-    // Process entries
-    for (let i = 0; i < sheet_data.length; i++) {
-      if (sheet_data[i][0] !== "CODE" || !sheet_data[i][1]) continue;
+    const code1 = 'PYT3_' + suffix;
+    const code2 = 'PYT3D_' + suffix;
+    const code3 = 'PYT3T_' + suffix;
 
-      let codeValue = sheet_data[i][1].toString().trim().replace('PYT3D_', '').replace('PYT3_', '').replace('D_', '');
-      const hasUnderscore = codeValue.indexOf('_') !== -1;
+    // Check which code exists in dataMap
+    let actualCode = null;
+    if (dataMap[code1]) {
+      actualCode = code1;
+    } else if (dataMap[code2]) {
+      actualCode = code2;
+    } else if (dataMap[code3]) {
+      actualCode = code3;
+    }
+    else {
+      Logger.log('Skipping code: ' + code1 + ', ' + code2 + ', and ' + code3 + ' as none exists in main data');
+      continue;
+    }
 
-      // Generate both possible codes
-      let suffix
-      if (hasUnderscore) {
-        suffix = codeValue.padStart(7, '0');
-      } else {
-        suffix = codeValue.padStart(5, '0');
+    // Process data for the existing code
+    const calData = getThermoHygroData(sheet_data[i]);
+    Object.assign(dataMap[actualCode], calData);
+    if(dataMap[actualCode].checklist) {
+      if (dataMap[actualCode].checklist.uut_hum == "" ||  dataMap[actualCode].checklist.std_hum == "" || dataMap[actualCode].checklist.uut_hum == "-" ||  dataMap[actualCode].checklist.std_hum == "-") {
+        dataMap[actualCode].form_pm = "THERMOMETER DIGITAL (MED)#354";
+        dataMap[actualCode].form_cal = "THERMOMETER DIGITAL (MED)#152";
+      }else {
+        dataMap[actualCode].form_pm = "THERMOMETER, HYGRO (MED)#357";
+        dataMap[actualCode].form_cal = "THERMOMETER, HYGRO (MED)#24";
       }
-
-      const code1 = 'PYT3_' + suffix;
-      const code2 = 'PYT3D_' + suffix;
-      const code3 = 'PYT3T_' + suffix;
-
-      // Check which code exists in dataMap
-      let actualCode = null;
-      if (dataMap[code1]) {
-        actualCode = code1;
-      } else if (dataMap[code2]) {
-        actualCode = code2;
-      } else if (dataMap[code3]) {
-        actualCode = code3;
-      }
-      else {
-        Logger.log('Skipping code: ' + code1 + ' and ' + code2 + ' as neither exists in main data');
-        continue;
-      }
-
-      // Process data for the existing code
-      const d = sheet_data.slice(i, i + sliceSize[sheetName]);
-      const calData = processorMap[sheetName](d);
-      Object.assign(dataMap[actualCode], calData);
     }
   }
 
@@ -117,6 +113,17 @@ function exportData() {
   const file = DriveApp.createFile(fileName, json);
 
   Logger.log('Data exported to: ' + file.getUrl());
+}
+
+function getThermoHygroData(data) {
+  return {
+    checklist: {
+      uut_temp: data[5],
+      uut_hum: data[6],
+      std_temp: data[7],
+      std_hum: data[8],
+    }
+  }
 }
 
 function getMonitorData(data) {
