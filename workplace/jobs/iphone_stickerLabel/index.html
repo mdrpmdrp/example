@@ -15,7 +15,11 @@
         :root {
             --a4-width: 210mm;
             --a4-height: 297mm;
-            --card-width: calc(var(--a4-width) / 3);
+            --page-width: var(--a4-width);
+            --page-height: var(--a4-height);
+            --grid-columns: 3;
+            --grid-rows: 3;
+            --card-width: calc(var(--page-width) / 3);
         }
 
         body {
@@ -43,12 +47,12 @@
         }
 
         .page {
-            width: var(--a4-width);
-            height: var(--a4-height);
+            width: var(--page-width);
+            height: var(--page-height);
             background: white;
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(3, var(--card-height));
+            grid-template-columns: repeat(var(--grid-columns), 1fr);
+            grid-template-rows: repeat(var(--grid-rows), 1fr);
             row-gap: 0;
             column-gap: 0;
             align-content: start;
@@ -68,6 +72,7 @@
         .card {
             position: relative;
             width: var(--card-width);
+            height: 100%;
             overflow: hidden;
             box-sizing: border-box;
             border: 0.1mm dashed #ccc;
@@ -310,6 +315,17 @@
                     </div>
 
                     <div class="min-w-44 space-y-2">
+                        <div class="rounded-xl border border-white/15 bg-white/5 p-3 text-xs text-slate-200">
+                            <p class="mb-2 text-sm font-bold text-white">ขนาดกระดาษ</p>
+                            <label class="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-slate-900/40 px-2 py-2 hover:bg-slate-800/60">
+                                <input type="radio" name="paper-size" value="a4" checked>
+                                <span>A4 (9 รายการ/หน้า)</span>
+                            </label>
+                            <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-slate-900/40 px-2 py-2 hover:bg-slate-800/60">
+                                <input type="radio" name="paper-size" value="sticker">
+                                <span>7 x 9.5 cm (1 รายการ/หน้า)</span>
+                            </label>
+                        </div>
                         <div class="rounded-xl border border-sky-300/25 bg-sky-400/10 p-3 text-sky-100">
                             <p class="text-xs">รายการที่เลือก</p>
                             <p class="text-2xl font-bold"><span id="selected-count">0</span></p>
@@ -347,9 +363,56 @@
         let templateImageSrc = imageUrl;
         const allData = [];
         const selectedIds = new Set();
+        const paperLayouts = {
+            a4: {
+                pageWidthMm: 210,
+                pageHeightMm: 297,
+                gridColumns: 3,
+                gridRows: 3,
+                itemsPerPage: 9
+            },
+            sticker: {
+                pageWidthMm: 70,
+                pageHeightMm: 95,
+                gridColumns: 1,
+                gridRows: 1,
+                itemsPerPage: 1
+            }
+        };
+        let currentPaperSize = 'a4';
 
 
         let debouncedSearchHandler;
+
+        function getCurrentPaperLayout() {
+            return paperLayouts[currentPaperSize] || paperLayouts.a4;
+        }
+
+        function updatePrintPageSize(layout) {
+            const styleId = 'print-page-size-style';
+            let styleTag = document.getElementById(styleId);
+            if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = styleId;
+                document.head.appendChild(styleTag);
+            }
+
+            styleTag.textContent = '@media print { @page { size: ' + layout.pageWidthMm + 'mm ' + layout.pageHeightMm + 'mm; margin: 0; } }';
+        }
+
+        function applyPaperLayout() {
+            const layout = getCurrentPaperLayout();
+            document.documentElement.style.setProperty('--page-width', layout.pageWidthMm + 'mm');
+            document.documentElement.style.setProperty('--page-height', layout.pageHeightMm + 'mm');
+            document.documentElement.style.setProperty('--grid-columns', String(layout.gridColumns));
+            document.documentElement.style.setProperty('--grid-rows', String(layout.gridRows));
+
+            const cardWidth = layout.gridColumns === 1
+                ? 'var(--page-width)'
+                : 'calc(var(--page-width) / ' + layout.gridColumns + ')';
+            document.documentElement.style.setProperty('--card-width', cardWidth);
+            updatePrintPageSize(layout);
+        }
 
         function debounce(fn, delay) {
             let timer;
@@ -608,6 +671,12 @@
             $(window).on('resize', () => {
                 adjustScale();
             });
+
+            $('input[name="paper-size"]').on('change', function () {
+                currentPaperSize = $(this).val();
+                applyPaperLayout();
+                renderSelectedCards();
+            });
         }
 
         function adjustScale() {
@@ -615,12 +684,13 @@
             const previewPane = document.getElementById('preview-pane');
             const paneWidth = previewPane ? previewPane.clientWidth : window.innerWidth;
             const paneHeight = previewPane ? previewPane.clientHeight : window.innerHeight;
-            const a4WidthPx = 210 * (96 / 25.4);
-            const a4HeightPx = 297 * (96 / 25.4);
+            const layout = getCurrentPaperLayout();
+            const pageWidthPx = layout.pageWidthMm * (96 / 25.4);
+            const pageHeightPx = layout.pageHeightMm * (96 / 25.4);
             const availableWidth = Math.max(paneWidth - 32, 120);
             const availableHeight = Math.max(paneHeight - 32, 120);
-            const widthScale = availableWidth / a4WidthPx;
-            const heightScale = availableHeight / a4HeightPx;
+            const widthScale = availableWidth / pageWidthPx;
+            const heightScale = availableHeight / pageHeightPx;
             const scale = Math.min(widthScale, heightScale, 1);
 
             // Use zoom to keep visual size and layout size consistent, avoiding extra blank scroll area.
@@ -630,6 +700,7 @@
 
         function renderPages(data, imageUrl) {
             const container = document.getElementById('main-container');
+            const layout = getCurrentPaperLayout();
             container.innerHTML = '';
 
             if (!data.length) {
@@ -648,7 +719,7 @@
 
             let currentPage;
             data.forEach((row, index) => {
-                if (index % 9 === 0) {
+                if (index % layout.itemsPerPage === 0) {
                     currentPage = document.createElement('div');
                     currentPage.className = 'page';
                     container.appendChild(currentPage);
@@ -681,12 +752,17 @@
 
             container.querySelectorAll('.page').forEach(page => {
                 const cardCount = page.children.length;
-                if (cardCount >= 7) {
-                    page.style.alignContent = 'center';
-                    page.style.paddingTop = '';
+                if (layout.itemsPerPage === 9) {
+                    if (cardCount >= 7) {
+                        page.style.alignContent = 'center';
+                        page.style.paddingTop = '';
+                    } else {
+                        page.style.alignContent = 'start';
+                        page.style.paddingTop = '10mm';
+                    }
                 } else {
                     page.style.alignContent = 'start';
-                    page.style.paddingTop = '10mm';
+                    page.style.paddingTop = '';
                 }
             });
 
@@ -751,6 +827,7 @@
         }
 
         function initAfterImageProbe() {
+            applyPaperLayout();
             attachEvents();
             refreshSelectionViews();
             lucide.createIcons();
