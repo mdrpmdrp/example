@@ -1,0 +1,33 @@
+/** Stock mutations are recorded so the product balance is auditable. */
+function adjustStock(sessionToken, productId, quantity, type, reference, remark) {
+  requireRole(sessionToken, ['OWNER', 'ADMIN']);
+  return applyStockMovement_(productId, quantity, type, reference, remark);
+}
+
+function applyStockMovement_(productId, quantity, type, reference, remark) {
+  var product = getProductById(productId);
+  if (!product) throw new Error('Product not found: ' + productId);
+  var delta = Number(quantity);
+  if (!isFinite(delta) || delta === 0) throw new Error('Quantity must not be zero');
+  if (type === 'OUT') delta = -Math.abs(delta);
+  if (type === 'IN') delta = Math.abs(delta);
+  var balance = Number(product.Stock) + delta;
+  if (balance < 0) throw new Error('Insufficient stock for ' + productId);
+
+  var row = findRow(SHEETS.PRODUCTS, productId);
+  getSheet(SHEETS.PRODUCTS).getRange(row, 7).setValue(balance);
+  getSheet(SHEETS.PRODUCTS).getRange(row, 12).setValue(new Date());
+  appendObject(SHEETS.STOCK_MOVEMENT, [generateId('STK', SHEETS.STOCK_MOVEMENT), new Date(), productId, type || 'ADJUST', delta, balance, reference || '', remark || '']);
+  return balance;
+}
+
+function getStockSummary(sessionToken) {
+  requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
+  return getProducts().map(function(product) {
+    return { productId: product.ProductID, productName: product.ProductName, stock: Number(product.Stock), minStock: Number(product.MinStock), lowStock: Number(product.Stock) <= Number(product.MinStock) };
+  });
+}
+
+function getLowStockProducts() {
+  return getProducts().filter(function(product) { return Number(product.Stock) <= Number(product.MinStock); });
+}
