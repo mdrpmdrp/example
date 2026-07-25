@@ -49,7 +49,9 @@ function createProducts() {
       "MaxStock",
       "Status",
       "Created",
-      "Updated"
+      "Updated",
+      "BaseUnit",
+      "PackUnits"
     ]
   );
 }
@@ -99,7 +101,15 @@ function createOrders() {
       "Profit",
       "Status",
       "CreatedBy",
-      "Created"
+      "Created",
+      "CustomerName",
+      "CustomerAddress",
+      "CustomerPhone",
+      "ShippingType",
+      "ShippingAmount",
+      "DiscountAmount",
+      "SubtotalAmount",
+      "NetAmount"
     ]
   );
 
@@ -231,46 +241,46 @@ function insertDemoData() {
   // PRODUCTS
   // ==========================
   const products = ss.getSheetByName(SHEETS.PRODUCTS);
-  products.getRange(2, 1, 10, 12).setValues([
+  products.getRange(2, 1, 10, 14).setValues([
     [
-      "PROD001", "885100000001", "Classic Cotton T-Shirt", "เสื้อผ้า",
-      180, 350, 120, 20, 500, "ACTIVE", new Date(), new Date()
+      "PROD001", "885100000001", "Botox A", "botox",
+      2800, 4500, 40, 5, 120, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่อง", packSize: 6 }, { unit: "แพคคู่", packSize: 2 }])
     ],
     [
-      "PROD002", "885100000002", "Slim Fit Jeans", "เสื้อผ้า",
-      550, 990, 80, 10, 200, "ACTIVE", new Date(), new Date()
+      "PROD002", "885100000002", "Botox B", "botox",
+      2400, 3900, 35, 5, 100, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่อง", packSize: 12 }])
     ],
     [
-      "PROD003", "885100000003", "Oversized Hoodie", "เสื้อผ้า",
-      650, 1190, 60, 10, 150, "ACTIVE", new Date(), new Date()
+      "PROD003", "885100000003", "Filler HA 1cc", "filler",
+      3200, 5500, 28, 4, 80, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่องเล็ก", packSize: 6 }, { unit: "กล่องใหญ่", packSize: 12 }])
     ],
     [
-      "PROD004", "885100000004", "Floral Maxi Dress", "เสื้อผ้า",
-      750, 1490, 45, 5, 100, "ACTIVE", new Date(), new Date()
+      "PROD004", "885100000004", "Vitamin Glow Shot", "วิตามินผิว",
+      650, 1200, 90, 10, 300, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "แพค", packSize: 10 }])
     ],
     [
-      "PROD005", "885100000005", "Leather Handbag", "กระเป๋า",
-      980, 1890, 35, 5, 80, "ACTIVE", new Date(), new Date()
+      "PROD005", "885100000005", "Skin Booster C", "หน้าใส",
+      900, 1600, 60, 8, 200, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "แพคคู่", packSize: 2 }, { unit: "กล่อง", packSize: 12 }])
     ],
     [
-      "PROD006", "885100000006", "Canvas Backpack", "กระเป๋า",
-      720, 1390, 40, 5, 100, "ACTIVE", new Date(), new Date()
+      "PROD006", "885100000006", "PDO Thread 4D", "ร้อยไหม",
+      1800, 3200, 150, 20, 500, "ACTIVE", new Date(), new Date(), "เส้น", JSON.stringify([{ unit: "มัด", packSize: 10 }])
     ],
     [
-      "PROD007", "885100000007", "Stainless Steel Watch", "นาฬิกา",
-      1500, 2990, 30, 5, 60, "ACTIVE", new Date(), new Date()
+      "PROD007", "885100000007", "Fat Burner Mix", "fat",
+      2200, 3800, 50, 5, 150, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่อง", packSize: 6 }])
     ],
     [
-      "PROD008", "885100000008", "Silver Necklace", "เครื่องประดับ",
-      420, 890, 100, 10, 300, "ACTIVE", new Date(), new Date()
+      "PROD008", "885100000008", "White Glow Pack", "หน้าใส",
+      1200, 2200, 45, 5, 120, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "แพค", packSize: 4 }, { unit: "กล่องเล็ก", packSize: 8 }])
     ],
     [
-      "PROD009", "885100000009", "Pearl Earrings", "เครื่องประดับ",
-      250, 590, 150, 20, 400, "ACTIVE", new Date(), new Date()
+      "PROD009", "885100000009", "Vit C Duo", "วิตามินผิว",
+      700, 1300, 75, 10, 200, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "คู่", packSize: 2 }])
     ],
     [
-      "PROD010", "885100000010", "Fashion Ring", "เครื่องประดับ",
-      120, 290, 200, 20, 500, "ACTIVE", new Date(), new Date()
+      "PROD010", "885100000010", "Clinic Support Kit", "อื่นๆ",
+      400, 800, 25, 3, 80, "ACTIVE", new Date(), new Date(), "ชิ้น", JSON.stringify([{ unit: "แพค", packSize: 5 }])
 
     ]
   ]);
@@ -323,28 +333,28 @@ function insertDemoData() {
   const rates = ss.getSheetByName(SHEETS.AGENT_RATES);
   rates.getRange(2, 1, 12, 7).setValues([
     // PROD001
-    [1, "AGT001", "PROD001", 1, 10, 175, new Date()],
-    [2, "AGT001", "PROD001", 11, 999999, 165, new Date()],
+    [1, "AGT001", "PROD001", 1, 5, 4200, new Date()],
+    [2, "AGT001", "PROD001", 6, 999999, 3950, new Date()],
 
     // PROD002
-    [3, "AGT001", "PROD002", 1, 5, 1180, new Date()],
-    [4, "AGT001", "PROD002", 6, 999999, 1120, new Date()],
+    [3, "AGT001", "PROD002", 1, 5, 3650, new Date()],
+    [4, "AGT001", "PROD002", 6, 999999, 3400, new Date()],
 
     // PROD003
-    [5, "AGT002", "PROD003", 1, 10, 830, new Date()],
-    [6, "AGT002", "PROD003", 11, 999999, 790, new Date()],
+    [5, "AGT002", "PROD003", 1, 5, 5300, new Date()],
+    [6, "AGT002", "PROD003", 6, 999999, 5000, new Date()],
 
     // PROD004
-    [7, "AGT003", "PROD004", 1, 2, 34500, new Date()],
-    [8, "AGT003", "PROD004", 3, 999999, 33000, new Date()],
+    [7, "AGT003", "PROD004", 1, 10, 1150, new Date()],
+    [8, "AGT003", "PROD004", 11, 999999, 1100, new Date()],
 
     // PROD005
-    [9, "AGT004", "PROD005", 1, 2, 31500, new Date()],
-    [10, "AGT004", "PROD005", 3, 999999, 30000, new Date()],
+    [9, "AGT004", "PROD005", 1, 10, 1500, new Date()],
+    [10, "AGT004", "PROD005", 11, 999999, 1400, new Date()],
 
     // PROD006
-    [11, "AGT005", "PROD006", 1, 20, 820, new Date()],
-    [12, "AGT005", "PROD006", 21, 999999, 780, new Date()]
+    [11, "AGT005", "PROD006", 1, 20, 3000, new Date()],
+    [12, "AGT005", "PROD006", 21, 999999, 2800, new Date()]
   ]);
 
   // ==========================
@@ -375,20 +385,20 @@ function insertDemoData() {
       1,
       "ORD000001",
       "PROD001",
-      5,
-      180,
-      120,
-      900
+      2,
+      4500,
+      2800,
+      9000
     ],
 
     [
       2,
       "ORD000001",
-      "PROD002",
-      3,
-      920,
-      850,
-      2760
+      "PROD004",
+      4,
+      1200,
+      650,
+      4800
     ]
   ]);
 

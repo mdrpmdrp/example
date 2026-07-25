@@ -4,24 +4,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>ERP - ระบบจัดการตัวแทนจำหน่ายสินค้าและคลังสินค้าอัจฉริยะ</title>
+  <title>ERP - ระบบจัดการสินค้าและตัวแทน</title>
   <!-- Tailwind CSS -->
   <link rel="preconnect" href="https://cdn.tailwindcss.com">
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Awesome Icons -->
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts (Noto Sans Thai + Kanit) -->
+  <!-- Google Fonts (Noto Sans Thai + IBM Plex Sans Thai) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Noto+Serif+Thai:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
   <script>
     tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
                         sans: ['"Noto Sans Thai"', 'sans-serif'],
-                        heading: ['Kanit', 'sans-serif'],
+                        heading: ['"IBM Plex Sans Thai"', '"Noto Sans Thai"', 'sans-serif'],
                     },
                     colors: {
                         primary: {
@@ -57,6 +60,459 @@
             });
         }
 
+        function getProductUnitName(product) {
+            var unitName = String(product && (product.baseUnit || product.unitName) ? (product.baseUnit || product.unitName) : '').trim();
+            return unitName || 'ขวด';
+        }
+
+        function getProductPackUnits(product) {
+            var packUnits = product && Array.isArray(product.packUnits) ? product.packUnits : [];
+            return packUnits.filter(function(item) {
+                return item && String(item.unit || '').trim() && Number.isInteger(Number(item.packSize)) && Number(item.packSize) > 0;
+            });
+        }
+
+        function getProductPackSize(product) {
+            var firstPack = getProductPackUnits(product)[0];
+            var packSize = Number(firstPack && firstPack.packSize);
+            return Number.isInteger(packSize) && packSize > 0 ? packSize : 1;
+        }
+
+        function formatProductUnitLabel(product) {
+            var unitName = getProductUnitName(product);
+            var packUnits = getProductPackUnits(product);
+            if (!packUnits.length) return unitName;
+            return unitName + ' · ' + packUnits.map(function(item) { return item.unit + ' x' + Number(item.packSize); }).join(' / ');
+        }
+
+        function formatProductStockLabel(product) {
+            var stock = Number(product && product.stock) || 0;
+            var unitName = getProductUnitName(product);
+            return stock + ' ' + unitName;
+        }
+
+        function formatProductOptionLabel(product) {
+            var name = String(product && product.name ? product.name : '');
+            var id = String(product && product.id ? product.id : '');
+            return id + ' - ' + name.substring(0, 25) + ' · ' + formatProductUnitLabel(product) + ' · คงเหลือ ' + formatProductStockLabel(product);
+        }
+
+        function getProductCategoryLabel(value) {
+            var map = {
+                'botox': 'botox',
+                'filler': 'filler',
+                'fat': 'fat',
+                'หน้าใส': 'หน้าใส',
+                'วิตามินผิว': 'วิตามินผิว',
+                'ร้อยไหม': 'ร้อยไหม',
+                'อื่นๆ': 'อื่นๆ'
+            };
+            return map[String(value || '').trim()] || 'อื่นๆ';
+        }
+
+        let selectedSummaryDateKey = '';
+        let selectedSummaryAgent = '';
+        let summaryDatePicker = null;
+
+        function normalizeSummaryDateKey(value) {
+            if (!value) return '';
+            if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+            var date = value instanceof Date ? value : new Date(value);
+            if (isNaN(date.getTime())) return '';
+            var year = date.getFullYear();
+            var month = String(date.getMonth() + 1).padStart(2, '0');
+            var day = String(date.getDate()).padStart(2, '0');
+            return year + '-' + month + '-' + day;
+        }
+
+        function getTodaySummaryDateKey() {
+            return normalizeSummaryDateKey(new Date());
+        }
+
+        function getSummaryDateLabel(dateKey) {
+            var normalized = normalizeSummaryDateKey(dateKey);
+            if (!normalized) return '-';
+            var parts = normalized.split('-');
+            var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+            return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        function getOrderSummaryDateKey(order) {
+            return normalizeSummaryDateKey(order && (order.orderDateKey || order.orderDate || order.createdAt || order.created));
+        }
+
+        function getSummaryOrdersForDate(dateKey) {
+            var key = normalizeSummaryDateKey(dateKey) || getTodaySummaryDateKey();
+            return orders.filter(function(order) {
+                return getOrderSummaryDateKey(order) === key;
+            });
+        }
+
+        function buildSummaryAgentRows(dayOrders) {
+            var rows = {};
+            dayOrders.forEach(function(order) {
+                var agentName = String(order.agent || '').trim() || '-';
+                if (!rows[agentName]) {
+                    rows[agentName] = {
+                        agent: agentName,
+                        billCount: 0,
+                        totalAmount: 0,
+                        subtotalAmount: 0,
+                        shippingAmount: 0,
+                        discountAmount: 0,
+                        orders: []
+                    };
+                }
+                rows[agentName].billCount += 1;
+                rows[agentName].totalAmount += Number(order.totalAmount) || 0;
+                rows[agentName].subtotalAmount += Number(order.subtotalAmount) || 0;
+                rows[agentName].shippingAmount += Number(order.shippingAmount) || 0;
+                rows[agentName].discountAmount += Number(order.discountAmount) || 0;
+                rows[agentName].orders.push(order);
+            });
+            return Object.keys(rows).map(function(agentName) {
+                return rows[agentName];
+            }).sort(function(a, b) {
+                return b.totalAmount - a.totalAmount || b.billCount - a.billCount || a.agent.localeCompare(b.agent, 'th');
+            });
+        }
+
+        function buildSummaryBillCard(order) {
+            var bill = document.createElement('div');
+            bill.className = 'rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2';
+
+            var head = document.createElement('div');
+            head.className = 'flex flex-wrap items-start justify-between gap-2';
+            var left = document.createElement('div');
+            var right = document.createElement('div');
+            var orderId = document.createElement('div');
+            var orderTime = document.createElement('div');
+            var total = document.createElement('div');
+            orderId.className = 'text-xs font-black text-slate-800 font-mono';
+            orderId.textContent = 'บิล ' + order.orderId;
+            orderTime.className = 'text-[10px] font-semibold text-slate-400';
+            orderTime.textContent = order.orderDateLabel ? (order.orderDateLabel + (order.orderTimeLabel ? ' · ' + order.orderTimeLabel : '')) : (order.orderTimeLabel || '');
+            left.append(orderId, orderTime);
+            total.className = 'text-xs font-black text-primary-700 font-mono';
+            total.textContent = '฿' + Number(order.totalAmount || 0).toLocaleString();
+            right.appendChild(total);
+            head.append(left, right);
+            bill.appendChild(head);
+
+            var metaBits = [];
+            if (order.customerName) metaBits.push('ลูกค้า ' + order.customerName);
+            if (order.customerPhone) metaBits.push(order.customerPhone);
+            if (order.shippingType && order.shippingType !== 'NONE') {
+                var shippingName = order.shippingType === 'VAN' ? 'รถตู้/รถทัวร์' : order.shippingType === 'CHILLED' ? 'แพคเย็น' : order.shippingType === 'PARCEL' ? 'พัสดุ' : order.shippingType === 'MESSENGER' ? 'Messenger' : 'ส่งแยก';
+                metaBits.push('ส่ง ' + shippingName + ' ฿' + Number(order.shippingAmount || 0).toLocaleString());
+            }
+            if (Number(order.discountAmount) > 0) metaBits.push('ลด ฿' + Number(order.discountAmount || 0).toLocaleString());
+            if (metaBits.length) {
+                var meta = document.createElement('div');
+                meta.className = 'text-[10px] text-slate-500 leading-tight';
+                meta.textContent = metaBits.join(' · ');
+                bill.appendChild(meta);
+            }
+
+            var items = document.createElement('div');
+            items.className = 'space-y-1 border-t border-dashed border-slate-200 pt-2';
+            (order.items || []).forEach(function(item) {
+                var row = document.createElement('div');
+                row.className = 'flex items-start justify-between gap-3 text-[10px] text-slate-600';
+                var name = document.createElement('span');
+                var qty = document.createElement('span');
+                var product = products.find(function(p) { return p.id === item.productId; });
+                var unitLabel = item.isNonStock ? 'ชิ้น' : getProductUnitName(product);
+                name.className = 'min-w-0 flex-1 break-words';
+                name.textContent = (item.isNonStock ? '[นอกคลัง] ' : '') + item.productName;
+                qty.className = 'shrink-0 font-mono font-semibold text-slate-700 text-right';
+                qty.textContent = item.qty + ' ' + unitLabel + ' × ฿' + Number(item.unitPrice || 0).toLocaleString() + ' = ฿' + Number(item.total || 0).toLocaleString();
+                row.append(name, qty);
+                items.appendChild(row);
+            });
+            bill.appendChild(items);
+
+            var footer = document.createElement('div');
+            footer.className = 'grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-200';
+            var footerItems = [
+                { label: 'ยอดสินค้า', value: Number(order.subtotalAmount || 0) },
+                { label: 'ค่าส่ง', value: Number(order.shippingAmount || 0) },
+                { label: 'ส่วนลด', value: Number(order.discountAmount || 0) },
+                { label: 'ยอดจ่าย', value: Number(order.totalAmount || 0), highlight: true }
+            ];
+            footerItems.forEach(function(item) {
+                var box = document.createElement('div');
+                box.className = 'rounded-lg p-2 ' + (item.highlight ? 'bg-primary-50 border border-primary-100' : 'bg-white border border-slate-200');
+                var label = document.createElement('span');
+                var value = document.createElement('strong');
+                label.className = 'block text-[9px] font-bold text-slate-400 uppercase tracking-wider';
+                label.textContent = item.label;
+                value.className = 'block mt-0.5 text-xs font-black font-mono ' + (item.highlight ? 'text-primary-700' : 'text-slate-800');
+                value.textContent = '฿' + item.value.toLocaleString();
+                box.append(label, value);
+                footer.appendChild(box);
+            });
+            bill.appendChild(footer);
+
+            return bill;
+        }
+
+        function renderSummaryDetails(agentName, dayOrders) {
+            var card = document.getElementById('preview-invoice-card');
+            var placeholder = document.getElementById('preview-placeholder');
+            var billList = dayOrders.filter(function(order) {
+                return String(order.agent || '') === String(agentName || '');
+            });
+            var summary = billList.reduce(function(acc, order) {
+                acc.billCount += 1;
+                acc.subtotalAmount += Number(order.subtotalAmount) || 0;
+                acc.shippingAmount += Number(order.shippingAmount) || 0;
+                acc.discountAmount += Number(order.discountAmount) || 0;
+                acc.totalAmount += Number(order.totalAmount) || 0;
+                return acc;
+            }, { billCount: 0, subtotalAmount: 0, shippingAmount: 0, discountAmount: 0, totalAmount: 0 });
+
+            if (!billList.length) {
+                card.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                document.getElementById('inv-agent').textContent = '-';
+                document.getElementById('inv-order-count').textContent = '0';
+                document.getElementById('summary-total-products').textContent = '฿0.00';
+                document.getElementById('summary-total-shipping').textContent = '฿0.00';
+                document.getElementById('summary-total-discount').textContent = '฿0.00';
+                document.getElementById('inv-total-amount').textContent = '฿0.00';
+                document.getElementById('inv-items-list').replaceChildren();
+                return;
+            }
+
+            card.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            document.getElementById('inv-date').textContent = 'วันที่ ' + getSummaryDateLabel(selectedSummaryDateKey);
+            document.getElementById('inv-agent').textContent = agentName;
+            document.getElementById('inv-order-count').textContent = summary.billCount + ' บิล';
+            document.getElementById('summary-total-products').textContent = '฿' + summary.subtotalAmount.toLocaleString();
+            document.getElementById('summary-total-shipping').textContent = '฿' + summary.shippingAmount.toLocaleString();
+            document.getElementById('summary-total-discount').textContent = '฿' + summary.discountAmount.toLocaleString();
+            document.getElementById('inv-total-amount').textContent = '฿' + summary.totalAmount.toLocaleString();
+
+            var listContainer = document.getElementById('inv-items-list');
+            listContainer.replaceChildren();
+            billList.sort(function(a, b) {
+                var aKey = (a.orderDateKey || '') + ' ' + (a.orderTimeLabel || '');
+                var bKey = (b.orderDateKey || '') + ' ' + (b.orderTimeLabel || '');
+                return aKey < bKey ? 1 : aKey > bKey ? -1 : String(b.orderId).localeCompare(String(a.orderId));
+            }).forEach(function(order) {
+                listContainer.appendChild(buildSummaryBillCard(order));
+            });
+        }
+
+        function buildSummaryPrintBillMarkup(order) {
+            var money = function(value) {
+                return Number(value || 0).toLocaleString('th-TH');
+            };
+            var shippingName = order.shippingType === 'VAN' ? 'รถตู้/รถทัวร์' : order.shippingType === 'CHILLED' ? 'แพคเย็น' : order.shippingType === 'PARCEL' ? 'พัสดุ' : order.shippingType === 'MESSENGER' ? 'Messenger' : order.shippingType === 'SPLIT' ? 'ส่งแยก' : 'ไม่ระบุ';
+            var itemCount = (order.items || []).reduce(function(sum, item) {
+                return sum + (Number(item.qty) || 0);
+            }, 0);
+            var html = [];
+            html.push('<div class="receipt-block">');
+            html.push('<div class="bill-card-header">');
+            html.push('  <span class="bill-id">#' + escapeHtml(order.orderId) + '</span>');
+            html.push('  <span class="bill-time">' + escapeHtml(order.orderDateLabel || '') + (order.orderTimeLabel ? ' ' + escapeHtml(order.orderTimeLabel) : '') + '</span>');
+            html.push('</div>');
+            html.push('<div class="cust-box">');
+            html.push('  <div class="cust-name">ลูกค้า: ' + escapeHtml(order.customerName || 'ทั่วไป') + (order.customerPhone ? ' (' + escapeHtml(order.customerPhone) + ')' : '') + '</div>');
+            if (order.customerAddress) html.push('  <div class="cust-addr">ที่อยู่: ' + escapeHtml(order.customerAddress) + '</div>');
+            if (order.shippingType && order.shippingType !== 'NONE') html.push('  <div class="cust-ship">จัดส่ง: ' + escapeHtml(shippingName) + '</div>');
+            html.push('</div>');
+            html.push('<table class="receipt-items">');
+            html.push('<thead><tr><th class="ri-name">สินค้า</th><th class="ri-qty">จำนวน</th><th class="ri-price">ราคา</th><th class="ri-total">รวม</th></tr></thead>');
+            html.push('<tbody>');
+            (order.items || []).forEach(function(item) {
+                var product = products.find(function(p) { return p.id === item.productId; });
+                var unitLabel = item.isNonStock ? 'ชิ้น' : getProductUnitName(product);
+                html.push('<tr>');
+                html.push('<td class="ri-name">' + escapeHtml((item.isNonStock ? '[นอกคลัง] ' : '') + item.productName) + '</td>');
+                html.push('<td class="ri-qty">' + escapeHtml(String(item.qty || 0)) + ' ' + escapeHtml(unitLabel) + '</td>');
+                html.push('<td class="ri-price">฿' + money(item.unitPrice) + '</td>');
+                html.push('<td class="ri-total">฿' + money(item.total) + '</td>');
+                html.push('</tr>');
+            });
+            html.push('</tbody>');
+            html.push('</table>');
+            html.push('<div class="bill-summary-bar">');
+            html.push('  <span>สินค้า ฿' + money(order.subtotalAmount) + '</span>');
+            if (Number(order.shippingAmount) > 0) html.push('  <span> · ค่าส่ง ฿' + money(order.shippingAmount) + '</span>');
+            if (Number(order.discountAmount) > 0) html.push('  <span> · ส่วนลด -฿' + money(order.discountAmount) + '</span>');
+            html.push('</div>');
+            html.push('<div class="bill-total-row">');
+            html.push('  <span class="bill-total-label">รวมสุทธิ (' + itemCount + ' ชิ้น)</span>');
+            html.push('  <span class="bill-total-val">฿' + money(order.totalAmount) + '</span>');
+            html.push('</div>');
+            html.push('</div>');
+            return html.join('');
+        }
+
+        function buildSummaryPrintHtml(agentName, dateKey, dayOrders) {
+            var rows = buildSummaryAgentRows(dayOrders);
+            var agentRow = rows.find(function(row) { return row.agent === agentName; }) || rows[0] || { billCount: 0, subtotalAmount: 0, shippingAmount: 0, discountAmount: 0, totalAmount: 0 };
+            var agentBills = dayOrders.filter(function(order) { return String(order.agent || '') === String(agentName || ''); });
+            var totals = agentBills.reduce(function(acc, order) {
+                acc.subtotalAmount += Number(order.subtotalAmount) || 0;
+                acc.shippingAmount += Number(order.shippingAmount) || 0;
+                acc.discountAmount += Number(order.discountAmount) || 0;
+                acc.totalAmount += Number(order.totalAmount) || 0;
+                acc.itemLines += (order.items || []).length;
+                return acc;
+            }, { subtotalAmount: 0, shippingAmount: 0, discountAmount: 0, totalAmount: 0, itemLines: 0 });
+            var docNo = 'SR-' + String(dateKey || '').replace(/-/g, '') + '-' + String(agentName || 'ALL').replace(/\s+/g, '').slice(0, 8).toUpperCase();
+            var printedAt = new Date().toLocaleString('th-TH', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            var html = [];
+            html.push('<!doctype html><html lang="th"><head><meta charset="utf-8">');
+            html.push('<meta name="viewport" content="width=device-width, initial-scale=1">');
+            html.push('<title>สรุปยอดบัญชี ' + escapeHtml(agentName) + '</title>');
+            html.push('<link rel="preconnect" href="https://fonts.googleapis.com">');
+            html.push('<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>');
+            html.push('<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;600;700;800&display=swap" rel="stylesheet">');
+            html.push('<style>');
+            /* Authentic A4 Executive Sales Receipt CSS */
+            html.push('*{box-sizing:border-box;margin:0;padding:0;}');
+            html.push('body{font-family:"Noto Sans Thai",sans-serif;font-size:13px;background:#f8fafc;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
+            html.push('.page{width:210mm;max-width:100%;margin:0 auto;padding:20px;}');
+            html.push('.receipt{background:#fff;padding:20px;width:100%;border-radius:4px;border:1px solid #e2e8f0;}');
+            
+            /* Receipt Modern Header Design */
+            html.push('.rh-header{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:12px;border-bottom:2px solid #0f172a;margin-bottom:14px;}');
+            html.push('.rh-title{font-family:"IBM Plex Sans Thai",sans-serif;font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-.01em;}');
+            html.push('.rh-subtitle{font-size:14px;font-weight:700;color:#0284c7;text-transform:uppercase;letter-spacing:.05em;}');
+            html.push('.rh-divider{border-top:1px dashed #cbd5e1;margin:12px 0;}');
+            
+            html.push('.rh-meta-clean{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:12px;color:#475569;margin-bottom:14px;background:#f8fafc;padding:10px 14px;border-radius:6px;border:1px solid #f1f5f9;}');
+            html.push('.rh-meta-clean div{display:block;}');
+            html.push('.rh-meta-clean span{display:block;font-size:11px;color:#64748b;}');
+            html.push('.rh-meta-clean strong{color:#0f172a;font-weight:700;font-size:13px;}');
+            
+            /* Receipt Items Block with Card Container Border */
+            html.push('.receipt-block{background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:8px;padding:12px 14px;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid;}');
+            html.push('.receipt-block:last-of-type{margin-bottom:0;}');
+            html.push('.bill-card-header{display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;border-bottom:1px solid #cbd5e1;margin-bottom:8px;}');
+            html.push('.bill-id{font-weight:800;font-size:13px;color:#0284c7;font-family:monospace;}');
+            html.push('.bill-time{font-size:11px;color:#64748b;}');
+            html.push('.cust-box{font-size:12px;color:#334155;line-height:1.5;margin-bottom:8px;background:#fff;padding:8px 12px;border-radius:6px;border:1px solid #e2e8f0;}');
+            html.push('.cust-name{font-weight:700;color:#0f172a;}');
+            html.push('.cust-addr{color:#64748b;font-size:11px;}');
+            html.push('.cust-ship{color:#0284c7;font-size:11px;font-weight:600;}');
+            
+            /* Items Table */
+            html.push('.receipt-items{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 8px;background:#fff;border-radius:6px;overflow:hidden;border:1px solid #e2e8f0;}');
+            html.push('.receipt-items thead th{font-size:11px;font-weight:700;color:#475569;padding:6px 10px;text-align:left;background:#f1f5f9;border-bottom:1px solid #cbd5e1;}');
+            html.push('.receipt-items .ri-qty,.receipt-items .ri-price,.receipt-items .ri-total{text-align:right;}');
+            html.push('.receipt-items tbody td{padding:6px 10px;vertical-align:top;border-bottom:1px solid #f1f5f9;}');
+            html.push('.receipt-items tbody tr:last-child td{border-bottom:none;}');
+            html.push('.ri-name{color:#1e293b;font-weight:600;}');
+            html.push('.ri-total{font-weight:700;font-family:monospace;}');
+            
+            /* Bill Card Summary Bar */
+            html.push('.bill-summary-bar{font-size:11px;color:#64748b;text-align:right;padding:4px 0;}');
+            html.push('.bill-total-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;margin-top:6px;font-weight:700;background:#0f172a;color:#fff;border-radius:6px;}');
+            html.push('.bill-total-label{font-size:12px;}');
+            html.push('.bill-total-val{font-size:14px;font-family:monospace;font-weight:800;}');
+            
+            /* Receipt Grand Total Section */
+            html.push('.grand-card{background:#0f172a;color:#fff;border-radius:8px;padding:16px;margin-top:16px;}');
+            html.push('.grand-title{font-size:12px;font-weight:800;color:#94a3b8;text-align:center;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}');
+            html.push('.grand-price{font-size:26px;font-weight:900;color:#38bdf8;text-align:center;margin-bottom:12px;font-family:monospace;}');
+            html.push('.grand-grid{display:flex;justify-content:space-between;background:rgba(255,255,255,0.08);padding:10px 14px;border-radius:6px;font-size:12px;}');
+            html.push('.grand-grid-item{text-align:center;flex:1;}');
+            html.push('.grand-grid-item span{color:#94a3b8;display:block;font-size:11px;}');
+            html.push('.grand-grid-item strong{font-size:14px;color:#fff;font-family:monospace;}');
+            
+            /* Receipt Footer Text */
+            html.push('.receipt-footer{text-align:center;font-size:11px;color:#64748b;margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0;}');
+            
+            /* Professional A4 Print Margins & Settings */
+            html.push('@page{size:A4 portrait;margin:20px;}');
+            html.push('@media print{html,body{background:#fff;width:210mm;}.page{width:100%;padding:0;margin:0;}.receipt{padding:0;border:none;box-shadow:none;border-radius:0;}}');
+            html.push('</style></head><body><div class="page"><div class="receipt">');
+            
+            /* ── HEADER ── */
+            html.push('<div class="rh-header">');
+            html.push('  <div class="rh-title">ใบสรุปยอดตัวแทน</div>');
+            html.push('  <div class="rh-subtitle">' + escapeHtml(agentName) + '</div>');
+            html.push('</div>');
+            html.push('<div class="rh-meta-clean">');
+            html.push('  <div><span>วันที่สรุป:</span><strong>' + escapeHtml(getSummaryDateLabel(dateKey)) + '</strong></div>');
+            html.push('  <div><span>เลขที่เอกสาร:</span><strong>' + escapeHtml(docNo) + '</strong></div>');
+            html.push('  <div><span>จำนวนรายการ:</span><strong>' + agentRow.billCount + ' บิล</strong></div>');
+            html.push('</div>');
+            html.push('<div class="rh-divider"></div>');
+            
+            /* ── BILL LIST ── */
+            agentBills.sort(function(a, b) {
+                var aKey = (a.orderDateKey || '') + ' ' + (a.orderTimeLabel || '');
+                var bKey = (b.orderDateKey || '') + ' ' + (b.orderTimeLabel || '');
+                return aKey < bKey ? -1 : aKey > bKey ? 1 : String(a.orderId).localeCompare(String(a.orderId));
+            }).forEach(function(order) {
+                html.push(buildSummaryPrintBillMarkup(order));
+            });
+            
+            /* ── GRAND TOTAL ── */
+            html.push('<div class="grand-card">');
+            html.push('  <div class="grand-title">ยอดสรุปรวมทั้งสิ้น</div>');
+            html.push('  <div class="grand-price">฿' + totals.totalAmount.toLocaleString('th-TH') + '</div>');
+            html.push('  <div class="grand-grid">');
+            html.push('    <div class="grand-grid-item"><span>ค่าสินค้า</span><strong>฿' + totals.subtotalAmount.toLocaleString('th-TH') + '</strong></div>');
+            html.push('    <div class="grand-grid-item"><span>ค่าส่ง</span><strong>฿' + totals.shippingAmount.toLocaleString('th-TH') + '</strong></div>');
+            html.push('    <div class="grand-grid-item"><span>ส่วนลด</span><strong>฿' + totals.discountAmount.toLocaleString('th-TH') + '</strong></div>');
+            html.push('  </div>');
+            html.push('</div>');
+            
+            /* ── FOOTER ── */
+            html.push('<div class="receipt-footer">');
+            html.push('  <div>พิมพ์เมื่อ ' + escapeHtml(printedAt) + ' · ระบบบริหารจัดการ ERP</div>');
+            html.push('</div>');
+            html.push('</div></div></body></html>');
+            return html.join('');
+        }
+
+        function setSummaryDateKey(dateKey) {
+            selectedSummaryDateKey = normalizeSummaryDateKey(dateKey) || getTodaySummaryDateKey();
+            if (summaryDatePicker && typeof summaryDatePicker.setDate === 'function') {
+                summaryDatePicker.setDate(selectedSummaryDateKey, false);
+            }
+            renderSummariesTab();
+        }
+
+        function initSummaryDatePicker() {
+            var input = document.getElementById('summary-date-input');
+            if (!input) return;
+            selectedSummaryDateKey = normalizeSummaryDateKey(selectedSummaryDateKey) || getTodaySummaryDateKey();
+            if (window.flatpickr) {
+                summaryDatePicker = flatpickr(input, {
+                    dateFormat: 'Y-m-d',
+                    altInput: true,
+                    altFormat: 'd/m/Y',
+                    defaultDate: selectedSummaryDateKey,
+                    locale: flatpickr.l10ns && flatpickr.l10ns.th ? flatpickr.l10ns.th : undefined,
+                    allowInput: false,
+                    onChange: function(selectedDates, dateStr) {
+                        setSummaryDateKey(dateStr || getTodaySummaryDateKey());
+                    }
+                });
+            } else {
+                input.value = selectedSummaryDateKey;
+                input.addEventListener('change', function() {
+                    setSummaryDateKey(input.value);
+                });
+            }
+        }
+
         function renderDashboard() {
             let totalSales = 0, totalCost = 0, totalQty = 0;
             const active = new Set();
@@ -73,25 +529,64 @@
                 const wrap = document.createElement('div'), meta = document.createElement('div'), name = document.createElement('span'), sales = document.createElement('span'), track = document.createElement('div'), bar = document.createElement('div');
                 meta.className='flex justify-between text-[11px] mb-1'; name.className='font-bold text-slate-600'; sales.className='font-extrabold text-slate-800 font-mono'; name.textContent=item.name; sales.textContent='฿'+item.sales.toLocaleString(); meta.append(name,sales); track.className='w-full bg-slate-100 h-2 rounded-full overflow-hidden'; bar.className='bg-primary-500 h-full rounded-full'; bar.style.width=(totalSales ? Math.round(item.sales/totalSales*100) : 0)+'%'; track.appendChild(bar); wrap.append(meta,track); agentChart.appendChild(wrap);
             });
-            const counts = {}; products.forEach(function(p) { counts[p.id] = {name:p.name, qty:0}; }); orders.forEach(function(o) { (o.items || []).forEach(function(i) { if (!counts[i.productId]) counts[i.productId] = {name:i.productName + ' (นอกสต็อก)', qty:0}; counts[i.productId].qty += Number(i.qty) || 0; }); });
+            const counts = {}; products.forEach(function(p) { counts[p.id] = {name:p.name, qty:0, unitName:p.unitName || '', packSize:p.packSize || 1}; }); orders.forEach(function(o) { (o.items || []).forEach(function(i) { if (!counts[i.productId]) counts[i.productId] = {name:i.productName + ' (นอกสต็อก)', qty:0, unitName:'ชิ้น', packSize:1}; counts[i.productId].qty += Number(i.qty) || 0; }); });
             const prodChart = document.getElementById('top-products-chart'); prodChart.replaceChildren();
-            Object.keys(counts).map(function(id) { return {id:id,name:counts[id].name,qty:counts[id].qty}; }).sort(function(a,b){return b.qty-a.qty;}).slice(0,10).forEach(function(p) { const row=document.createElement('div'), label=document.createElement('span'), qty=document.createElement('span'); row.className='flex justify-between items-center text-[11px] p-2 rounded-lg border '+(p.qty ? 'bg-primary-50/40 border-primary-100' : 'bg-slate-50 border-slate-200'); label.className='font-semibold text-slate-700 truncate pr-1.5'; qty.className=(p.qty ? 'bg-primary-100 text-primary-700 font-black' : 'bg-slate-200 text-slate-500 font-bold')+' px-2 py-0.5 rounded-full font-mono text-[10px] whitespace-nowrap'; label.textContent=(String(p.id).startsWith('CUSTOM') ? '[นอกสต็อก] ' : '')+p.id+' - '+p.name; qty.textContent=p.qty+' ชิ้น'; row.append(label,qty); prodChart.appendChild(row); });
+            Object.keys(counts).map(function(id) { return {id:id,name:counts[id].name,qty:counts[id].qty,unitName:counts[id].unitName,packSize:counts[id].packSize}; }).sort(function(a,b){return b.qty-a.qty;}).slice(0,10).forEach(function(p) { const row=document.createElement('div'), label=document.createElement('span'), qty=document.createElement('span'); row.className='flex justify-between items-center text-[11px] p-2 rounded-lg border '+(p.qty ? 'bg-primary-50/40 border-primary-100' : 'bg-slate-50 border-slate-200'); label.className='font-semibold text-slate-700 truncate pr-1.5'; qty.className=(p.qty ? 'bg-primary-100 text-primary-700 font-black' : 'bg-slate-200 text-slate-500 font-bold')+' px-2 py-0.5 rounded-full font-mono text-[10px] whitespace-nowrap'; label.textContent=(String(p.id).startsWith('CUSTOM') ? '[นอกสต็อก] ' : '')+p.id+' - '+p.name; qty.textContent=p.qty+' '+getProductUnitName(p); row.append(label,qty); prodChart.appendChild(row); });
         }
 
         function renderSummariesTab() {
-            const container = document.getElementById('summaries-agent-list'); container.replaceChildren();
-            agents.forEach(function(agent) { const agentOrders=orders.filter(function(o){return o.agent===agent;}), button=document.createElement('button'), left=document.createElement('div'), title=document.createElement('h4'), count=document.createElement('span'), right=document.createElement('div'), total=document.createElement('span'), badge=document.createElement('span');
-                button.type='button'; button.className='w-full bg-white hover:bg-primary-50/60 p-3 rounded-lg border border-slate-200 cursor-pointer transition-all duration-150 flex justify-between items-center group text-left'; button.setAttribute('aria-label','ดูสรุปบิลของ '+agent); button.addEventListener('click',function(){selectAgentForInvoice(agent);});
-                title.className='font-extrabold text-slate-800 text-xs'; title.textContent=agent; count.className='text-[10px] text-slate-400 font-semibold'; count.textContent=agentOrders.length+' ออเดอร์ประจำวันนี้'; left.append(title,count); total.className='font-mono text-xs font-black text-slate-800 block'; total.textContent='฿'+agentOrders.reduce(function(sum,o){return sum+(Number(o.totalAmount)||0);},0).toLocaleString(); badge.className='text-[8px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded tracking-wider uppercase'; badge.textContent='สรุปบิล'; right.append(total,badge); button.append(left,right); container.appendChild(button); });
+            const container = document.getElementById('summaries-agent-list');
+            const countLabel = document.getElementById('summary-agent-count');
+            const dayOrders = getSummaryOrdersForDate(selectedSummaryDateKey);
+            const agentRows = buildSummaryAgentRows(dayOrders);
+            const selectedDate = normalizeSummaryDateKey(selectedSummaryDateKey) || getTodaySummaryDateKey();
+            if (countLabel) countLabel.textContent = agentRows.length + ' ตัวแทน';
+            container.replaceChildren();
+            if (!dayOrders.length) {
+                const empty = document.createElement('div');
+                empty.className = 'rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-400 italic';
+                empty.textContent = 'ไม่มีบิลในวันที่เลือก';
+                container.appendChild(empty);
+                renderSummaryDetails('', []);
+                return;
+            }
+            if (!selectedSummaryAgent || !agentRows.some(function(row) { return row.agent === selectedSummaryAgent; })) {
+                selectedSummaryAgent = agentRows[0].agent;
+            }
+            agentRows.forEach(function(row) {
+                const button = document.createElement('button');
+                const left = document.createElement('div');
+                const title = document.createElement('h4');
+                const count = document.createElement('span');
+                const right = document.createElement('div');
+                const total = document.createElement('span');
+                const badge = document.createElement('span');
+                button.type = 'button';
+                button.className = 'w-full bg-white hover:bg-primary-50/60 p-3 rounded-lg border cursor-pointer transition-all duration-150 flex justify-between items-center group text-left ' + (selectedSummaryAgent === row.agent ? 'border-primary-300 ring-1 ring-primary-100' : 'border-slate-200');
+                button.setAttribute('aria-label', 'ดูสรุปบิลของ ' + row.agent);
+                button.addEventListener('click', function() {
+                    selectedSummaryAgent = row.agent;
+                    renderSummariesTab();
+                });
+                title.className = 'font-extrabold text-slate-800 text-xs';
+                title.textContent = row.agent;
+                count.className = 'text-[10px] text-slate-400 font-semibold';
+                count.textContent = row.billCount + ' บิล';
+                left.append(title, count);
+                total.className = 'font-mono text-xs font-black text-slate-800 block';
+                total.textContent = '฿' + row.totalAmount.toLocaleString();
+                badge.className = 'text-[8px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded tracking-wider uppercase';
+                badge.textContent = selectedDate;
+                right.append(total, badge);
+                button.append(left, right);
+                container.appendChild(button);
+            });
+            renderSummaryDetails(selectedSummaryAgent, dayOrders);
         }
 
         function selectAgentForInvoice(agentName) {
-            const card=document.getElementById('preview-invoice-card'), placeholder=document.getElementById('preview-placeholder'), agentOrders=orders.filter(function(o){return o.agent===agentName;});
-            if (!agentOrders.length) { showNotification('ไม่พบข้อมูลออเดอร์ของ '+agentName+' ประจำรอบวันนี้', true); card.classList.add('hidden'); placeholder.classList.remove('hidden'); return; }
-            card.classList.remove('hidden'); placeholder.classList.add('hidden'); document.getElementById('inv-agent').textContent=agentName; document.getElementById('inv-order-count').textContent=agentOrders.length+' ออเดอร์';
-            const list=document.getElementById('inv-items-list'); list.replaceChildren(); let grand=0;
-            agentOrders.forEach(function(o){ const head=document.createElement('div'), left=document.createElement('span'), right=document.createElement('span'); head.className='text-[9px] font-bold text-primary-700 bg-primary-50/50 p-1 px-2 rounded-md font-mono mt-2 mb-1 flex justify-between'; left.textContent='บิลเลขที่: '+o.orderId; right.textContent=o.totalQty+' ชิ้น'; head.append(left,right); list.appendChild(head); (o.items||[]).forEach(function(i){ const row=document.createElement('div'), name=document.createElement('span'), amount=document.createElement('span'); row.className='flex justify-between items-center text-slate-600 text-[10px] py-0.5'; name.className='truncate pr-1'; name.textContent=(i.isNonStock?'[นอกคลัง] ':'')+i.productName; amount.className='font-mono text-slate-800 font-semibold'; amount.textContent=i.qty+' × ฿'+i.unitPrice+' = ฿'+Number(i.total||0).toLocaleString(); row.append(name,amount); list.appendChild(row); }); grand += Number(o.totalAmount)||0; });
-            document.getElementById('inv-total-amount').textContent='฿'+grand.toLocaleString();
+            selectedSummaryAgent = agentName;
+            renderSummariesTab();
         }
 
         function deleteOrder(orderId) {
@@ -102,9 +597,27 @@
         }
 
         function saveNewProduct() {
-            if (productSaveInFlight) return; const data={ProductID:document.getElementById('prod-id').value.trim(),ProductName:document.getElementById('prod-name').value.trim(),RetailPrice:Number(document.getElementById('prod-retail').value),Cost:Number(document.getElementById('prod-cost').value),Stock:Number(document.getElementById('prod-stock').value),MinStock:Number(document.getElementById('prod-min').value),MaxStock:Number(document.getElementById('prod-max').value)};
-            if(!data.ProductID||!data.ProductName||!Number.isFinite(data.RetailPrice)||!Number.isFinite(data.Cost)||!Number.isInteger(data.Stock)||!Number.isInteger(data.MinStock)||!Number.isInteger(data.MaxStock)||data.Stock<0||data.MinStock<0||data.MaxStock<data.MinStock||data.Cost<0||data.RetailPrice<0){showNotification('กรุณากรอกข้อมูลสินค้าให้ครบถ้วนและตรวจสอบช่วงจำนวนอีกครั้ง',true);return;}
-            productSaveInFlight=true; const button=document.querySelector('#product-modal button[onclick="saveNewProduct()"]'); if(button){button.disabled=true;button.setAttribute('aria-busy','true');} const done=function(){productSaveInFlight=false;if(button){button.disabled=false;button.removeAttribute('aria-busy');}};
+            if (productSaveInFlight) return;
+            const data = {
+                ProductID: document.getElementById('prod-id').value.trim(),
+                ProductName: document.getElementById('prod-name').value.trim(),
+                Category: document.getElementById('prod-category').value,
+                BaseUnit: document.getElementById('prod-base-unit').value.trim(),
+                PackUnits: readPackUnitsFromForm(),
+                RetailPrice: Number(document.getElementById('prod-retail').value),
+                Cost: Number(document.getElementById('prod-cost').value),
+                Stock: Number(document.getElementById('prod-stock').value),
+                MinStock: Number(document.getElementById('prod-min').value)
+            };
+            if (!data.ProductID || !data.ProductName || !Number.isFinite(data.RetailPrice) || !Number.isFinite(data.Cost) || !Number.isInteger(data.Stock) || !Number.isInteger(data.MinStock) || data.Stock < 0 || data.MinStock < 0 || data.Cost < 0 || data.RetailPrice < 0 || !data.Category || data.BaseUnit.length > 20) {showNotification('กรุณากรอกข้อมูลสินค้าให้ครบถ้วนและตรวจสอบช่วงจำนวนอีกครั้ง',true);return;}
+            const button = document.querySelector('#product-modal button[onclick="saveNewProduct()"]');
+            const done = function() { productSaveInFlight = false; if (button) { button.disabled = false; button.removeAttribute('aria-busy'); } };
+            productSaveInFlight = true;
+            if (button) { button.disabled = true; button.setAttribute('aria-busy','true'); }
+            if (productModalMode === 'edit') {
+                google.script.run.withSuccessHandler(function() { done(); closeProductModal(); showNotification('บันทึกการแก้ไขเรียบร้อยแล้ว'); loadApplicationData(); }).withFailureHandler(function(error) { done(); if (isSessionError(error)) endSession(true); showNotification(serverErrorMessage(error), true); }).updateProduct(data);
+                return;
+            }
             google.script.run.withSuccessHandler(function(){done();closeProductModal();showNotification('บันทึกสินค้าใหม่เรียบร้อยแล้ว');loadApplicationData();}).withFailureHandler(function(error){done();if(isSessionError(error))endSession(true);showNotification(serverErrorMessage(error),true);}).createProduct(sessionToken,data);
         }
 
@@ -188,7 +701,7 @@
           <i class="fa-solid fa-layer-group"></i>
         </div>
         <h2 class="text-xl font-black tracking-tight uppercase">NEXUS AGENT CORE</h2>
-        <p class="text-xs text-slate-500 font-medium mt-1">ระบบ ERP จัดการตัวแทนจำหน่ายและคลังสินค้าอัจฉริยะ</p>
+        <p class="text-xs text-slate-500 font-medium mt-1">ระบบ ERP สำหรับสินค้าและตัวแทน</p>
         <span class="inline-block bg-primary-50 text-primary-700 border border-primary-100 text-[10px] font-bold font-mono px-2 py-0.5 rounded-full mt-2">v3.4.1 ENTERPRISE</span>
       </div>
 
@@ -296,19 +809,19 @@
         <nav
           class="flex flex-row md:flex-col gap-1 overflow-x-auto whitespace-nowrap md:whitespace-normal pb-2 md:pb-0">
           <button onclick="changeTab('dashboard')" id="tab-dashboard" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold transition-all duration-150 bg-primary-50 text-primary-700">
-                        <i class="fa-solid fa-chart-line text-sm"></i> แผงควบคุม (Dashboard)
+                        <i class="fa-solid fa-chart-line text-sm"></i> ภาพรวม
                     </button>
           <button onclick="changeTab('orders')" id="tab-orders" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold transition-all duration-150 text-slate-600 hover:bg-slate-50 hover:text-slate-900">
-                        <i class="fa-solid fa-receipt text-sm"></i> บันทึกใบสั่งซื้อ (Orders)
+                        <i class="fa-solid fa-receipt text-sm"></i> บิล
                     </button>
           <button onclick="changeTab('stock')" id="tab-stock" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold transition-all duration-150 text-slate-600 hover:bg-slate-50 hover:text-slate-900">
-                        <i class="fa-solid fa-cubes-stacked text-sm"></i> ควบคุมคลังสินค้า (Stock)
+                        <i class="fa-solid fa-cubes-stacked text-sm"></i> คลัง
                     </button>
           <button onclick="changeTab('agents')" id="tab-agents" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold transition-all duration-150 text-slate-600 hover:bg-slate-50 hover:text-slate-900">
-                        <i class="fa-solid fa-handshake text-sm"></i> จัดการตัวแทนจำหน่าย (Rates)
+                        <i class="fa-solid fa-handshake text-sm"></i> เรทตัวแทน
                     </button>
           <button onclick="changeTab('summaries')" id="tab-summaries" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold transition-all duration-150 text-slate-600 hover:bg-slate-50 hover:text-slate-900">
-                        <i class="fa-solid fa-folder-open text-sm"></i> ออกรายงานปิดยอดบิล (Billing)
+                        <i class="fa-solid fa-folder-open text-sm"></i> สรุป
                     </button>
         </nav>
 
@@ -317,7 +830,7 @@
           <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">ตรวจสอบความปลอดภัยคลัง</span>
           <div class="bg-accent-50/50 border border-accent-100 rounded-lg p-3">
             <h4 class="font-bold text-accent-700 text-[11px] flex items-center gap-1.5 mb-1.5">
-              <i class="fa-solid fa-triangle-exclamation text-xs"></i> ต่ำกว่าจุดสั่งซื้อวิกฤต
+              <i class="fa-solid fa-triangle-exclamation text-xs"></i> สต๊อกต่ำ
             </h4>
             <ul id="low-stock-list" class="space-y-1.5 text-[11px] text-slate-600">
               <!-- ดึงสต๊อกต่ำเตือนด้วย JS -->
@@ -334,8 +847,8 @@
       <section id="content-dashboard" class="space-y-6">
         <div class="flex justify-between items-center border-b border-slate-100 pb-3 flex-wrap gap-2">
           <div>
-            <h2 class="text-base font-extrabold text-slate-800">ระบบประเมินและวิเคราะห์ประสิทธิภาพการขายรายวัน</h2>
-            <p class="text-xs text-slate-400">ประมวลผลข้อมูลออเดอร์และการเคลื่อนไหวทางการเงินทั้งหมดในวันนี้</p>
+            <h2 class="text-base font-extrabold text-slate-800">ภาพรวม</h2>
+            <p class="text-xs text-slate-400">สรุปยอดวันนี้</p>
           </div>
           <span class="text-xs bg-primary-50 border border-primary-100 text-primary-700 px-3 py-1 rounded-md font-mono font-bold" id="current-date-lbl"></span>
         </div>
@@ -346,7 +859,7 @@
           <div
             class="bg-primary-600 text-white rounded-xl p-4 shadow-sm border border-primary-600">
             <div class="flex justify-between items-start opacity-90 text-[11px] font-bold uppercase tracking-wider">
-              <span>ยอดขายประจำวันนี้</span>
+              <span>ยอดขายวันนี้</span>
               <i class="fa-solid fa-money-bill-trend-up text-base"></i>
             </div>
             <p class="text-2xl font-black mt-1 font-mono tracking-tight" id="db-total-sales">0.00</p>
@@ -356,7 +869,7 @@
           <!-- จำนวนออเดอร์ (แอดมินเห็นได้) -->
           <div class="erp-surface-card p-4">
             <div class="flex justify-between items-start text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-              <span>ออเดอร์ที่เข้าระบบ</span>
+              <span>ออเดอร์วันนี้</span>
               <i class="fa-solid fa-file-invoice text-primary-500 text-base"></i>
             </div>
             <p class="text-2xl font-black mt-1 text-slate-800 font-mono tracking-tight" id="db-order-count">0</p>
@@ -366,7 +879,7 @@
           <!-- ต้นทุนสะสม (เฉพาะ OWNER เท่านั้น) -->
           <div class="erp-surface-card p-4 owner-only-metric">
             <div class="flex justify-between items-start text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-              <span>ยอดรวมราคาต้นทุนจริง</span>
+              <span>ต้นทุนรวม</span>
               <i class="fa-solid fa-hand-holding-dollar text-accent-400 text-base"></i>
             </div>
             <p class="text-2xl font-black mt-1 text-slate-800 font-mono tracking-tight" id="db-total-cost">0.00</p>
@@ -379,7 +892,7 @@
           <div class="erp-surface-card p-4 owner-only-metric">
             <div
               class="flex justify-between items-start text-accent-700 text-[11px] font-bold uppercase tracking-wider">
-              <span>กำไรสุทธิผู้ประกอบการ</span>
+              <span>กำไรสุทธิ</span>
               <i class="fa-solid fa-trophy text-accent-500 text-base"></i>
             </div>
             <p class="text-2xl font-black mt-1 text-accent-700 font-mono tracking-tight" id="db-total-profit">0.00</p>
@@ -395,7 +908,7 @@
           <!-- ยอดขายแบ่งตามรายตัวแทน (จำกัดสิทธิ์ Top 5) -->
           <div class="erp-surface-card p-4">
             <h3 class="font-extrabold text-slate-800 text-xs mb-4 flex items-center gap-1.5 uppercase tracking-wider">
-              <i class="fa-solid fa-users text-primary-500"></i> ยอดขายแยกตามตัวแทนจำหน่ายสูงสุด (Top 5)
+              <i class="fa-solid fa-users text-primary-500"></i> ยอดขายตัวแทน Top 5
             </h3>
             <div class="space-y-4" id="agent-sales-chart">
               <!-- โหลดแถบความคืบหน้าด้วย JS -->
@@ -405,7 +918,7 @@
           <!-- รายการสินค้าที่ทำยอดส่งได้เยอะสุด (Top 10) -->
           <div class="erp-surface-card p-4">
             <h3 class="font-extrabold text-slate-800 text-xs mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-              <i class="fa-solid fa-fire text-accent-400"></i> สินค้าที่มียอดสั่งซื้อยอดนิยมวันนี้ (Top 10)
+              <i class="fa-solid fa-fire text-accent-400"></i> สินค้าขายดี Top 10
             </h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="top-products-chart">
               <!-- โหลดสินค้าขายดีด้วย JS -->
@@ -419,22 +932,27 @@
       <section id="content-orders" class="space-y-4 hidden">
         <div class="flex justify-between items-center flex-wrap gap-3 border-b border-slate-100 pb-3">
           <div>
-            <h2 class="text-base font-extrabold text-slate-800">รายการใบสั่งส่งสินค้าของวันนี้</h2>
-            <p class="text-xs text-slate-400">โมดูลสำหรับตรวจสอบความถูกต้อง ยืนยันข้อมูลชำระเงิน
-              และทำรายการคืนสินค้าเข้าคลัง</p>
+            <h2 class="text-base font-extrabold text-slate-800">รายการบิลวันนี้</h2>
+            <p class="text-xs text-slate-400">ตรวจสอบ จ่ายเงิน และคืนสินค้า</p>
           </div>
           <button onclick="openOrderModal()" class="erp-action erp-action-primary bg-primary-600 hover:bg-primary-700 text-white px-3.5 py-2 text-xs font-bold rounded-lg shadow-sm transition-all duration-150 flex items-center gap-1.5">
-                        <i class="fa-solid fa-plus-circle text-sm"></i> บันทึกใบสั่งซื้อใหม่
+                        <i class="fa-solid fa-plus-circle text-sm"></i> บันทึกบิล
                     </button>
         </div>
 
-        <!-- แถบกรองตัวแทนจำหน่ายเพื่อคัดกรองตาราง -->
+        <!-- แถบกรองตัวแทนจำหน่ายและช่วงเวลาเพื่อคัดกรองตาราง -->
         <div class="erp-toolbar">
-          <label for="filter-agent-select" class="text-xs text-slate-600 font-bold uppercase tracking-wider">คัดกรองข้อมูลตามลูกค้า:</label>
+          <label for="filter-order-date-select" class="text-xs text-slate-600 font-bold uppercase tracking-wider">ช่วงเวลา:</label>
+          <select id="filter-order-date-select" onchange="renderOrdersTable()" class="bg-white text-xs font-bold border border-slate-300 rounded-md p-1 px-2 focus:ring-1 focus:ring-primary-500 focus:outline-none">
+            <option value="TODAY" selected>บิลวันนี้</option>
+            <option value="ALL">บิลทั้งหมด</option>
+          </select>
+          <span class="text-slate-300">|</span>
+          <label for="filter-agent-select" class="text-xs text-slate-600 font-bold uppercase tracking-wider">กรองตัวแทน:</label>
           <select id="filter-agent-select" onchange="renderOrdersTable()" class="bg-white text-xs font-bold border border-slate-300 rounded-md p-1 px-2 focus:ring-1 focus:ring-primary-500 focus:outline-none">
-                        <option value="ALL">แสดงตัวแทนทั้งหมด</option>
-                        <!-- ดึงรายชื่อจาก JS -->
-                    </select>
+            <option value="ALL">แสดงตัวแทนทั้งหมด</option>
+            <!-- ดึงรายชื่อจาก JS -->
+          </select>
         </div>
 
         <!-- ตารางประวัติออเดอร์ -->
@@ -443,13 +961,13 @@
             <caption class="sr-only">ประวัติใบสั่งซื้อของวันนี้</caption>
             <thead>
               <tr class="bg-slate-100 border-b border-slate-200 text-slate-500 uppercase tracking-wider">
-                <th class="p-2.5 font-extrabold">เลขที่บิลสั่งซื้อ</th>
-                <th class="p-2.5 font-extrabold">ตัวแทนจำหน่าย</th>
-                <th class="p-2.5 font-extrabold">รายการสินค้า (รายละเอียด)</th>
-                <th class="p-2.5 font-extrabold text-right">จำนวนรวม</th>
-                <th class="p-2.5 font-extrabold text-right">ยอดรวมค่าส่ง (บาท)</th>
-                <th class="p-2.5 font-extrabold text-right owner-only-metric">กำไรสะสมของเรา</th>
-                <th class="p-2.5 font-extrabold text-center">ยกเลิก/คืนคลัง</th>
+                <th class="p-2.5 font-extrabold">เลขบิล</th>
+                <th class="p-2.5 font-extrabold">ตัวแทน</th>
+                <th class="p-2.5 font-extrabold">รายการ</th>
+                <th class="p-2.5 font-extrabold text-right">รวมชิ้น</th>
+                <th class="p-2.5 font-extrabold text-right">ยอดรวม</th>
+                <th class="p-2.5 font-extrabold text-right owner-only-metric">กำไร</th>
+                <th class="p-2.5 font-extrabold text-center">จัดการ</th>
               </tr>
             </thead>
             <tbody id="orders-table-body" class="divide-y divide-slate-150">
@@ -463,11 +981,11 @@
       <section id="content-stock" class="space-y-4 hidden">
         <div class="flex justify-between items-center flex-wrap gap-3 border-b border-slate-100 pb-3">
           <div>
-            <h2 class="text-base font-extrabold text-slate-800">ระบบควบคุมและคำนวณราคาต้นทุนคลังสินค้า</h2>
-            <p class="text-xs text-slate-400">ตรวจสอบจำนวนสต๊อก และกำหนดมูลค่าราคาปลีกพื้นฐานของแต่ละผลิตภัณฑ์</p>
+          <h2 class="text-base font-extrabold text-slate-800">คลัง</h2>
+          <p class="text-xs text-slate-400">สต๊อกและราคา</p>
           </div>
           <button onclick="openAddProductModal()" class="erp-action bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold rounded-lg shadow-sm transition-all duration-150 flex items-center gap-1.5">
-                        <i class="fa-solid fa-plus-circle text-sm"></i> ลงทะเบียนเพิ่มสินค้าใหม่
+                        <i class="fa-solid fa-plus-circle text-sm"></i> เพิ่ม
                     </button>
         </div>
 
@@ -485,14 +1003,14 @@
             <caption class="sr-only">รายการสต็อกสินค้าในคลัง</caption>
             <thead>
               <tr class="bg-slate-100 border-b border-slate-200 text-slate-500 uppercase tracking-wider">
-                <th class="p-2.5 font-extrabold">รหัสผลิตภัณฑ์</th>
-                <th class="p-2.5 font-extrabold">ชื่อรายการสินค้า</th>
-                <th class="p-2.5 font-extrabold text-right">ราคาจำหน่ายทั่วไป</th>
-                <th class="p-2.5 font-extrabold text-right owner-only-metric">ราคาต้นทุน (จริง)</th>
-                <th class="p-2.5 font-extrabold text-right">สต๊อกจริงในคลัง</th>
-                <th class="p-2.5 font-extrabold text-center">แจ้งเตือนขั้นต่ำ</th>
-                <th class="p-2.5 font-extrabold text-center">สถานะสต๊อก</th>
-                <th class="p-2.5 font-extrabold text-center">ปรับยอดเร่งด่วน</th>
+                <th class="p-2.5 font-extrabold">รหัส</th>
+                <th class="p-2.5 font-extrabold">ชื่อสินค้า</th>
+                <th class="p-2.5 font-extrabold text-right">ราคาขาย</th>
+                <th class="p-2.5 font-extrabold text-right owner-only-metric">ต้นทุน</th>
+                <th class="p-2.5 font-extrabold text-right">คงเหลือ</th>
+                <th class="p-2.5 font-extrabold text-center">ขั้นต่ำ</th>
+                <th class="p-2.5 font-extrabold text-center">สถานะ</th>
+                <th class="p-2.5 font-extrabold text-center">ปรับสต๊อก</th>
               </tr>
             </thead>
             <tbody id="stock-table-body" class="divide-y divide-slate-150">
@@ -506,22 +1024,22 @@
       <section id="content-agents" class="space-y-4 hidden">
         <div class="flex justify-between items-center border-b border-slate-100 pb-3">
           <div>
-            <h2 class="text-base font-extrabold text-slate-800">ระบบบริหารเรทราคาขั้นบันไดและกำหนดเงื่อนไขการส่ง</h2>
-            <p class="text-xs text-slate-400">ควบคุมและกำหนดกติกาตัวเลขราคาส่งของตัวแทนจำหน่ายแต่ละคนอย่างเป็นระบบ</p>
+            <h2 class="text-base font-extrabold text-slate-800">เรทราคาตัวแทน</h2>
+            <p class="text-xs text-slate-400">ตั้งราคาตามตัวแทน</p>
           </div>
         </div>
 
         <!-- การเลือกข้อมูลรายตัวแทน -->
         <div class="bg-slate-50 p-3 rounded-lg grid grid-cols-1 sm:grid-cols-2 gap-3 border border-slate-200">
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">เลือกข้อมูลตัวแทนเพื่อดูเรทราคา</label>
+            <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">เลือกตัวแทน</label>
             <select id="agent-config-select" onchange="renderAgentRatesTable()" class="w-full bg-white text-xs border border-slate-300 rounded-md p-1.5 focus:outline-none font-bold text-slate-700">
                             <!-- ใส่โดย JS -->
                         </select>
           </div>
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">พิมพ์คำค้นเพื่อระบุผลิตภัณฑ์</label>
-            <input type="text" id="agent-rate-search" placeholder="พิมพ์ชื่อสินค้าหรือรหัสเพื่อกรองในตาราง..." class="erp-control w-full bg-white text-xs p-1.5">
+            <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">ค้นหาสินค้า</label>
+            <input type="text" id="agent-rate-search" placeholder="ชื่อหรือรหัส..." class="erp-control w-full bg-white text-xs p-1.5">
           </div>
         </div>
 
@@ -531,11 +1049,10 @@
             <caption class="sr-only">เรทราคาสินค้าตามตัวแทน</caption>
             <thead>
               <tr class="bg-slate-100 border-b border-slate-200 text-slate-500 uppercase tracking-wider">
-                <th class="p-2.5 font-extrabold">รหัสสินค้า</th>
-                <th class="p-2.5 font-extrabold">ชื่อรายการสินค้า</th>
-                <th class="p-2.5 font-extrabold text-center">สเกลเรทราคาส่ง</th>
-                <th class="p-2.5 font-extrabold text-center">รายละเอียดช่วงราคาส่งทั้งหมด</th>
-                <th class="p-2.5 font-extrabold text-center">ปรับแต่งการตั้งค่า</th>
+                <th class="p-2.5 font-extrabold">รหัส</th>
+                <th class="p-2.5 font-extrabold">ชื่อสินค้า</th>
+                <th class="p-2.5 font-extrabold text-center">เรท</th>
+                <th class="p-2.5 font-extrabold text-center">ตั้งค่า</th>
               </tr>
             </thead>
             <tbody id="agent-rates-table-body" class="divide-y divide-slate-150">
@@ -547,58 +1064,81 @@
 
       <!-- ================= TAB: SUMMARIES ================= -->
       <section id="content-summaries" class="space-y-4 hidden">
-        <div class="border-b border-slate-100 pb-3">
-          <h2 class="text-base font-extrabold text-slate-800">ระบบรวบรวมและสรุปใบปิดยอดชำระเงินประจำรอบวัน (Billing)
-          </h2>
-          <p class="text-xs text-slate-400">
-            คำนวณและปิดยอดบัญชีแยกตามรายตัวแทนเพื่อเตรียมพิมพ์หรือส่งข้อมูลปิดรอบประจำวัน</p>
+        <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-base font-extrabold text-slate-800">สรุปจ่ายรายวัน</h2>
+            <p class="text-xs text-slate-400">ดูยอดจ่ายของแต่ละตัวแทนตามวันที่เลือก</p>
+          </div>
+          <div class="flex flex-col gap-1.5 w-full md:w-auto md:min-w-[17rem]">
+            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">วันที่</label>
+            <input id="summary-date-input" type="text" readonly class="erp-control w-full bg-white text-xs font-bold px-3 py-2">
+          </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="grid grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)] gap-5">
 
           <!-- ส่วนเลือกตัวแทน -->
           <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
-            <h3 class="font-extrabold text-slate-700 text-xs mb-3 uppercase tracking-wider">
-              ข้อมูลยอดเงินรอการชำระของตัวแทนแต่ละราย</h3>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <h3 class="font-extrabold text-slate-700 text-xs uppercase tracking-wider">ตัวแทน</h3>
+              <span class="text-[10px] text-slate-400 font-semibold" id="summary-agent-count">0 ตัวแทน</span>
+            </div>
             <div class="space-y-2" id="summaries-agent-list">
-              <!-- แสดงรายชื่อพร้อมยอดเงินรวมที่ค้างชำระวันนี้ -->
+              <!-- รายชื่อตัวแทนตามวันที่เลือก -->
             </div>
           </div>
 
-          <!-- หน้าพรีวิวใบแจ้งยอดชำระสไตล์ ERP ปลายทาง -->
-          <div
-            class="bg-slate-100 rounded-xl p-4 flex flex-col items-center justify-center min-h-[350px] border border-slate-200">
-            <div class="bg-white shadow-sm border border-slate-300 rounded-lg p-5 w-full max-w-sm text-[11px] hidden"
+          <!-- รายละเอียดบิลของวันที่เลือก -->
+          <div class="bg-slate-100 rounded-xl p-4 border border-slate-200">
+            <div class="bg-white shadow-sm border border-slate-300 rounded-lg p-5 w-full text-[11px] hidden"
               id="preview-invoice-card">
-              <div class="border-b-2 border-slate-800 pb-3 mb-3 text-center">
-                <span class="bg-accent-100 text-accent-700 font-bold px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider">BILLING RECEIPT</span>
-                <h4 class="font-extrabold text-xs text-slate-800 mt-1.5">ใบแจ้งหนี้เพื่อเรียกเก็บเงินประจำวัน</h4>
-                <p class="text-[9px] text-slate-400 font-mono mt-1" id="inv-date">วันที่ 19/07/2026</p>
-              </div>
-              <div class="space-y-1 mb-3 text-slate-600">
-                <div class="flex justify-between">
-                  <span>ผู้ซื้อ (ตัวแทนจำหน่าย):</span><strong class="text-slate-800 font-bold" id="inv-agent">ตัวแทน A</strong>
+              <div class="border-b-2 border-slate-800 pb-3 mb-3">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <span class="bg-primary-100 text-primary-700 font-bold px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider">Daily Summary</span>
+                    <h4 class="font-extrabold text-xs text-slate-800 mt-1.5">สรุปยอดจ่ายของตัวแทน</h4>
+                    <p class="text-[9px] text-slate-400 font-mono mt-1" id="inv-date">วันที่ -</p>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">ตัวแทน</span>
+                    <strong class="text-slate-800 font-bold text-xs block" id="inv-agent">-</strong>
+                  </div>
                 </div>
-                <div class="flex justify-between">
-                  <span>จำนวนออเดอร์ที่ถูกบันทึก:</span><span class="font-bold text-slate-800" id="inv-order-count">2 ออเดอร์</span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 text-slate-600">
+                <div class="rounded-lg bg-slate-50 border border-slate-200 p-2">
+                  <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">จำนวนบิล</span>
+                  <strong class="block text-sm font-black text-slate-800 mt-0.5" id="inv-order-count">0</strong>
+                </div>
+                <div class="rounded-lg bg-slate-50 border border-slate-200 p-2">
+                  <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">สินค้า</span>
+                  <strong class="block text-sm font-black text-slate-800 mt-0.5" id="summary-total-products">฿0.00</strong>
+                </div>
+                <div class="rounded-lg bg-slate-50 border border-slate-200 p-2">
+                  <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">ค่าส่ง</span>
+                  <strong class="block text-sm font-black text-slate-800 mt-0.5" id="summary-total-shipping">฿0.00</strong>
+                </div>
+                <div class="rounded-lg bg-slate-50 border border-slate-200 p-2">
+                  <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">ส่วนลด</span>
+                  <strong class="block text-sm font-black text-slate-800 mt-0.5" id="summary-total-discount">฿0.00</strong>
                 </div>
               </div>
-              <div class="border-t border-b border-dashed border-slate-300 py-2.5 my-2 space-y-1.5" id="inv-items-list">
-                <!-- รายการจะแสดงตรงนี้ -->
+              <div class="border-t border-b border-dashed border-slate-300 py-2.5 my-2 space-y-3" id="inv-items-list">
+                <!-- รายการบิลจะแสดงตรงนี้ -->
               </div>
               <div class="pt-2 text-right">
-                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">ยอดรวมทั้งสิ้นต้องโอนชำระเงิน</span>
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">ยอดจ่ายรวมทั้งวัน</span>
                 <span class="text-xl font-black text-primary-600 font-mono" id="inv-total-amount">฿0.00</span>
               </div>
               <button onclick="mockPrintInvoice()" class="w-full mt-4 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 rounded-lg shadow transition flex items-center justify-center gap-1.5 uppercase tracking-wider text-[10px]">
-                                <i class="fa-solid fa-print"></i> พิมพ์ใบปิดยอด / คัดลอกรายละเอียดส่งให้ตัวแทน
-                            </button>
+                <i class="fa-solid fa-print"></i> พิมพ์สรุป
+              </button>
             </div>
 
             <div class="text-center text-slate-400 p-6" id="preview-placeholder">
               <i class="fa-solid fa-file-lines text-5xl mb-3 text-slate-300"></i>
               <p class="text-xs font-bold text-slate-400">
-                กรุณาเลือกรายชื่อตัวแทนจำหน่ายจากช่องทางซ้ายมือ<br><span class="text-[10px] text-slate-400 font-normal">ระบบจะสร้างพรีวิวเอกสารคำนวณปิดบิลปิดรอบยอดให้อัตโนมัติ</span>
+                เลือกตัวแทนจากฝั่งซ้าย<br><span class="text-[10px] text-slate-400 font-normal">ระบบจะแสดงบิลของวันที่เลือก</span>
               </p>
             </div>
           </div>
@@ -616,7 +1156,7 @@
       <div class="bg-primary-700 text-white p-4 flex justify-between items-center">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-folder-plus text-base"></i>
-          <h3 id="order-modal-title" class="font-extrabold text-sm uppercase tracking-wider">คีย์ข้อมูลและบันทึกใบสั่งซื้อใหม่เข้าระบบ</h3>
+          <h3 id="order-modal-title" class="font-extrabold text-sm uppercase tracking-wider">บันทึกบิล</h3>
         </div>
         <button onclick="closeOrderModal()" aria-label="ปิดหน้าต่างสร้างออเดอร์" class="min-h-11 min-w-11 text-white/80 hover:text-white transition-all text-sm"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -625,23 +1165,60 @@
         <!-- ข้อมูลหัวบิล -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">รหัสเอกสารออเดอร์ (ระบบคำนวณรันให้อัตโนมัติ)</label>
-            <input type="text" id="new-order-id" aria-label="รหัสเอกสารออเดอร์" class="w-full bg-slate-200 border border-slate-300 rounded p-2 text-xs font-bold text-slate-600 font-mono focus:outline-none" disabled>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">เลขเอกสาร</label>
+            <input type="text" id="new-order-id" aria-label="เลขเอกสาร" class="w-full bg-slate-200 border border-slate-300 rounded p-2 text-xs font-bold text-slate-600 font-mono focus:outline-none" disabled>
           </div>
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ระบุตัวแทนคู่ค้าของบิลนี้ <span class="text-accent-500">*</span></label>
-            <select id="new-order-agent" aria-label="ตัวแทนคู่ค้าของออเดอร์" onchange="recalculateAllCartRows()" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-bold text-slate-700 focus:ring-1 focus:ring-primary-500 focus:outline-none">
+            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ตัวแทนบิลนี้ <span class="text-accent-500">*</span></label>
+            <select id="new-order-agent" aria-label="ตัวแทนของบิล" onchange="recalculateAllCartRows()" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-bold text-slate-700 focus:ring-1 focus:ring-primary-500 focus:outline-none">
                             <!-- โหลดด้วย JS -->
                         </select>
+          </div>
+        </div>
+
+        <!-- ลูกค้าและเงื่อนไขบิล -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 bg-white p-4 rounded-lg border border-slate-200">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ชื่อลูกค้า</label>
+            <input type="text" id="order-customer-name" maxlength="120" placeholder="ชื่อ" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">เบอร์</label>
+            <input type="text" id="order-customer-phone" maxlength="30" placeholder="โทร" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">การจัดส่ง</label>
+            <select id="order-shipping-type" aria-label="การจัดส่ง" onchange="syncOrderShippingFee()" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-bold text-slate-700 focus:ring-1 focus:ring-primary-500 focus:outline-none">
+              <option value="" selected disabled>เลือกการจัดส่ง</option>
+              <option value="VAN">รถตู้/รถทัวร์ 350</option>
+              <option value="CHILLED">แพคเย็น 150</option>
+              <option value="PARCEL">พัสดุ 60</option>
+              <option value="MESSENGER">Messenger</option>
+              <option value="SPLIT">ส่งแยก</option>
+            </select>
+          </div>
+          <div class="lg:col-span-3">
+            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ที่อยู่จัดส่ง</label>
+            <textarea id="order-customer-address" rows="2" maxlength="300" placeholder="ระบุที่อยู่จัดส่งสินค้า" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none resize-none"></textarea>
+          </div>
+          <div class="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div id="order-shipping-custom-wrap" class="hidden sm:col-span-1">
+              <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ค่าส่งเอง</label>
+              <input type="number" id="order-shipping-custom" min="0" step="1" placeholder="ระบุ" oninput="syncOrderShippingFee()" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+            </div>
+            <div class="col-span-1">
+              <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ส่วนลดพิเศษ</label>
+              <input type="number" id="order-discount-amount" min="0" step="1" value="0" oninput="updateOrderTotals()" placeholder="0" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+            </div>
           </div>
         </div>
 
         <!-- รายการซื้อขายในตระกร้าบิล -->
         <div>
           <div class="flex justify-between items-center mb-2">
-            <label class="block text-xs font-extrabold text-slate-800 uppercase tracking-wider">รายการผลิตภัณฑ์เพื่อคำนวณส่งสินค้า</label>
+            <label class="block text-xs font-extrabold text-slate-800 uppercase tracking-wider">รายการสินค้า</label>
             <button onclick="addCartRow()" class="text-primary-700 hover:text-primary-900 text-xs font-bold flex items-center gap-1 bg-primary-100 hover:bg-primary-200 px-3 py-1.5 rounded-lg shadow-sm transition-all">
-                            <i class="fa-solid fa-circle-plus"></i> เพิ่มแถวผลิตภัณฑ์ใหม่
+                            <i class="fa-solid fa-circle-plus"></i> เพิ่ม
                         </button>
           </div>
 
@@ -651,11 +1228,12 @@
               <caption class="sr-only">รายการสินค้าในออเดอร์ใหม่</caption>
               <thead>
                 <tr class="bg-slate-100 border-b border-slate-200 text-slate-500 uppercase tracking-wider">
-                  <th class="p-2 font-extrabold w-36">ประเภทคลังสินค้า</th>
-                  <th class="p-2 font-extrabold w-56">รายละเอียดข้อมูลผลิตภัณฑ์</th>
-                  <th class="p-2 font-extrabold text-center w-16">จำนวนชิ้น</th>
-                  <th class="p-2 font-extrabold text-right w-24">ราคารวมส่ง/ชิ้น</th>
-                  <th class="p-2 font-extrabold text-right w-24">ต้นทุนจริง/ชิ้น</th>
+                  <th class="p-2 font-extrabold w-32">ประเภทคลังสินค้า</th>
+                  <th class="p-2 font-extrabold w-48">รายละเอียดข้อมูลผลิตภัณฑ์</th>
+                  <th class="p-2 font-extrabold w-28">หน่วยสินค้า</th>
+                  <th class="p-2 font-extrabold text-center w-16">จำนวน</th>
+                  <th class="p-2 font-extrabold text-right w-24">ราคารวมส่ง/หน่วย</th>
+                  <th class="p-2 font-extrabold text-right w-24 owner-only-metric">ต้นทุนจริง/หน่วย</th>
                   <th class="p-2 font-extrabold text-right w-24">ผลรวมมูลค่า</th>
                   <th class="p-2 font-extrabold text-center w-10">ลบออก</th>
                 </tr>
@@ -669,14 +1247,19 @@
       </div>
 
       <!-- สรุปผลลัพธ์ท้ายโมดัล -->
-      <div class="bg-slate-50 p-4 border-t border-slate-200 flex flex-wrap justify-between items-center gap-4">
-        <div>
-          <span class="text-[9px] text-slate-400 uppercase font-bold tracking-wider block">ยอดรวมสะสมทั้งสิ้นของบิลนี้</span>
-          <span class="text-xl font-black text-primary-600 font-mono" id="cart-total-display">฿0.00</span>
+      <div class="bg-slate-50 px-4 py-3 border-t border-slate-200 flex items-center justify-between gap-3 text-sm shrink-0">
+        <div class="flex items-center gap-3 sm:gap-5 flex-wrap">
+          <span class="text-slate-600 font-semibold text-xs sm:text-sm">สินค้า <strong class="font-mono text-slate-800 font-bold ml-1 text-sm sm:text-base" id="cart-subtotal-display">฿0</strong></span>
+          <span class="text-slate-300">|</span>
+          <span class="text-slate-600 font-semibold text-xs sm:text-sm">ส่ง <strong class="font-mono text-slate-800 font-bold ml-1 text-sm sm:text-base" id="cart-shipping-display">฿0</strong></span>
+          <span class="text-slate-300">|</span>
+          <span class="text-slate-600 font-semibold text-xs sm:text-sm">ลด <strong class="font-mono text-slate-800 font-bold ml-1 text-sm sm:text-base" id="cart-discount-display">฿0</strong></span>
+          <span class="text-slate-300">|</span>
+          <span class="text-slate-900 font-extrabold text-sm sm:text-base">สุทธิ <strong class="text-lg sm:text-xl font-black text-primary-700 font-mono ml-1.5" id="cart-total-display">฿0</strong></span>
         </div>
-        <div class="flex gap-2">
-          <button onclick="closeOrderModal()" class="erp-action erp-action-secondary px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-200 rounded-lg transition-all">ยกเลิกรายการ</button>
-          <button onclick="saveOrder()" class="px-5 py-2 text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow transition-all">บันทึกบิล & ดำเนินการหักสต๊อก</button>
+        <div class="flex items-center gap-2 shrink-0">
+          <button onclick="closeOrderModal()" class="px-3.5 py-2 text-xs font-extrabold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg transition-all">ยกเลิก</button>
+          <button onclick="saveOrder()" class="px-4 py-2 text-xs font-extrabold bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow-sm transition-all">บันทึก</button>
         </div>
       </div>
     </div>
@@ -685,51 +1268,97 @@
   <!-- ================= MODAL: ADD/EDIT PRODUCT ================= -->
   <div id="product-modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title" aria-hidden="true" tabindex="-1"
     class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-white rounded-xl w-full max-w-md overflow-hidden shadow-md flex flex-col border border-slate-200">
+    <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-md flex flex-col border border-slate-200">
       <div class="bg-emerald-800 text-white p-4 flex justify-between items-center">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-folder-open"></i>
-          <h3 id="product-modal-title" class="font-extrabold text-sm uppercase tracking-wider">เพิ่มและลงทะเบียนรหัสสินค้าใหม่</h3>
+          <h3 id="product-modal-title" class="font-extrabold text-sm uppercase tracking-wider">เพิ่มสินค้า</h3>
         </div>
         <button onclick="closeProductModal()" aria-label="ปิดหน้าต่างเพิ่มสินค้า" class="min-h-11 min-w-11 text-white/80 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div class="p-5 space-y-4">
+      <div class="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
         <div>
-          <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">รหัสผลิตภัณฑ์ <span class="text-accent-500">*</span></label>
-            <input type="text" id="prod-id" aria-label="รหัสผลิตภัณฑ์" maxlength="50" placeholder="ตัวอย่าง PROD004" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-bold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+          <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">รหัสสินค้า <span class="text-accent-500">*</span></label>
+            <input type="text" id="prod-id" aria-label="รหัสสินค้า" maxlength="50" placeholder="PROD004" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-bold focus:ring-1 focus:ring-primary-500 focus:outline-none">
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ชื่อรายการผลิตภัณฑ์ <span class="text-rose-500">*</span></label>
-            <input type="text" id="prod-name" aria-label="ชื่อผลิตภัณฑ์" maxlength="200" placeholder="ระบุชื่อสินค้า เช่น หมวกแก็ปลายปัก" class="w-full bg-white border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-primary-500 focus:outline-none font-semibold">
+          <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ชื่อสินค้า <span class="text-rose-500">*</span></label>
+            <input type="text" id="prod-name" aria-label="ชื่อสินค้า" maxlength="200" placeholder="เช่น หมวกปัก" class="w-full bg-white border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-primary-500 focus:outline-none font-semibold">
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ราคาตั้งจำหน่ายปกติปลีก <span class="text-rose-500">*</span></label>
-            <input type="number" id="prod-retail" aria-label="ราคาขายปลีก" min="0" step="1" placeholder="เช่น 250" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono focus:ring-1 focus:ring-primary-500 focus:outline-none">
+            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ประเภท</label>
+            <select id="prod-category" aria-label="ประเภท" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+              <option value="botox">botox</option>
+              <option value="filler">filler</option>
+              <option value="fat">fat</option>
+              <option value="หน้าใส">หน้าใส</option>
+              <option value="วิตามินผิว">วิตามินผิว</option>
+              <option value="ร้อยไหม">ร้อยไหม</option>
+              <option value="อื่นๆ" selected>อื่นๆ</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">หน่วยหลัก</label>
+            <select id="prod-base-unit" aria-label="หน่วยหลัก" onchange="updateProductModalUnitLabels(); refreshStockAdjustmentUnitSelect();" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+              <option value="ขวด" selected>ขวด</option>
+              <option value="กล่อง">กล่อง</option>
+              <option value="เส้น">เส้น</option>
+              <option value="แพค">แพค</option>
+              <option value="คู่">คู่</option>
+            </select>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">หน่วยย่อย</label>
+            <button type="button" onclick="addPackUnitRow()" class="text-primary-700 hover:text-primary-900 text-[10px] font-bold flex items-center gap-1 bg-primary-100 hover:bg-primary-200 px-2.5 py-1 rounded-md transition-all">
+              <i class="fa-solid fa-circle-plus"></i> เพิ่ม
+            </button>
+          </div>
+          <div id="prod-pack-units-container" class="space-y-2"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ราคาขาย <span class="text-rose-500">*</span></label>
+            <input type="number" id="prod-retail" aria-label="ราคาขาย" min="0" step="1" placeholder="250" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono focus:ring-1 focus:ring-primary-500 focus:outline-none">
           </div>
           <div class="owner-only-metric">
-            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider text-emerald-700">ราคาต้นทุนสินค้าจริง <span class="text-rose-500">*</span></label>
-            <input type="number" id="prod-cost" aria-label="ต้นทุนสินค้า" min="0" step="1" placeholder="เช่น 150" class="w-full bg-emerald-50/50 border border-emerald-200 rounded p-2 text-xs font-mono font-bold focus:ring-1 focus:ring-emerald-500 focus:outline-none text-emerald-800">
+            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider text-emerald-700">ต้นทุน <span class="text-rose-500">*</span></label>
+            <input type="number" id="prod-cost" aria-label="ต้นทุน" min="0" step="1" placeholder="150" class="w-full bg-emerald-50/50 border border-emerald-200 rounded p-2 text-xs font-mono font-bold focus:ring-1 focus:ring-emerald-500 focus:outline-none text-emerald-800">
           </div>
         </div>
         <div class="grid grid-cols-3 gap-2">
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">สต๊อกตั้งต้น</label>
-            <input type="number" id="prod-stock" aria-label="สต๊อกตั้งต้น" min="0" step="1" placeholder="100" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono focus:ring-1 focus:ring-primary-500 focus:outline-none">
+            <label id="prod-stock-label" class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">คงเหลือ (ขวด)</label>
+            <input type="number" id="prod-stock" aria-label="คงเหลือ" min="0" step="1" placeholder="100" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono focus:ring-1 focus:ring-primary-500 focus:outline-none">
           </div>
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">จุดสั่งซื้อ (Min)</label>
-            <input type="number" id="prod-min" aria-label="จุดสั่งซื้อขั้นต่ำ" min="0" step="1" placeholder="15" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono focus:ring-1 focus:ring-primary-500 focus:outline-none">
+            <label id="prod-min-label" class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ขั้นต่ำ (ขวด)</label>
+            <input type="number" id="prod-min" aria-label="ขั้นต่ำ" min="0" step="1" placeholder="15" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono focus:ring-1 focus:ring-primary-500 focus:outline-none">
           </div>
-          <div>
-            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">สูงสุดคลัง (Max)</label>
-            <input type="number" id="prod-max" aria-label="สต๊อกสูงสุด" min="0" step="1" placeholder="500" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono focus:ring-1 focus:ring-primary-500 focus:outline-none">
+        </div>
+        <div id="stock-adjust-section" class="hidden rounded-lg border border-primary-100 bg-primary-50/60 p-3 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <label class="block text-[10px] font-bold text-primary-700 uppercase tracking-wider">เพิ่มสต็อก</label>
+            <span class="text-[10px] text-primary-500 font-semibold">เฉพาะตอนแก้ไข</span>
+          </div>
+          <div class="grid grid-cols-[7rem_minmax(0,1fr)_auto] gap-2 items-end">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1">จำนวน</label>
+              <input type="number" id="prod-stock-add-qty" min="1" step="1" inputmode="numeric" placeholder="1" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1">หน่วย</label>
+              <select id="prod-stock-add-unit" class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none"></select>
+            </div>
+            <button type="button" id="prod-stock-add-btn" onclick="applyStockAdjustmentFromModal()" class="erp-action erp-action-primary px-3 py-2 text-[10px] font-bold min-h-11">เพิ่ม</button>
           </div>
         </div>
       </div>
       <div class="bg-slate-50 p-4 border-t border-slate-200 flex justify-end gap-2">
-          <button onclick="closeProductModal()" class="erp-action erp-action-secondary px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-200 rounded-lg transition-all">ยกเลิก</button>
-        <button onclick="saveNewProduct()" class="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow transition-all">บันทึกข้อมูลสินค้า</button>
+        <button onclick="closeProductModal()" class="erp-action erp-action-secondary px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 border border-slate-300 rounded-lg transition-all">ยกเลิก</button>
+        <button onclick="saveNewProduct()" class="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow transition-all">บันทึก</button>
       </div>
     </div>
   </div>
@@ -742,25 +1371,25 @@
       <div class="bg-primary-800 text-white p-4 flex justify-between items-center">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-sliders text-base"></i>
-          <h3 id="rate-modal-title" class="font-extrabold text-sm uppercase tracking-wider">กำหนดรายละเอียดช่วงเรทราคาส่งของตัวแทน</h3>
+          <h3 id="rate-modal-title" class="font-extrabold text-sm uppercase tracking-wider">ตั้งเรท</h3>
         </div>
         <button onclick="closeRateModal()" aria-label="ปิดหน้าต่างกำหนดเรทราคา" class="min-h-11 min-w-11 text-white/80 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
       <div class="p-5 space-y-4 overflow-y-auto flex-1">
         <div class="bg-primary-50 border border-primary-100 p-3 rounded-lg text-xs space-y-1">
-          <p><strong>ตัวแทนจำหน่ายคู่ค้า:</strong>
+          <p><strong>ตัวแทน:</strong>
             <span id="rate-modal-agent" class="text-primary-800 font-bold">ตัวแทน A</span>
           </p>
-          <p><strong>ชื่อผลิตภัณฑ์ที่ระบุ:</strong>
+          <p><strong>ชื่อสินค้า:</strong>
             <span id="rate-modal-product" class="text-primary-800 font-bold">PROD001</span>
           </p>
         </div>
 
         <div class="flex justify-between items-center border-b border-slate-200 pb-2">
-          <h4 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">กำหนดเกณฑ์ราคาส่งแยกตามปริมาณ</h4>
+          <h4 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">ช่วง</h4>
           <button onclick="addRateTierRow()" class="text-xs bg-primary-100 text-primary-700 hover:bg-primary-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-all">
-                        <i class="fa-solid fa-plus-circle"></i> เพิ่มแถวเกณฑ์ใหม่
+                        <i class="fa-solid fa-plus-circle"></i> เพิ่ม
                     </button>
         </div>
 
@@ -776,8 +1405,8 @@
       </div>
 
       <div class="bg-slate-50 p-4 border-t border-slate-200 flex justify-end gap-2">
-          <button onclick="closeRateModal()" class="erp-action erp-action-secondary px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-200 rounded-lg transition-all">ยกเลิกรายการ</button>
-        <button onclick="saveDynamicRateTiers()" class="px-5 py-2 text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow transition-all">บันทึกข้อมูลและอัปเดตเรท</button>
+        <button onclick="closeRateModal()" class="erp-action erp-action-secondary px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 border border-slate-300 rounded-lg transition-all">ยกเลิก</button>
+        <button onclick="saveDynamicRateTiers()" class="px-5 py-2 text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow transition-all">บันทึก</button>
       </div>
     </div>
   </div>
@@ -791,6 +1420,21 @@
   <?!= include('product'); ?>
   <?!= include('order'); ?>
   <?!= include('modal'); ?>
+
+  <!-- Global Loading Modal (สำหรับติดต่อ Server/ประมวลผล) -->
+  <div id="loading-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4 transition-all duration-200" role="dialog" aria-modal="true" aria-labelledby="loading-modal-text">
+    <div class="bg-white rounded-2xl p-6 shadow-2xl border border-slate-100 flex flex-col items-center justify-center gap-3.5 max-w-xs w-full text-center">
+      <div class="relative flex items-center justify-center w-12 h-12">
+        <div class="absolute inset-0 rounded-full border-4 border-primary-100"></div>
+        <div class="absolute inset-0 rounded-full border-4 border-primary-600 border-t-transparent animate-spin"></div>
+        <i class="fa-solid fa-server text-primary-600 text-sm"></i>
+      </div>
+      <div>
+        <h3 id="loading-modal-text" class="text-sm font-extrabold text-slate-800 tracking-tight">กำลังประมวลผล...</h3>
+        <p id="loading-modal-subtext" class="text-[11px] font-semibold text-slate-400 mt-0.5">กรุณารอสักครู่ ระบบกำลังเชื่อมต่อเซิร์ฟเวอร์</p>
+      </div>
+    </div>
+  </div>
 
   <!-- แจ้งเตือน Pop-up (Toast) -->
   <div id="toast" role="status" aria-live="polite" aria-atomic="true"
@@ -810,6 +1454,8 @@
         let productSaveInFlight = false;
         let rateSaveInFlight = false;
         let cancelOrderInFlight = false;
+        let isAppDataLoading = false;
+        let hasLoadedAppData = false;
         let agentIdsByName = {};
         let selectedRateEdit = { agent: "", prodId: "" };
         let selectedLoginRoleChoice = 'owner';
@@ -829,10 +1475,127 @@
             document.getElementById('login-screen').classList.toggle('hidden', !isVisible);
         }
 
+        function setAppDataLoading(isLoading) {
+            isAppDataLoading = isLoading;
+            const main = document.querySelector('.erp-main-content');
+            if (main) main.setAttribute('aria-busy', String(isLoading));
+            if (isLoading && !hasLoadedAppData) renderLoadingSkeletons();
+        }
+
+        function renderLoadingSkeletons() {
+            const setSkeleton = function(id, html) {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = html;
+            };
+            setSkeleton('db-total-sales', '<span class="erp-skeleton inline-block h-8 w-32 rounded-md"></span>');
+            setSkeleton('db-total-qty', '<span class="erp-skeleton inline-block h-3 w-40 rounded-full"></span>');
+            setSkeleton('db-order-count', '<span class="erp-skeleton inline-block h-8 w-14 rounded-md"></span>');
+            setSkeleton('db-agent-active', '<span class="erp-skeleton inline-block h-3 w-44 rounded-full"></span>');
+            setSkeleton('db-total-cost', '<span class="erp-skeleton inline-block h-8 w-32 rounded-md"></span>');
+            setSkeleton('db-total-profit', '<span class="erp-skeleton inline-block h-8 w-32 rounded-md"></span>');
+            setSkeleton('db-profit-margin', '<span class="erp-skeleton inline-block h-3 w-40 rounded-full"></span>');
+
+            const lowStockList = document.getElementById('low-stock-list');
+            if (lowStockList) {
+                lowStockList.innerHTML = Array.from({ length: 4 }, function() {
+                    return '<li class="flex items-center justify-between gap-3 rounded border border-slate-200 bg-slate-50 px-2.5 py-1.5"><span class="erp-skeleton inline-block h-3 w-32 rounded-full"></span><span class="erp-skeleton inline-block h-3 w-14 rounded-full"></span></li>';
+                }).join('');
+            }
+
+            const agentChart = document.getElementById('agent-sales-chart');
+            if (agentChart) {
+                agentChart.innerHTML = Array.from({ length: 5 }, function() {
+                    return '<div class="space-y-1.5"><div class="flex items-center justify-between gap-3"><span class="erp-skeleton inline-block h-3 w-28 rounded-full"></span><span class="erp-skeleton inline-block h-3 w-16 rounded-full"></span></div><div class="erp-skeleton h-2 w-full rounded-full"></div></div>';
+                }).join('');
+            }
+
+            const prodChart = document.getElementById('top-products-chart');
+            if (prodChart) {
+                prodChart.innerHTML = Array.from({ length: 10 }, function() {
+                    return '<div class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2"><span class="erp-skeleton inline-block h-3 w-3/5 rounded-full"></span><span class="erp-skeleton inline-block h-4 w-14 rounded-full"></span></div>';
+                }).join('');
+            }
+
+            const ordersBody = document.getElementById('orders-table-body');
+            if (ordersBody) {
+                ordersBody.innerHTML = Array.from({ length: 6 }, function() {
+                    return '<tr class="border-b border-slate-100"><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-24 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-28 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-full rounded-full"></span></td><td class="p-2.5 text-right"><span class="erp-skeleton inline-block h-3.5 w-10 rounded-full"></span></td><td class="p-2.5 text-right"><span class="erp-skeleton inline-block h-3.5 w-24 rounded-full"></span></td><td class="p-2.5 text-right owner-only-metric"><span class="erp-skeleton inline-block h-3.5 w-20 rounded-full"></span></td><td class="p-2.5 text-center"><span class="erp-skeleton inline-block h-8 w-16 rounded-md"></span></td></tr>';
+                }).join('');
+            }
+
+            const stockBody = document.getElementById('stock-table-body');
+            if (stockBody) {
+                stockBody.innerHTML = Array.from({ length: 6 }, function() {
+                    return '<tr class="border-b border-slate-100"><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-24 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-40 rounded-full"></span></td><td class="p-2.5 text-right"><span class="erp-skeleton inline-block h-3.5 w-20 rounded-full"></span></td><td class="p-2.5 text-right owner-only-metric"><span class="erp-skeleton inline-block h-3.5 w-20 rounded-full"></span></td><td class="p-2.5 text-right"><span class="erp-skeleton inline-block h-3.5 w-16 rounded-full"></span></td><td class="p-2.5 text-center"><span class="erp-skeleton inline-block h-3.5 w-12 rounded-full"></span></td><td class="p-2.5 text-center"><span class="erp-skeleton inline-block h-3.5 w-14 rounded-full"></span></td><td class="p-2.5 text-center"><span class="erp-skeleton inline-block h-8 w-20 rounded-md"></span></td></tr>';
+                }).join('');
+            }
+
+            const ratesBody = document.getElementById('agent-rates-table-body');
+            if (ratesBody) {
+                ratesBody.innerHTML = Array.from({ length: 6 }, function() {
+                    return '<tr class="border-b border-slate-100"><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-24 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-40 rounded-full"></span></td><td class="p-2.5 text-center"><span class="erp-skeleton inline-block h-4 w-16 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-full rounded-full"></span></td><td class="p-2.5 text-center"><span class="erp-skeleton inline-block h-8 w-28 rounded-md"></span></td></tr>';
+                }).join('');
+            }
+
+            const summariesList = document.getElementById('summaries-agent-list');
+            if (summariesList) {
+                summariesList.innerHTML = Array.from({ length: 5 }, function() {
+                    return '<div class="w-full rounded-lg border border-slate-200 bg-white p-3 flex items-center justify-between gap-4"><div class="space-y-2 min-w-0 flex-1"><span class="erp-skeleton inline-block h-3.5 w-28 rounded-full"></span><span class="erp-skeleton inline-block h-3 w-40 rounded-full"></span></div><div class="space-y-2 text-right"><span class="erp-skeleton inline-block h-3.5 w-20 rounded-full"></span><span class="erp-skeleton inline-block h-4 w-14 rounded-full"></span></div></div>';
+                }).join('');
+            }
+
+            setSkeleton('preview-placeholder', '<div class="mx-auto w-full max-w-xs space-y-3 text-left"><span class="erp-skeleton inline-block h-12 w-12 rounded-2xl"></span><div class="space-y-2"><span class="erp-skeleton block h-4 w-56 rounded-full"></span><span class="erp-skeleton block h-3 w-72 rounded-full"></span><span class="erp-skeleton block h-3 w-44 rounded-full"></span></div></div>');
+        }
+
+        function renderDefaultAppState() {
+            const setText = function(id, value) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            };
+            setText('db-total-sales', '฿0.00');
+            setText('db-total-qty', '0 ชิ้นขายออกวันนี้');
+            setText('db-order-count', '0');
+            setText('db-agent-active', 'มีออเดอร์จาก 0 ตัวแทน');
+            setText('db-total-cost', '฿0.00');
+            setText('db-total-profit', '฿0.00');
+            setText('db-profit-margin', 'สัดส่วนกำไร: 0% ของยอดขาย');
+
+            const lowStockList = document.getElementById('low-stock-list');
+            if (lowStockList) {
+                lowStockList.innerHTML = '<li class="text-emerald-700 italic flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> คลังสินค้าอยู่ในเกณฑ์ปลอดภัย</li>';
+            }
+            const agentChart = document.getElementById('agent-sales-chart');
+            if (agentChart) agentChart.replaceChildren();
+            const prodChart = document.getElementById('top-products-chart');
+            if (prodChart) prodChart.replaceChildren();
+
+            const ordersBody = document.getElementById('orders-table-body');
+            if (ordersBody) {
+                ordersBody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400 italic">ไม่มีข้อมูลใบสั่งซื้อของวันนี้เข้าสู่ระบบ</td></tr>';
+            }
+            const stockBody = document.getElementById('stock-table-body');
+            if (stockBody) {
+                stockBody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400 italic">ยังไม่มีข้อมูลสินค้าในคลัง</td></tr>';
+            }
+            const ratesBody = document.getElementById('agent-rates-table-body');
+            if (ratesBody) {
+                ratesBody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400 italic">ยังไม่มีข้อมูลเรทราคา</td></tr>';
+            }
+            const summariesList = document.getElementById('summaries-agent-list');
+            if (summariesList) {
+                summariesList.innerHTML = '<div class="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-400 italic">ยังไม่มีข้อมูลตัวแทนสำหรับสรุปบิล</div>';
+            }
+            const placeholder = document.getElementById('preview-placeholder');
+            if (placeholder) {
+                placeholder.innerHTML = '<i class="fa-solid fa-file-lines text-5xl mb-3 text-slate-300"></i><p class="text-xs font-bold text-slate-400">เลือกตัวแทนจากฝั่งซ้าย<br><span class="text-[10px] text-slate-400 font-normal">ระบบจะแสดงบิลของวันที่เลือก</span></p>';
+            }
+        }
+
         window.onload=function(){
 
             const today = new Date();
             const dateStr = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+            selectedSummaryDateKey = getTodaySummaryDateKey();
             document.getElementById('current-date-lbl').innerText = "วันนี้: " + dateStr;
             document.getElementById('inv-date').innerText = dateStr;
 
@@ -853,6 +1616,8 @@
             orders=data.orders;
             agentRates=data.agentRates || {};
             agentIdsByName=data.agentIdsByName || {};
+            hasLoadedAppData = true;
+            setAppDataLoading(false);
 
             initDropdowns();
             updateSystemState();
@@ -928,6 +1693,8 @@
             setSplashVisible(false);
             setLoginVisible(false);
             setAppShellVisible(true);
+            hasLoadedAppData = false;
+            setAppDataLoading(true);
             document.getElementById('user-display-name').innerText = user.fullname || user.username;
             document.getElementById('user-display-role').innerText = role.toUpperCase() + ' MODE';
             document.getElementById('user-display-role').className = role === 'owner'
@@ -936,16 +1703,22 @@
             isLoggedIn = true;
             switchRole(role);
             scheduleAutoLogout(session.expiresAt);
-            loadApplicationData();
+            loadApplicationData(true);
             if (!isRestore) showNotification(`ยินดีต้อนรับ ${user.fullname || user.username}`);
         }
 
-        function loadApplicationData() {
+        function loadApplicationData(showSkeleton) {
+            if (showSkeleton) setAppDataLoading(true);
             google.script.run
                 .withSuccessHandler(initSystem)
                 .withFailureHandler(function(error) {
-                    if (isSessionError(error)) endSession(true);
-                    else showNotification(serverErrorMessage(error), true);
+                    setAppDataLoading(false);
+                    if (isSessionError(error)) {
+                        endSession(true);
+                    } else {
+                        if (!hasLoadedAppData) renderDefaultAppState();
+                        showNotification(serverErrorMessage(error), true);
+                    }
                 })
                 .api(sessionToken);
         }
@@ -1008,6 +1781,8 @@
         function endSession(isAutomatic) {
             if (autoLogoutTimer) clearTimeout(autoLogoutTimer);
             autoLogoutTimer = null;
+            setAppDataLoading(false);
+            hasLoadedAppData = false;
             localStorage.removeItem('erpDealerSession');
             sessionToken = '';
             authenticatedRole = '';
@@ -1017,6 +1792,27 @@
             setSplashVisible(false);
             setLoginVisible(true);
             if (isAutomatic) showNotification('ออกจากระบบอัตโนมัติแล้ว', true);
+        }
+
+        // โหลดดิ้งโมดัลสำหรับการประมวลผลเซิร์ฟเวอร์
+        function showLoadingModal(title = "กำลังประมวลผล...", subtext = "กรุณารอสักครู่ ระบบกำลังเชื่อมต่อเซิร์ฟเวอร์") {
+            const modal = document.getElementById('loading-modal');
+            const titleEl = document.getElementById('loading-modal-text');
+            const subtextEl = document.getElementById('loading-modal-subtext');
+            if (titleEl) titleEl.innerText = title;
+            if (subtextEl) subtextEl.innerText = subtext;
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.setAttribute('aria-hidden', 'false');
+            }
+        }
+
+        function hideLoadingModal() {
+            const modal = document.getElementById('loading-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.setAttribute('aria-hidden', 'true');
+            }
         }
 
         // แจ้งเตือน Toast สไตล์ ERP
@@ -1111,6 +1907,10 @@
         }
 
         function updateSystemState() {
+            if (isAppDataLoading && !hasLoadedAppData) {
+                renderLoadingSkeletons();
+                return;
+            }
             if (window.erpRenderFrame) cancelAnimationFrame(window.erpRenderFrame);
             window.erpRenderFrame = requestAnimationFrame(function() {
                 window.erpRenderFrame = null;
@@ -1134,7 +1934,7 @@
                     list.innerHTML += `
                         <li class="flex justify-between items-center bg-white p-1.5 px-2.5 rounded border border-accent-100 font-semibold text-slate-700">
                             <span class="truncate">${p.id} - ${p.name.substring(0, 12)}...</span>
-                            <span class="text-accent-500 font-bold font-mono">${p.stock} ชิ้น</span>
+                            <span class="text-accent-500 font-bold font-mono">${formatProductStockLabel(p)}</span>
                         </li>
                     `;
                 });
@@ -1166,7 +1966,7 @@
             const margin = totalSales > 0 ? Math.round((profit / totalSales) * 100) : 0;
             document.getElementById('db-profit-margin').innerText = `สัดส่วนกำไร: ${margin}% ของยอดขาย`;
 
-            // กราฟสรุปยอดขายแยกตามรายตัวแทนจำหน่าย (Top 5)
+            // กราฟสรุปยอดขายตัวแทน (Top 5)
             const agentChart = document.getElementById('agent-sales-chart');
             agentChart.innerHTML = "";
             let agentSummary = {};
@@ -1205,7 +2005,7 @@
             const prodChart = document.getElementById('top-products-chart');
             prodChart.innerHTML = "";
             let prodCounts = {};
-            products.forEach(p => { prodCounts[p.id] = { name: p.name, qty: 0 }; });
+            products.forEach(p => { prodCounts[p.id] = { name: p.name, qty: 0, unitName: p.unitName || '', packSize: p.packSize || 1 }; });
             orders.forEach(o => {
                 o.items.forEach(i => {
                     if (!i.isNonStock) {
@@ -1214,7 +2014,7 @@
                         }
                     } else {
                         if (!prodCounts[i.productId]) {
-                            prodCounts[i.productId] = { name: i.productName + " (นอกสต๊อก)", qty: 0 };
+                            prodCounts[i.productId] = { name: i.productName + " (นอกสต๊อก)", qty: 0, unitName: 'ชิ้น', packSize: 1 };
                         }
                         prodCounts[i.productId].qty += i.qty;
                     }
@@ -1231,7 +2031,7 @@
                 prodChart.innerHTML += `
                     <div class="flex justify-between items-center text-[11px] p-2 rounded-lg border ${hasSales ? 'bg-primary-50/40 border-primary-100' : 'bg-slate-50 border-slate-200'}">
                         <span class="font-semibold text-slate-700 truncate pr-1.5">${p.id.startsWith('CUSTOM') ? '[นอกสต๊อก]' : p.id} - ${p.name}</span>
-                        <span class="${hasSales ? 'bg-primary-100 text-primary-700 font-black' : 'bg-slate-200 text-slate-500 font-bold'} px-2 py-0.5 rounded-full font-mono text-[10px] whitespace-nowrap">${p.qty} ชิ้น</span>
+                        <span class="${hasSales ? 'bg-primary-100 text-primary-700 font-black' : 'bg-slate-200 text-slate-500 font-bold'} px-2 py-0.5 rounded-full font-mono text-[10px] whitespace-nowrap">${p.qty} ${getProductUnitName(p)}</span>
                     </div>
                 `;
             });
@@ -1250,37 +2050,40 @@
         function renderOrdersTable() {
             const tbody = document.getElementById('orders-table-body');
             const filterVal = document.getElementById('filter-agent-select').value;
+            const dateFilterEl = document.getElementById('filter-order-date-select');
+            const dateFilter = dateFilterEl ? dateFilterEl.value : 'TODAY';
+            const todayKey = getTodaySummaryDateKey();
             tbody.innerHTML = "";
 
             let filtered = orders;
+            if (dateFilter === 'TODAY') {
+                filtered = filtered.filter(o => getOrderSummaryDateKey(o) === todayKey);
+            }
             if (filterVal !== "ALL") {
-                filtered = orders.filter(o => o.agent === filterVal);
+                filtered = filtered.filter(o => o.agent === filterVal);
             }
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic">ไม่มีข้อมูลใบสั่งซื้อของวันนี้เข้าสู่ระบบ</td></tr>`;
+                const emptyText = dateFilter === 'TODAY' ? 'ไม่มีข้อมูลใบสั่งซื้อของวันนี้เข้าสู่ระบบ' : 'ไม่มีข้อมูลใบสั่งซื้อในระบบ';
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic">${emptyText}</td></tr>`;
                 return;
             }
 
             filtered.forEach(o => {
-                const itemsDesc = o.items.map(i => {
-                    const prodName = i.isNonStock ? i.productName : i.productName;
-                    const badge = i.isNonStock ? `<span class="bg-accent-100 text-accent-600 text-[8px] px-1 py-0.5 rounded font-bold uppercase tracking-wider">นอกสต๊อก</span>` : "";
-                    return `<div class="flex items-center gap-1.5 mb-0.5">${badge} <span class="truncate">${prodName}</span> <span class="text-slate-400 font-bold">(${i.qty} ชิ้น × ฿${i.unitPrice})</span></div>`;
-                }).join("");
-
+                const itemCount = (o.items || []).length;
+                const itemCountBadge = `<span class="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-list-check text-slate-400"></i> ${itemCount} รายการ</span>`;
                 const profit = o.totalAmount - o.totalCost;
                 
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50/50 transition duration-150">
-                        <td class="p-2.5 font-mono font-bold text-primary-700">${o.orderId}</td>
-                        <td class="p-2.5 font-bold text-slate-700">${o.agent}</td>
-                        <td class="p-2.5 text-slate-600 leading-normal">${itemsDesc}</td>
-                        <td class="p-2.5 text-right font-bold font-mono">${o.totalQty}</td>
-                        <td class="p-2.5 text-right font-extrabold text-slate-800 font-mono">฿${o.totalAmount.toLocaleString()}</td>
-                        <td class="p-2.5 text-right font-bold text-emerald-600 font-mono owner-only-metric">฿${profit.toLocaleString()}</td>
-                        <td class="p-2.5 text-center">
-                            <button onclick="deleteOrder('${o.orderId}')" class="text-accent-500 hover:text-accent-700 p-1 text-sm transition" title="ลบรายการและคืนสต๊อก">
+                        <td data-label="เลขที่ออเดอร์" class="p-2.5 font-mono font-bold text-primary-700">${o.orderId}</td>
+                        <td data-label="ตัวแทน" class="p-2.5 font-bold text-slate-700">${o.agent}</td>
+                        <td data-label="รายการ" class="p-2.5 text-slate-700">${itemCountBadge}</td>
+                        <td data-label="จำนวนรวม" class="p-2.5 text-right font-bold font-mono">${o.totalQty}</td>
+                        <td data-label="ยอดรวมสุทธิ" class="p-2.5 text-right font-extrabold text-slate-800 font-mono">฿${o.totalAmount.toLocaleString()}</td>
+                        <td data-label="กำไรสุทธิ" class="p-2.5 text-right font-bold text-emerald-600 font-mono owner-only-metric">฿${profit.toLocaleString()}</td>
+                        <td data-label="จัดการ" class="p-2.5 text-center">
+                            <button type="button" onclick="deleteOrder('${o.orderId}')" aria-label="ยกเลิกออเดอร์ ${o.orderId}" class="text-accent-500 hover:text-accent-700 min-h-11 min-w-11 inline-flex items-center justify-center text-sm transition" title="ลบรายการและคืนสต๊อก">
                                 <i class="fa-regular fa-trash-can"></i>
                             </button>
                         </td>
@@ -1293,183 +2096,61 @@
             }
         }
 
-        function renderStockTable() {
-            const tbody = document.getElementById('stock-table-body');
-            const searchVal = document.getElementById('stock-search-input').value.toLowerCase();
-            tbody.innerHTML = "";
-
-            let filtered = products.filter(p => p.id.toLowerCase().includes(searchVal) || p.name.toLowerCase().includes(searchVal));
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400 italic">ไม่พบรหัสสินค้าที่ต้องการในคลัง</td></tr>`;
-                return;
-            }
-
-            filtered.forEach(p => {
-                const isCritical = p.stock <= p.min;
-                const statusBadge = isCritical 
-                    ? `<span class="bg-accent-100 text-accent-700 border border-accent-200 px-2 py-0.5 rounded-full text-[9px] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> สต๊อกต่ำ</span>` 
-                    : `<span class="bg-primary-50 text-primary-700 border border-primary-200 px-2 py-0.5 rounded-full text-[9px] font-bold"><i class="fa-solid fa-check"></i> ปกติ</span>`;
-
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50/50 transition duration-150">
-                        <td class="p-2.5 font-mono font-bold text-primary-700">${p.id}</td>
-                        <td class="p-2.5 font-bold text-slate-700">${p.name}</td>
-                        <td class="p-2.5 text-right font-bold text-slate-700 font-mono">฿${p.defaultPrice.toLocaleString()}</td>
-                        <td class="p-2.5 text-right font-extrabold text-primary-700 font-mono owner-only-metric">฿${p.cost.toLocaleString()}</td>
-                        <td class="p-2.5 text-right font-black font-mono ${isCritical ? 'text-accent-500' : 'text-slate-800'}">${p.stock} ชิ้น</td>
-                        <td class="p-2.5 text-center text-slate-500 font-mono font-bold">${p.min}</td>
-                        <td class="p-2.5 text-center">${statusBadge}</td>
-                        <td class="p-2.5 text-center">
-                            <div class="flex justify-center gap-1.5">
-                                <button onclick="adjustStockDirectly('${p.id}', 10)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded text-[10px] font-bold transition-all">+10</button>
-                                <button onclick="adjustStockDirectly('${p.id}', -10)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded text-[10px] font-bold transition-all">-10</button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            if (currentRole !== 'owner') {
-                document.querySelectorAll('.owner-only-metric').forEach(el => el.classList.add('hidden'));
-            }
-        }
-
-        function adjustStockDirectly(prodId, amt) {
-            let p = products.find(prod => prod.id === prodId);
-            if (p) {
-                if (p.stock + amt < 0) {
-                    showNotification("ไม่สามารถปรับจำนวนสต๊อกให้ต่ำกว่าศูนย์ได้ค่ะ", true);
-                    return;
-                }
-                p.stock += amt;
-                showNotification(`ดำเนินการปรับยอดสต๊อกเรียบร้อยแล้วค่ะ (${p.id})`);
-                updateSystemState();
-            }
-        }
-
-        function renderAgentRatesTable() {
-            const tbody = document.getElementById('agent-rates-table-body');
-            const selectedAgent = document.getElementById('agent-config-select').value;
-            const searchVal = document.getElementById('agent-rate-search').value.toLowerCase();
-            tbody.innerHTML = "";
-
-            if (!selectedAgent) return;
-
-            let filterProds = products.filter(p => p.id.toLowerCase().includes(searchVal) || p.name.toLowerCase().includes(searchVal));
-
-            filterProds.forEach(p => {
-                if (!agentRates[selectedAgent]) {
-                    agentRates[selectedAgent] = {};
-                }
-                if (!agentRates[selectedAgent][p.id]) {
-                    agentRates[selectedAgent][p.id] = [
-                        { min: 1, max: 99999, price: p.defaultPrice }
-                    ];
-                }
-
-                const tiers = agentRates[selectedAgent][p.id];
-                const rateCount = tiers.length;
-
-                const desc = tiers.map((t, idx) => {
-                    const rangeText = t.max >= 99999 ? `${t.min}+ ชิ้น` : `${t.min}-${t.max} ชิ้น`;
-                    return `<span class="inline-block bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 text-[10px] m-0.5 font-bold font-mono">ขั้น ${idx+1}: ${rangeText} @ ฿${t.price}</span>`;
-                }).join(" ");
-
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50/50 transition">
-                        <td class="p-2.5 font-mono font-bold text-primary-700">${p.id}</td>
-                        <td class="p-2.5 font-bold text-slate-700">${p.name}</td>
-                        <td class="p-2.5 text-center">
-                            <span class="bg-primary-50 text-primary-700 border border-primary-200 font-extrabold px-2 py-1 rounded text-[10px]">
-                                ${rateCount} เรทราคา
-                            </span>
-                        </td>
-                        <td class="p-2.5 text-left leading-normal">${desc}</td>
-                        <td class="p-2.5 text-center">
-                            <button onclick="openRateModal('${selectedAgent}', '${p.id}')" class="bg-primary-600 hover:bg-primary-700 text-white px-2.5 py-1 rounded-md transition text-[10px] font-bold shadow-sm">
-                                <i class="fa-solid fa-sliders"></i> จัดการเรทราคา
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        function renderSummariesTab() {
-            const container = document.getElementById('summaries-agent-list');
-            container.innerHTML = "";
-
-            agents.forEach(a => {
-                const agentOrders = orders.filter(o => o.agent === a);
-                const count = agentOrders.length;
-                const total = agentOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-
-                container.innerHTML += `
-                    <button type="button" onclick="selectAgentForInvoice('${a}')" aria-label="ดูสรุปบิลของ ${a}" class="w-full bg-white hover:bg-primary-50/60 p-3 rounded-lg border border-slate-200 cursor-pointer transition-all duration-150 flex justify-between items-center group text-left">
-                        <div>
-                            <h4 class="font-extrabold text-slate-800 text-xs">${a}</h4>
-                            <span class="text-[10px] text-slate-400 font-semibold">${count} ออเดอร์ประจำวันนี้</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="font-mono text-xs font-black text-slate-800 group-hover:text-primary-600 block">฿${total.toLocaleString()}</span>
-                            <span class="text-[8px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded tracking-wider uppercase">สรุปบิล</span>
-                        </div>
-                    </button>
-                `;
-            });
-        }
-
         function selectAgentForInvoice(agentName) {
-            const card = document.getElementById('preview-invoice-card');
-            const placeholder = document.getElementById('preview-placeholder');
-            
-            const agentOrders = orders.filter(o => o.agent === agentName);
-            
-            if (agentOrders.length === 0) {
-                showNotification(`ไม่พบข้อมูลออเดอร์ของ ${agentName} ประจำรอบวันนี้ค่ะ`, true);
-                card.classList.add('hidden');
-                placeholder.classList.remove('hidden');
-                return;
-            }
-
-            card.classList.remove('hidden');
-            placeholder.classList.add('hidden');
-
-            document.getElementById('inv-agent').innerText = agentName;
-            document.getElementById('inv-order-count').innerText = `${agentOrders.length} ออเดอร์`;
-
-            const listContainer = document.getElementById('inv-items-list');
-            listContainer.innerHTML = "";
-
-            let grandTotal = 0;
-
-            agentOrders.forEach(o => {
-                listContainer.innerHTML += `
-                    <div class="text-[9px] font-bold text-primary-700 bg-primary-50/50 p-1 px-2 rounded-md font-mono mt-2 mb-1 flex justify-between">
-                        <span><i class="fa-solid fa-receipt"></i> บิลเลขที่: ${o.orderId}</span>
-                        <span>${o.totalQty} ชิ้น</span>
-                    </div>
-                `;
-
-                o.items.forEach(i => {
-                    const prodName = i.productName;
-                    listContainer.innerHTML += `
-                        <div class="flex justify-between items-center text-slate-600 text-[10px] py-0.5">
-                            <span class="truncate pr-1">${i.isNonStock ? '[นอกคลัง] ' : ''}${prodName}</span>
-                            <span class="font-mono text-slate-800 font-semibold">${i.qty} × ฿${i.unitPrice} = ฿${i.total.toLocaleString()}</span>
-                        </div>
-                    `;
-                });
-
-                grandTotal += o.totalAmount;
-            });
-
-            document.getElementById('inv-total-amount').innerText = `฿${grandTotal.toLocaleString()}`;
+            selectedSummaryAgent = agentName;
+            renderSummariesTab();
         }
 
         function mockPrintInvoice() {
-            showNotification("ระบบเตรียมจัดฟอร์แมตข้อมูลสรุปยอดยัดลง Clipboard ส่งบอร์ดไลน์เรียบร้อยแล้วค่ะ!");
+            var dayOrders = getSummaryOrdersForDate(selectedSummaryDateKey);
+            if (!dayOrders.length) {
+                showNotification('ไม่มีบิลในวันที่เลือกสำหรับพิมพ์', true);
+                return;
+            }
+            var rows = buildSummaryAgentRows(dayOrders);
+            var agentName = selectedSummaryAgent || (rows[0] && rows[0].agent);
+            var agentRow = rows.find(function(row) { return row.agent === agentName; }) || rows[0];
+            if (!agentRow) {
+                showNotification('ไม่พบข้อมูลสรุปที่สามารถพิมพ์ได้', true);
+                return;
+            }
+            var printFrameId = 'summary-print-frame';
+            var existingFrame = document.getElementById(printFrameId);
+            if (existingFrame && existingFrame.parentNode) existingFrame.parentNode.removeChild(existingFrame);
+            var iframe = document.createElement('iframe');
+            iframe.id = printFrameId;
+            iframe.title = 'summary-print-frame';
+            iframe.setAttribute('aria-hidden', 'true');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.style.visibility = 'hidden';
+            document.body.appendChild(iframe);
+            var cleanup = function() {
+                setTimeout(function() {
+                    if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
+                }, 500);
+            };
+            var doc = iframe.contentWindow && iframe.contentWindow.document;
+            if (!doc) {
+                showNotification('ไม่สามารถเตรียมหน้าพิมพ์ได้', true);
+                cleanup();
+                return;
+            }
+            iframe.onload = function() {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } finally {
+                    cleanup();
+                }
+            };
+            doc.open();
+            doc.write(buildSummaryPrintHtml(agentRow.agent, selectedSummaryDateKey, dayOrders));
+            doc.close();
         }
 
         // ================= MODAL: NEW ORDER CONTROLS =================
@@ -1516,9 +2197,16 @@
         function openOrderModal() {
             const orderNum = "ORD-" + new Date().toISOString().slice(0,10).replace(/-/g,"") + "-" + String(orders.length + 1).padStart(2, '0');
             document.getElementById('new-order-id').value = orderNum;
-
+            document.getElementById('order-customer-name').value = '';
+            document.getElementById('order-customer-address').value = '';
+            document.getElementById('order-customer-phone').value = '';
+            document.getElementById('order-shipping-type').value = '';
+            document.getElementById('order-shipping-custom').value = '';
+            document.getElementById('order-discount-amount').value = '0';
             document.getElementById('cart-rows-container').innerHTML = "";
-            addCartRow(); 
+            updateCartEmptyState();
+            syncOrderShippingFee();
+            calculateCartGrandTotal();
             showModal('order-modal', '#new-order-agent');
         }
 
@@ -1528,9 +2216,9 @@
 
         function addCartRow() {
             const container = document.getElementById('cart-rows-container');
+            const isOwner = currentRole === 'owner';
             const rowId = "row-" + Date.now();
-
-            let productOptions = products.map(p => `<option value="${p.id}">${p.id} - ${p.name.substring(0,25)} (คลัง: ${p.stock})</option>`).join("");
+            let productOptions = `<option value="" selected disabled>เลือกสินค้า</option>` + products.map(p => `<option value="${p.id}">${formatProductOptionLabel(p)}</option>`).join("");
 
             const tr = document.createElement('tr');
             tr.id = rowId;
@@ -1538,61 +2226,151 @@
             tr.innerHTML = `
                 <!-- คอลัมน์ 1: ประเภทสินค้า -->
                 <td class="p-2">
-                    <select onchange="toggleProductType('${rowId}')" class="cart-type-select w-full bg-slate-50 border border-slate-300 rounded p-1.5 focus:ring-1 focus:ring-primary-500 text-[10px] font-bold">
-                        <option value="IN_STOCK">📦 สินค้าในคลัง</option>
-                        <option value="NON_STOCK">✈️ นอกคลัง/ฝากส่ง</option>
+                    <select onchange="toggleProductType('${rowId}')" aria-label="ประเภทสินค้า" class="cart-type-select w-full bg-slate-50 border border-slate-300 rounded p-1.5 focus:ring-1 focus:ring-primary-500 text-[10px] font-bold">
+                        <option value="IN_STOCK">สินค้าในคลัง</option>
+                        <option value="NON_STOCK">นอกคลัง/ฝากส่ง</option>
                     </select>
                 </td>
                 
                 <!-- คอลัมน์ 2: รายละเอียดสินค้า -->
                 <td class="p-2">
                     <div class="div-stock-select" id="${rowId}-stock-div">
-                        <select onchange="recalculateCartRow('${rowId}')" class="cart-prod-select w-full bg-slate-50 border border-slate-300 rounded p-1.5 focus:outline-none text-[10px] font-bold text-slate-700">
+                        <select onchange="updateCartRowUnitOptions('${rowId}')" aria-label="เลือกรหัสหรือชื่อสินค้า" class="cart-prod-select w-full bg-slate-50 border border-slate-300 rounded p-1.5 focus:outline-none text-[10px] font-bold text-slate-700">
                             ${productOptions}
                         </select>
                     </div>
                     <div class="div-custom-input hidden" id="${rowId}-custom-div">
-                        <input type="text" placeholder="ระบุชื่อผลิตภัณฑ์สั่งเพิ่มพิเศษ..." class="cart-custom-name w-full bg-accent-50/50 border border-accent-200 rounded p-1.5 focus:ring-1 focus:ring-accent-500 focus:outline-none text-[10px] font-bold text-accent-900">
+                        <input type="text" placeholder="ระบุชื่อผลิตภัณฑ์สั่งเพิ่มพิเศษ..." aria-label="ชื่อสินค้านอกคลังพิเศษ" class="cart-custom-name w-full bg-accent-50/50 border border-accent-200 rounded p-1.5 focus:ring-1 focus:ring-accent-500 focus:outline-none text-[10px] font-bold text-accent-900">
                     </div>
                 </td>
-                
-                <!-- คอลัมน์ 3: จำนวนชิ้น -->
+
+                <!-- คอลัมน์ 3: เลือกหน่วยสินค้า (Unit) -->
                 <td class="p-2">
-                    <input type="number" value="1" min="1" onkeyup="recalculateCartRow('${rowId}')" onchange="recalculateCartRow('${rowId}')" class="cart-qty-input w-full bg-white border border-slate-300 rounded p-1.5 text-center focus:outline-none text-[10px] font-bold font-mono">
+                    <select onchange="recalculateCartRow('${rowId}')" aria-label="หน่วยสินค้า" class="cart-unit-select w-full bg-white border border-slate-300 rounded p-1.5 focus:ring-1 focus:ring-primary-500 text-[10px] font-bold text-slate-700">
+                        <option value="__base__">ชิ้น</option>
+                    </select>
                 </td>
                 
-                <!-- คอลัมน์ 4: ราคาส่ง/ชิ้น -->
+                <!-- คอลัมน์ 4: จำนวน -->
+                <td class="p-2">
+                    <input type="number" value="1" min="1" aria-label="จำนวนสินค้า" onkeyup="recalculateCartRow('${rowId}')" onchange="recalculateCartRow('${rowId}')" class="cart-qty-input w-full bg-white border border-slate-300 rounded p-1.5 text-center focus:outline-none text-[10px] font-bold font-mono">
+                </td>
+                
+                <!-- คอลัมน์ 5: ราคาส่ง/หน่วย -->
                 <td class="p-2 text-right">
                     <div class="div-price-readonly" id="${rowId}-price-read-div">
                         <span class="cart-unit-price font-bold font-mono text-slate-700">฿0</span>
                     </div>
                     <div class="div-price-write hidden" id="${rowId}-price-write-div">
-                        <input type="number" value="100" onkeyup="recalculateCartRow('${rowId}')" onchange="recalculateCartRow('${rowId}')" class="cart-custom-price w-full bg-accent-50 border border-accent-200 rounded p-1.5 text-right font-mono text-[10px] font-bold focus:outline-none text-accent-850">
+                        <input type="number" value="100" aria-label="ราคาสินค้านอกคลังต่อหน่วย" onkeyup="recalculateCartRow('${rowId}')" onchange="recalculateCartRow('${rowId}')" class="cart-custom-price w-full bg-accent-50 border border-accent-200 rounded p-1.5 text-right font-mono text-[10px] font-bold focus:outline-none text-accent-850">
                     </div>
                 </td>
-                
-                <!-- คอลัมน์ 5: ต้นทุนจริง/ชิ้น -->
-                <td class="p-2 text-right">
+
+                ${isOwner ? `
+                <!-- คอลัมน์ 6: ต้นทุนจริง/หน่วย -->
+                <td class="p-2 text-right owner-only-metric">
                     <div class="div-cost-readonly" id="${rowId}-cost-read-div">
                         <span class="cart-unit-cost font-bold font-mono text-slate-500">฿0</span>
                     </div>
                     <div class="div-cost-write hidden" id="${rowId}-cost-write-div">
-                        <input type="number" value="50" onkeyup="recalculateCartRow('${rowId}')" onchange="recalculateCartRow('${rowId}')" class="cart-custom-cost w-full bg-emerald-50 border border-emerald-200 rounded p-1.5 text-right font-mono text-[10px] font-bold focus:outline-none text-emerald-900">
+                        <input type="number" value="50" aria-label="ต้นทุนสินค้านอกคลังต่อหน่วย" onkeyup="recalculateCartRow('${rowId}')" onchange="recalculateCartRow('${rowId}')" class="cart-custom-cost w-full bg-emerald-50 border border-emerald-200 rounded p-1.5 text-right font-mono text-[10px] font-bold focus:outline-none text-emerald-900">
                     </div>
                 </td>
+                ` : ''}
                 
-                <!-- คอลัมน์ 6: ผลรวมมูลค่า -->
+                <!-- คอลัมน์ 7: ผลรวมมูลค่า -->
                 <td class="p-2 text-right">
                     <span class="cart-total-price font-extrabold font-mono text-slate-800">฿0</span>
                 </td>
                 
-                <!-- คอลัมน์ 7: ลบออก -->
+                <!-- คอลัมน์ 8: ลบออก -->
                 <td class="p-2 text-center">
-                    <button onclick="removeCartRow('${rowId}')" class="text-accent-500 hover:text-accent-700 text-xs transition"><i class="fa-regular fa-trash-can"></i></button>
+                    <button type="button" onclick="removeCartRow('${rowId}')" aria-label="ลบรายการนี้" class="text-accent-500 hover:text-accent-700 min-h-11 min-w-11 inline-flex items-center justify-center text-xs transition"><i class="fa-regular fa-trash-can"></i></button>
                 </td>
             `;
 
             container.appendChild(tr);
+            updateCartEmptyState();
+            updateCartRowUnitOptions(rowId);
+        }
+
+        function selectAgentForInvoice(agentName) {
+            selectedSummaryAgent = agentName;
+            renderSummariesTab();
+        }
+
+        function mockPrintInvoice() {
+            var dayOrders = getSummaryOrdersForDate(selectedSummaryDateKey);
+            if (!dayOrders.length) {
+                showNotification('ไม่มีบิลในวันที่เลือกสำหรับพิมพ์', true);
+                return;
+            }
+            var rows = buildSummaryAgentRows(dayOrders);
+            var agentName = selectedSummaryAgent || (rows[0] && rows[0].agent);
+            var agentRow = rows.find(function(row) { return row.agent === agentName; }) || rows[0];
+            if (!agentRow) {
+                showNotification('ไม่พบข้อมูลสรุปที่สามารถพิมพ์ได้', true);
+                return;
+            }
+            var printFrameId = 'summary-print-frame';
+            var existingFrame = document.getElementById(printFrameId);
+            if (existingFrame && existingFrame.parentNode) existingFrame.parentNode.removeChild(existingFrame);
+            var iframe = document.createElement('iframe');
+            iframe.id = printFrameId;
+            iframe.title = 'summary-print-frame';
+            iframe.setAttribute('aria-hidden', 'true');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.style.visibility = 'hidden';
+            document.body.appendChild(iframe);
+            var cleanup = function() {
+                setTimeout(function() {
+                    if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
+                }, 500);
+            };
+            var doc = iframe.contentWindow && iframe.contentWindow.document;
+            if (!doc) {
+                showNotification('ไม่สามารถเตรียมหน้าพิมพ์ได้', true);
+                cleanup();
+                return;
+            }
+            iframe.onload = function() {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } finally {
+                    cleanup();
+                }
+            };
+            doc.open();
+            doc.write(buildSummaryPrintHtml(agentRow.agent, selectedSummaryDateKey, dayOrders));
+            doc.close();
+        }
+
+
+        function updateCartRowUnitOptions(rowId) {
+            const row = document.getElementById(rowId);
+            if (!row) return;
+
+            const unitSelect = row.querySelector('.cart-unit-select');
+            const type = row.querySelector('.cart-type-select').value;
+            const prodId = row.querySelector('.cart-prod-select').value;
+
+            unitSelect.replaceChildren();
+
+            if (type === 'NON_STOCK') {
+                unitSelect.add(new Option('ชิ้น', '__base__'));
+            } else {
+                const prod = products.find(p => p.id === prodId);
+                const options = getStockAdjustmentUnits(prod);
+                options.forEach(opt => {
+                    unitSelect.add(new Option(opt.label, opt.value));
+                });
+            }
             recalculateCartRow(rowId);
         }
 
@@ -1614,24 +2392,42 @@
                 customDiv.classList.remove('hidden');
                 priceReadDiv.classList.add('hidden');
                 priceWriteDiv.classList.remove('hidden');
-                costReadDiv.classList.add('hidden');
-                costWriteDiv.classList.remove('hidden');
+                if (costReadDiv) costReadDiv.classList.add('hidden');
+                if (costWriteDiv) costWriteDiv.classList.remove('hidden');
             } else {
                 stockDiv.classList.remove('hidden');
                 customDiv.classList.add('hidden');
                 priceReadDiv.classList.remove('hidden');
                 priceWriteDiv.classList.add('hidden');
-                costReadDiv.classList.remove('hidden');
-                costWriteDiv.classList.add('hidden');
+                if (costReadDiv) costReadDiv.classList.remove('hidden');
+                if (costWriteDiv) costWriteDiv.classList.add('hidden');
             }
 
-            recalculateCartRow(rowId);
+            updateCartRowUnitOptions(rowId);
+        }
+
+        function updateCartEmptyState() {
+            const container = document.getElementById('cart-rows-container');
+            if (!container) return;
+            const actualRows = container.querySelectorAll('tr:not(#cart-empty-row)');
+            const emptyRow = document.getElementById('cart-empty-row');
+            if (actualRows.length === 0) {
+                if (!emptyRow) {
+                    const tr = document.createElement('tr');
+                    tr.id = 'cart-empty-row';
+                    tr.innerHTML = '<td colspan="8" class="p-6 text-center text-slate-400 italic font-semibold">ยังไม่ได้เลือกสินค้า</td>';
+                    container.appendChild(tr);
+                }
+            } else {
+                if (emptyRow) emptyRow.remove();
+            }
         }
 
         function removeCartRow(rowId) {
             const row = document.getElementById(rowId);
             if (row) {
                 row.remove();
+                updateCartEmptyState();
                 calculateCartGrandTotal();
             }
         }
@@ -1642,24 +2438,31 @@
 
             const type = row.querySelector('.cart-type-select').value;
             const qty = parseInt(row.querySelector('.cart-qty-input').value) || 1;
+            const unitSelect = row.querySelector('.cart-unit-select');
+            const selectedUnitValue = unitSelect ? unitSelect.value : '__base__';
 
             let unitPrice = 0;
             let unitCost = 0;
 
             if (type === 'NON_STOCK') {
                 unitPrice = parseInt(row.querySelector('.cart-custom-price').value) || 0;
-                unitCost = parseInt(row.querySelector('.cart-custom-cost').value) || 0;
+                unitCost = row.querySelector('.cart-custom-cost') ? (parseInt(row.querySelector('.cart-custom-cost').value) || 0) : 0;
             } else {
                 const agent = document.getElementById('new-order-agent').value;
                 const prodId = row.querySelector('.cart-prod-select').value;
                 const prod = products.find(p => p.id === prodId);
 
-                unitPrice = getTierPrice(agent, prodId, qty);
-                unitCost = prod ? prod.cost : 0;
+                const multiplier = getStockAdjustmentMultiplier(prod, selectedUnitValue);
+                const baseQty = qty * multiplier;
+
+                const baseUnitPrice = getTierPrice(agent, prodId, baseQty);
+                unitPrice = baseUnitPrice * multiplier;
+                unitCost = prod ? (prod.cost * multiplier) : 0;
 
                 row.querySelector('.cart-unit-price').innerText = `฿${unitPrice}`;
-                // ถ้าสิทธิ์แอดมิน ให้แสดงเป็น ฿***
-                row.querySelector('.cart-unit-cost').innerText = currentRole === 'owner' ? `฿${unitCost}` : '฿***';
+                if (row.querySelector('.cart-unit-cost')) {
+                    row.querySelector('.cart-unit-cost').innerText = currentRole === 'owner' ? `฿${unitCost}` : '฿***';
+                }
             }
 
             const total = unitPrice * qty;
@@ -1691,11 +2494,38 @@
 
         function calculateCartGrandTotal() {
             const prices = document.querySelectorAll('.cart-total-price');
-            let grandTotal = 0;
+            let subtotal = 0;
             prices.forEach(p => {
-                grandTotal += parseFloat(p.dataset.value) || 0;
+                subtotal += parseFloat(p.dataset.value) || 0;
             });
-            document.getElementById('cart-total-display').innerText = `฿${grandTotal.toLocaleString()}`;
+            const shippingType = document.getElementById('order-shipping-type').value;
+            const shippingCustom = Number(document.getElementById('order-shipping-custom').value) || 0;
+            const shippingAmount = shippingType === 'VAN' ? 350 : shippingType === 'CHILLED' ? 150 : shippingType === 'PARCEL' ? 60 : (shippingType === 'MESSENGER' || shippingType === 'SPLIT') ? Math.max(0, shippingCustom) : 0;
+            const discountAmount = Math.max(0, Number(document.getElementById('order-discount-amount').value) || 0);
+            const grandTotal = Math.max(0, subtotal + shippingAmount - discountAmount);
+            const subtotalEl = document.getElementById('cart-subtotal-display');
+            const shippingEl = document.getElementById('cart-shipping-display');
+            const discountEl = document.getElementById('cart-discount-display');
+            const totalEl = document.getElementById('cart-total-display');
+            if (subtotalEl) subtotalEl.innerText = `฿${subtotal.toLocaleString()}`;
+            if (shippingEl) shippingEl.innerText = `฿${shippingAmount.toLocaleString()}`;
+            if (discountEl) discountEl.innerText = `฿${discountAmount.toLocaleString()}`;
+            if (totalEl) totalEl.innerText = `฿${grandTotal.toLocaleString()}`;
+            return { subtotal, shippingAmount, discountAmount, total: grandTotal };
+        }
+
+        function updateOrderTotals() {
+            return calculateCartGrandTotal();
+        }
+
+        function syncOrderShippingFee() {
+            const type = document.getElementById('order-shipping-type').value;
+            const customWrap = document.getElementById('order-shipping-custom-wrap');
+            const customInput = document.getElementById('order-shipping-custom');
+            const needsCustom = type === 'MESSENGER' || type === 'SPLIT';
+            if (customWrap) customWrap.classList.toggle('hidden', !needsCustom);
+            if (!needsCustom && customInput) customInput.value = '';
+            calculateCartGrandTotal();
         }
 
         function saveOrder() {
@@ -1718,6 +2548,8 @@
                 const r = rows[i];
                 const type = r.querySelector('.cart-type-select').value;
                 const qty = parseInt(r.querySelector('.cart-qty-input').value) || 0;
+                const unitSelect = r.querySelector('.cart-unit-select');
+                const selectedUnitValue = unitSelect ? unitSelect.value : '__base__';
 
                 if (qty <= 0) {
                     showNotification("จำนวนสินค้าสั่งซื้อต้องไม่น้อยกว่า 1 ชิ้นค่ะ", true);
@@ -1729,6 +2561,7 @@
                 let prodName = "";
                 let unitPrice = parseInt(r.querySelector('.cart-total-price').dataset.unitPrice);
                 let unitCost = parseInt(r.querySelector('.cart-total-price').dataset.unitCost);
+                let baseQtyNeeded = qty;
 
                 if (isNonStock) {
                     prodId = "CUSTOM_" + (i + 1);
@@ -1741,9 +2574,11 @@
                     prodId = r.querySelector('.cart-prod-select').value;
                     const prod = products.find(p => p.id === prodId);
                     prodName = prod ? prod.name : prodId;
+                    const multiplier = getStockAdjustmentMultiplier(prod, selectedUnitValue);
+                    baseQtyNeeded = qty * multiplier;
 
-                    if (prod.stock < qty) {
-                        showNotification(`สินค้า ${prodId} คลังไม่พอส่ง (เหลือในสต๊อกหลักเพียง ${prod.stock} ชิ้น)`, true);
+                    if (prod.stock < baseQtyNeeded) {
+                        showNotification(`สินค้า ${prodId} คลังไม่พอส่ง (ต้องการ ${baseQtyNeeded} ${getProductUnitName(prod)} แต่เหลือในสต๊อกหลักเพียง ${formatProductStockLabel(prod)})`, true);
                         hasStockError = true;
                         break;
                     }
@@ -1756,6 +2591,8 @@
                     productId: prodId,
                     productName: prodName,
                     qty: qty,
+                    selectedUnit: selectedUnitValue,
+                    baseQtyNeeded: baseQtyNeeded,
                     unitPrice: unitPrice,
                     total: rowTotal,
                     cost: unitCost
@@ -1768,98 +2605,342 @@
 
             if (hasStockError) return;
 
-            // หักยอดคลังสินค้าหลัก
-            cartItems.forEach(item => {
-                if (!item.isNonStock) {
-                    let prod = products.find(p => p.id === item.productId);
-                    if (prod) prod.stock -= item.qty;
-                }
-            });
+            showLoadingModal("กำลังบันทึกคำสั่งซื้อ...", "กรุณารอสักครู่ ระบบกำลังตัดยอดสต๊อกและบันทึกออเดอร์");
 
-            orders.unshift({
-                orderId: orderId,
-                agent: agent,
-                items: cartItems,
-                totalAmount: totalAmount,
-                totalCost: totalCost,
-                totalQty: totalQty
-            });
+            setTimeout(function() {
+                // หักยอดคลังสินค้าหลักตามจำนวนฐาน (Base Unit) ที่คำนวณตาม Unit
+                cartItems.forEach(item => {
+                    if (!item.isNonStock) {
+                        let prod = products.find(p => p.id === item.productId);
+                        if (prod) prod.stock -= item.baseQtyNeeded;
+                    }
+                });
 
-            showNotification("ดำเนินการบันทึกคำสั่งซื้อ และตัดยอดสต๊อกเรียบร้อยทั้งหมดแล้วค่ะ!");
-            closeOrderModal();
-            updateSystemState();
+                orders.unshift({
+                    orderId: orderId,
+                    agent: agent,
+                    items: cartItems,
+                    totalAmount: totalAmount,
+                    totalCost: totalCost,
+                    totalQty: totalQty
+                });
+
+                hideLoadingModal();
+                showNotification("ดำเนินการบันทึกคำสั่งซื้อ และตัดยอดสต๊อกเรียบร้อยทั้งหมดแล้วค่ะ!");
+                closeOrderModal();
+                updateSystemState();
+            }, 300);
         }
 
         function deleteOrder(orderId) {
             if (cancelOrderInFlight) return;
-            if (cancelOrderInFlight) return;
-            const index = orders.findIndex(o => o.orderId === orderId);
-            if (index !== -1) {
-                const o = orders[index];
-                
-                o.items.forEach(i => {
-                    if (!i.isNonStock) {
-                        let prod = products.find(p => p.id === i.productId);
-                        if (prod) prod.stock += i.qty;
-                    }
-                });
+            showLoadingModal("กำลังยกเลิกออเดอร์...", "กรุณารอสักครู่ ระบบกำลังคืนยอดสินค้าเข้าคลัง");
+            
+            setTimeout(function() {
+                const index = orders.findIndex(o => o.orderId === orderId);
+                if (index !== -1) {
+                    const o = orders[index];
+                    
+                    o.items.forEach(i => {
+                        if (!i.isNonStock) {
+                            let prod = products.find(p => p.id === i.productId);
+                            if (prod) prod.stock += i.qty;
+                        }
+                    });
 
-                orders.splice(index, 1);
-                showNotification("คืนสต๊อกระบบหลักและยกเลิกออเดอร์สำเร็จ");
-                updateSystemState();
-            }
+                    orders.splice(index, 1);
+                    hideLoadingModal();
+                    showNotification("คืนสต๊อกระบบหลักและยกเลิกออเดอร์สำเร็จ");
+                    updateSystemState();
+                } else {
+                    hideLoadingModal();
+                }
+            }, 300);
         }
 
         // ================= MODAL: ADD PRODUCT CONTROLS =================
 
+        let productModalMode = 'create';
+        let editingProductId = '';
+
+        function setProductModalState(mode, title, actionLabel) {
+            productModalMode = mode;
+            const titleEl = document.getElementById('product-modal-title');
+            const saveButton = document.querySelector('#product-modal button[onclick="saveNewProduct()"]');
+            const idInput = document.getElementById('prod-id');
+            const stockAdjust = document.getElementById('stock-adjust-section');
+            if (titleEl) titleEl.textContent = title;
+            if (saveButton) saveButton.textContent = actionLabel;
+            if (idInput) idInput.disabled = mode === 'edit';
+            if (stockAdjust) stockAdjust.classList.toggle('hidden', mode !== 'edit');
+        }
+
+        function updateProductModalUnitLabels() {
+            var unit = document.getElementById('prod-base-unit').value.trim() || 'ขวด';
+            var stockLabel = document.getElementById('prod-stock-label');
+            var minLabel = document.getElementById('prod-min-label');
+            if (stockLabel) stockLabel.textContent = 'คงเหลือ (' + unit + ')';
+            if (minLabel) minLabel.textContent = 'ขั้นต่ำ (' + unit + ')';
+        }
+
+        function addPackUnitRow(unit, packSize) {
+            const container = document.getElementById('prod-pack-units-container');
+            if (!container) return;
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-[minmax(0,1fr)_9rem_auto_auto] gap-2 items-center rounded-lg border border-slate-200 bg-white p-2 pack-unit-row';
+            row.innerHTML = `
+                <div class="min-w-0">
+                    <input type="text" maxlength="40" placeholder="เช่น กล่องเล็ก" value="${unit ? String(unit).replace(/"/g, '&quot;') : ''}" class="pack-unit-name w-full bg-white border border-slate-300 rounded p-2 text-xs font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                </div>
+                <div class="min-w-0">
+                    <input type="number" min="1" step="1" inputmode="numeric" placeholder="6" value="${packSize || ''}" class="pack-unit-size w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                </div>
+                <button type="button" class="erp-action erp-action-secondary px-3 py-2 text-[10px] font-bold" aria-label="คัดลอกหน่วยย่อย">คัดลอก</button>
+                <button type="button" class="erp-action erp-action-danger px-3 py-2 text-[10px] font-bold" aria-label="ลบหน่วยย่อย">ลบ</button>
+            `;
+            const buttons = row.querySelectorAll('button');
+            buttons[0].addEventListener('click', function() {
+                addPackUnitRow(row.querySelector('.pack-unit-name').value, row.querySelector('.pack-unit-size').value);
+            });
+            buttons[1].addEventListener('click', function() {
+                row.remove();
+                if (!document.querySelectorAll('#prod-pack-units-container .pack-unit-row').length) {
+                    addPackUnitRow('', '');
+                }
+                if (productModalMode === 'edit') refreshStockAdjustmentUnitSelect();
+            });
+            container.appendChild(row);
+            if (productModalMode === 'edit') refreshStockAdjustmentUnitSelect();
+        }
+
+        function clearPackUnitRows() {
+            const container = document.getElementById('prod-pack-units-container');
+            if (container) container.replaceChildren();
+        }
+
+        function loadPackUnitsIntoForm(packUnits) {
+            clearPackUnitRows();
+            var rows = Array.isArray(packUnits) ? packUnits : [];
+            if (!rows.length) {
+                addPackUnitRow('', '');
+                return;
+            }
+            rows.forEach(function(item) {
+                addPackUnitRow(item && item.unit ? item.unit : '', item && item.packSize ? item.packSize : '');
+            });
+        }
+
+        function readPackUnitsFromForm() {
+            var rows = document.querySelectorAll('#prod-pack-units-container .pack-unit-row');
+            return Array.from(rows).map(function(row) {
+                return {
+                    unit: row.querySelector('.pack-unit-name').value.trim(),
+                    packSize: Number(row.querySelector('.pack-unit-size').value)
+                };
+            }).filter(function(item) {
+                return item.unit && Number.isInteger(item.packSize) && item.packSize > 0;
+            });
+        }
+
+        function getStockAdjustmentUnits(product) {
+            var baseUnit = getProductUnitName(product);
+            var packUnits = getProductPackUnits(product);
+            var options = [{ value: '__base__', label: baseUnit, factor: 1 }];
+            packUnits.forEach(function(item) {
+                options.push({
+                    value: item.unit,
+                    label: item.unit + ' x' + Number(item.packSize) + ' ' + baseUnit,
+                    factor: Number(item.packSize) || 1
+                });
+            });
+            return options;
+        }
+
+        function populateStockAdjustmentUnitSelect(product) {
+            var select = document.getElementById('prod-stock-add-unit');
+            if (!select) return;
+            var options = getStockAdjustmentUnits(product);
+            select.replaceChildren();
+            options.forEach(function(option) {
+                select.add(new Option(option.label, option.value));
+            });
+        }
+
+        function refreshStockAdjustmentUnitSelect() {
+            populateStockAdjustmentUnitSelect({
+                baseUnit: document.getElementById('prod-base-unit').value.trim() || 'ขวด',
+                packUnits: readPackUnitsFromForm()
+            });
+        }
+
+        function getStockAdjustmentMultiplier(product, unitValue) {
+            var baseUnit = getProductUnitName(product);
+            if (!unitValue || unitValue === '__base__' || unitValue === baseUnit) return 1;
+            var packUnits = getProductPackUnits(product);
+            var match = packUnits.find(function(item) { return item.unit === unitValue; });
+            return match ? (Number(match.packSize) || 1) : 1;
+        }
+
+        function applyStockAdjustmentFromModal() {
+            var productId = document.getElementById('prod-id').value.trim();
+            var product = products.find(function(item) { return item.id === editingProductId || item.id === productId; });
+            if (!product) {
+                showNotification('ไม่พบสินค้าที่ต้องการเพิ่มสต็อก', true);
+                return;
+            }
+            var formSnapshot = {
+                baseUnit: document.getElementById('prod-base-unit').value.trim() || getProductUnitName(product),
+                packUnits: readPackUnitsFromForm()
+            };
+            var qtyInput = document.getElementById('prod-stock-add-qty');
+            var unitSelect = document.getElementById('prod-stock-add-unit');
+            var qty = Number(qtyInput && qtyInput.value);
+            if (!Number.isInteger(qty) || qty < 1) {
+                showNotification('กรุณาระบุจำนวนที่ต้องการเพิ่ม', true);
+                return;
+            }
+            var unitValue = unitSelect ? unitSelect.value : '__base__';
+            var multiplier = getStockAdjustmentMultiplier(formSnapshot, unitValue);
+            var delta = qty * multiplier;
+            if (!Number.isInteger(delta) || delta < 1) {
+                showNotification('หน่วยที่เลือกไม่ถูกต้อง', true);
+                return;
+            }
+            var button = document.getElementById('prod-stock-add-btn');
+            if (button) {
+                button.disabled = true;
+                button.setAttribute('aria-busy', 'true');
+            }
+            google.script.run
+                .withSuccessHandler(function() {
+                    if (button) {
+                        button.disabled = false;
+                        button.removeAttribute('aria-busy');
+                    }
+                    if (qtyInput) qtyInput.value = '';
+                    var stockInput = document.getElementById('prod-stock');
+                    if (stockInput) {
+                        stockInput.value = String((Number(stockInput.value) || 0) + delta);
+                    }
+                    var current = products.find(function(item) { return item.id === product.id; });
+                    if (current) current.stock = (Number(current.stock) || 0) + delta;
+                    showNotification('เพิ่มสต็อกเรียบร้อยแล้ว');
+                    loadApplicationData();
+                })
+                .withFailureHandler(function(error) {
+                    if (button) {
+                        button.disabled = false;
+                        button.removeAttribute('aria-busy');
+                    }
+                    if (isSessionError(error)) endSession(true);
+                    showNotification(serverErrorMessage(error), true);
+                })
+                .adjustStock(sessionToken, product.id, delta, 'IN', 'MANUAL-UI', 'เพิ่มสต็อกจากหน้าต่างแก้ไขสินค้า');
+        }
+
         function openAddProductModal() {
             const nextId = "PROD" + String(products.length + 1).padStart(3, '0');
+            editingProductId = '';
             document.getElementById('prod-id').value = nextId;
             document.getElementById('prod-name').value = "";
+            document.getElementById('prod-category').value = "อื่นๆ";
+            document.getElementById('prod-base-unit').value = "ขวด";
             document.getElementById('prod-retail').value = "";
             document.getElementById('prod-cost').value = "";
             document.getElementById('prod-stock').value = "";
             document.getElementById('prod-min').value = "10";
-            document.getElementById('prod-max').value = "500";
+            loadPackUnitsIntoForm([]);
+            updateProductModalUnitLabels();
+            setProductModalState('create', 'เพิ่มสินค้า', 'บันทึก');
+            showModal('product-modal', '#prod-name');
+        }
+
+        function openEditStockModal(productId) {
+            const product = products.find(function(item) { return item.id === productId; });
+            if (!product) {
+                showNotification('ไม่พบข้อมูลสินค้าที่ต้องการแก้ไข', true);
+                return;
+            }
+            editingProductId = productId;
+            document.getElementById('prod-id').value = product.id;
+            document.getElementById('prod-name').value = product.name || '';
+            document.getElementById('prod-category').value = product.category || 'อื่นๆ';
+            document.getElementById('prod-base-unit').value = product.baseUnit || product.unitName || 'ขวด';
+            document.getElementById('prod-retail').value = Number(product.defaultPrice) || 0;
+            document.getElementById('prod-cost').value = Number(product.cost) || 0;
+            document.getElementById('prod-stock').value = Number(product.stock) || 0;
+            document.getElementById('prod-min').value = Number(product.min) || 0;
+            loadPackUnitsIntoForm(product.packUnits || []);
+            refreshStockAdjustmentUnitSelect();
+            updateProductModalUnitLabels();
+            const addQty = document.getElementById('prod-stock-add-qty');
+            if (addQty) addQty.value = '';
+            setProductModalState('edit', 'แก้สินค้า', 'บันทึกแก้ไข');
             showModal('product-modal', '#prod-name');
         }
 
         function closeProductModal() {
+            editingProductId = '';
+            setProductModalState('create', 'เพิ่มสินค้า', 'บันทึก');
             hideModal('product-modal');
         }
 
         function saveNewProduct() {
             const id = document.getElementById('prod-id').value.trim();
             const name = document.getElementById('prod-name').value.trim();
+            const category = document.getElementById('prod-category').value;
+            const baseUnit = document.getElementById('prod-base-unit').value.trim();
+            const packUnits = readPackUnitsFromForm();
             const retail = parseInt(document.getElementById('prod-retail').value);
             const costInput = document.getElementById('prod-cost').value;
             const cost = currentRole === 'owner' ? (parseInt(costInput) || 0) : Math.round(retail * 0.6); 
             const stock = parseInt(document.getElementById('prod-stock').value);
             const min = parseInt(document.getElementById('prod-min').value) || 10;
-            const max = parseInt(document.getElementById('prod-max').value) || 500;
 
-            if (!id || !name || isNaN(retail) || isNaN(stock)) {
+            if (!id || !name || isNaN(retail) || isNaN(stock) || !baseUnit || baseUnit.length > 20) {
                 showNotification("กรุณากรอกข้อมูลสินค้าหลักให้ครบถ้วนด้วยค่ะ", true);
                 return;
             }
 
-            if (products.some(p => p.id === id)) {
+            if (productModalMode !== 'edit' && products.some(p => p.id === id)) {
                 showNotification("รหัสสินค้าซ้ำในคลัง ไม่สามารถบันทึกได้ค่ะ", true);
                 return;
             }
 
-            products.push({ id, name, cost, defaultPrice: retail, stock, min, max });
+            const isEditMode = productModalMode === 'edit';
+            const data = {
+                ProductID: isEditMode && editingProductId ? editingProductId : id,
+                ProductName: name,
+                Category: category,
+                BaseUnit: baseUnit,
+                PackUnits: packUnits,
+                RetailPrice: retail,
+                Cost: cost,
+                Stock: stock,
+                MinStock: min
+            };
+            const message = isEditMode ? 'บันทึกการแก้ไขเรียบร้อยแล้ว' : `บันทึกข้อมูลสินค้า ${id} เข้าสต๊อกเรียบร้อย!`;
 
-            agents.forEach(a => {
-                if (!agentRates[a]) agentRates[a] = {};
-                agentRates[a][id] = [
-                    { min: 1, max: 99999, price: retail }
-                ];
-            });
+            showLoadingModal(isEditMode ? "กำลังบันทึกการแก้ไขสินค้า..." : "กำลังเพิ่มสินค้าใหม่...", "กรุณารอสักครู่ ระบบกำลังอัปเดตข้อมูลเซิร์ฟเวอร์");
 
-            showNotification(`บันทึกข้อมูลสินค้า ${id} เข้าสต๊อกเรียบร้อย!`);
-            closeProductModal();
-            updateSystemState();
+            const runner = google.script.run
+                .withSuccessHandler(function() {
+                    hideLoadingModal();
+                    closeProductModal();
+                    showNotification(message);
+                    loadApplicationData();
+                })
+                .withFailureHandler(function(error) {
+                    hideLoadingModal();
+                    if (isSessionError(error)) endSession(true);
+                    showNotification(serverErrorMessage(error), true);
+                });
+
+            if (isEditMode) {
+                runner.updateProduct(data);
+            } else {
+                runner.createProduct(sessionToken, data);
+            }
         }
 
         // ================= MODAL: DYNAMIC RATETIERS CONTROLS =================
@@ -1902,19 +2983,19 @@
 
             div.innerHTML = `
                 <div class="flex-1 min-w-[100px]">
-                    <label class="block text-[9px] text-slate-400 font-bold mb-1 uppercase tracking-wider">ขั้นต่ำ (ชิ้น)</label>
-                    <input type="number" placeholder="เช่น 1" value="${min}" class="tier-min w-full bg-white border border-slate-300 rounded p-1.5 font-bold font-mono focus:outline-none">
+                    <label class="block text-[9px] text-slate-400 font-bold mb-1 uppercase tracking-wider">ขั้นต่ำ</label>
+                    <input type="number" placeholder="1" value="${min}" aria-label="จำนวนขั้นต่ำของเรทราคา" class="tier-min w-full bg-white border border-slate-300 rounded p-1.5 font-bold font-mono focus:outline-none">
                 </div>
                 <div class="flex-1 min-w-[100px]">
-                    <label class="block text-[9px] text-slate-400 font-bold mb-1 uppercase tracking-wider">สูงสุด (ชิ้น)</label>
-                    <input type="number" placeholder="เช่น 10" value="${displayMax}" class="tier-max w-full bg-white border border-slate-300 rounded p-1.5 font-bold font-mono focus:outline-none">
+                    <label class="block text-[9px] text-slate-400 font-bold mb-1 uppercase tracking-wider">สูงสุด</label>
+                    <input type="number" placeholder="10" value="${displayMax}" aria-label="จำนวนสูงสุดของเรทราคา" class="tier-max w-full bg-white border border-slate-300 rounded p-1.5 font-bold font-mono focus:outline-none">
                 </div>
                 <div class="flex-1 min-w-[120px]">
-                    <label class="block text-[9px] text-primary-700 font-bold mb-1 uppercase tracking-wider">ราคาส่ง/ชิ้น</label>
-                    <input type="number" placeholder="ราคาส่ง" value="${price}" class="tier-price w-full bg-primary-50 border border-primary-200 text-primary-800 font-black rounded p-1.5 font-mono focus:outline-none">
+                    <label class="block text-[9px] text-primary-700 font-bold mb-1 uppercase tracking-wider">ราคาส่ง</label>
+                    <input type="number" placeholder="ราคา" value="${price}" aria-label="ราคาส่งตามเกณฑ์" class="tier-price w-full bg-primary-50 border border-primary-200 text-primary-800 font-black rounded p-1.5 font-mono focus:outline-none">
                 </div>
                 <div class="pt-4">
-                    <button onclick="this.parentElement.parentElement.remove(); checkEmptyTiersMsg();" class="text-accent-500 hover:text-accent-700 p-1 text-sm" title="ลบเกณฑ์แถวนี้">
+                    <button type="button" onclick="this.parentElement.parentElement.remove(); checkEmptyTiersMsg();" aria-label="ลบเกณฑ์แถวนี้" class="text-accent-500 hover:text-accent-700 min-h-11 min-w-11 inline-flex items-center justify-center text-sm" title="ลบเกณฑ์แถวนี้">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
                 </div>
@@ -1973,16 +3054,21 @@
 
             if (!isValid) return;
 
-            newTiers.sort((a, b) => a.min - b.min);
+            showLoadingModal("กำลังอัปเดตเรทราคาตัวแทน...", "กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูลตารางราคาขั้นบันได");
 
-            if (!agentRates[agent]) {
-                agentRates[agent] = {};
-            }
-            agentRates[agent][prodId] = newTiers;
+            setTimeout(function() {
+                newTiers.sort((a, b) => a.min - b.min);
 
-            showNotification(`อัปเดตเรทราคาของตัวแทนเรียบร้อยทั้งหมด ${newTiers.length} ขั้นบันไดแล้วค่ะ!`);
-            closeRateModal();
-            updateSystemState();
+                if (!agentRates[agent]) {
+                    agentRates[agent] = {};
+                }
+                agentRates[agent][prodId] = newTiers;
+
+                hideLoadingModal();
+                showNotification(`อัปเดตเรทราคาของตัวแทนเรียบร้อยทั้งหมด ${newTiers.length} ขั้นบันไดแล้วค่ะ!`);
+                closeRateModal();
+                updateSystemState();
+            }, 300);
         }
 
         // Server-authoritative order submission. The browser only supplies an intent;
@@ -1992,6 +3078,17 @@
             const agent = document.getElementById('new-order-agent').value;
             const rows = document.querySelectorAll('#cart-rows-container tr');
             const agentId = agentIdsByName[agent];
+            const customerName = document.getElementById('order-customer-name').value.trim();
+            const customerAddress = document.getElementById('order-customer-address').value.trim();
+            const customerPhone = document.getElementById('order-customer-phone').value.trim();
+            const shippingType = document.getElementById('order-shipping-type').value;
+            const shippingCustom = Number(document.getElementById('order-shipping-custom').value) || 0;
+            const discountAmount = Math.max(0, Number(document.getElementById('order-discount-amount').value) || 0);
+            const shippingAmount = shippingType === 'VAN' ? 350 : shippingType === 'CHILLED' ? 150 : shippingType === 'PARCEL' ? 60 : (shippingType === 'MESSENGER' || shippingType === 'SPLIT') ? Math.max(0, shippingCustom) : 0;
+            if ((shippingType === 'MESSENGER' || shippingType === 'SPLIT') && shippingAmount <= 0) {
+                showNotification('กรุณาระบุค่าส่งเองก่อนบันทึกบิล', true);
+                return;
+            }
 
             if (!agentId) {
                 showNotification('ไม่พบข้อมูลตัวแทน กรุณารีเฟรชหน้าแล้วลองใหม่', true);
@@ -2040,7 +3137,7 @@
                     if (isSessionError(error)) endSession(true);
                     showNotification(serverErrorMessage(error), true);
                 })
-                .createOrder(sessionToken, { agentId: agentId, items: items });
+                .createOrder(sessionToken, { agentId: agentId, items: items, customerName: customerName, customerAddress: customerAddress, customerPhone: customerPhone, shippingType: shippingType, shippingAmount: shippingAmount, discountAmount: discountAmount });
         }
 
         // Keep urgent stock corrections auditable and authoritative as well.
@@ -2084,27 +3181,34 @@
             const data = {
                 ProductID: document.getElementById('prod-id').value.trim(),
                 ProductName: document.getElementById('prod-name').value.trim(),
+                Category: document.getElementById('prod-category').value,
+                BaseUnit: document.getElementById('prod-base-unit').value.trim(),
+                PackUnits: readPackUnitsFromForm(),
                 RetailPrice: Number(document.getElementById('prod-retail').value),
                 Cost: Number(document.getElementById('prod-cost').value),
                 Stock: Number(document.getElementById('prod-stock').value),
-                MinStock: Number(document.getElementById('prod-min').value),
-                MaxStock: Number(document.getElementById('prod-max').value)
+                MinStock: Number(document.getElementById('prod-min').value)
             };
-            if (!data.ProductID || !data.ProductName || !Number.isFinite(data.RetailPrice) || !Number.isFinite(data.Cost) || !Number.isInteger(data.Stock) || !Number.isInteger(data.MinStock) || !Number.isInteger(data.MaxStock) || data.Stock < 0 || data.MinStock < 0 || data.MaxStock < data.MinStock || data.Cost < 0 || data.RetailPrice < 0) {
+            if (!data.ProductID || !data.ProductName || !Number.isFinite(data.RetailPrice) || !Number.isFinite(data.Cost) || !Number.isInteger(data.Stock) || !Number.isInteger(data.MinStock) || data.Stock < 0 || data.MinStock < 0 || data.Cost < 0 || data.RetailPrice < 0 || !data.Category || data.BaseUnit.length > 20) {
                 showNotification('กรุณากรอกข้อมูลสินค้าให้ครบถ้วนและตรวจสอบช่วงจำนวนอีกครั้ง', true);
                 return;
             }
-            google.script.run
+            const isEditMode = productModalMode === 'edit';
+            const runner = google.script.run
                 .withSuccessHandler(function() {
                     closeProductModal();
-                    showNotification('บันทึกสินค้าใหม่เรียบร้อยแล้ว');
+                    showNotification(isEditMode ? 'บันทึกการแก้ไขเรียบร้อยแล้ว' : 'บันทึกสินค้าใหม่เรียบร้อยแล้ว');
                     loadApplicationData();
                 })
                 .withFailureHandler(function(error) {
                     if (isSessionError(error)) endSession(true);
                     showNotification(serverErrorMessage(error), true);
-                })
-                .createProduct(sessionToken, data);
+                });
+            if (isEditMode) {
+                runner.updateProduct(data);
+            } else {
+                runner.createProduct(sessionToken, data);
+            }
         }
 
         function saveDynamicRateTiers() {
@@ -2177,7 +3281,7 @@
                 name.textContent = product.id + ' - ' + product.name;
                 const quantity = document.createElement('span');
                 quantity.className = 'text-accent-500 font-bold font-mono whitespace-nowrap';
-                quantity.textContent = product.stock + ' ชิ้น';
+                quantity.textContent = formatProductStockLabel(product);
                 item.append(name, quantity);
                 list.appendChild(item);
             });
@@ -2186,12 +3290,28 @@
         function renderOrdersTable() {
             const tbody = document.getElementById('orders-table-body');
             const selectedAgent = document.getElementById('filter-agent-select').value;
-            const filtered = selectedAgent === 'ALL' ? orders : orders.filter(function(order) { return order.agent === selectedAgent; });
+            const dateFilterEl = document.getElementById('filter-order-date-select');
+            const dateFilter = dateFilterEl ? dateFilterEl.value : 'TODAY';
+            const todayKey = getTodaySummaryDateKey();
+            
+            let filtered = orders;
+            if (dateFilter === 'TODAY') {
+                filtered = filtered.filter(function(order) { return getOrderSummaryDateKey(order) === todayKey; });
+            }
+            if (selectedAgent !== 'ALL') {
+                filtered = filtered.filter(function(order) { return order.agent === selectedAgent; });
+            }
+
+            const isOwner = currentRole === 'owner';
+            const labels = isOwner
+                ? ['เลขบิล', 'ตัวแทน', 'รายการ', 'รวมชิ้น', 'ยอดรวม', 'กำไร', 'จัดการ']
+                : ['เลขบิล', 'ตัวแทน', 'รายการ', 'รวมชิ้น', 'ยอดรวม', 'จัดการ'];
             tbody.replaceChildren();
             if (!filtered.length) {
                 const row = document.createElement('tr');
-                appendCell(row, 'ไม่มีข้อมูลใบสั่งซื้อของวันนี้เข้าสู่ระบบ', 'p-6 text-center text-slate-500 italic');
-                row.firstChild.colSpan = 7;
+                const emptyText = dateFilter === 'TODAY' ? 'ไม่มีข้อมูลใบสั่งซื้อของวันนี้เข้าสู่ระบบ' : 'ไม่มีข้อมูลใบสั่งซื้อในระบบ';
+                appendCell(row, emptyText, 'p-6 text-center text-slate-500 italic');
+                row.firstChild.colSpan = isOwner ? 7 : 6;
                 tbody.appendChild(row);
                 return;
             }
@@ -2200,10 +3320,18 @@
                 row.className = 'hover:bg-slate-50/50 transition duration-150';
                 appendCell(row, order.orderId, 'p-2.5 font-mono font-bold text-primary-700');
                 appendCell(row, order.agent, 'p-2.5 font-bold text-slate-700');
-                appendCell(row, order.items.map(function(item) { return item.productName + ' (' + item.qty + ' × ฿' + item.unitPrice + ')'; }).join(', '), 'p-2.5 text-slate-600 leading-normal break-words');
+                
+                const itemCountCell = appendCell(row, '', 'p-2.5 text-slate-700');
+                const itemCountBadge = document.createElement('span');
+                itemCountBadge.className = 'bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1';
+                itemCountBadge.innerHTML = '<i class="fa-solid fa-list-check text-slate-400"></i> ' + (order.items || []).length + ' รายการ';
+                itemCountCell.appendChild(itemCountBadge);
+
                 appendCell(row, order.totalQty, 'p-2.5 text-right font-bold font-mono');
                 appendCell(row, '฿' + Number(order.totalAmount || 0).toLocaleString(), 'p-2.5 text-right font-extrabold text-slate-800 font-mono');
-                appendCell(row, currentRole === 'owner' ? '฿' + Number(order.totalAmount - order.totalCost).toLocaleString() : '—', 'p-2.5 text-right font-bold text-emerald-600 font-mono');
+                if (isOwner) {
+                    appendCell(row, '฿' + Number(order.totalAmount - order.totalCost).toLocaleString(), 'p-2.5 text-right font-bold text-emerald-600 font-mono');
+                }
                 const actions = appendCell(row, '', 'p-2.5 text-center');
                 const button = document.createElement('button');
                 button.type = 'button'; button.className = 'erp-action erp-action-danger min-w-11 text-accent-600 hover:text-accent-800';
@@ -2211,6 +3339,9 @@
                 button.textContent = 'ยกเลิก';
                 button.addEventListener('click', function() { deleteOrder(order.orderId); });
                 actions.appendChild(button);
+                Array.from(row.cells).forEach(function(cell, index) {
+                    cell.dataset.label = labels[index] || '';
+                });
                 tbody.appendChild(row);
             });
         }
@@ -2219,33 +3350,42 @@
             const tbody = document.getElementById('stock-table-body');
             const query = String(document.getElementById('stock-search-input').value || '').trim().toLowerCase();
             const filtered = products.filter(function(product) { return product.id.toLowerCase().includes(query) || product.name.toLowerCase().includes(query); });
+            const isOwner = currentRole === 'owner';
+            const labels = isOwner
+                ? ['รหัส', 'ชื่อสินค้า', 'ราคาขาย', 'ต้นทุน', 'คงเหลือ', 'ขั้นต่ำ', 'สถานะ', 'ปรับสต๊อก']
+                : ['รหัส', 'ชื่อสินค้า', 'ราคาขาย', 'คงเหลือ', 'ขั้นต่ำ', 'สถานะ', 'ปรับสต๊อก'];
             tbody.replaceChildren();
             if (!filtered.length) {
                 const row = document.createElement('tr');
                 appendCell(row, 'ไม่พบรหัสสินค้าที่ต้องการในคลัง', 'p-6 text-center text-slate-500 italic');
-                row.firstChild.colSpan = 8;
+                row.firstChild.colSpan = isOwner ? 8 : 7;
                 tbody.appendChild(row);
                 return;
             }
             filtered.forEach(function(product) {
                 const row = document.createElement('tr');
-                row.className = 'hover:bg-slate-50/50 transition duration-150';
+                row.className = 'hover:bg-slate-50/50 transition duration-150 border-b border-slate-100';
                 const critical = Number(product.stock) <= Number(product.min);
                 appendCell(row, product.id, 'p-2.5 font-mono font-bold text-primary-700');
-                appendCell(row, product.name, 'p-2.5 font-bold text-slate-700 break-words');
+                const nameCell = appendCell(row, '', 'p-2.5 font-bold text-slate-700 break-words');
+                nameCell.innerHTML = '<div>' + escapeHtml(product.name) + '</div><div class="mt-0.5 text-[9px] font-medium leading-tight text-slate-400">' + escapeHtml(formatProductUnitLabel(product)) + '</div>';
                 appendCell(row, '฿' + Number(product.defaultPrice || 0).toLocaleString(), 'p-2.5 text-right font-bold text-slate-700 font-mono');
-                appendCell(row, currentRole === 'owner' ? '฿' + Number(product.cost || 0).toLocaleString() : '—', 'p-2.5 text-right font-extrabold text-primary-700 font-mono');
-                appendCell(row, Number(product.stock || 0).toLocaleString() + ' ชิ้น', 'p-2.5 text-right font-black font-mono ' + (critical ? 'text-accent-600' : 'text-slate-800'));
+                if (isOwner) {
+                    appendCell(row, '฿' + Number(product.cost || 0).toLocaleString(), 'p-2.5 text-right font-extrabold text-primary-700 font-mono');
+                }
+                appendCell(row, formatProductStockLabel(product), 'p-2.5 text-right font-black font-mono ' + (critical ? 'text-accent-600' : 'text-slate-800'));
                 appendCell(row, product.min, 'p-2.5 text-center text-slate-600 font-mono font-bold');
                 appendCell(row, critical ? 'สต็อกต่ำ' : 'ปกติ', 'p-2.5 text-center font-bold ' + (critical ? 'text-accent-700' : 'text-primary-700'));
                 const actions = appendCell(row, '', 'p-2.5 text-center');
-                [10, -10].forEach(function(amount) {
-                    const button = document.createElement('button');
-                    button.type = 'button'; button.className = 'erp-action min-w-11 mx-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded text-[10px]';
-                    button.textContent = amount > 0 ? '+10' : '-10';
-                    button.setAttribute('aria-label', (amount > 0 ? 'เพิ่ม' : 'ลด') + 'สต็อก ' + product.id);
-                    button.addEventListener('click', function() { adjustStockDirectly(product.id, amount); });
-                    actions.appendChild(button);
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'erp-action erp-action-secondary px-3 py-1.5 text-[10px] font-bold';
+                button.textContent = 'แก้ไข';
+                button.setAttribute('aria-label', 'แก้ไขสต็อก ' + product.id);
+                button.addEventListener('click', function() { openEditStockModal(product.id); });
+                actions.appendChild(button);
+                Array.from(row.cells).forEach(function(cell, index) {
+                    cell.dataset.label = labels[index] || '';
                 });
                 tbody.appendChild(row);
             });
@@ -2262,13 +3402,12 @@
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-50/50 transition';
                 appendCell(row, product.id, 'p-2.5 font-mono font-bold text-primary-700');
-                appendCell(row, product.name, 'p-2.5 font-bold text-slate-700 break-words');
+                appendCell(row, product.name + ' · ' + formatProductUnitLabel(product), 'p-2.5 font-bold text-slate-700 break-words');
                 appendCell(row, tiers.length + ' เรทราคา', 'p-2.5 text-center font-extrabold text-primary-700');
-                appendCell(row, tiers.map(function(tier, index) { return 'ขั้น ' + (index + 1) + ': ' + (tier.max >= 99999 ? tier.min + '+' : tier.min + '-' + tier.max) + ' @ ฿' + tier.price; }).join('  |  '), 'p-2.5 text-left leading-normal break-words');
                 const action = appendCell(row, '', 'p-2.5 text-center');
                 const button = document.createElement('button');
                 button.type = 'button'; button.className = 'erp-action erp-action-primary px-2.5 py-1 text-[10px]';
-                button.textContent = 'จัดการเรทราคา';
+                button.textContent = 'เรท';
                 button.addEventListener('click', function() { openRateModal(selectedAgent, product.id); });
                 action.appendChild(button);
                 tbody.appendChild(row);
@@ -2300,6 +3439,7 @@
             };
             const stockSearch = document.getElementById('stock-search-input');
             const rateSearch = document.getElementById('agent-rate-search');
+            initSummaryDatePicker();
             if (stockSearch) stockSearch.addEventListener('input', debounce(renderStockTable, 160));
             if (rateSearch) rateSearch.addEventListener('input', debounce(renderAgentRatesTable, 160));
             document.querySelectorAll('table').forEach(function(table) {

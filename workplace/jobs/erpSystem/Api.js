@@ -3,7 +3,22 @@ function api(sessionToken) {
   var canViewCost = user.role === 'OWNER';
   var agents = getAgents();
   var products = getProducts().map(function(product) {
-    return { id: product.ProductID, name: product.ProductName, cost: canViewCost ? Number(product.Cost) : null, defaultPrice: Number(product.RetailPrice), stock: Number(product.Stock), min: Number(product.MinStock), max: Number(product.MaxStock) };
+    var baseUnit = String(product.BaseUnit || product.UnitName || '').trim() || 'ขวด';
+    var packUnits = Array.isArray(product.PackUnits) ? product.PackUnits : [];
+    return {
+      id: product.ProductID,
+      name: product.ProductName,
+      category: String(product.Category || '').trim(),
+      cost: canViewCost ? Number(product.Cost) : null,
+      defaultPrice: Number(product.RetailPrice),
+      stock: Number(product.Stock),
+      min: Number(product.MinStock),
+      max: null,
+      baseUnit: baseUnit,
+      unitName: baseUnit,
+      packUnits: packUnits,
+      packSize: packUnits.length ? Number(packUnits[0].packSize) || 1 : 1
+    };
   });
   var agentNames = agents.map(function(agent) { return agent.AgentName; });
   var agentIdsByName = agents.reduce(function(map, agent) {
@@ -21,7 +36,26 @@ function api(sessionToken) {
   var orders = getOrders().filter(function(order) {
     return String(order.Status).toUpperCase() !== 'CANCELLED';
   }).map(function(order) {
-    return { orderId: order.OrderID, agent: agentById[order.AgentID] || order.AgentID, totalQty: Number(order.TotalQty), totalAmount: Number(order.TotalAmount), totalCost: canViewCost ? Number(order.TotalCost) : null, items: order.Items.map(function(item) { return { isNonStock: false, productId: item.ProductID, productName: item.ProductName, qty: Number(item.Qty), unitPrice: Number(item.Price), cost: canViewCost ? Number(item.Cost) : null, total: Number(item.Amount) }; }) };
+    var orderDate = order.OrderDate || order.Created || new Date();
+    var tz = Session.getScriptTimeZone();
+    return {
+      orderId: order.OrderID,
+      orderDateKey: Utilities.formatDate(orderDate, tz, 'yyyy-MM-dd'),
+      orderDateLabel: Utilities.formatDate(orderDate, tz, 'dd/MM/yyyy'),
+      orderTimeLabel: Utilities.formatDate(orderDate, tz, 'HH:mm'),
+      agent: agentById[order.AgentID] || order.AgentID,
+      totalQty: Number(order.TotalQty),
+      subtotalAmount: Number(order.SubtotalAmount || order.TotalAmount),
+      shippingType: String(order.ShippingType || 'NONE'),
+      shippingAmount: Number(order.ShippingAmount || 0),
+      discountAmount: Number(order.DiscountAmount || 0),
+      totalAmount: Number(order.TotalAmount),
+      customerName: String(order.CustomerName || ''),
+      customerAddress: String(order.CustomerAddress || ''),
+      customerPhone: String(order.CustomerPhone || ''),
+      totalCost: canViewCost ? Number(order.TotalCost) : null,
+      items: order.Items.map(function(item) { return { isNonStock: false, productId: item.ProductID, productName: item.ProductName, qty: Number(item.Qty), unitPrice: Number(item.Price), cost: canViewCost ? Number(item.Cost) : null, total: Number(item.Amount) }; })
+    };
   });
   var dashboard = getDashboard();
   if (!canViewCost) {
