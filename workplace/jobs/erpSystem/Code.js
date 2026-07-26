@@ -13,6 +13,7 @@ function doGet() {
     .createTemplateFromFile("index")
     .evaluate()
     .setTitle("ERP Dealer System")
+    .setFaviconUrl("https://img.icons8.com/liquid-glass/48/layers.png")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
 }
