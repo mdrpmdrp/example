@@ -7,33 +7,18 @@ function normalizeProductBaseUnit_(value) {
 }
 
 function normalizePackUnits_(value) {
-  var items = [];
-  if (Array.isArray(value)) {
-    items = value;
-  } else if (value && typeof value === 'object') {
-    items = [value];
-  } else if (Number.isFinite(Number(value)) && Number(value) > 1) {
-    items = [{ unit: 'แพค', packSize: Number(value) }];
-  } else if (typeof value === 'string') {
-    var text = value.trim();
-    if (text) {
-      try {
-        var parsed = JSON.parse(text);
-        items = Array.isArray(parsed) ? parsed : (parsed && typeof parsed === 'object' ? [parsed] : []);
-      } catch (error) {
-        var asNumber = Number(text);
-        if (Number.isFinite(asNumber) && asNumber > 1) {
-          items = [{ unit: 'แพค', packSize: asNumber }];
-        }
-      }
-    }
+  if (!Array.isArray(value)) {
+    return [];
   }
 
-  return items.map(function(item) {
-    var unit = String(item && item.unit || item && item.Unit || item && item.name || '').trim();
-    var packSize = Number(item && (item.packSize != null ? item.packSize : item && item.PackSize));
+  return value.map(function(item) {
+    var unit = String(item && item.unit || '').trim();
+    var packSize = Number(item && item.packSize);
+    var price = Number(item && item.price);
     if (!unit || !Number.isInteger(packSize) || packSize < 1) return null;
-    return { unit: unit, packSize: packSize };
+    var normalized = { unit: unit, packSize: packSize };
+    if (Number.isFinite(price) && price >= 0) normalized.price = price;
+    return normalized;
   }).filter(Boolean);
 }
 
@@ -43,12 +28,17 @@ function serializePackUnits_(value) {
 }
 
 function parsePackUnitsFromRow_(row) {
-  var legacyPackSize = Number(row[13]) || 1;
-  var stored = row[13];
-  var packUnits = normalizePackUnits_(stored);
-  if (packUnits.length) return packUnits;
-  if (Number.isInteger(legacyPackSize) && legacyPackSize > 1) {
-    return [{ unit: 'แพค', packSize: legacyPackSize }];
+  var raw = row[11];
+  if (Array.isArray(raw)) {
+    return normalizePackUnits_(raw);
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      var parsed = JSON.parse(raw);
+      return normalizePackUnits_(parsed);
+    } catch (error) {
+      return [];
+    }
   }
   return [];
 }
@@ -63,24 +53,19 @@ function getProducts() {
   const rows = getData(SHEETS.PRODUCTS);
 
   return rows.map(r => ({
-
     ProductID: r[0],
-    Barcode: r[1],
-    ProductName: r[2],
-    Category: r[3],
-    Cost: r[4],
-    RetailPrice: r[5],
-    Stock: r[6],
-    MinStock: r[7],
-    MaxStock: r[8],
-    Status: r[9],
-    Created: r[10],
-    Updated: r[11],
-    BaseUnit: r[12] || 'ขวด',
+    ProductName: r[1],
+    Category: r[2],
+    Cost: r[3],
+    RetailPrice: r[4],
+    Stock: r[5],
+    MinStock: r[6],
+    Status: r[7],
+    Created: r[8],
+    Updated: r[9],
+    BaseUnit: r[10] || 'ขวด',
     PackUnits: parsePackUnitsFromRow_(r),
-    UnitName: r[12] || 'ขวด',
-    PackSize: Number(r[13]) || 1
-
+    UnitName: r[10] || 'ขวด'
   }));
 
 }
@@ -99,19 +84,17 @@ function addProduct(data) {
   sheet.appendRow([
 
     data.ProductID,
-    data.Barcode,
     data.ProductName,
     normalizeProductCategory_(data.Category),
     data.Cost,
     data.RetailPrice,
     data.Stock,
     data.MinStock,
-    '',
     "ACTIVE",
     new Date(),
     new Date(),
     normalizeProductBaseUnit_(data.BaseUnit || data.UnitName),
-    serializePackUnits_(data.PackUnits || data.PackSizes || data.PackSize || [])
+    serializePackUnits_(data.PackUnits)
 
   ]);
 
@@ -127,7 +110,7 @@ function createProduct(sessionToken, data) {
   const productName = String(data.ProductName || '').trim();
   const baseUnit = normalizeProductBaseUnit_(data.BaseUnit || data.UnitName);
   const category = normalizeProductCategory_(data.Category);
-  const values = ['Cost', 'RetailPrice', 'Stock', 'MinStock', 'MaxStock'].reduce(function(result, key) {
+  const values = ['Cost', 'RetailPrice', 'Stock', 'MinStock'].reduce(function(result, key) {
     result[key] = Number(data[key]);
     return result;
   }, {});
@@ -141,7 +124,7 @@ function createProduct(sessionToken, data) {
   try {
     if (getProductById(productId)) throw new Error('Product ID already exists');
     addProduct({
-      ProductID: productId, Barcode: '', ProductName: productName, Category: category,
+      ProductID: productId, ProductName: productName, Category: category,
       Cost: values.Cost, RetailPrice: values.RetailPrice, Stock: values.Stock,
       MinStock: values.MinStock,
       BaseUnit: baseUnit, PackUnits: packUnits
@@ -162,22 +145,22 @@ function updateProduct(data) {
   for (let i = 1; i < values.length; i++) {
 
     if (values[i][0] == data.ProductID) {
+      var currentStatus = String(data.Status || values[i][7] || 'ACTIVE').trim() || 'ACTIVE';
+      var currentCreated = values[i][8] || new Date();
 
-      sheet.getRange(i + 1, 2, 1, 13).setValues([[
+      sheet.getRange(i + 1, 2, 1, 11).setValues([[
 
-        data.Barcode,
         data.ProductName,
         normalizeProductCategory_(data.Category),
         data.Cost,
         data.RetailPrice,
         data.Stock,
         data.MinStock,
-        '',
-        data.Status,
-        values[i][10] || new Date(),
+        currentStatus,
+        currentCreated,
         new Date(),
         normalizeProductBaseUnit_(data.BaseUnit || data.UnitName),
-        serializePackUnits_(data.PackUnits || data.PackSizes || data.PackSize || [])
+        serializePackUnits_(data.PackUnits)
 
       ]]);
 
@@ -202,7 +185,7 @@ function deleteProduct(productId) {
 
     if (values[i][0] == productId) {
 
-      sheet.getRange(i + 1, 10).setValue("INACTIVE");
+      sheet.getRange(i + 1, 8).setValue("INACTIVE");
 
       return true;
 
@@ -212,26 +195,4 @@ function deleteProduct(productId) {
 
   return false;
 
-}
-
-function searchProducts(keyword) {
-
-  keyword = String(keyword).trim().toLowerCase();
-
-  return getProducts().filter(product => {
-
-    return (
-      product.ProductID.toLowerCase().includes(keyword) ||
-      product.Barcode.toLowerCase().includes(keyword) ||
-      product.ProductName.toLowerCase().includes(keyword) ||
-      product.Category.toLowerCase().includes(keyword)
-    );
-
-  });
-
-}
-
-function test() {
-  let aa = searchProducts("กระเป๋า")
-  Logger.log(aa)
 }

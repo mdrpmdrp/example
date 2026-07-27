@@ -56,23 +56,6 @@ function appendObject(sheetName,data){
 
 }
 
-function updateRow(
-    sheetName,
-    row,
-    values
-){
-
-  getSheet(sheetName)
-      .getRange(
-          row,
-          1,
-          1,
-          values.length
-      )
-      .setValues([values]);
-
-}
-
 function findRow(
     sheetName,
     id

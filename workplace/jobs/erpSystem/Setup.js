@@ -39,14 +39,12 @@ function createProducts() {
     SHEETS.PRODUCTS,
     [
       "ProductID",
-      "Barcode",
       "ProductName",
       "Category",
       "Cost",
       "RetailPrice",
       "Stock",
       "MinStock",
-      "MaxStock",
       "Status",
       "Created",
       "Updated",
@@ -123,10 +121,12 @@ function createOrderItems() {
       "ItemID",
       "OrderID",
       "ProductID",
+      "Unit",
       "Qty",
-      "Price",
+      "BaseUnitQty",
+      "UnitPrice",
       "Cost",
-      "Amount"
+      "TotalPrice"
     ]
   );
 
@@ -241,46 +241,46 @@ function insertDemoData() {
   // PRODUCTS
   // ==========================
   const products = ss.getSheetByName(SHEETS.PRODUCTS);
-  products.getRange(2, 1, 10, 14).setValues([
+  products.getRange(2, 1, 10, 12).setValues([
     [
-      "PROD001", "885100000001", "Botox A", "botox",
-      2800, 4500, 40, 5, 120, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่อง", packSize: 6 }, { unit: "แพคคู่", packSize: 2 }])
+      "PROD001", "Botox A", "botox",
+      2800, 4500, 40, 5, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่อง", packSize: 6 }, { unit: "แพคคู่", packSize: 2 }])
     ],
     [
-      "PROD002", "885100000002", "Botox B", "botox",
-      2400, 3900, 35, 5, 100, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่อง", packSize: 12 }])
+      "PROD002", "Botox B", "botox",
+      2400, 3900, 35, 5, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่อง", packSize: 12 }])
     ],
     [
-      "PROD003", "885100000003", "Filler HA 1cc", "filler",
-      3200, 5500, 28, 4, 80, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่องเล็ก", packSize: 6 }, { unit: "กล่องใหญ่", packSize: 12 }])
+      "PROD003", "Filler HA 1cc", "filler",
+      3200, 5500, 28, 4, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่องเล็ก", packSize: 6 }, { unit: "กล่องใหญ่", packSize: 12 }])
     ],
     [
-      "PROD004", "885100000004", "Vitamin Glow Shot", "วิตามินผิว",
-      650, 1200, 90, 10, 300, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "แพค", packSize: 10 }])
+      "PROD004", "Vitamin Glow Shot", "วิตามินผิว",
+      650, 1200, 90, 10, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "แพค", packSize: 10 }])
     ],
     [
-      "PROD005", "885100000005", "Skin Booster C", "หน้าใส",
-      900, 1600, 60, 8, 200, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "แพคคู่", packSize: 2 }, { unit: "กล่อง", packSize: 12 }])
+      "PROD005", "Skin Booster C", "หน้าใส",
+      900, 1600, 60, 8, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "แพคคู่", packSize: 2 }, { unit: "กล่อง", packSize: 12 }])
     ],
     [
-      "PROD006", "885100000006", "PDO Thread 4D", "ร้อยไหม",
-      1800, 3200, 150, 20, 500, "ACTIVE", new Date(), new Date(), "เส้น", JSON.stringify([{ unit: "มัด", packSize: 10 }])
+      "PROD006", "PDO Thread 4D", "ร้อยไหม",
+      1800, 3200, 150, 20, "ACTIVE", new Date(), new Date(), "เส้น", JSON.stringify([{ unit: "มัด", packSize: 10 }])
     ],
     [
-      "PROD007", "885100000007", "Fat Burner Mix", "fat",
-      2200, 3800, 50, 5, 150, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่อง", packSize: 6 }])
+      "PROD007", "Fat Burner Mix", "fat",
+      2200, 3800, 50, 5, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "กล่อง", packSize: 6 }])
     ],
     [
-      "PROD008", "885100000008", "White Glow Pack", "หน้าใส",
-      1200, 2200, 45, 5, 120, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "แพค", packSize: 4 }, { unit: "กล่องเล็ก", packSize: 8 }])
+      "PROD008", "White Glow Pack", "หน้าใส",
+      1200, 2200, 45, 5, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "แพค", packSize: 4 }, { unit: "กล่องเล็ก", packSize: 8 }])
     ],
     [
-      "PROD009", "885100000009", "Vit C Duo", "วิตามินผิว",
-      700, 1300, 75, 10, 200, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "คู่", packSize: 2 }])
+      "PROD009", "Vit C Duo", "วิตามินผิว",
+      700, 1300, 75, 10, "ACTIVE", new Date(), new Date(), "ขวด", JSON.stringify([{ unit: "คู่", packSize: 2 }])
     ],
     [
-      "PROD010", "885100000010", "Clinic Support Kit", "อื่นๆ",
-      400, 800, 25, 3, 80, "ACTIVE", new Date(), new Date(), "ชิ้น", JSON.stringify([{ unit: "แพค", packSize: 5 }])
+      "PROD010", "Clinic Support Kit", "อื่นๆ",
+      400, 800, 25, 3, "ACTIVE", new Date(), new Date(), "ชิ้น", JSON.stringify([{ unit: "แพค", packSize: 5 }])
 
     ]
   ]);
@@ -361,7 +361,7 @@ function insertDemoData() {
   // ORDERS
   // ==========================
   const orders = ss.getSheetByName(SHEETS.ORDERS);
-  orders.getRange(2, 1, 1, 10).setValues([
+  orders.getRange(2, 1, 1, 18).setValues([
     [
       "ORD000001",
       new Date(),
@@ -372,7 +372,15 @@ function insertDemoData() {
       960,
       "COMPLETED",
       "owner",
-      new Date()
+      new Date(),
+      "",
+      "",
+      "",
+      "NONE",
+      0,
+      0,
+      3660,
+      3660
     ]
   ]);
 
@@ -380,11 +388,13 @@ function insertDemoData() {
   // ORDER ITEMS
   // ==========================
   const items = ss.getSheetByName(SHEETS.ORDER_ITEMS);
-  items.getRange(2, 1, 2, 7).setValues([
+  items.getRange(2, 1, 2, 9).setValues([
     [
       1,
       "ORD000001",
       "PROD001",
+      "__base__",
+      2,
       2,
       4500,
       2800,
@@ -395,6 +405,8 @@ function insertDemoData() {
       2,
       "ORD000001",
       "PROD004",
+      "__base__",
+      4,
       4,
       1200,
       650,

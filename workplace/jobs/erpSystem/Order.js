@@ -1,9 +1,6 @@
 /** Order read model. Write operations should use adjustStock for stock integrity. */
 function getOrderSchemaStatusColumn_() {
-  const sheet = getSheet(SHEETS.ORDERS);
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const index = headers.indexOf('Status');
-  return index >= 0 ? index + 1 : 8;
+  return 8;
 }
 
 function normalizeShippingType_(value) {
@@ -26,56 +23,136 @@ function resolveShippingAmount_(shippingType, shippingAmount) {
   return { type: 'NONE', amount: 0 };
 }
 
+function normalizeOrderUnitValue_(product, selectedUnit) {
+  var unit = String(selectedUnit || '__base__').trim() || '__base__';
+  var baseUnit = product ? String(product.BaseUnit || product.UnitName || '').trim() : '';
+  if (unit === '__base__' && baseUnit) return baseUnit;
+  return unit;
+}
+
+function buildOrderLines_(sessionToken, payload, stockBufferByProduct) {
+  const requiredStock = {};
+  const lines = payload.items.map(function (item) {
+    const isNonStock = Boolean(item && item.isNonStock);
+    const productId = String(item && item.productId || '').trim();
+    const productName = String(item && item.productName || productId).trim() || productId;
+    const qty = Number(item && item.qty || 0);
+    const baseQtyNeeded = Number(item && item.baseQtyNeeded || qty);
+
+    if (!productId || !Number.isInteger(qty) || qty < 1 || qty > 1000000) {
+      throw new Error('Invalid order line quantity');
+    }
+
+    if (isNonStock) {
+      const selectedUnit = String(item && item.selectedUnit || '__base__').trim() || '__base__';
+      const validatedPrice = Number(item && item.unitPrice || 0);
+      const unitCost = Number(item && item.cost || 0);
+      const rowTotal = validatedPrice * qty;
+
+      return {
+        isNonStock: true,
+        productId: productId,
+        productName: productName,
+        quantity: qty,
+        selectedUnit: selectedUnit,
+        baseQtyNeeded: baseQtyNeeded,
+        price: validatedPrice,
+        cost: unitCost,
+        amount: rowTotal,
+        product: null
+      };
+    }
+
+    const product = getProductById(productId);
+    if (!product) {
+      throw new Error('Invalid product: ' + productId);
+    }
+
+    const selectedUnit = normalizeOrderUnitValue_(product, item && item.selectedUnit);
+    const availableStock = Number(product.Stock || 0) + Number(stockBufferByProduct && stockBufferByProduct[productId] || 0);
+    requiredStock[productId] = (requiredStock[productId] || 0) + baseQtyNeeded;
+    if (availableStock < requiredStock[productId]) {
+      throw new Error('Insufficient stock for ' + product.ProductID);
+    }
+
+    const quote = quoteTierPrice(sessionToken, payload.agentId, product.ProductID, baseQtyNeeded, selectedUnit);
+    const validatedPrice = Number(quote.unitPrice || 0);
+    const unitCost = Number(product.Cost || 0);
+    const rowTotal = validatedPrice * qty;
+
+    return {
+      isNonStock: false,
+      productId: productId,
+      productName: productName,
+      quantity: qty,
+      selectedUnit: selectedUnit,
+      baseQtyNeeded: baseQtyNeeded,
+      price: validatedPrice,
+      cost: unitCost,
+      amount: rowTotal,
+      product: product
+    };
+  });
+
+  const totals = lines.reduce(function (result, line) {
+    result.quantity += line.quantity;
+    result.amount += line.amount;
+    result.cost += (line.cost * line.baseQtyNeeded);
+    return result;
+  }, { quantity: 0, amount: 0, cost: 0 });
+
+  return { lines: lines, totals: totals };
+}
+
+function deleteOrderItemsByOrderId_(orderId) {
+  const sheet = getSheet(SHEETS.ORDER_ITEMS);
+  const rows = getData(SHEETS.ORDER_ITEMS);
+  for (let index = rows.length - 1; index >= 0; index--) {
+    if (rows[index][1] === orderId) {
+      sheet.deleteRow(index + 2);
+    }
+  }
+}
+
 function getOrders() {
   var items = getData(SHEETS.ORDER_ITEMS);
   var products = getProducts();
 
   return getData(SHEETS.ORDERS).map(function (row) {
-    var hasExtendedFields = String(row[13] || '').trim() !== '' ||
-      String(row[14] || '').trim() !== '' ||
-      String(row[15] || '').trim() !== '' ||
-      String(row[16] || '').trim() !== '' ||
-      String(row[17] || '').trim() !== '';
-
-    var subtotalAmount = hasExtendedFields ? Number(row[16]) || Number(row[4]) || 0 : Number(row[4]) || 0;
-    var netAmount = hasExtendedFields ? Number(row[17]) || Number(row[4]) || 0 : Number(row[4]) || 0;
-
     return {
       OrderID: row[0],
       OrderDate: row[1],
       AgentID: row[2],
       TotalQty: Number(row[3]) || 0,
-      TotalAmount: netAmount,
+      TotalAmount: Number(row[4]) || 0,
       TotalCost: Number(row[5]) || 0,
       Profit: Number(row[6]) || 0,
       Status: row[7],
       CreatedBy: row[8],
       Created: row[9],
-      CustomerName: hasExtendedFields ? String(row[10] || '') : '',
-      CustomerAddress: hasExtendedFields ? String(row[11] || '') : '',
-      CustomerPhone: hasExtendedFields ? String(row[12] || '') : '',
-      ShippingType: hasExtendedFields ? String(row[13] || 'NONE') : 'NONE',
-      ShippingAmount: hasExtendedFields ? Number(row[14]) || 0 : 0,
-      DiscountAmount: hasExtendedFields ? Number(row[15]) || 0 : 0,
-      SubtotalAmount: subtotalAmount,
-      NetAmount: netAmount,
+      CustomerName: String(row[10] || ''),
+      CustomerAddress: String(row[11] || ''),
+      CustomerPhone: String(row[12] || ''),
+      ShippingType: String(row[13] || 'NONE'),
+      ShippingAmount: Number(row[14]) || 0,
+      DiscountAmount: Number(row[15]) || 0,
+      SubtotalAmount: Number(row[16]) || 0,
+      NetAmount: Number(row[17]) || 0,
       Items: items.filter(function (item) {
         return item[1] === row[0];
       }).map(function (item) {
         var product = products.find(function (entry) { return entry.ProductID === item[2]; });
-
-        // รองรับทั้งแบบโครงสร้างใหม่ (9 คอลัมน์) และโครงสร้างเก่า (7 คอลัมน์) เพื่อความปลอดภัย
-        var hasUnitColumn = item.length >= 9;
-
         return {
           ProductID: item[2],
           ProductName: product ? product.ProductName : item[2],
-          SelectedUnit: hasUnitColumn ? String(item[3] || '__base__') : '__base__',
-          Qty: hasUnitColumn ? (Number(item[4]) || 0) : (Number(item[3]) || 0),
-          BaseQtyNeeded: hasUnitColumn ? (Number(item[5]) || 0) : (Number(item[3]) || 0),
-          Price: hasUnitColumn ? (Number(item[6]) || 0) : (Number(item[4]) || 0),
-          Cost: hasUnitColumn ? (Number(item[7]) || 0) : (Number(item[5]) || 0),
-          Amount: hasUnitColumn ? (Number(item[8]) || 0) : (Number(item[6]) || 0)
+          SelectedUnit: String(item[3] || '__base__'),
+          Qty: Number(item[4]) || 0,
+          BaseQtyNeeded: Number(item[5]) || 0,
+          UnitPrice: Number(item[6]) || 0,
+          Price: Number(item[6]) || 0,
+          Cost: Number(item[7]) || 0,
+          TotalPrice: Number(item[8]) || 0,
+          Amount: Number(item[8]) || 0
         };
       })
     };
@@ -92,77 +169,10 @@ function createOrder(sessionToken, payload) {
   lock.waitLock(30000);
 
   try {
-    // 1. Validate และรวมจำนวนที่จะตัดสต๊อกจริง (baseQtyNeeded)
-    const requiredStock = {};
+    const built = buildOrderLines_(sessionToken, payload, {});
+    const lines = built.lines;
+    const totals = built.totals;
 
-    payload.items.forEach(function (item) {
-      const isNonStock = Boolean(item && item.isNonStock);
-      const productId = String(item && item.productId || '');
-      const qty = Number(item && item.qty || 0); // จำนวนแพ็ก/หน่วยที่สั่ง
-      const baseQtyNeeded = Number(item && item.baseQtyNeeded || qty); // จำนวนชิ้นฐานสำหรับตัดสต๊อก
-
-      if (!productId || !Number.isInteger(qty) || qty < 1 || qty > 1000000) {
-        throw new Error('Invalid order line quantity');
-      }
-
-      if (!isNonStock) {
-        requiredStock[productId] = (requiredStock[productId] || 0) + baseQtyNeeded;
-        const product = getProductById(productId);
-
-        if (!product) {
-          throw new Error('Invalid product: ' + productId);
-        }
-
-        if (Number(product.Stock) < requiredStock[productId]) {
-          throw new Error('Insufficient stock for ' + product.ProductID);
-        }
-      }
-    });
-
-    // 2. คำนวณ Order Line พร้อม Recalculate/Validate ราคาด้วย quoteTierPrice ฝั่ง Server
-    const lines = payload.items.map(function (item) {
-      const isNonStock = Boolean(item && item.isNonStock);
-      const productId = String(item && item.productId || '');
-      const productName = String(item && item.productName || productId);
-      const qty = Number(item && item.qty || 0);
-      const baseQtyNeeded = Number(item && item.baseQtyNeeded || qty);
-      const selectedUnit = String(item && item.selectedUnit || '__base__');
-
-      let validatedPrice = 0;
-      let unitCost = 0;
-      let product = null;
-
-      if (isNonStock) {
-        // สินค้านอกคลัง: ใช้ราคาและต้นทุนที่ส่งมาจาก Client
-        validatedPrice = Number(item && item.unitPrice || 0);
-        unitCost = Number(item && item.cost || 0);
-      } else {
-        product = getProductById(productId);
-        unitCost = Number(product.Cost || 0);
-
-
-        const quote = quoteTierPrice(sessionToken, payload.agentId, product.ProductID, baseQtyNeeded, selectedUnit);
-
-        validatedPrice = Number(quote.unitPrice || 0);
-      }
-
-      const rowTotal = validatedPrice * baseQtyNeeded;
-
-      return {
-        isNonStock: isNonStock,
-        productId: productId,
-        productName: productName,
-        quantity: qty,                // จำนวนที่สั่งซื้อ (เช่น 1 กล่อง)
-        selectedUnit: selectedUnit,   // หน่วยที่เลือก
-        baseQtyNeeded: baseQtyNeeded,  // จำนวนชิ้นฐานที่จะตัดสต๊อก (เช่น 6 ขวด)
-        price: validatedPrice,        // ราคาที่คำนวณและยืนยันแล้วจาก Server
-        cost: unitCost,
-        amount: rowTotal,
-        product: product
-      };
-    });
-
-    // 3. คำนวณสรุปยอดรวมบิล
     const orderId = generateId('ORD', SHEETS.ORDERS);
     const shipping = resolveShippingAmount_(payload.shippingType, payload.shippingAmount);
     const customerName = String(payload.customerName || '').trim();
@@ -172,18 +182,10 @@ function createOrder(sessionToken, payload) {
 
     if (discountAmount < 0) throw new Error('Invalid discount amount');
 
-    const totals = lines.reduce(function (result, line) {
-      result.quantity += line.quantity;
-      result.amount += line.amount;
-      result.cost += (line.cost * line.baseQtyNeeded);
-      return result;
-    }, { quantity: 0, amount: 0, cost: 0 });
-
     const subtotalAmount = totals.amount;
     const netAmount = subtotalAmount + shipping.amount - discountAmount;
     if (netAmount < 0) throw new Error('Invalid order total');
 
-    // 4. บันทึกข้อมูลลง Sheet ORDERS
     appendObject(SHEETS.ORDERS, [
       orderId,
       new Date(),
@@ -205,7 +207,6 @@ function createOrder(sessionToken, payload) {
       netAmount
     ]);
 
-    // 5. บันทึก ORDER_ITEMS และตัดสต๊อกด้วย baseQtyNeeded
     lines.forEach(function (line) {
       appendObject(SHEETS.ORDER_ITEMS, [
         generateId('ITEM', SHEETS.ORDER_ITEMS),
@@ -214,7 +215,7 @@ function createOrder(sessionToken, payload) {
         line.selectedUnit,
         line.quantity,
         line.baseQtyNeeded,
-        line.price * line.baseQtyNeeded,
+        line.price,
         line.cost * line.baseQtyNeeded,
         line.amount
       ]);
@@ -227,6 +228,103 @@ function createOrder(sessionToken, payload) {
 
     return { orderId: orderId, totalAmount: netAmount, totalQty: totals.quantity };
 
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function updateOrder(sessionToken, orderId, payload) {
+  const user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
+  const id = String(orderId || '').trim();
+  if (!id || !payload || !getAgentById(payload.agentId) || !Array.isArray(payload.items) || !payload.items.length || payload.items.length > 100) {
+    throw new Error('Invalid order');
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    const existing = getOrders().find(function (item) { return item.OrderID === id; });
+    if (!existing) throw new Error('Order not found');
+    if (String(existing.Status).toUpperCase() === 'CANCELLED') throw new Error('Order is already cancelled');
+
+    const stockBufferByProduct = {};
+    existing.Items.forEach(function (item) {
+      const product = getProductById(item.ProductID);
+      if (!product) return;
+      stockBufferByProduct[item.ProductID] = (stockBufferByProduct[item.ProductID] || 0) + Number(item.BaseQtyNeeded || item.Qty || 0);
+    });
+
+    const built = buildOrderLines_(sessionToken, payload, stockBufferByProduct);
+    const lines = built.lines;
+    const totals = built.totals;
+
+    const shipping = resolveShippingAmount_(payload.shippingType, payload.shippingAmount);
+    const customerName = String(payload.customerName || '').trim();
+    const customerAddress = String(payload.customerAddress || '').trim();
+    const customerPhone = String(payload.customerPhone || '').trim();
+    const discountAmount = Number(payload.discountAmount) || 0;
+    if (discountAmount < 0) throw new Error('Invalid discount amount');
+
+    const subtotalAmount = totals.amount;
+    const netAmount = subtotalAmount + shipping.amount - discountAmount;
+    if (netAmount < 0) throw new Error('Invalid order total');
+
+    existing.Items.forEach(function (item) {
+      const qtyToRestore = Number(item.BaseQtyNeeded || item.Qty || 0);
+      if (qtyToRestore > 0) {
+        const product = getProductById(item.ProductID);
+        if (product) {
+          applyStockMovement_(item.ProductID, qtyToRestore, 'IN', id, 'Order updated - restore old line');
+        }
+      }
+    });
+
+    deleteOrderItemsByOrderId_(id);
+
+    const row = findRow(SHEETS.ORDERS, id);
+    if (row < 0) throw new Error('Order not found in sheet');
+
+    getSheet(SHEETS.ORDERS).getRange(row, 1, 1, 18).setValues([[
+      id,
+      existing.OrderDate || new Date(),
+      payload.agentId,
+      totals.quantity,
+      netAmount,
+      totals.cost,
+      netAmount - totals.cost,
+      existing.Status || 'COMPLETED',
+      existing.CreatedBy || user.username,
+      existing.Created || new Date(),
+      customerName,
+      customerAddress,
+      customerPhone,
+      shipping.type,
+      shipping.amount,
+      discountAmount,
+      subtotalAmount,
+      netAmount
+    ]]);
+
+    lines.forEach(function (line) {
+      appendObject(SHEETS.ORDER_ITEMS, [
+        generateId('ITEM', SHEETS.ORDER_ITEMS),
+        id,
+        line.productId,
+        line.selectedUnit,
+        line.quantity,
+        line.baseQtyNeeded,
+        line.price,
+        line.cost * line.baseQtyNeeded,
+        line.amount
+      ]);
+
+      if (!line.isNonStock) {
+        applyStockMovement_(line.productId, line.baseQtyNeeded, 'OUT', id, 'Order updated');
+      }
+    });
+
+    return { orderId: id, totalAmount: netAmount, totalQty: totals.quantity };
   } finally {
     lock.releaseLock();
   }

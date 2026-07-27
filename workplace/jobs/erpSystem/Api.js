@@ -1,8 +1,7 @@
-function api(sessionToken) {
+function buildProductsPayload_(sessionToken) {
   var user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
   var canViewCost = user.role === 'OWNER';
-  var agents = getAgents();
-  var products = getProducts().map(function(product) {
+  return getProducts().map(function(product) {
     var baseUnit = String(product.BaseUnit || product.UnitName || '').trim() || 'ขวด';
     var packUnits = Array.isArray(product.PackUnits) ? product.PackUnits : [];
     return {
@@ -20,12 +19,16 @@ function api(sessionToken) {
       packSize: packUnits.length ? Number(packUnits[0].packSize) || 1 : 1
     };
   });
+}
+
+function buildAgentsPayload_(sessionToken) {
+  requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
+  var agents = getAgents();
   var agentNames = agents.map(function(agent) { return agent.AgentName; });
   var agentIdsByName = agents.reduce(function(map, agent) {
     map[agent.AgentName] = agent.AgentID;
     return map;
   }, {});
-  var agentById = agents.reduce(function(map, agent) { map[agent.AgentID] = agent.AgentName; return map; }, {});
   var agentRates = {};
   agents.forEach(function(agent) {
     agentRates[agent.AgentName] = {};
@@ -33,7 +36,17 @@ function api(sessionToken) {
       (agentRates[agent.AgentName][rate.ProductID] || (agentRates[agent.AgentName][rate.ProductID] = [])).push({ min: Number(rate.MinQty), max: Number(rate.MaxQty), price: Number(rate.SellPrice) });
     });
   });
-  var orders = getOrders().filter(function(order) {
+  return { agents: agentNames, agentIdsByName: agentIdsByName, agentRates: agentRates };
+}
+
+function buildOrdersPayload_(sessionToken) {
+  var user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
+  var canViewCost = user.role === 'OWNER';
+  var agentById = getAgents().reduce(function(map, agent) {
+    map[agent.AgentID] = agent.AgentName;
+    return map;
+  }, {});
+  return getOrders().filter(function(order) {
     return String(order.Status).toUpperCase() !== 'CANCELLED';
   }).map(function(order) {
     var orderDate = order.OrderDate || order.Created || new Date();
@@ -54,13 +67,55 @@ function api(sessionToken) {
       customerAddress: String(order.CustomerAddress || ''),
       customerPhone: String(order.CustomerPhone || ''),
       totalCost: canViewCost ? Number(order.TotalCost) : null,
-      items: order.Items.map(function(item) { return { isNonStock: false, productId: item.ProductID, productName: item.ProductName, qty: Number(item.Qty), unitPrice: Number(item.Price), cost: canViewCost ? Number(item.Cost) : null, total: Number(item.Amount) }; })
+      items: order.Items.map(function(item) {
+        var product = getProductById(item.ProductID);
+        return {
+          isNonStock: !product,
+          productId: item.ProductID,
+          productName: item.ProductName,
+          selectedUnit: String(item.SelectedUnit || '__base__'),
+          qty: Number(item.Qty),
+          unitPrice: Number(item.UnitPrice || item.Price),
+          cost: canViewCost ? Number(item.Cost) : null,
+          total: Number(item.TotalPrice || item.Amount)
+        };
+      })
     };
   });
+}
+
+function buildDashboardPayload_(sessionToken) {
+  var user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
   var dashboard = getDashboard();
-  if (!canViewCost) {
+  if (user.role !== 'OWNER') {
     dashboard.cost = null;
     dashboard.profit = null;
   }
-  return { products: products, agents: agentNames, agentIdsByName: agentIdsByName, agentRates: agentRates, orders: orders, dashboard: dashboard, user: user };
+  return dashboard;
+}
+
+function api(sessionToken) {
+  var user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
+  var agentsBundle = buildAgentsPayload_(sessionToken);
+  return {
+    products: buildProductsPayload_(sessionToken),
+    agents: agentsBundle.agents,
+    agentIdsByName: agentsBundle.agentIdsByName,
+    agentRates: agentsBundle.agentRates,
+    orders: buildOrdersPayload_(sessionToken),
+    dashboard: buildDashboardPayload_(sessionToken),
+    user: user
+  };
+}
+
+function listProducts(sessionToken) {
+  return buildProductsPayload_(sessionToken);
+}
+
+function getAgentsBundle(sessionToken) {
+  return buildAgentsPayload_(sessionToken);
+}
+
+function listOrders(sessionToken) {
+  return buildOrdersPayload_(sessionToken);
 }

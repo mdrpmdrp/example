@@ -16,7 +16,7 @@ function applyStockMovement_(productId, quantity, type, reference, remark) {
 
   var row = findRow(SHEETS.PRODUCTS, productId);
   getSheet(SHEETS.PRODUCTS).getRange(row, 7).setValue(balance);
-  getSheet(SHEETS.PRODUCTS).getRange(row, 12).setValue(new Date());
+  getSheet(SHEETS.PRODUCTS).getRange(row, 10).setValue(new Date());
   appendObject(SHEETS.STOCK_MOVEMENT, [generateId('STK', SHEETS.STOCK_MOVEMENT), new Date(), productId, type || 'ADJUST', delta, balance, reference || '', remark || '']);
   return balance;
 }

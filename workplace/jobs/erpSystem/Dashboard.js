@@ -13,8 +13,8 @@ function getDashboard() {
 }
 
 function getDashboardData(sessionToken) {
-  const user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
-  const dashboard = getDashboard();
+  var user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
+  var dashboard = getDashboard();
   if (user.role !== 'OWNER') { dashboard.cost = null; dashboard.profit = null; }
   return dashboard;
 }
