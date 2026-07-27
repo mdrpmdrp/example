@@ -236,19 +236,40 @@ function cancelOrder(sessionToken, orderId) {
   requireRole(sessionToken, ['OWNER', 'ADMIN']);
   const id = String(orderId || '').trim();
   if (!id) throw new Error('Order ID is required');
+
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
+
   try {
     const order = getOrders().find(function (item) { return item.OrderID === id; });
     if (!order) throw new Error('Order not found');
     if (String(order.Status).toUpperCase() === 'CANCELLED') throw new Error('Order is already cancelled');
+
+    // 1. คืนสต๊อกสินค้า
     order.Items.forEach(function (item) {
-      applyStockMovement_(item.ProductID, Number(item.Qty), 'IN', id, 'Order cancelled');
+      // ดึงจำนวนชิ้นฐานจริงที่จะต้อง คืนเข้าคลัง (ถ้าไม่มี BaseQtyNeeded ให้ fallback ไปใช้ Qty)
+      const qtyToRestore = Number(item.BaseQtyNeeded || item.Qty || 0);
+
+      if (qtyToRestore > 0) {
+        // เช็กว่าเป็นสินค้านอกคลังหรือไม่ (ถ้าไม่มีใน Master Product ถือว่าเป็น Non-Stock)
+        const product = getProductById(item.ProductID);
+        const isNonStock = !product || Boolean(product.isNonStock);
+
+        // ตัดคืนสต๊อกเฉพาะสินค้าที่มีในระบบสต๊อกหลักเท่านั้น
+        if (!isNonStock) {
+          applyStockMovement_(item.ProductID, qtyToRestore, 'IN', id, 'Order cancelled');
+        }
+      }
     });
+
+    // 2. อัปเดตสถานะออเดอร์ใน Sheet ORDERS เป็น CANCELLED
     const row = findRow(SHEETS.ORDERS, id);
-    if (row < 0) throw new Error('Order not found');
+    if (row < 0) throw new Error('Order not found in sheet');
+    
     getSheet(SHEETS.ORDERS).getRange(row, getOrderSchemaStatusColumn_()).setValue('CANCELLED');
+
     return { orderId: id, status: 'CANCELLED' };
+
   } finally {
     lock.releaseLock();
   }
