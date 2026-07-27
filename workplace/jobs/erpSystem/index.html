@@ -2707,7 +2707,7 @@
                 const agent = document.getElementById('new-order-agent').value;
                 const prodId = row.querySelector('.cart-prod-select').value;
                 const prod = products.find(p => p.id === prodId);
-
+                console.log('prod', prod);
                 const multiplier = getStockAdjustmentMultiplier(prod, selectedUnitValue);
                 const baseQty = qty * multiplier;
 
@@ -3095,16 +3095,32 @@
         // prices, stock checks, order IDs and writes are all recalculated under a lock.
         function saveOrder() {
             if (orderSaveInFlight) return;
-            const agent = document.getElementById('new-order-agent').value;
-            const rows = document.querySelectorAll('#cart-rows-container tr');
+
+            // 1. ดึงค่าจาก Input
+            const agent = document.getElementById('new-order-agent')?.value;
             const agentId = agentIdsByName[agent];
-            const customerName = document.getElementById('order-customer-name').value.trim();
-            const customerAddress = document.getElementById('order-customer-address').value.trim();
-            const customerPhone = document.getElementById('order-customer-phone').value.trim();
-            const shippingType = document.getElementById('order-shipping-type').value;
-            const shippingCustom = Number(document.getElementById('order-shipping-custom').value) || 0;
-            const discountAmount = Math.max(0, Number(document.getElementById('order-discount-amount').value) || 0);
-            const shippingAmount = shippingType === 'VAN' ? 350 : shippingType === 'CHILLED' ? 150 : shippingType === 'PARCEL' ? 60 : (shippingType === 'MESSENGER' || shippingType === 'SPLIT') ? Math.max(0, shippingCustom) : 0;
+            const customerName = document.getElementById('order-customer-name')?.value.trim() || '';
+            const customerAddress = document.getElementById('order-customer-address')?.value.trim() || '';
+            const customerPhone = document.getElementById('order-customer-phone')?.value.trim() || '';
+
+            const shippingType = document.getElementById('order-shipping-type')?.value;
+            const shippingCustom = Number(document.getElementById('order-shipping-custom')?.value) || 0;
+            const discountAmount = Math.max(0, Number(document.getElementById('order-discount-amount')?.value) || 0);
+
+            // 2. คำนวณค่าจัดส่ง
+            let shippingAmount = 0;
+            switch (shippingType) {
+                case 'VAN': shippingAmount = 350; break;
+                case 'CHILLED': shippingAmount = 150; break;
+                case 'PARCEL': shippingAmount = 60; break;
+                case 'MESSENGER':
+                case 'SPLIT':
+                    shippingAmount = Math.max(0, shippingCustom);
+                    break;
+                default: shippingAmount = 0;
+            }
+
+            // 3. Validations เบื้องต้น
             if ((shippingType === 'MESSENGER' || shippingType === 'SPLIT') && shippingAmount <= 0) {
                 showNotification('กรุณาระบุค่าส่งเองก่อนบันทึกบิล', true);
                 return;
@@ -3114,6 +3130,8 @@
                 showNotification('ไม่พบข้อมูลตัวแทน กรุณารีเฟรชหน้าแล้วลองใหม่', true);
                 return;
             }
+
+            const rows = document.querySelectorAll('#cart-rows-container tr');
             if (!rows.length) {
                 showNotification('กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ', true);
                 return;
@@ -3123,12 +3141,15 @@
             let totalQty = 0;
             let totalAmount = 0;
             let totalCost = 0;
-            let hasStockError = false;
 
+            // Map สำหรับสะสมจำนวนการใช้อยู่ในคลัง (แก้ปัญหาใส่สินค้าซ้ำหลายแถว)
+            const requiredStockByProduct = {};
+
+            // 4. Loop ตรวจสอบและเตรียมข้อมูลสินค้า
             for (let i = 0; i < rows.length; i++) {
                 const r = rows[i];
-                const type = r.querySelector('.cart-type-select').value;
-                const qty = parseInt(r.querySelector('.cart-qty-input').value) || 0;
+                const type = r.querySelector('.cart-type-select')?.value;
+                const qty = parseInt(r.querySelector('.cart-qty-input')?.value, 10) || 0;
                 const unitSelect = r.querySelector('.cart-unit-select');
                 const selectedUnitValue = unitSelect ? unitSelect.value : '__base__';
 
@@ -3140,28 +3161,36 @@
                 const isNonStock = (type === 'NON_STOCK');
                 let prodId = "";
                 let prodName = "";
-                let unitPrice = parseInt(r.querySelector('.cart-total-price').dataset.unitPrice);
-                let unitCost = parseInt(r.querySelector('.cart-total-price').dataset.unitCost);
+
+                const priceDataset = r.querySelector('.cart-total-price')?.dataset;
+                const unitPrice = parseInt(priceDataset?.unitPrice, 10) || 0;
+                const unitCost = parseInt(priceDataset?.unitCost, 10) || 0;
                 let baseQtyNeeded = qty;
 
                 if (isNonStock) {
                     prodId = "CUSTOM_" + (i + 1);
-                    prodName = r.querySelector('.cart-custom-name').value.trim();
+                    prodName = r.querySelector('.cart-custom-name')?.value.trim() || '';
                     if (!prodName) {
                         showNotification("กรุณากรอกรายละเอียดชื่อสินค้าพิเศษนอกคลังด้วยค่ะ", true);
                         return;
                     }
                 } else {
-                    prodId = r.querySelector('.cart-prod-select').value;
+                    prodId = r.querySelector('.cart-prod-select')?.value;
                     const prod = products.find(p => p.id === prodId);
                     prodName = prod ? prod.name : prodId;
-                    const multiplier = getStockAdjustmentMultiplier(prod, selectedUnitValue);
+
+                    const multiplier = typeof getStockAdjustmentMultiplier === 'function'
+                        ? getStockAdjustmentMultiplier(prod, selectedUnitValue)
+                        : 1;
                     baseQtyNeeded = qty * multiplier;
 
-                    if (prod.stock < baseQtyNeeded) {
-                        showNotification(`สินค้า ${prodId} คลังไม่พอส่ง (ต้องการ ${baseQtyNeeded} ${getProductUnitName(prod)} แต่เหลือในสต๊อกหลักเพียง ${formatProductStockLabel(prod)})`, true);
-                        hasStockError = true;
-                        break;
+                    // สะสมความต้องการสินค้าในสต๊อก (เผื่อมีรายการซ้ำ)
+                    requiredStockByProduct[prodId] = (requiredStockByProduct[prodId] || 0) + baseQtyNeeded;
+
+                    // ตรวจสอบสต๊อกรวมสะสม
+                    if (prod && prod.stock < requiredStockByProduct[prodId]) {
+                        showNotification(`สินค้า ${prodName || prodId} คลังไม่พอส่ง (ต้องการรวม ${requiredStockByProduct[prodId]} ${getProductUnitName(prod)} แต่เหลือในสต๊อกหลักเพียง ${formatProductStockLabel(prod)})`, true);
+                        return;
                     }
                 }
 
@@ -3184,12 +3213,17 @@
                 totalCost += (unitCost * qty);
             }
 
-            if (hasStockError) return;
-
+            // 5. ส่งข้อมูลไปยัง Backend
             const button = document.querySelector('button[onclick="saveOrder()"]');
             orderSaveInFlight = true;
-            if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
+
+            if (button) {
+                button.disabled = true;
+                button.setAttribute('aria-busy', 'true');
+            }
+
             showLoadingModal("กำลังบันทึกคำสั่งซื้อ...", "กรุณารอสักครู่ ระบบกำลังตัดยอดสต๊อกและบันทึกออเดอร์");
+
             google.script.run
                 .withSuccessHandler(function () {
                     orderSaveInFlight = false;
@@ -3203,13 +3237,24 @@
                     orderSaveInFlight = false;
                     if (button) { button.disabled = false; button.removeAttribute('aria-busy'); }
                     hideLoadingModal();
-                    if (isSessionError(error)) endSession(true);
+                    if (typeof isSessionError === 'function' && isSessionError(error)) {
+                        endSession(true);
+                    }
                     showNotification(serverErrorMessage(error), true);
                 })
-                .createOrder(sessionToken, { agentId: agentId, items: cartItems, customerName: customerName, customerAddress: customerAddress, customerPhone: customerPhone, shippingType: shippingType, shippingAmount: shippingAmount, discountAmount: discountAmount });
+                .createOrder(sessionToken, {
+                    agentId: agentId,
+                    items: cartItems,
+                    customerName: customerName,
+                    customerAddress: customerAddress,
+                    customerPhone: customerPhone,
+                    shippingType: shippingType,
+                    shippingAmount: shippingAmount,
+                    discountAmount: discountAmount
+                });
         }
 
-         // Keep urgent stock corrections auditable and authoritative as well.
+        // Keep urgent stock corrections auditable and authoritative as well.
         function adjustStockDirectly(productId, amount) {
             const product = products.find(function (item) { return item.id === productId; });
             if (!product || !Number.isInteger(amount) || amount === 0) {

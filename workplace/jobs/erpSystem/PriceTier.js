@@ -37,8 +37,16 @@ function quoteTierPrice(sessionToken, agentId, productId, quantity) {
   if (!Number.isInteger(qty) || qty < 1) throw new Error('Quantity must be at least 1');
   const product = getProductById(productId);
   if (!product) throw new Error('Product not found');
+  
+  // ค้นหา Tier ตามจำนวนชิ้นฐาน (qty)
   const tier = getAgentRates(agentId).filter(function(rate) {
     return rate.ProductID === productId && qty >= Number(rate.MinQty) && qty <= Number(rate.MaxQty);
   })[0];
-  return { productId: productId, quantity: qty, unitPrice: tier ? Number(tier.SellPrice) : Number(product.RetailPrice) };
+  
+  // ราคา SellPrice / RetailPrice ที่ได้ จะเป็น "ราคาต่อ 1 หน่วยฐาน"
+  return { 
+    productId: productId, 
+    quantity: qty, 
+    unitPrice: tier ? Number(tier.SellPrice) : Number(product.RetailPrice) 
+  };
 }
