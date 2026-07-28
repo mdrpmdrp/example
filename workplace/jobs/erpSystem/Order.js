@@ -30,6 +30,212 @@ function normalizeOrderUnitValue_(product, selectedUnit) {
   return unit;
 }
 
+function getOrderRecordMonthKey_(value) {
+  return getMonthKeyFromDate(value);
+}
+
+function getOrderSourceSheetsForMonth_(monthKey) {
+  var normalizedMonthKey = normalizeMonthKey(monthKey);
+  var currentMonthKey = getMonthKeyFromDate(new Date());
+  return normalizedMonthKey === currentMonthKey
+    ? {
+      ordersSheet: SHEETS.ORDERS,
+      itemsSheet: SHEETS.ORDER_ITEMS
+    }
+    : {
+      ordersSheet: SHEETS.BACKUP_ORDERS,
+      itemsSheet: SHEETS.BACKUP_ORDER_ITEMS
+    };
+}
+
+function ensureOrderCancellationColumns_() {
+  [SHEETS.ORDERS, SHEETS.BACKUP_ORDERS].forEach(function (sheetName) {
+    var sheet = getSheet(sheetName);
+    if (!sheet) return;
+    var lastCol = sheet.getLastColumn();
+    if (lastCol < 20) {
+      sheet.insertColumnsAfter(lastCol, 20 - lastCol);
+    }
+    sheet.getRange(1, 19, 1, 2).setValues([['CancelledAt', 'CancelledBy']]);
+  });
+}
+
+function getOrderRowsForMonth_(monthKey) {
+  var normalizedMonthKey = normalizeMonthKey(monthKey);
+  var sourceSheets = getOrderSourceSheetsForMonth_(normalizedMonthKey);
+  var orderRows = getData(sourceSheets.ordersSheet);
+  var itemRows = getData(sourceSheets.itemsSheet);
+  var tz = Session.getScriptTimeZone();
+
+  var filteredOrders = orderRows.filter(function (row) {
+    return isDateInMonth_(row[1], normalizedMonthKey);
+  });
+
+  var orderIds = {};
+  filteredOrders.forEach(function (row) {
+    orderIds[row[0]] = true;
+  });
+
+  var filteredItems = itemRows.filter(function (row) {
+    return orderIds[row[1]];
+  });
+
+  return {
+    monthKey: normalizedMonthKey,
+    orders: filteredOrders,
+    items: filteredItems,
+    tz: tz
+  };
+}
+
+function buildOrderPayloadFromRows_(rows, canViewCost) {
+  var orderRows = rows.orders;
+  var itemRows = rows.items;
+  var tz = rows.tz || Session.getScriptTimeZone();
+  var agentById = getAgents().reduce(function (map, agent) {
+    map[agent.AgentID] = agent.AgentName;
+    return map;
+  }, {});
+  var products = getProducts();
+
+  return orderRows.map(function (row) {
+    var orderDate = row[1] || new Date();
+    return {
+      orderId: row[0],
+      createdAt: orderDate.getTime(),
+      orderDateKey: Utilities.formatDate(orderDate, tz, 'yyyy-MM-dd'),
+      orderDateLabel: Utilities.formatDate(orderDate, tz, 'dd/MM/yyyy'),
+      orderTimeLabel: Utilities.formatDate(orderDate, tz, 'HH:mm'),
+      status: String(row[7] || 'COMPLETED'),
+      cancelledAt: row[18] || '',
+      cancelledBy: row[19] || '',
+      agent: agentById[row[2]] || row[2],
+      totalQty: Number(row[3]) || 0,
+      subtotalAmount: Number(row[16] || row[4]) || 0,
+      shippingType: String(row[13] || 'NONE'),
+      shippingAmount: Number(row[14]) || 0,
+      discountAmount: Number(row[15]) || 0,
+      totalAmount: Number(row[4]) || 0,
+      customerName: String(row[10] || ''),
+      customerAddress: String(row[11] || ''),
+      customerPhone: String(row[12] || ''),
+      totalCost: canViewCost ? Number(row[5]) || 0 : null,
+      items: itemRows.filter(function (item) {
+        return item[1] === row[0];
+      }).map(function (item) {
+        var product = products.find(function (entry) { return entry.ProductID === item[2]; });
+        return {
+          isNonStock: !product,
+          productId: item[2],
+          productName: product ? product.ProductName : item[2],
+          selectedUnit: String(item[3] || '__base__'),
+          qty: Number(item[4]) || 0,
+          unitPrice: Number(item[6] || 0),
+          cost: canViewCost ? Number(item[7]) || 0 : null,
+          total: Number(item[8] || 0)
+        };
+      })
+    };
+  });
+}
+
+function archiveOrdersBeforeCurrentMonth() {
+  ensureOrderCancellationColumns_();
+  var currentMonthKey = getMonthKeyFromDate(new Date());
+  var orderHeaders = [
+    "OrderID",
+    "OrderDate",
+    "AgentID",
+    "TotalQty",
+    "TotalAmount",
+    "TotalCost",
+    "Profit",
+    "Status",
+    "CreatedBy",
+    "Created",
+    "CustomerName",
+    "CustomerAddress",
+    "CustomerPhone",
+    "ShippingType",
+    "ShippingAmount",
+    "DiscountAmount",
+    "SubtotalAmount",
+    "NetAmount",
+    "CancelledAt",
+    "CancelledBy"
+  ];
+  var itemHeaders = [
+    "ItemID",
+    "OrderID",
+    "ProductID",
+    "Unit",
+    "Qty",
+    "BaseUnitQty",
+    "UnitPrice",
+    "Cost",
+    "TotalPrice"
+  ];
+
+  ensureSheetWithHeaders(SHEETS.BACKUP_ORDERS, orderHeaders);
+  ensureSheetWithHeaders(SHEETS.BACKUP_ORDER_ITEMS, itemHeaders);
+
+  var orderSheet = getSheet(SHEETS.ORDERS);
+  var itemSheet = getSheet(SHEETS.ORDER_ITEMS);
+  var orderRows = getData(SHEETS.ORDERS);
+  var itemRows = getData(SHEETS.ORDER_ITEMS);
+
+  if (!orderRows.length) {
+    return { ordersMoved: 0, orderItemsMoved: 0, monthKey: currentMonthKey };
+  }
+
+  var ordersToMove = [];
+  var orderIds = {};
+  orderRows.forEach(function (row, index) {
+    if (getOrderRecordMonthKey_(row[1]) && getOrderRecordMonthKey_(row[1]) < currentMonthKey) {
+      ordersToMove.push({ row: row, rowIndex: index + 2 });
+      orderIds[row[0]] = true;
+    }
+  });
+
+  if (!ordersToMove.length) {
+    return { ordersMoved: 0, orderItemsMoved: 0, monthKey: currentMonthKey };
+  }
+
+  var orderItemsToMove = [];
+  itemRows.forEach(function (row, index) {
+    if (orderIds[row[1]]) {
+      orderItemsToMove.push({ row: row, rowIndex: index + 2 });
+    }
+  });
+
+  appendRows_(SHEETS.BACKUP_ORDERS, ordersToMove.map(function (entry) { return entry.row; }));
+  appendRows_(SHEETS.BACKUP_ORDER_ITEMS, orderItemsToMove.map(function (entry) { return entry.row; }));
+
+  deleteRowsByIndexes_(itemSheet, orderItemsToMove.map(function (entry) { return entry.rowIndex; }));
+  deleteRowsByIndexes_(orderSheet, ordersToMove.map(function (entry) { return entry.rowIndex; }));
+
+  return {
+    ordersMoved: ordersToMove.length,
+    orderItemsMoved: orderItemsToMove.length,
+    monthKey: currentMonthKey
+  };
+}
+
+function installMonthlyOrderBackupTrigger() {
+  var handlers = ScriptApp.getProjectTriggers().filter(function (trigger) {
+    return trigger.getHandlerFunction && trigger.getHandlerFunction() === 'archiveOrdersBeforeCurrentMonth';
+  });
+  handlers.forEach(function (trigger) {
+    ScriptApp.deleteTrigger(trigger);
+  });
+  ScriptApp.newTrigger('archiveOrdersBeforeCurrentMonth')
+    .timeBased()
+    .onMonthDay(1)
+    .atHour(1)
+    .create();
+  return { success: true };
+}
+
 function buildOrderLines_(sessionToken, payload, stockBufferByProduct) {
   const requiredStock = {};
   const lines = payload.items.map(function (item) {
@@ -130,6 +336,8 @@ function getOrders() {
       Status: row[7],
       CreatedBy: row[8],
       Created: row[9],
+      CancelledAt: row[18],
+      CancelledBy: row[19],
       CustomerName: String(row[10] || ''),
       CustomerAddress: String(row[11] || ''),
       CustomerPhone: String(row[12] || ''),
@@ -157,6 +365,87 @@ function getOrders() {
       })
     };
   });
+}
+
+function getOrdersByMonth(monthKey) {
+  var rows = getOrderRowsForMonth_(monthKey);
+  var orderRowMap = {};
+  rows.orders.forEach(function (row) {
+    orderRowMap[row[0]] = row;
+  });
+  return buildOrderPayloadFromRows_(rows, true).map(function (order) {
+    var sourceRow = orderRowMap[order.orderId] || [];
+    return {
+      OrderID: order.orderId,
+      OrderDate: sourceRow[1] || new Date(),
+      AgentID: order.agent,
+      TotalQty: order.totalQty,
+      TotalAmount: order.totalAmount,
+      TotalCost: Number(order.totalCost) || 0,
+      Profit: Number(order.totalAmount || 0) - Number(order.totalCost || 0),
+      Status: sourceRow[7] || 'COMPLETED',
+      CreatedBy: '',
+      Created: sourceRow[9] || new Date(),
+      CancelledAt: sourceRow[18] || '',
+      CancelledBy: sourceRow[19] || '',
+      CustomerName: order.customerName,
+      CustomerAddress: order.customerAddress,
+      CustomerPhone: order.customerPhone,
+      ShippingType: order.shippingType,
+      ShippingAmount: order.shippingAmount,
+      DiscountAmount: order.discountAmount,
+      SubtotalAmount: order.subtotalAmount,
+      NetAmount: order.totalAmount,
+      Items: order.items.map(function (item) {
+        return {
+          ProductID: item.productId,
+          ProductName: item.productName,
+          SelectedUnit: item.selectedUnit,
+          Qty: item.qty,
+          BaseQtyNeeded: item.qty,
+          UnitPrice: item.unitPrice,
+          Price: item.unitPrice,
+          Cost: item.cost,
+          TotalPrice: item.total,
+          Amount: item.total
+        };
+      })
+    };
+  });
+}
+
+function getOrderRecordForCancellation_(orderId) {
+  var id = String(orderId || '').trim();
+  if (!id) return null;
+
+  var currentOrderRow = findRow(SHEETS.ORDERS, id);
+  if (currentOrderRow > 0) {
+    var currentOrder = getOrders().find(function (item) { return item.OrderID === id; });
+    if (currentOrder) {
+      return {
+        sheetName: SHEETS.ORDERS,
+        rowIndex: currentOrderRow,
+        order: currentOrder
+      };
+    }
+  }
+
+  var backupOrderRow = findRow(SHEETS.BACKUP_ORDERS, id);
+  if (backupOrderRow > 0) {
+    var backupRows = getData(SHEETS.BACKUP_ORDERS);
+    var backupRow = backupRows[backupOrderRow - 2];
+    var monthKey = getMonthKeyFromDate(backupRow && backupRow[1]);
+    var backupOrder = getOrdersByMonth(monthKey).find(function (item) { return item.OrderID === id; });
+    if (backupOrder) {
+      return {
+        sheetName: SHEETS.BACKUP_ORDERS,
+        rowIndex: backupOrderRow,
+        order: backupOrder
+      };
+    }
+  }
+
+  return null;
 }
 
 function createOrder(sessionToken, payload) {
@@ -331,7 +620,7 @@ function updateOrder(sessionToken, orderId, payload) {
 }
 
 function cancelOrder(sessionToken, orderId) {
-  requireRole(sessionToken, ['OWNER', 'ADMIN']);
+  var user = requireRole(sessionToken, ['OWNER', 'ADMIN']);
   const id = String(orderId || '').trim();
   if (!id) throw new Error('Order ID is required');
 
@@ -339,12 +628,13 @@ function cancelOrder(sessionToken, orderId) {
   lock.waitLock(30000);
 
   try {
-    const order = getOrders().find(function (item) { return item.OrderID === id; });
-    if (!order) throw new Error('Order not found');
-    if (String(order.Status).toUpperCase() === 'CANCELLED') throw new Error('Order is already cancelled');
+    ensureOrderCancellationColumns_();
+    const target = getOrderRecordForCancellation_(id);
+    if (!target || !target.order) throw new Error('Order not found');
+    if (String(target.order.Status).toUpperCase() === 'CANCELLED') throw new Error('Order is already cancelled');
 
     // 1. คืนสต๊อกสินค้า
-    order.Items.forEach(function (item) {
+    target.order.Items.forEach(function (item) {
       // ดึงจำนวนชิ้นฐานจริงที่จะต้อง คืนเข้าคลัง (ถ้าไม่มี BaseQtyNeeded ให้ fallback ไปใช้ Qty)
       const qtyToRestore = Number(item.BaseQtyNeeded || item.Qty || 0);
 
@@ -360,11 +650,10 @@ function cancelOrder(sessionToken, orderId) {
       }
     });
 
-    // 2. อัปเดตสถานะออเดอร์ใน Sheet ORDERS เป็น CANCELLED
-    const row = findRow(SHEETS.ORDERS, id);
-    if (row < 0) throw new Error('Order not found in sheet');
-    
-    getSheet(SHEETS.ORDERS).getRange(row, getOrderSchemaStatusColumn_()).setValue('CANCELLED');
+    // 2. อัปเดตสถานะออเดอร์ในชีทต้นทางของบิลนั้น
+    getSheet(target.sheetName).getRange(target.rowIndex, getOrderSchemaStatusColumn_()).setValue('CANCELLED');
+    getSheet(target.sheetName).getRange(target.rowIndex, 19).setValue(new Date());
+    getSheet(target.sheetName).getRange(target.rowIndex, 20).setValue(user && user.username ? user.username : '');
 
     return { orderId: id, status: 'CANCELLED' };
 

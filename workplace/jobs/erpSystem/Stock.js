@@ -15,7 +15,8 @@ function applyStockMovement_(productId, quantity, type, reference, remark) {
   if (balance < 0) throw new Error('Insufficient stock for ' + productId);
 
   var row = findRow(SHEETS.PRODUCTS, productId);
-  getSheet(SHEETS.PRODUCTS).getRange(row, 7).setValue(balance);
+  // Column 6 = Stock, column 7 = MinStock.
+  getSheet(SHEETS.PRODUCTS).getRange(row, 6).setValue(balance);
   getSheet(SHEETS.PRODUCTS).getRange(row, 10).setValue(new Date());
   appendObject(SHEETS.STOCK_MOVEMENT, [generateId('STK', SHEETS.STOCK_MOVEMENT), new Date(), productId, type || 'ADJUST', delta, balance, reference || '', remark || '']);
   return balance;

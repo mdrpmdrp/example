@@ -19,6 +19,7 @@ The shared presentation layer lives in [`style.html`](style.html). It is intenti
 - `.erp-control`: text/select control with the shared focus treatment.
 - `.erp-action` with `.erp-action-primary`, `.erp-action-secondary`, or `.erp-action-danger`: touch-safe actions.
 - `.erp-icon-button`: centered icon-only control with a touch-safe target.
+- `.erp-modal-header`, `.erp-modal-header--sticky`, `.erp-modal-header__group`, `.erp-modal-header__icon`, and accent variants: shared modal chrome for dialogs across the app.
 - `.erp-data-cell`: safe wrapping behavior for generated table content.
 - `.erp-table-region`: containment boundary for larger data regions.
 

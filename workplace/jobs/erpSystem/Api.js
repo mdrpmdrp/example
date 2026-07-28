@@ -39,45 +39,45 @@ function buildAgentsPayload_(sessionToken) {
   return { agents: agentNames, agentIdsByName: agentIdsByName, agentRates: agentRates };
 }
 
-function buildOrdersPayload_(sessionToken) {
+function buildOrdersPayload_(sessionToken, monthKey) {
   var user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
   var canViewCost = user.role === 'OWNER';
-  var agentById = getAgents().reduce(function(map, agent) {
-    map[agent.AgentID] = agent.AgentName;
-    return map;
-  }, {});
-  return getOrders().filter(function(order) {
-    return String(order.Status).toUpperCase() !== 'CANCELLED';
-  }).map(function(order) {
-    var orderDate = order.OrderDate || order.Created || new Date();
-    var tz = Session.getScriptTimeZone();
+  var rows = getOrderRowsForMonth_(monthKey);
+  rows.items = rows.items.filter(function (item) {
+    return rows.orders.some(function (order) { return order[0] === item[1]; });
+  });
+  return buildOrderPayloadFromRows_(rows, canViewCost).map(function(order) {
     return {
-      orderId: order.OrderID,
-      orderDateKey: Utilities.formatDate(orderDate, tz, 'yyyy-MM-dd'),
-      orderDateLabel: Utilities.formatDate(orderDate, tz, 'dd/MM/yyyy'),
-      orderTimeLabel: Utilities.formatDate(orderDate, tz, 'HH:mm'),
-      agent: agentById[order.AgentID] || order.AgentID,
-      totalQty: Number(order.TotalQty),
-      subtotalAmount: Number(order.SubtotalAmount || order.TotalAmount),
-      shippingType: String(order.ShippingType || 'NONE'),
-      shippingAmount: Number(order.ShippingAmount || 0),
-      discountAmount: Number(order.DiscountAmount || 0),
-      totalAmount: Number(order.TotalAmount),
-      customerName: String(order.CustomerName || ''),
-      customerAddress: String(order.CustomerAddress || ''),
-      customerPhone: String(order.CustomerPhone || ''),
-      totalCost: canViewCost ? Number(order.TotalCost) : null,
-      items: order.Items.map(function(item) {
-        var product = getProductById(item.ProductID);
+      orderId: order.orderId,
+      createdAt: order.createdAt,
+      orderDateKey: order.orderDateKey,
+      orderDateLabel: order.orderDateLabel,
+      orderTimeLabel: order.orderTimeLabel,
+      status: order.status,
+      cancelledAt: order.cancelledAt,
+      cancelledBy: order.cancelledBy,
+      agent: order.agent,
+      totalQty: Number(order.totalQty),
+      subtotalAmount: Number(order.subtotalAmount),
+      shippingType: String(order.shippingType || 'NONE'),
+      shippingAmount: Number(order.shippingAmount || 0),
+      discountAmount: Number(order.discountAmount || 0),
+      totalAmount: Number(order.totalAmount),
+      customerName: String(order.customerName || ''),
+      customerAddress: String(order.customerAddress || ''),
+      customerPhone: String(order.customerPhone || ''),
+      totalCost: canViewCost ? Number(order.totalCost) : null,
+      items: order.items.map(function(item) {
+        var product = getProductById(item.productId);
         return {
           isNonStock: !product,
-          productId: item.ProductID,
-          productName: item.ProductName,
-          selectedUnit: String(item.SelectedUnit || '__base__'),
-          qty: Number(item.Qty),
-          unitPrice: Number(item.UnitPrice || item.Price),
-          cost: canViewCost ? Number(item.Cost) : null,
-          total: Number(item.TotalPrice || item.Amount)
+          productId: item.productId,
+          productName: item.productName,
+          selectedUnit: String(item.selectedUnit || '__base__'),
+          qty: Number(item.qty),
+          unitPrice: Number(item.unitPrice || 0),
+          cost: canViewCost ? Number(item.cost) : null,
+          total: Number(item.total)
         };
       })
     };
@@ -102,7 +102,7 @@ function api(sessionToken) {
     agents: agentsBundle.agents,
     agentIdsByName: agentsBundle.agentIdsByName,
     agentRates: agentsBundle.agentRates,
-    orders: buildOrdersPayload_(sessionToken),
+    orders: buildOrdersPayload_(sessionToken, getMonthKeyFromDate(new Date())),
     dashboard: buildDashboardPayload_(sessionToken),
     user: user
   };
@@ -116,6 +116,6 @@ function getAgentsBundle(sessionToken) {
   return buildAgentsPayload_(sessionToken);
 }
 
-function listOrders(sessionToken) {
-  return buildOrdersPayload_(sessionToken);
+function listOrders(sessionToken, monthKey) {
+  return buildOrdersPayload_(sessionToken, monthKey);
 }

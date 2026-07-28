@@ -11,6 +11,7 @@ function getSheet(sheetName) {
 function getData(sheetName) {
 
   const sheet = getSheet(sheetName);
+  if (!sheet) return [];
 
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
@@ -54,6 +55,86 @@ function appendObject(sheetName,data){
 
   sheet.appendRow(data);
 
+}
+
+function ensureSheetWithHeaders(sheetName, headers) {
+  const ss = SpreadsheetApp.getActive();
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length)
+      .setFontWeight("bold")
+      .setBackground("#1565C0")
+      .setFontColor("white");
+    sheet.setFrozenRows(1);
+    sheet.autoResizeColumns(1, headers.length);
+    return sheet;
+  }
+
+  const existingHeaders = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), headers.length)).getValues()[0];
+  const headerMatches = headers.every(function (header, index) {
+    return String(existingHeaders[index] || '') === String(header || '');
+  });
+  if (!headerMatches) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length)
+      .setFontWeight("bold")
+      .setBackground("#1565C0")
+      .setFontColor("white");
+  }
+  if (sheet.getFrozenRows() < 1) sheet.setFrozenRows(1);
+  return sheet;
+}
+
+function getMonthKeyFromDate(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) return '';
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM');
+}
+
+function normalizeMonthKey(value) {
+  const key = String(value || '').trim();
+  if (/^\d{4}-\d{2}$/.test(key)) return key;
+  return getMonthKeyFromDate(new Date());
+}
+
+function getMonthRange_(monthKey) {
+  const key = normalizeMonthKey(monthKey);
+  const parts = key.split('-');
+  const year = Number(parts[0]);
+  const monthIndex = Number(parts[1]) - 1;
+  const start = new Date(year, monthIndex, 1);
+  const end = new Date(year, monthIndex + 1, 1);
+  return { start: start, end: end };
+}
+
+function isDateInMonth_(value, monthKey) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) return false;
+  const range = getMonthRange_(monthKey);
+  return date >= range.start && date < range.end;
+}
+
+function deleteRowsByIndexes_(sheet, rowIndexes) {
+  if (!sheet || !rowIndexes || !rowIndexes.length) return;
+  rowIndexes
+    .slice()
+    .sort(function (a, b) { return b - a; })
+    .forEach(function (rowIndex) {
+      if (rowIndex > 1) {
+        sheet.deleteRow(rowIndex);
+      }
+    });
+}
+
+function appendRows_(sheetName, rows) {
+  if (!rows || !rows.length) return;
+  const sheet = getSheet(sheetName);
+  const startRow = sheet.getLastRow() + 1;
+  sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
 }
 
 function findRow(

@@ -3,6 +3,9 @@ function onOpen() {
     .createMenu("ERP")
     .addItem("Create Database", "setupDatabase")
     .addSeparator()
+    .addItem("Archive Old Orders Now", "archiveOrdersBeforeCurrentMonth")
+    .addItem("Install Monthly Archive Trigger", "installMonthlyOrderBackupTrigger")
+    .addSeparator()
     .addItem("Reset Demo Data", "resetDemoData")
     .addToUi();
 }
