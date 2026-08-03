@@ -28,7 +28,6 @@ function setupDatabase() {
   createStockMovement();
   createUsers();
   createConfig();
-  createBilling();
 
   insertDemoData();
   installMonthlyOrderBackupTrigger();
@@ -227,13 +226,6 @@ function createConfig() {
     ]
   );
 
-}
-
-function createBilling() {
-  createSheet(
-    SHEETS.BILLING,
-    ["InvoiceID", "InvoiceDate", "OrderID", "AgentID", "Amount", "Status", "CreatedBy", "Created"]
-  );
 }
 
 function insertDemoData() {

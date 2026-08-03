@@ -938,6 +938,25 @@
             return html.join('');
         }
 
+        function mockPrintInvoice() {
+            var dayOrders = getSummaryOrdersForDate(selectedSummaryDateKey);
+            var html = buildSummaryPrintHtml(selectedSummaryAgent, selectedSummaryDateKey, dayOrders);
+            var win = window.open('', '_blank');
+            if (!win) return;
+            win.document.write(html);
+            win.document.close();
+            win.focus();
+            const cleanup = () => {
+                win.close();
+            };
+
+            win.addEventListener('afterprint', cleanup, { once: true });
+            win.setTimeout(() => {
+                win.print();
+                win.setTimeout(cleanup, 0);
+            }, 50);
+        }
+
         function setSummaryDateKey(dateKey) {
             selectedSummaryDateKey = normalizeSummaryDateKey(dateKey) || getTodaySummaryDateKey();
             var monthKey = getMonthKeyFromDateKey(selectedSummaryDateKey);
@@ -1597,7 +1616,8 @@
     class="bg-[color:var(--erp-surface-muted)] text-[color:var(--erp-ink)] min-h-screen flex flex-col antialiased selection:bg-primary-100 selection:text-primary-900">
 
     <!-- ================= SPLASH SCREEN ================= -->
-    <div id="splash-screen" class="fixed inset-0 z-[60] bg-[color:var(--erp-surface-muted)] flex items-center justify-center p-4">
+    <div id="splash-screen"
+        class="fixed inset-0 z-[60] bg-[color:var(--erp-surface-muted)] flex items-center justify-center p-4">
         <div
             class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 px-6 py-8 text-center">
             <div
@@ -1607,7 +1627,8 @@
             <h2 class="text-2xl font-black tracking-tight text-slate-900">ระบบจัดการสินค้าและตัวแทน</h2>
             <p class="mt-2 text-sm text-slate-500">กำลังตรวจสอบการเข้าสู่ระบบ</p>
             <div class="splash-track mt-6 h-1.5 w-full rounded-full overflow-hidden">
-                <div id="splash-progress-bar" class="h-full w-[12%] rounded-full bg-primary-500 transition-[width] duration-1000"></div>
+                <div id="splash-progress-bar"
+                    class="h-full w-[12%] rounded-full bg-primary-500 transition-[width] duration-1000"></div>
             </div>
             <div class="mt-4 flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
                 <i class="fa-solid fa-circle-notch fa-spin text-primary-600"></i>
@@ -1709,7 +1730,8 @@
 
             <!-- ศูนย์ควบคุมโปรไฟล์และสลับสิทธิ์การใช้งาน (User Profile & Role Bar) -->
             <div class="flex items-center gap-3">
-                <div id="role-switcher" class="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                <div id="role-switcher"
+                    class="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
                     <span class="text-[11px] font-bold text-slate-500 px-2">โหมดระบบ:</span>
                     <button id="btnRoleOwner" onclick="switchRole('owner')"
                         class="px-3 py-1 text-xs font-bold rounded-md bg-white text-primary-700 shadow-sm transition-all duration-150 flex items-center gap-1.5">
@@ -1835,14 +1857,17 @@
                         </div>
                         <p class="text-2xl font-black mt-2 text-slate-800 font-mono tracking-tight" id="db-order-count">
                             0</p>
-                        <div class="text-[11px] text-slate-500 mt-2" id="db-agent-active">บิลปกติวันนี้จาก 0 ตัวแทน</div>
+                        <div class="text-[11px] text-slate-500 mt-2" id="db-agent-active">บิลปกติวันนี้จาก 0 ตัวแทน
+                        </div>
                     </div>
 
                     <!-- ต้นทุนสะสม (เฉพาะ OWNER เท่านั้น) -->
-                    <div class="erp-surface-card p-5 h-full min-h-[150px] flex flex-col justify-between owner-only-metric">
+                    <div
+                        class="erp-surface-card p-5 h-full min-h-[150px] flex flex-col justify-between owner-only-metric">
                         <div class="flex items-center justify-between gap-3">
                             <div>
-                                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">ต้นทุนรวม</div>
+                                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">ต้นทุนรวม
+                                </div>
                                 <p class="text-2xl font-black mt-2 text-slate-800 font-mono tracking-tight leading-none"
                                     id="db-total-cost">0.00</p>
                             </div>
@@ -1855,10 +1880,12 @@
                     </div>
 
                     <!-- กำไรสุทธิสะสม (เฉพาะ OWNER เท่านั้น) -->
-                    <div class="erp-surface-card p-5 h-full min-h-[150px] flex flex-col justify-between owner-only-metric">
+                    <div
+                        class="erp-surface-card p-5 h-full min-h-[150px] flex flex-col justify-between owner-only-metric">
                         <div class="flex items-center justify-between gap-3">
                             <div>
-                                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">กำไรสุทธิ</div>
+                                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">กำไรสุทธิ
+                                </div>
                                 <p class="text-2xl font-black mt-2 text-emerald-700 font-mono tracking-tight leading-none"
                                     id="db-total-profit">0.00</p>
                             </div>
@@ -1930,8 +1957,7 @@
                     <span class="text-slate-300">|</span>
                     <label for="filter-agent-select"
                         class="text-xs text-slate-600 font-bold uppercase tracking-wider">ตัวแทน:</label>
-                    <select id="filter-agent-select" onchange="renderOrdersTable()"
-                        aria-controls="orders-table"
+                    <select id="filter-agent-select" onchange="renderOrdersTable()" aria-controls="orders-table"
                         class="bg-white text-xs font-bold border border-slate-300 rounded-md p-1 px-2 min-h-11 focus:ring-1 focus:ring-primary-500 focus:outline-none">
                         <option value="ALL">แสดงตัวแทนทั้งหมด</option>
                         <!-- ดึงรายชื่อจาก JS -->
@@ -1939,9 +1965,11 @@
                 </div>
 
                 <!-- ตารางประวัติบิล -->
-                <div class="overflow-x-auto border border-slate-200 rounded-lg" id="orders-table-region" aria-live="polite" aria-atomic="true">
+                <div class="overflow-x-auto border border-slate-200 rounded-lg" id="orders-table-region"
+                    aria-live="polite" aria-atomic="true">
                     <div id="orders-table-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>
-                    <table id="orders-table" class="w-full text-left border-collapse text-[11px] leading-tight" aria-busy="false">
+                    <table id="orders-table" class="w-full text-left border-collapse text-[11px] leading-tight"
+                        aria-busy="false">
                         <caption id="orders-table-caption" class="sr-only">ประวัติบิล</caption>
                         <thead>
                             <tr class="bg-slate-100 border-b border-slate-200 text-slate-500 uppercase tracking-wider">
@@ -2213,7 +2241,7 @@
                     <div>
                         <label
                             class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">เบอร์</label>
-                        <input type="text" id="order-customer-phone" maxlength="30" placeholder="โทร"
+                        <input type="text" id="order-customer-phone" maxlength="30" placeholder="0xxxxxxxxx"
                             class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
                     </div>
                     <div>
@@ -2277,7 +2305,8 @@
                                     <th class="p-2 font-extrabold w-28">หน่วยสินค้า</th>
                                     <th class="p-2 font-extrabold text-center w-16">จำนวน</th>
                                     <th class="p-2 font-extrabold text-right w-24">ราคารวมส่ง/หน่วย</th>
-                                    <th class="p-2 font-extrabold text-right w-24 cart-cost-header hidden">ต้นทุนจริง/หน่วย</th>
+                                    <th class="p-2 font-extrabold text-right w-24 cart-cost-header hidden">
+                                        ต้นทุนจริง/หน่วย</th>
                                     <th class="p-2 font-extrabold text-right w-24">ผลรวมมูลค่า</th>
                                     <th class="p-2 font-extrabold text-center w-10">ลบออก</th>
                                 </tr>
@@ -2324,15 +2353,18 @@
     <div id="order-detail-modal" role="dialog" aria-modal="true" aria-labelledby="order-detail-modal-title"
         aria-hidden="true" tabindex="-1"
         class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-xl w-full max-w-3xl overflow-hidden shadow-md border border-slate-200 max-h-[90vh] flex flex-col">
+        <div
+            class="bg-white rounded-xl w-full max-w-3xl overflow-hidden shadow-md border border-slate-200 max-h-[90vh] flex flex-col">
             <div class="erp-modal-header erp-modal-header--info">
                 <div class="erp-modal-header__group">
                     <span class="erp-modal-header__icon erp-modal-header__icon--info">
                         <i class="fa-solid fa-receipt text-sm"></i>
                     </span>
-                    <h3 id="order-detail-modal-title" class="font-extrabold text-sm uppercase tracking-wider">รายละเอียดบิล</h3>
+                    <h3 id="order-detail-modal-title" class="font-extrabold text-sm uppercase tracking-wider">
+                        รายละเอียดบิล</h3>
                 </div>
-                <button id="order-detail-close" type="button" onclick="closeOrderDetailModal()" aria-label="ปิดหน้าต่างรายละเอียดบิล"
+                <button id="order-detail-close" type="button" onclick="closeOrderDetailModal()"
+                    aria-label="ปิดหน้าต่างรายละเอียดบิล"
                     class="min-h-11 min-w-11 text-white/80 hover:text-white transition-all text-sm">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -2346,7 +2378,8 @@
                     </div>
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
                         <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">สถานะ</div>
-                        <div id="order-detail-status" class="mt-1 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold">-</div>
+                        <div id="order-detail-status"
+                            class="mt-1 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold">-</div>
                     </div>
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
                         <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">วันที่</div>
@@ -2368,7 +2401,8 @@
                     </div>
                 </div>
 
-                <div id="order-detail-cancelled-wrap" class="hidden rounded-lg border border-rose-100 bg-rose-50 p-3 text-rose-700 text-xs space-y-1">
+                <div id="order-detail-cancelled-wrap"
+                    class="hidden rounded-lg border border-rose-100 bg-rose-50 p-3 text-rose-700 text-xs space-y-1">
                     <div class="font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
                         <i class="fa-solid fa-ban"></i>
                         <span>ยกเลิกแล้ว</span>
@@ -2389,19 +2423,23 @@
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
                         <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ยอดสินค้า</div>
-                        <div id="order-detail-subtotal" class="mt-1 text-sm font-black font-mono text-slate-800">฿0.00</div>
+                        <div id="order-detail-subtotal" class="mt-1 text-sm font-black font-mono text-slate-800">฿0.00
+                        </div>
                     </div>
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
                         <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ค่าส่ง</div>
-                        <div id="order-detail-shipping-amount" class="mt-1 text-sm font-black font-mono text-slate-800">฿0.00</div>
+                        <div id="order-detail-shipping-amount" class="mt-1 text-sm font-black font-mono text-slate-800">
+                            ฿0.00</div>
                     </div>
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
                         <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ส่วนลด</div>
-                        <div id="order-detail-discount" class="mt-1 text-sm font-black font-mono text-slate-800">฿0.00</div>
+                        <div id="order-detail-discount" class="mt-1 text-sm font-black font-mono text-slate-800">฿0.00
+                        </div>
                     </div>
                     <div class="rounded-lg border border-primary-100 bg-primary-50 p-3">
                         <div class="text-[10px] font-bold uppercase tracking-wider text-primary-400">ยอดสุทธิ</div>
-                        <div id="order-detail-total" class="mt-1 text-sm font-black font-mono text-primary-700">฿0.00</div>
+                        <div id="order-detail-total" class="mt-1 text-sm font-black font-mono text-primary-700">฿0.00
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2476,7 +2514,8 @@
                             <i class="fa-solid fa-circle-plus"></i> เพิ่ม
                         </button>
                     </div>
-                    <div class="grid grid-cols-[minmax(0,1fr)_8rem_8rem_auto] gap-2 px-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    <div
+                        class="grid grid-cols-[minmax(0,1fr)_8rem_8rem_auto] gap-2 px-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">
                         <span>หน่วย</span>
                         <span id="prod-pack-qty-label">จำนวนขวด/แพ็ค</span>
                         <span id="prod-pack-price-label">ราคาขาย/ขวด</span>
@@ -2613,7 +2652,8 @@
                     <span class="erp-modal-header__icon erp-modal-header__icon--danger">
                         <i class="fa-solid fa-triangle-exclamation text-sm"></i>
                     </span>
-                    <h3 id="confirm-modal-title" class="font-extrabold text-sm uppercase tracking-wider">ยืนยันการดำเนินการ</h3>
+                    <h3 id="confirm-modal-title" class="font-extrabold text-sm uppercase tracking-wider">
+                        ยืนยันการดำเนินการ</h3>
                 </div>
                 <button onclick="closeConfirmModal()" aria-label="ปิดหน้าต่างยืนยันการดำเนินการ"
                     class="min-h-11 min-w-11 text-white/80 hover:text-white transition-all text-sm">
@@ -3640,11 +3680,11 @@
                 </div>
                 <div class="space-y-1.5 max-h-56 overflow-auto pr-1">
                     ${rateList.map(function (tier) {
-                        var min = Number(tier && tier.min) || 0;
-                        var max = Number(tier && tier.max) || 99999;
-                        var price = Number(tier && tier.price) || 0;
-                        var rangeLabel = max >= 99999 ? (min + '+') : (min + '-' + max);
-                        return `<div class="rounded-lg bg-white/5 px-2 py-1.5 text-slate-100 flex items-center justify-between gap-3">
+                var min = Number(tier && tier.min) || 0;
+                var max = Number(tier && tier.max) || 99999;
+                var price = Number(tier && tier.price) || 0;
+                var rangeLabel = max >= 99999 ? (min + '+') : (min + '-' + max);
+                return `<div class="rounded-lg bg-white/5 px-2 py-1.5 text-slate-100 flex items-center justify-between gap-3">
                             <div class="min-w-0">
                                 <div class="font-semibold text-[10px] break-words">${escapeHtml(rangeLabel + ' ' + baseUnit)}</div>
                                 <div class="mt-0.5 text-[9px] text-slate-300">${escapeHtml(formatMoneyCompact(price))} / ${escapeHtml(baseUnit)}</div>
@@ -3653,7 +3693,7 @@
                                 ${escapeHtml(formatMoneyCompact(price))}
                             </div>
                         </div>`;
-                    }).join('')}
+            }).join('')}
                 </div>
             `;
 
@@ -3717,14 +3757,14 @@
                 </div>
                 <div class="space-y-1.5 max-h-56 overflow-auto pr-1">
                     ${orderItems.map(function (item) {
-                        var product = asArray(products).find(function (p) { return p.id === item.productId; });
-                        var unitLabel = item.isNonStock ? 'ชิ้น' : getSelectedUnitLabel(product, item.selectedUnit);
-                        var totalPrice = getOrderItemTotalPriceValue(item);
-                        return `<div class="rounded-lg bg-white/5 px-2 py-1.5 text-slate-100">
+                var product = asArray(products).find(function (p) { return p.id === item.productId; });
+                var unitLabel = item.isNonStock ? 'ชิ้น' : getSelectedUnitLabel(product, item.selectedUnit);
+                var totalPrice = getOrderItemTotalPriceValue(item);
+                return `<div class="rounded-lg bg-white/5 px-2 py-1.5 text-slate-100">
                             <div class="font-semibold text-[10px] break-words">${escapeHtml(item.productName || item.productId)}</div>
                             <div class="mt-0.5 text-[9px] text-slate-300">${escapeHtml(unitLabel)} x ${escapeHtml(String(item.qty || 0))} = ${escapeHtml(formatMoneyCompact(totalPrice))}</div>
                         </div>`;
-                    }).join('')}
+            }).join('')}
                 </div>
             `;
 
@@ -3844,26 +3884,26 @@
                     return diff || String(b.orderId || '').localeCompare(String(a.orderId || ''));
                 })
                 .map(o => {
-                const orderItems = asArray(o && o.items);
-                const itemCount = orderItems.length;
-                const orderMonthKey = o.__orderMonthKey || getMonthKeyFromDateKey(o.orderDateKey || o.orderDate || o.createdAt || o.created);
-                const isArchived = orderMonthKey !== currentMonthKey;
-                const isCancelled = Boolean(o && (o.cancelledAt || String(o.status || o.Status || '').toUpperCase() === 'CANCELLED'));
-                const safeOrderId = String(o && (o.orderId || o.OrderID || '')).trim();
-                const safeOrderIdHtml = escapeHtml(safeOrderId || '-');
-                const safeOrderIdJs = JSON.stringify(safeOrderId);
-                const safeAgent = escapeHtml(String(o && o.agent || ''));
-                const itemCountBadge = `<button type="button" class="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1 hover:bg-slate-200 transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1" onmouseenter='showOrderItemsPopover(${safeOrderIdJs}, this, "hover")' onmouseleave="hideOrderItemsPopover()" onblur="hideOrderItemsPopover()" onclick='toggleOrderItemsPopover(${safeOrderIdJs}, this, event)' aria-haspopup="dialog" aria-expanded="false" aria-label="ดูรายการบิล ${safeOrderIdHtml}"><i class="fa-solid fa-list-check text-slate-400"></i> ${itemCount} รายการ</button>`;
-                const profit = Number(o && o.totalAmount) - Number(o && o.totalCost);
-                const detailText = isCancelled ? 'ยกเลิกแล้ว' : 'อ่านอย่างเดียว';
-                let detailTextClass;
-                if (isCancelled) {
-                    detailTextClass = 'text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 border border-rose-100';
-                } else {
-                    detailTextClass = 'text-slate-500 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200';
-                }
-                const rowClass = isCancelled ? 'bg-rose-50/60 hover:bg-rose-50/80 transition duration-150' : 'hover:bg-slate-50/50 transition duration-150';
-                return `
+                    const orderItems = asArray(o && o.items);
+                    const itemCount = orderItems.length;
+                    const orderMonthKey = o.__orderMonthKey || getMonthKeyFromDateKey(o.orderDateKey || o.orderDate || o.createdAt || o.created);
+                    const isArchived = orderMonthKey !== currentMonthKey;
+                    const isCancelled = Boolean(o && (o.cancelledAt || String(o.status || o.Status || '').toUpperCase() === 'CANCELLED'));
+                    const safeOrderId = String(o && (o.orderId || o.OrderID || '')).trim();
+                    const safeOrderIdHtml = escapeHtml(safeOrderId || '-');
+                    const safeOrderIdJs = JSON.stringify(safeOrderId);
+                    const safeAgent = escapeHtml(String(o && o.agent || ''));
+                    const itemCountBadge = `<button type="button" class="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1 hover:bg-slate-200 transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1" onmouseenter='showOrderItemsPopover(${safeOrderIdJs}, this, "hover")' onmouseleave="hideOrderItemsPopover()" onblur="hideOrderItemsPopover()" onclick='toggleOrderItemsPopover(${safeOrderIdJs}, this, event)' aria-haspopup="dialog" aria-expanded="false" aria-label="ดูรายการบิล ${safeOrderIdHtml}"><i class="fa-solid fa-list-check text-slate-400"></i> ${itemCount} รายการ</button>`;
+                    const profit = Number(o && o.totalAmount) - Number(o && o.totalCost);
+                    const detailText = isCancelled ? 'ยกเลิกแล้ว' : 'อ่านอย่างเดียว';
+                    let detailTextClass;
+                    if (isCancelled) {
+                        detailTextClass = 'text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 border border-rose-100';
+                    } else {
+                        detailTextClass = 'text-slate-500 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200';
+                    }
+                    const rowClass = isCancelled ? 'bg-rose-50/60 hover:bg-rose-50/80 transition duration-150' : 'hover:bg-slate-50/50 transition duration-150';
+                    return `
                     <tr class="${rowClass}">
                         <td data-label="เลขบิล" class="p-2.5 font-mono font-bold text-primary-700">${safeOrderIdHtml}</td>
                         <td data-label="วันที่" class="p-2.5 align-top">
@@ -3885,7 +3925,7 @@
                         </td>
                     </tr>
                 `;
-            });
+                });
             tbody.innerHTML = rows.join('');
             if (status) status.textContent = 'แสดงประวัติบิลช่วง' + periodText + 'ทั้งหมด ' + visible.length + ' รายการ';
 
@@ -4746,7 +4786,7 @@
                     if (stockInput) {
                         stockInput.value = String((Number(stockInput.value) || 0) + delta);
                     }
-                var current = asArray(products).find(function (item) { return item.id === product.id; });
+                    var current = asArray(products).find(function (item) { return item.id === product.id; });
                     if (current) current.stock = (Number(current.stock) || 0) + delta;
                     showNotification('เพิ่มสต็อกเรียบร้อยแล้ว');
                     loadApplicationData();
