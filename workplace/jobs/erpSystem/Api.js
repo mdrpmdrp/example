@@ -24,9 +24,32 @@ function buildProductsPayload_(sessionToken) {
 function buildAgentsPayload_(sessionToken) {
   requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
   var agents = getAgents();
+  var timeZone = Session.getScriptTimeZone();
+  var clientAgentRecords = agents.map(function (agent) {
+    var created = agent && agent.Created;
+    var createdText = '';
+    if (created instanceof Date && !isNaN(created.getTime())) {
+      createdText = Utilities.formatDate(created, timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX");
+    } else {
+      createdText = String(created || '').trim();
+    }
+    return {
+      AgentID: String(agent && agent.AgentID || '').trim(),
+      AgentName: String(agent && agent.AgentName || '').trim(),
+      AgentGroup: String(agent && agent.AgentGroup || DEFAULT_AGENT_GROUP).trim() || DEFAULT_AGENT_GROUP,
+      Phone: String(agent && agent.Phone || '').trim(),
+      Address: String(agent && agent.Address || '').trim(),
+      Status: String(agent && agent.Status || 'ACTIVE').trim() || 'ACTIVE',
+      Created: createdText
+    };
+  });
   var agentNames = agents.map(function(agent) { return agent.AgentName; });
   var agentIdsByName = agents.reduce(function(map, agent) {
     map[agent.AgentName] = agent.AgentID;
+    return map;
+  }, {});
+  var agentGroupsByName = agents.reduce(function(map, agent) {
+    map[agent.AgentName] = agent.AgentGroup || DEFAULT_AGENT_GROUP;
     return map;
   }, {});
   var agentRates = {};
@@ -36,7 +59,23 @@ function buildAgentsPayload_(sessionToken) {
       (agentRates[agent.AgentName][rate.ProductID] || (agentRates[agent.AgentName][rate.ProductID] = [])).push({ min: Number(rate.MinQty), max: Number(rate.MaxQty), price: Number(rate.SellPrice) });
     });
   });
-  return { agents: agentNames, agentIdsByName: agentIdsByName, agentRates: agentRates };
+  var agentGroupRates = {};
+  AGENT_GROUP_OPTIONS.forEach(function(groupName) {
+    agentGroupRates[groupName] = {};
+    getAgentGroupRates(groupName).forEach(function(rate) {
+      (agentGroupRates[groupName][rate.ProductID] || (agentGroupRates[groupName][rate.ProductID] = [])).push({ min: Number(rate.MinQty), max: Number(rate.MaxQty), price: Number(rate.SellPrice) });
+    });
+  });
+  return {
+    agents: agentNames,
+    agentRecords: clientAgentRecords,
+    agentIdsByName: agentIdsByName,
+    agentGroupsByName: agentGroupsByName,
+    agentGroupOptions: AGENT_GROUP_OPTIONS.slice(),
+    defaultAgentGroup: DEFAULT_AGENT_GROUP,
+    agentGroupRates: agentGroupRates,
+    agentRates: agentRates
+  };
 }
 
 function buildOrdersPayload_(sessionToken, monthKey) {
@@ -100,7 +139,12 @@ function api(sessionToken) {
   return {
     products: buildProductsPayload_(sessionToken),
     agents: agentsBundle.agents,
+    agentRecords: agentsBundle.agentRecords,
     agentIdsByName: agentsBundle.agentIdsByName,
+    agentGroupsByName: agentsBundle.agentGroupsByName,
+    agentGroupOptions: agentsBundle.agentGroupOptions,
+    defaultAgentGroup: agentsBundle.defaultAgentGroup,
+    agentGroupRates: agentsBundle.agentGroupRates,
     agentRates: agentsBundle.agentRates,
     orders: buildOrdersPayload_(sessionToken, getMonthKeyFromDate(new Date())),
     dashboard: buildDashboardPayload_(sessionToken),

@@ -2,6 +2,7 @@ const SHEETS = {
   PRODUCTS: "PRODUCTS",
   AGENTS: "AGENTS",
   AGENT_RATES: "AGENT_RATES",
+  AGENT_GROUP_RATES: "AGENT_GROUP_RATES",
   ORDERS: "ORDERS",
   ORDER_ITEMS: "ORDER_ITEMS",
   BACKUP_ORDERS: "BACKUP_ORDERS",
@@ -10,3 +11,15 @@ const SHEETS = {
   USERS: "USERS",
   CONFIG: "CONFIG"
 };
+
+const AGENT_GROUP_OPTIONS = [
+  "Super VIP",
+  "VIP รวมส่ง",
+  "VIP",
+  "เรทคลินิก",
+  "เรทตัวแทน",
+  "ร้าน Fah",
+  "ร้าน Nuwa skin"
+];
+
+const DEFAULT_AGENT_GROUP = "VIP รวมส่ง";

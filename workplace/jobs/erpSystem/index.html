@@ -148,7 +148,33 @@
         function formatProductOptionLabel(product) {
             var name = String(product && product.name ? product.name : '');
             var id = String(product && product.id ? product.id : '');
-            return id + ' - ' + name.substring(0, 25) + ' · ' + formatProductUnitLabel(product) + ' · คงเหลือ ' + formatProductStockLabel(product);
+            var stock = Number(product && product.stock) || 0;
+            var unitName = getProductUnitName(product);
+            return id + ' - ' + name + ' | คงเหลือ ' + stock + ' ' + unitName;
+        }
+
+        function getShippingTypeLabel(value) {
+            var map = {
+                'VAN': 'รถตู้/รถทัวร์',
+                'CHILLED150': 'Kex แพคเย็น 150',
+                'CHILLED100': 'Kex แพคเย็น 100',
+                'INTER': 'Inter รถเย็น 300',
+                'PARCEL': 'พัสดุธรรมดา 60',
+                'MESSENGER': 'แมสเซนเจอร์',
+                'SPLIT': 'ค่าส่ง(รวมส่งแยก)'
+            };
+            return map[String(value || '').trim()] || undefined;
+        }
+
+        function getShippingFeeAmount(shippingType, customAmount) {
+            var type = String(shippingType || '').trim().toUpperCase();
+            if (type === 'VAN') return 350;
+            if (type === 'CHILLED150') return 150;
+            if (type === 'CHILLED100') return 100;
+            if (type === 'INTER') return 300;
+            if (type === 'PARCEL') return 60;
+            if (type === 'MESSENGER' || type === 'SPLIT') return Math.max(0, Number(customAmount) || 0);
+            return 0;
         }
 
         function getSelectedUnitLabel(product, unitValue) {
@@ -633,7 +659,8 @@
             if (order.customerName) metaBits.push('ลูกค้า ' + order.customerName);
             if (order.customerPhone) metaBits.push(order.customerPhone);
             if (order.shippingType && order.shippingType !== 'NONE') {
-                var shippingName = order.shippingType === 'VAN' ? 'รถตู้/รถทัวร์' : order.shippingType === 'CHILLED' ? 'แพคเย็น' : order.shippingType === 'PARCEL' ? 'พัสดุ' : order.shippingType === 'MESSENGER' ? 'แมสเซนเจอร์' : 'ส่งแยก';
+                var shippingName = getShippingTypeLabel(order.shippingType);
+               
                 metaBits.push('ส่ง ' + shippingName + ' ฿' + Number(order.shippingAmount || 0).toLocaleString());
             }
             if (Number(order.discountAmount) > 0) metaBits.push('ลด ฿' + Number(order.discountAmount || 0).toLocaleString());
@@ -767,7 +794,7 @@
             var money = function (value) {
                 return Number(value || 0).toLocaleString('th-TH');
             };
-            var shippingName = order.shippingType === 'VAN' ? 'รถตู้/รถทัวร์' : order.shippingType === 'CHILLED' ? 'แพคเย็น' : order.shippingType === 'PARCEL' ? 'พัสดุ' : order.shippingType === 'MESSENGER' ? 'แมสเซนเจอร์' : order.shippingType === 'SPLIT' ? 'ส่งแยก' : 'ไม่ระบุ';
+            var shippingName = getShippingTypeLabel(order.shippingType) || 'ไม่ระบุ';
             var itemCount = (order.items || []).reduce(function (sum, item) {
                 return sum + (Number(item.qty) || 0);
             }, 0);
@@ -1282,7 +1309,8 @@
                 };
             });
             return JSON.stringify({
-                agent: normalizeSnapshotValue(selectedRateEdit.agent),
+                scope: normalizeSnapshotValue(selectedRateEdit.scope),
+                target: normalizeSnapshotValue(selectedRateEdit.target),
                 prodId: normalizeSnapshotValue(selectedRateEdit.prodId),
                 tierRows: tierRows
             });
@@ -1387,7 +1415,7 @@
             if (phoneEl) phoneEl.textContent = order.customerPhone ? 'โทร ' + order.customerPhone : '-';
             if (shippingEl) {
                 var shippingName = String(order.shippingType || 'NONE').toUpperCase();
-                var shippingLabel = shippingName === 'VAN' ? 'รถตู้/รถทัวร์' : shippingName === 'CHILLED' ? 'แพคเย็น' : shippingName === 'PARCEL' ? 'พัสดุ' : shippingName === 'MESSENGER' ? 'แมสเซนเจอร์' : shippingName === 'SPLIT' ? 'ส่งแยก' : 'ไม่มีค่าส่ง';
+                var shippingLabel = getShippingTypeLabel(order.shippingType) || 'ไม่มีค่าส่ง';
                 shippingEl.textContent = shippingLabel + (Number(order.shippingAmount || 0) > 0 ? ' ฿' + Number(order.shippingAmount || 0).toLocaleString() : '');
             }
             if (statusEl) {
@@ -1506,11 +1534,174 @@
             });
         }
 
+        function getAgentRecordById(agentId) {
+            return asArray(agentRecords).find(function (agent) {
+                return String(agent && agent.AgentID || '').trim() === String(agentId || '').trim();
+            }) || null;
+        }
+
+        function setAgentModalMode(mode, agent) {
+            agentModalMode = mode === 'edit' ? 'edit' : 'create';
+            editingAgentId = agent && agent.AgentID ? String(agent.AgentID).trim() : '';
+
+            var modalTitle = document.getElementById('agent-modal-title');
+            var modalIcon = document.getElementById('agent-modal-icon');
+            var submitButton = document.getElementById('agent-modal-submit');
+            var idInput = document.getElementById('agent-id');
+
+            if (modalTitle) modalTitle.textContent = agentModalMode === 'edit' ? 'แก้ไขตัวแทน' : 'เพิ่มตัวแทน';
+            if (modalIcon) modalIcon.className = agentModalMode === 'edit'
+                ? 'erp-modal-header__icon erp-modal-header__icon--brand'
+                : 'erp-modal-header__icon erp-modal-header__icon--brand';
+            if (modalIcon) modalIcon.innerHTML = agentModalMode === 'edit'
+                ? '<i class="fa-regular fa-pen-to-square text-sm"></i>'
+                : '<i class="fa-solid fa-user-plus text-sm"></i>';
+            if (submitButton) submitButton.textContent = agentModalMode === 'edit' ? 'บันทึกการแก้ไข' : 'บันทึก';
+            if (idInput) {
+                idInput.readOnly = agentModalMode === 'edit';
+                idInput.title = agentModalMode === 'edit' ? 'รหัสตัวแทนแก้ไขไม่ได้' : '';
+                idInput.classList.toggle('bg-slate-100', agentModalMode === 'edit');
+                idInput.classList.toggle('text-slate-500', agentModalMode === 'edit');
+                idInput.classList.toggle('cursor-not-allowed', agentModalMode === 'edit');
+            }
+        }
+
+        function openAgentModal(agentId) {
+            var modal = document.getElementById('agent-modal');
+            var idInput = document.getElementById('agent-id');
+            var nameInput = document.getElementById('agent-name');
+            var groupSelect = document.getElementById('agent-group');
+            var phoneInput = document.getElementById('agent-phone');
+            var addressInput = document.getElementById('agent-address');
+            var agent = agentId ? getAgentRecordById(agentId) : null;
+
+            if (idInput) idInput.value = agent ? agent.AgentID || '' : '';
+            if (nameInput) nameInput.value = agent ? agent.AgentName || '' : '';
+            if (phoneInput) phoneInput.value = agent ? agent.Phone || '' : '';
+            if (addressInput) addressInput.value = agent ? agent.Address || '' : '';
+
+            if (groupSelect) {
+                setSelectOptions(groupSelect, agentGroupOptions.length ? agentGroupOptions : [defaultAgentGroup]);
+                var selectedGroup = agent ? (String(agent.AgentGroup || '').trim() || defaultAgentGroup) : defaultAgentGroup;
+                if (selectedGroup && Array.from(groupSelect.options).every(function (option) { return option.value !== selectedGroup; })) {
+                    var extraOption = document.createElement('option');
+                    extraOption.value = selectedGroup;
+                    extraOption.textContent = selectedGroup;
+                    groupSelect.appendChild(extraOption);
+                }
+                groupSelect.value = selectedGroup;
+            }
+
+            setAgentModalMode(agent ? 'edit' : 'create', agent);
+            if (modal) showModal('agent-modal', '#agent-name');
+        }
+
+        function closeAgentModal() {
+            agentModalMode = 'create';
+            editingAgentId = '';
+            hideModal('agent-modal');
+        }
+
+        function saveAgent() {
+            const id = document.getElementById('agent-id').value.trim();
+            const name = document.getElementById('agent-name').value.trim();
+            const group = document.getElementById('agent-group').value || defaultAgentGroup;
+            const phone = document.getElementById('agent-phone').value.trim();
+            const address = document.getElementById('agent-address').value.trim();
+            const isEditMode = agentModalMode === 'edit';
+            const agentId = isEditMode ? (editingAgentId || id) : id;
+
+            if (!name) {
+                showNotification('กรุณาระบุชื่อตัวแทน', true);
+                return;
+            }
+
+            const saveButton = document.getElementById('agent-modal-submit');
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.setAttribute('aria-busy', 'true');
+            }
+
+            runGoogleScriptWithLoading({
+                title: isEditMode ? 'กำลังบันทึกการแก้ไขตัวแทน...' : 'กำลังเพิ่มตัวแทนใหม่...',
+                subtext: 'กรุณารอสักครู่ ระบบกำลังบันทึกข้อมูลลงชีท',
+                methodName: isEditMode ? 'updateAgent' : 'createAgent',
+                args: [sessionToken, {
+                    AgentID: agentId,
+                    AgentName: name,
+                    AgentGroup: group,
+                    Phone: phone,
+                    Address: address
+                }],
+                onSuccess: function () {
+                    if (saveButton) {
+                        saveButton.disabled = false;
+                        saveButton.removeAttribute('aria-busy');
+                    }
+                    closeAgentModal();
+                    showNotification(isEditMode ? 'อัปเดตข้อมูลตัวแทนเรียบร้อยแล้ว' : 'บันทึกตัวแทนเรียบร้อยแล้ว');
+                    loadApplicationData();
+                },
+                onFailure: function (error) {
+                    if (saveButton) {
+                        saveButton.disabled = false;
+                        saveButton.removeAttribute('aria-busy');
+                    }
+                    if (isSessionError(error)) endSession(true);
+                    showNotification(serverErrorMessage(error), true);
+                }
+            });
+        }
+
+        function saveNewAgent() {
+            saveAgent();
+        }
+
+        function deleteAgentRecord(agentId) {
+            var agent = getAgentRecordById(agentId);
+            if (!agent) {
+                showNotification('ไม่พบข้อมูลตัวแทน', true);
+                return;
+            }
+
+            openConfirmModal({
+                title: 'ยืนยันการลบตัวแทน',
+                message: 'ต้องการลบตัวแทนนี้หรือไม่? ระบบจะซ่อนตัวแทนนี้จากรายการและยังเก็บประวัติเดิมไว้',
+                detailLabel: 'ตัวแทน',
+                detailValue: (agent.AgentID || '-') + ' · ' + (agent.AgentName || '-'),
+                confirmLabel: 'ลบตัวแทน',
+                onConfirm: function () {
+                    runGoogleScriptWithLoading({
+                        title: 'กำลังลบตัวแทน...',
+                        subtext: 'กรุณารอสักครู่ ระบบกำลังอัปเดตข้อมูลลงชีท',
+                        methodName: 'deleteAgent',
+                        args: [sessionToken, agent.AgentID],
+                        onSuccess: function () {
+                            showNotification('ลบตัวแทนเรียบร้อยแล้ว');
+                            loadApplicationData();
+                        },
+                        onFailure: function (error) {
+                            if (isSessionError(error)) endSession(true);
+                            showNotification(serverErrorMessage(error), true);
+                        }
+                    });
+                }
+            });
+        }
+
         function saveDynamicRateTiers() {
             if (rateSaveInFlight) return;
-            const { agent, prodId } = selectedRateEdit;
-            const agentId = agentIdsByName[agent] || agent;
+            const { scope, target, prodId } = selectedRateEdit;
+            const targetScope = String(scope || 'AGENT').trim().toUpperCase() === 'GROUP' ? 'GROUP' : 'AGENT';
+            const agentId = agentIdsByName[target] || target;
             const rows = document.querySelectorAll('.tier-row');
+
+            if (!target || !prodId) {
+                showNotification(targetScope === 'GROUP'
+                    ? 'กรุณาเลือกกลุ่มตัวแทนและสินค้าให้ครบก่อนบันทึกเรท'
+                    : 'กรุณาเลือกตัวแทนและสินค้าให้ครบก่อนบันทึกเรท', true);
+                return;
+            }
 
             let newTiers = [];
             let isValid = true;
@@ -1547,10 +1738,12 @@
             }
 
             runGoogleScriptWithLoading({
-                title: "กำลังอัปเดตเรทราคาตัวแทน...",
+                title: targetScope === 'GROUP' ? "กำลังอัปเดตเรทราคากลุ่ม..." : "กำลังอัปเดตเรทราคาตัวแทน...",
                 subtext: "กรุณารอสักครู่ ระบบกำลังบันทึกข้อมูลลงชีท",
-                methodName: 'savePriceTiers',
-                args: [sessionToken, agentId, prodId, newTiers],
+                methodName: targetScope === 'GROUP' ? 'saveGroupPriceTiers' : 'savePriceTiers',
+                args: targetScope === 'GROUP'
+                    ? [sessionToken, target, prodId, newTiers]
+                    : [sessionToken, agentId, prodId, newTiers],
                 onSuccess: function (savedTiers) {
                     rateSaveInFlight = false;
                     if (saveButton) {
@@ -1558,7 +1751,9 @@
                         saveButton.removeAttribute('aria-busy');
                     }
                     closeRateModal(true);
-                    showNotification(`อัปเดตเรทราคาของตัวแทนเรียบร้อยทั้งหมด ${(savedTiers && savedTiers.length) || newTiers.length} ขั้นบันไดแล้ว!`);
+                    showNotification(targetScope === 'GROUP'
+                        ? `อัปเดตเรทราคาของกลุ่มเรียบร้อย ${(savedTiers && savedTiers.length) || newTiers.length} ขั้นบันไดแล้ว!`
+                        : `อัปเดตเรทราคาของตัวแทนเรียบร้อย ${(savedTiers && savedTiers.length) || newTiers.length} ขั้นบันไดแล้ว!`);
                     loadApplicationData();
                 },
                 onFailure: function (error) {
@@ -1789,8 +1984,12 @@
                         <i class="fa-solid fa-cubes-stacked text-sm"></i> คลัง
                     </button>
                     <button onclick="changeTab('agents')" id="tab-agents"
+                        class="nav-btn agent-admin-only hidden w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-sm font-bold transition-all duration-150 text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                        <i class="fa-solid fa-address-card text-sm"></i> จัดการข้อมูลตัวแทน
+                    </button>
+                    <button onclick="changeTab('rates')" id="tab-rates"
                         class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-sm font-bold transition-all duration-150 text-slate-600 hover:bg-slate-50 hover:text-slate-900">
-                        <i class="fa-solid fa-handshake text-sm"></i> เรทตัวแทน
+                        <i class="fa-solid fa-sliders text-sm"></i> เรทราคา
                     </button>
                     <button onclick="changeTab('summaries')" id="tab-summaries"
                         class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-sm font-bold transition-all duration-150 text-slate-600 hover:bg-slate-50 hover:text-slate-900">
@@ -2037,17 +2236,73 @@
 
             <!-- ================= TAB: AGENTS ================= -->
             <section id="content-agents" class="space-y-4 hidden">
-                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center border-b border-slate-100 pb-3">
                     <div>
-                        <h2 class="text-base font-extrabold text-slate-800">เรทราคาตัวแทน</h2>
-                        <p class="text-xs text-slate-400">ตั้งราคาตามตัวแทน</p>
+                        <h2 class="text-base font-extrabold text-slate-800">จัดการข้อมูลตัวแทน</h2>
+                        <p class="text-xs text-slate-400">เพิ่ม แก้ไข และลบข้อมูลตัวแทน</p>
+                    </div>
+                    <button type="button" onclick="openAgentModal()"
+                        class="agent-admin-only hidden erp-action erp-action-primary px-3 py-2 text-xs font-bold self-start sm:self-auto">
+                        <i class="fa-solid fa-user-plus"></i> เพิ่มตัวแทน
+                    </button>
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-lg grid grid-cols-1 sm:grid-cols-2 gap-3 border border-slate-200">
+                    <div>
+                        <label
+                            class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">กรองกลุ่มตัวแทน</label>
+                        <select id="agent-management-group-filter" onchange="renderAgentManagementTable()"
+                            class="w-full bg-white text-xs border border-slate-300 rounded-md p-1.5 focus:outline-none font-bold text-slate-700">
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">ค้นหาชื่อตัวแทน</label>
+                        <input type="text" id="agent-management-name-search" placeholder="พิมพ์ชื่อตัวแทน..."
+                            oninput="renderAgentManagementTable()" class="erp-control w-full bg-white text-xs p-1.5">
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-left border-collapse text-[11px] leading-tight">
+                        <caption class="sr-only">รายการตัวแทน</caption>
+                        <thead>
+                            <tr class="bg-slate-100 border-b border-slate-200 text-slate-500 uppercase tracking-wider">
+                                <th class="p-2.5 font-extrabold">รหัส</th>
+                                <th class="p-2.5 font-extrabold">ชื่อตัวแทน</th>
+                                <th class="p-2.5 font-extrabold">กลุ่ม</th>
+                                <th class="p-2.5 font-extrabold text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="agent-management-table-body" class="divide-y divide-slate-150">
+                            <!-- โหลดข้อมูลตัวแทนผ่าน JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ================= TAB: RATES ================= -->
+            <section id="content-rates" class="space-y-4 hidden">
+                <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center border-b border-slate-100 pb-3">
+                    <div>
+                        <h2 class="text-base font-extrabold text-slate-800">เรทราคา</h2>
+                        <p class="text-xs text-slate-400">ตั้งราคาตามตัวแทน, กลุ่มตัวแทน และสินค้า</p>
                     </div>
                 </div>
 
                 <!-- การเลือกข้อมูลรายตัวแทน -->
-                <div class="bg-slate-50 p-3 rounded-lg grid grid-cols-1 sm:grid-cols-2 gap-3 border border-slate-200">
+                <div class="bg-slate-50 p-3 rounded-lg grid grid-cols-1 sm:grid-cols-3 gap-3 border border-slate-200">
                     <div>
                         <label
+                            class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">ขอบเขตการตั้งเรท</label>
+                        <select id="rate-scope-select" onchange="onRateScopeChange()"
+                            class="w-full bg-white text-xs border border-slate-300 rounded-md p-1.5 focus:outline-none font-bold text-slate-700">
+                            <option value="AGENT">รายตัวแทน</option>
+                            <option value="GROUP">รายกลุ่มตัวแทน</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label id="rate-target-label"
                             class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">เลือกตัวแทน</label>
                         <select id="agent-config-select" onchange="renderAgentRatesTable()"
                             class="w-full bg-white text-xs border border-slate-300 rounded-md p-1.5 focus:outline-none font-bold text-slate-700">
@@ -2207,13 +2462,19 @@
 
             <div class="p-5 overflow-y-auto space-y-4 flex-1">
                 <!-- ข้อมูลหัวบิล -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <div>
                         <label
                             class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">เลขเอกสาร</label>
                         <input type="text" id="new-order-id" aria-label="เลขเอกสาร"
                             class="w-full bg-slate-200 border border-slate-300 rounded p-2 text-xs font-bold text-slate-600 font-mono focus:outline-none"
                             disabled>
+                    </div>
+                    <div>
+                        <label
+                            class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">วันที่บิล</label>
+                        <input type="date" id="new-order-date" aria-label="วันที่บิล"
+                            class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-semibold text-slate-700 focus:ring-1 focus:ring-primary-500 focus:outline-none">
                     </div>
                     <div>
                         <label
@@ -2251,10 +2512,12 @@
                             class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-bold text-slate-700 focus:ring-1 focus:ring-primary-500 focus:outline-none">
                             <option value="" selected disabled>เลือกการจัดส่ง</option>
                             <option value="VAN">รถตู้/รถทัวร์ 350</option>
-                            <option value="CHILLED">แพคเย็น 150</option>
-                            <option value="PARCEL">พัสดุ 60</option>
+                            <option value="CHILLED150">Kex แพคเย็น 150</option>
+                            <option value="CHILLED100">Kex แพคเย็น 100</option>
+                            <option value="INTER">Inter รถเย็น 300</option>
+                            <option value="PARCEL">พัสดุธรรมดา 60</option>
                             <option value="MESSENGER">แมสเซนเจอร์</option>
-                            <option value="SPLIT">ส่งแยก</option>
+                            <option value="SPLIT">ค่าส่ง(รวมส่งแยก)</option>
                         </select>
                     </div>
                     <div class="lg:col-span-3">
@@ -2587,6 +2850,61 @@
         </div>
     </div>
 
+    <!-- ================= MODAL: ADD AGENT ================= -->
+    <div id="agent-modal" role="dialog" aria-modal="true" aria-labelledby="agent-modal-title" aria-hidden="true"
+        tabindex="-1" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-xl w-full max-w-lg overflow-hidden shadow-md flex flex-col max-h-[90vh] border border-slate-200">
+            <div class="erp-modal-header erp-modal-header--brand erp-modal-header--sticky">
+                <div class="erp-modal-header__group">
+                    <span id="agent-modal-icon" class="erp-modal-header__icon erp-modal-header__icon--brand">
+                        <i class="fa-solid fa-user-plus text-sm"></i>
+                    </span>
+                    <h3 id="agent-modal-title" class="font-extrabold text-sm uppercase tracking-wider">เพิ่มตัวแทน</h3>
+                </div>
+                <button onclick="closeAgentModal()" aria-label="ปิดหน้าต่างเพิ่มตัวแทน"
+                    class="min-h-11 min-w-11 text-white/80 hover:text-white transition-all text-sm">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto space-y-4 flex-1">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div id="agent-id-wrapper">
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">รหัสตัวแทน</label>
+                        <input type="text" id="agent-id" maxlength="20" placeholder="AG006"
+                            class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">กลุ่มตัวแทน</label>
+                        <select id="agent-group"
+                            class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-bold text-slate-700 focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ชื่อตัวแทน</label>
+                        <input type="text" id="agent-name" maxlength="120" placeholder="ชื่อผู้แทน"
+                            class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">เบอร์โทร</label>
+                        <input type="text" id="agent-phone" maxlength="30" placeholder="0xxxxxxxxx"
+                            class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">ที่อยู่</label>
+                        <textarea id="agent-address" placeholder="ที่อยู่หรือจังหวัด" rows="3"
+                            class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-50 p-4 border-t border-slate-200 flex justify-end gap-2">
+                <button onclick="closeAgentModal()"
+                    class="erp-action erp-action-secondary px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 border border-slate-300 rounded-lg transition-all">ยกเลิก</button>
+                <button id="agent-modal-submit" onclick="saveAgent()"
+                    class="px-5 py-2 text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow transition-all">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= MODAL: EDIT DYNAMIC RATE TIER ================= -->
     <div id="rate-modal" role="dialog" aria-modal="true" aria-labelledby="rate-modal-title" aria-hidden="true"
         tabindex="-1" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center hidden p-4">
@@ -2606,7 +2924,7 @@
 
             <div class="p-5 space-y-4 overflow-y-auto flex-1">
                 <div class="bg-primary-50 border border-primary-100 p-3 rounded-lg text-xs space-y-1">
-                    <p><strong>ตัวแทน:</strong>
+                    <p><strong id="rate-modal-target-label">ตัวแทน:</strong>
                         <span id="rate-modal-agent" class="text-primary-800 font-bold">ตัวแทน A</span>
                     </p>
                     <p><strong>ชื่อสินค้า:</strong>
@@ -2749,7 +3067,9 @@
         let isAppDataLoading = false;
         let hasLoadedAppData = false;
         let agentIdsByName = {};
-        let selectedRateEdit = { agent: "", prodId: "" };
+        let agentGroupsByName = {};
+        let agentGroupRates = {};
+        let selectedRateEdit = { scope: "AGENT", target: "", prodId: "" };
         let selectedLoginRoleChoice = 'owner';
         let isLoggedIn = false;
         let cartRowSeq = 0;
@@ -2925,6 +3245,13 @@
                 }).join('');
             }
 
+            const agentManageBody = document.getElementById('agent-management-table-body');
+            if (agentManageBody) {
+                agentManageBody.innerHTML = Array.from({ length: 5 }, function () {
+                    return '<tr class="border-b border-slate-100"><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-24 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-32 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-20 rounded-full"></span></td><td class="p-2.5 text-center"><span class="erp-skeleton inline-block h-8 w-28 rounded-full"></span></td></tr>';
+                }).join('');
+            }
+
             const ratesBody = document.getElementById('agent-rates-table-body');
             if (ratesBody) {
                 ratesBody.innerHTML = Array.from({ length: 6 }, function () {
@@ -2974,6 +3301,10 @@
             if (stockBody) {
                 stockBody.innerHTML = '<tr><td colspan="' + stockColSpan + '" class="p-6 text-center text-slate-400 italic">ยังไม่มีข้อมูลสินค้าในคลัง</td></tr>';
             }
+            const agentManageBody = document.getElementById('agent-management-table-body');
+            if (agentManageBody) {
+                agentManageBody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400 italic">ยังไม่มีข้อมูลตัวแทน</td></tr>';
+            }
             const ratesBody = document.getElementById('agent-rates-table-body');
             if (ratesBody) {
                 ratesBody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400 italic">ยังไม่มีข้อมูลเรทราคา</td></tr>';
@@ -3003,6 +3334,9 @@
 
         let products = [];
         let agents = [];
+        let agentRecords = [];
+        let agentGroupOptions = [];
+        let defaultAgentGroup = 'VIP รวมส่ง';
         let orders = [];
         let agentRates = {};
         let appDataLoadSeq = 0;
@@ -3016,6 +3350,8 @@
         let orderTableDatePicker = null;
         let orderTableIsLoading = false;
         let orderTableErrorMessage = '';
+        let agentModalMode = 'create';
+        let editingAgentId = '';
 
         function getOrderDateValue(order) {
             if (!order) return 0;
@@ -3096,6 +3432,9 @@
             var opts = options || {};
             products = Array.isArray(data && data.products) ? data.products : [];
             agents = Array.isArray(data && data.agents) ? data.agents : [];
+            agentRecords = Array.isArray(data && data.agentRecords) ? data.agentRecords : [];
+            agentGroupOptions = Array.isArray(data && data.agentGroupOptions) ? data.agentGroupOptions : [];
+            defaultAgentGroup = String(data && data.defaultAgentGroup || defaultAgentGroup).trim() || 'VIP รวมส่ง';
             commitLoadedOrders(getCurrentMonthKey(), Array.isArray(data && data.orders) ? data.orders : []);
             orderTableFilterKey = String(orderTableFilterKey || 'TODAY').trim().toUpperCase() || 'TODAY';
             orderTableCustomDateKey = normalizeSummaryDateKey(orderTableCustomDateKey) || getTodaySummaryDateKey();
@@ -3103,6 +3442,8 @@
             orderTableLoadSeq += 1;
             agentRates = data && data.agentRates ? data.agentRates : {};
             agentIdsByName = data && data.agentIdsByName ? data.agentIdsByName : {};
+            agentGroupsByName = data && data.agentGroupsByName ? data.agentGroupsByName : {};
+            agentGroupRates = data && data.agentGroupRates ? data.agentGroupRates : {};
             hasLoadedAppData = true;
             setAppDataLoading(false);
 
@@ -3212,10 +3553,16 @@
                 runGoogleScriptPromise('getAgentsBundle', [sessionToken]),
                 runGoogleScriptPromise('listProducts', [sessionToken])
             ]).then(function (results) {
+                console.log('Loaded application data:', results);
                 if (loadSeq !== appDataLoadSeq) return;
                 initSystem({
                     agents: (results[0] && results[0].agents) || [],
+                    agentRecords: (results[0] && results[0].agentRecords) || [],
                     agentIdsByName: (results[0] && results[0].agentIdsByName) || {},
+                    agentGroupsByName: (results[0] && results[0].agentGroupsByName) || {},
+                    agentGroupOptions: (results[0] && results[0].agentGroupOptions) || [],
+                    defaultAgentGroup: (results[0] && results[0].defaultAgentGroup) || 'VIP รวมส่ง',
+                    agentGroupRates: (results[0] && results[0].agentGroupRates) || {},
                     agentRates: (results[0] && results[0].agentRates) || {},
                     products: results[1] || [],
                     orders: []
@@ -3313,8 +3660,13 @@
             orders = [];
             products = [];
             agents = [];
+            agentRecords = [];
+            agentGroupOptions = [];
+            defaultAgentGroup = 'VIP รวมส่ง';
             agentRates = {};
             agentIdsByName = {};
+            agentGroupsByName = {};
+            agentGroupRates = {};
             ordersMonthKey = '';
             ordersMonthCache = {};
             selectedSummaryDateKey = getTodaySummaryDateKey();
@@ -3439,8 +3791,41 @@
             setSelectOptions(newOrderAgent, agents);
 
             // ดรอปดาวน์ในเมนูเปลี่ยนเรทตัวแทน
+            const rateScopeSelect = document.getElementById('rate-scope-select');
+            if (rateScopeSelect && !rateScopeSelect.value) rateScopeSelect.value = 'AGENT';
             const agentConfigSelect = document.getElementById('agent-config-select');
             setSelectOptions(agentConfigSelect, agents);
+            syncRateTargetOptions_();
+
+            const agentManageGroupFilter = document.getElementById('agent-management-group-filter');
+            setSelectOptions(agentManageGroupFilter, agentGroupOptions.length ? agentGroupOptions : [defaultAgentGroup], 'ทุกกลุ่ม');
+
+            const agentGroupSelect = document.getElementById('agent-group');
+            setSelectOptions(agentGroupSelect, agentGroupOptions.length ? agentGroupOptions : [defaultAgentGroup]);
+        }
+
+        function getSelectedRateScope_() {
+            var scope = String(document.getElementById('rate-scope-select')?.value || 'AGENT').trim().toUpperCase();
+            return scope === 'GROUP' ? 'GROUP' : 'AGENT';
+        }
+
+        function syncRateTargetOptions_() {
+            const scope = getSelectedRateScope_();
+            const targetSelect = document.getElementById('agent-config-select');
+            const targetLabel = document.getElementById('rate-target-label');
+            if (!targetSelect) return;
+            if (scope === 'GROUP') {
+                setSelectOptions(targetSelect, agentGroupOptions.length ? agentGroupOptions : [defaultAgentGroup]);
+                if (targetLabel) targetLabel.textContent = 'เลือกกลุ่มตัวแทน';
+            } else {
+                setSelectOptions(targetSelect, agents);
+                if (targetLabel) targetLabel.textContent = 'เลือกตัวแทน';
+            }
+        }
+
+        function onRateScopeChange() {
+            syncRateTargetOptions_();
+            renderAgentRatesTable();
         }
 
         // จัดการสลับสิทธิ์การใช้งาน
@@ -3450,6 +3835,10 @@
                 role = authenticatedRole;
             }
             currentRole = role;
+            const canManageAgents = role === 'owner' || role === 'admin';
+            document.querySelectorAll('.agent-admin-only').forEach(function (el) {
+                el.classList.toggle('hidden', !canManageAgents);
+            });
             const btnOwner = document.getElementById('btnRoleOwner');
             const btnAdmin = document.getElementById('btnRoleAdmin');
 
@@ -3495,19 +3884,23 @@
         // ค้นหาราคาเรทจากช่วงปริมาณจำนวนชิ้น
         function getTierPrice(agent, prodId, qty) {
             const agentMap = agentRates[agent];
-            if (!agentMap || !agentMap[prodId] || agentMap[prodId].length === 0) {
+            const tiers = agentMap && agentMap[prodId] ? agentMap[prodId] : [];
+            const groupName = String(agentGroupsByName[agent] || defaultAgentGroup).trim() || defaultAgentGroup;
+            const groupMap = agentGroupRates[groupName];
+            const groupTiers = groupMap && groupMap[prodId] ? groupMap[prodId] : [];
+            const sourceTiers = tiers.length ? tiers : groupTiers;
+            if (!sourceTiers.length) {
                 const prod = asArray(products).find(function (p) { return p.id === prodId; });
                 return prod ? prod.defaultPrice : 0;
             }
 
-            const tiers = agentMap[prodId];
-            for (let i = 0; i < tiers.length; i++) {
-                const tier = tiers[i];
+            for (let i = 0; i < sourceTiers.length; i++) {
+                const tier = sourceTiers[i];
                 if (qty >= tier.min && qty <= tier.max) {
                     return tier.price;
                 }
             }
-            return tiers[tiers.length - 1].price;
+            return sourceTiers[sourceTiers.length - 1].price;
         }
 
         function getSaleUnitPrice(product, selectedUnitValue, baseUnitPrice) {
@@ -3551,6 +3944,7 @@
                 renderDashboard();
                 renderOrdersTable();
                 renderStockTable();
+                renderAgentManagementTable();
                 renderAgentRatesTable();
                 renderSummariesTab();
             });
@@ -4038,6 +4432,7 @@
 
         function clearOrderModalForm() {
             document.getElementById('new-order-id').value = '';
+            document.getElementById('new-order-date').value = normalizeSummaryDateKey(new Date());
             document.getElementById('new-order-agent').value = '';
             document.getElementById('order-customer-name').value = '';
             document.getElementById('order-customer-address').value = '';
@@ -4084,6 +4479,7 @@
             setOrderModalState('edit', 'แก้ไขบิล', 'บันทึกการแก้ไข');
             clearOrderModalForm();
             document.getElementById('new-order-id').value = order.orderId;
+            document.getElementById('new-order-date').value = normalizeSummaryDateKey(order.orderDateKey || order.createdAt || order.created) || normalizeSummaryDateKey(new Date());
             document.getElementById('new-order-agent').value = order.agent || '';
             document.getElementById('order-customer-name').value = order.customerName || '';
             document.getElementById('order-customer-address').value = order.customerAddress || '';
@@ -4554,7 +4950,7 @@
             });
             const shippingType = document.getElementById('order-shipping-type').value;
             const shippingCustom = Number(document.getElementById('order-shipping-custom').value) || 0;
-            const shippingAmount = shippingType === 'VAN' ? 350 : shippingType === 'CHILLED' ? 150 : shippingType === 'PARCEL' ? 60 : (shippingType === 'MESSENGER' || shippingType === 'SPLIT') ? Math.max(0, shippingCustom) : 0;
+            const shippingAmount = getShippingFeeAmount(shippingType, shippingCustom);
             const discountAmount = Math.max(0, Number(document.getElementById('order-discount-amount').value) || 0);
             const grandTotal = Math.max(0, subtotal + shippingAmount - discountAmount);
             const subtotalEl = document.getElementById('cart-subtotal-display');
@@ -4865,10 +5261,13 @@
 
         // ================= MODAL: DYNAMIC RATETIERS CONTROLS =================
 
-        function openRateModal(agent, prodId) {
-            selectedRateEdit = { agent, prodId };
+        function openRateModal(scope, target, prodId) {
+            var targetScope = String(scope || 'AGENT').trim().toUpperCase() === 'GROUP' ? 'GROUP' : 'AGENT';
+            selectedRateEdit = { scope: targetScope, target: target, prodId: prodId };
 
-            document.getElementById('rate-modal-agent').innerText = agent;
+            var targetLabelEl = document.getElementById('rate-modal-target-label');
+            if (targetLabelEl) targetLabelEl.textContent = targetScope === 'GROUP' ? 'กลุ่มตัวแทน:' : 'ตัวแทน:';
+            document.getElementById('rate-modal-agent').innerText = target;
 
             const prod = asArray(products).find(function (p) { return p.id === prodId; });
             const prodName = prod ? prod.name : "";
@@ -4877,7 +5276,8 @@
             const container = document.getElementById('tier-rows-container');
             container.innerHTML = "";
 
-            const tiers = agentRates[agent][prodId] || [];
+            const rateMap = targetScope === 'GROUP' ? agentGroupRates : agentRates;
+            const tiers = (rateMap[target] && rateMap[target][prodId]) || [];
 
             if (tiers.length === 0) {
                 document.getElementById('empty-tiers-msg').classList.remove('hidden');
@@ -4983,6 +5383,7 @@
             // 1. ดึงค่าจาก Input
             const agent = document.getElementById('new-order-agent')?.value;
             const agentId = agentIdsByName[agent];
+            const orderDate = normalizeSummaryDateKey(document.getElementById('new-order-date')?.value) || normalizeSummaryDateKey(new Date());
             const customerName = document.getElementById('order-customer-name')?.value.trim() || '';
             const customerAddress = document.getElementById('order-customer-address')?.value.trim() || '';
             const customerPhone = document.getElementById('order-customer-phone')?.value.trim() || '';
@@ -5012,6 +5413,11 @@
 
             if (!agentId) {
                 showNotification('ไม่พบข้อมูลตัวแทน กรุณารีเฟรชหน้าแล้วลองใหม่', true);
+                return;
+            }
+
+            if (!orderDate) {
+                showNotification('กรุณาเลือกวันที่บิลก่อนบันทึก', true);
                 return;
             }
 
@@ -5125,6 +5531,7 @@
 
             const payload = {
                 agentId: agentId,
+                orderDate: orderDate,
                 items: cartItems,
                 customerName: customerName,
                 customerAddress: customerAddress,
@@ -5239,15 +5646,72 @@
             });
         }
 
+        function renderAgentManagementTable() {
+            const tbody = document.getElementById('agent-management-table-body');
+            if (!tbody) return;
+            const selectedGroup = String(document.getElementById('agent-management-group-filter')?.value || 'ALL').trim() || 'ALL';
+            const nameQuery = String(document.getElementById('agent-management-name-search')?.value || '').trim().toLowerCase();
+            const safeAgents = asArray(agentRecords).filter(function (agent) {
+                return String(agent && agent.Status || 'ACTIVE').toUpperCase() === 'ACTIVE';
+            }).filter(function (agent) {
+                if (selectedGroup !== 'ALL' && String(agent && agent.AgentGroup || defaultAgentGroup).trim() !== selectedGroup) {
+                    return false;
+                }
+                if (nameQuery && String(agent && agent.AgentName || '').trim().toLowerCase().indexOf(nameQuery) === -1) {
+                    return false;
+                }
+                return true;
+            });
+            tbody.replaceChildren();
+            if (!safeAgents.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400 italic">ไม่พบข้อมูลตัวแทนตามเงื่อนไขที่เลือก</td></tr>';
+                return;
+            }
+            safeAgents.forEach(function (agent) {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50/50 transition';
+                appendCell(row, agent.AgentID || '-', 'p-2.5 font-mono font-bold text-primary-700');
+                appendCell(row, agent.AgentName || '-', 'p-2.5 font-bold text-slate-700 break-words');
+                appendCell(row, agent.AgentGroup || defaultAgentGroup, 'p-2.5 text-slate-600');
+                const actionCell = appendCell(row, '', 'p-2.5 text-center');
+                const actionWrap = document.createElement('div');
+                actionWrap.className = 'inline-flex items-center justify-center gap-1.5';
+
+                const editButton = document.createElement('button');
+                editButton.type = 'button';
+                editButton.className = 'agent-admin-only erp-action erp-action-secondary px-2.5 py-1 text-[10px]';
+                editButton.innerHTML = '<i class="fa-regular fa-pen-to-square"></i>';
+                editButton.setAttribute('aria-label', 'แก้ไขตัวแทน ' + (agent.AgentName || agent.AgentID || ''));
+                editButton.addEventListener('click', function () {
+                    openAgentModal(agent.AgentID);
+                });
+
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'agent-admin-only erp-action erp-action-danger px-2.5 py-1 text-[10px]';
+                deleteButton.innerHTML = '<i class="fa-regular fa-trash-can"></i>';
+                deleteButton.setAttribute('aria-label', 'ลบตัวแทน ' + (agent.AgentName || agent.AgentID || ''));
+                deleteButton.addEventListener('click', function () {
+                    deleteAgentRecord(agent.AgentID);
+                });
+
+                actionWrap.append(editButton, deleteButton);
+                actionCell.appendChild(actionWrap);
+                tbody.appendChild(row);
+            });
+        }
+
         function renderAgentRatesTable() {
             const tbody = document.getElementById('agent-rates-table-body');
-            const selectedAgent = document.getElementById('agent-config-select').value;
+            const scope = getSelectedRateScope_();
+            const selectedTarget = document.getElementById('agent-config-select').value;
             const query = String(document.getElementById('agent-rate-search').value || '').trim().toLowerCase();
             const safeProducts = asArray(products);
             tbody.replaceChildren();
-            if (!selectedAgent) return;
+            if (!selectedTarget) return;
+            const rateMap = scope === 'GROUP' ? agentGroupRates : agentRates;
             safeProducts.filter(function (product) { return product.id.toLowerCase().includes(query) || product.name.toLowerCase().includes(query); }).forEach(function (product) {
-                const tiers = (agentRates[selectedAgent] && agentRates[selectedAgent][product.id]) || [{ min: 1, max: 99999, price: product.defaultPrice }];
+                const tiers = (rateMap[selectedTarget] && rateMap[selectedTarget][product.id]) || [{ min: 1, max: 99999, price: product.defaultPrice }];
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-50/50 transition';
                 appendCell(row, product.id, 'p-2.5 font-mono font-bold text-primary-700');
@@ -5259,7 +5723,7 @@
                 rateButton.setAttribute('aria-label', 'ดูรายละเอียดเรท ' + product.id);
                 rateButton.textContent = tiers.length + ' เรท';
                 rateButton.addEventListener('mouseenter', function () {
-                    showAgentRatePopover(selectedAgent, product, tiers, rateButton);
+                    showAgentRatePopover((scope === 'GROUP' ? 'กลุ่ม: ' : 'ตัวแทน: ') + selectedTarget, product, tiers, rateButton);
                 });
                 rateButton.addEventListener('mouseleave', function () {
                     hideAgentRatePopover();
@@ -5269,7 +5733,7 @@
                 const button = document.createElement('button');
                 button.type = 'button'; button.className = 'erp-action erp-action-primary px-2.5 py-1 text-[10px]';
                 button.textContent = 'เรท';
-                button.addEventListener('click', function () { openRateModal(selectedAgent, product.id); });
+                button.addEventListener('click', function () { openRateModal(scope, selectedTarget, product.id); });
                 action.appendChild(button);
                 tbody.appendChild(row);
             });
@@ -5306,7 +5770,7 @@
             document.querySelectorAll('table').forEach(function (table) {
                 if (table.parentElement) table.parentElement.classList.add('erp-table-region');
             });
-            ['orders-table-body', 'stock-table-body', 'agent-rates-table-body'].forEach(function (id) {
+            ['orders-table-body', 'stock-table-body', 'agent-management-table-body', 'agent-rates-table-body'].forEach(function (id) {
                 const body = document.getElementById(id);
                 if (!body) return;
                 let frame = null;

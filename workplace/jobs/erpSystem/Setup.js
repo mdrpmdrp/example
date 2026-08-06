@@ -21,6 +21,7 @@ function setupDatabase() {
   createProducts();
   createAgents();
   createAgentRates();
+  createAgentGroupRates();
   createOrders();
   createOrderItems();
   createBackupOrders();
@@ -34,6 +35,15 @@ function setupDatabase() {
 
   SpreadsheetApp.getUi().alert("Database Created Successfully");
 
+}
+
+function applyAgentGroupDropdown_(sheet) {
+  if (!sheet) return;
+  var rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(AGENT_GROUP_OPTIONS, true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 3, Math.max(sheet.getMaxRows() - 1, 1), 1).setDataValidation(rule);
 }
 
 function createProducts() {
@@ -57,17 +67,19 @@ function createProducts() {
 }
 
 function createAgents() {
-  createSheet(
+  var sheet = createSheet(
     SHEETS.AGENTS,
     [
       "AgentID",
       "AgentName",
+      "AgentGroup",
       "Phone",
       "Address",
       "Status",
       "Created"
     ]
   );
+  applyAgentGroupDropdown_(sheet);
 }
 
 function createAgentRates() {
@@ -77,6 +89,23 @@ function createAgentRates() {
     [
       "RateID",
       "AgentID",
+      "ProductID",
+      "MinQty",
+      "MaxQty",
+      "SellPrice",
+      "Created"
+    ]
+  );
+
+}
+
+function createAgentGroupRates() {
+
+  createSheet(
+    SHEETS.AGENT_GROUP_RATES,
+    [
+      "RateID",
+      "AgentGroup",
       "ProductID",
       "MinQty",
       "MaxQty",
@@ -228,6 +257,50 @@ function createConfig() {
 
 }
 
+function migrateAgentsSchema() {
+  var sheet = getSheet(SHEETS.AGENTS);
+  if (!sheet) throw new Error('AGENTS sheet not found');
+
+  var headers = [
+    "AgentID",
+    "AgentName",
+    "AgentGroup",
+    "Phone",
+    "Address",
+    "Status",
+    "Created"
+  ];
+  var lastRow = sheet.getLastRow();
+  var dataRows = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, Math.max(sheet.getLastColumn(), 6)).getValues() : [];
+  var migratedRows = dataRows.map(function (row) {
+    return [
+      row[0],
+      row[1],
+      String(row[2] || '').trim() || DEFAULT_AGENT_GROUP,
+      row[3],
+      row[4],
+      row[5],
+      row[6] || new Date()
+    ];
+  });
+
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length)
+    .setFontWeight("bold")
+    .setBackground("#1565C0")
+    .setFontColor("white");
+
+  if (migratedRows.length) {
+    sheet.getRange(2, 1, migratedRows.length, headers.length).setValues(migratedRows);
+  }
+
+  applyAgentGroupDropdown_(sheet);
+  return {
+    migratedRows: migratedRows.length,
+    defaultGroup: DEFAULT_AGENT_GROUP
+  };
+}
+
 function insertDemoData() {
   const ss = SpreadsheetApp.getActive();
 
@@ -239,7 +312,7 @@ function insertDemoData() {
     ["COMPANY_NAME", "My ERP System"],
     ["ORDER_PREFIX", "ORD"],
     ["PRODUCT_PREFIX", "PROD"],
-    ["AGENT_PREFIX", "AGT"],
+    ["AGENT_PREFIX", "AG"],
     ["DEFAULT_CURRENCY", "THB"],
     ["VERSION", "1.0.0"]
   ]);
@@ -331,37 +404,37 @@ function insertDemoData() {
   // AGENTS
   // ==========================
   const agents = ss.getSheetByName(SHEETS.AGENTS);
-  agents.getRange(2, 1, 5, 6).setValues([
+  agents.getRange(2, 1, 5, 7).setValues([
     [
-      "AGT001", "Agent Bangkok",
+      "AG001", "Agent Bangkok", "VIP รวมส่ง",
       "0811111111",
       "Bangkok",
       "ACTIVE",
       new Date()
     ],
     [
-      "AGT002", "Agent Chiang Mai",
+      "AG002", "Agent Chiang Mai", "VIP รวมส่ง",
       "0822222222",
       "Chiang Mai",
       "ACTIVE",
       new Date()
     ],
     [
-      "AGT003", "Agent Khon Kaen",
+      "AG003", "Agent Khon Kaen", "VIP รวมส่ง",
       "0833333333",
       "Khon Kaen",
       "ACTIVE",
       new Date()
     ],
     [
-      "AGT004", "Agent Phuket",
+      "AG004", "Agent Phuket", "VIP รวมส่ง",
       "0844444444",
       "Phuket",
       "ACTIVE",
       new Date()
     ],
     [
-      "AGT005", "Agent Hat Yai",
+      "AG005", "Agent Hat Yai", "VIP รวมส่ง",
       "0855555555",
       "Songkhla",
       "ACTIVE",
@@ -375,28 +448,41 @@ function insertDemoData() {
   const rates = ss.getSheetByName(SHEETS.AGENT_RATES);
   rates.getRange(2, 1, 12, 7).setValues([
     // PROD001
-    [1, "AGT001", "PROD001", 1, 5, 4200, new Date()],
-    [2, "AGT001", "PROD001", 6, 999999, 3950, new Date()],
+    [1, "AG001", "PROD001", 1, 5, 4200, new Date()],
+    [2, "AG001", "PROD001", 6, 999999, 3950, new Date()],
 
     // PROD002
-    [3, "AGT001", "PROD002", 1, 5, 3650, new Date()],
-    [4, "AGT001", "PROD002", 6, 999999, 3400, new Date()],
+    [3, "AG001", "PROD002", 1, 5, 3650, new Date()],
+    [4, "AG001", "PROD002", 6, 999999, 3400, new Date()],
 
     // PROD003
-    [5, "AGT002", "PROD003", 1, 5, 5300, new Date()],
-    [6, "AGT002", "PROD003", 6, 999999, 5000, new Date()],
+    [5, "AG002", "PROD003", 1, 5, 5300, new Date()],
+    [6, "AG002", "PROD003", 6, 999999, 5000, new Date()],
 
     // PROD004
-    [7, "AGT003", "PROD004", 1, 10, 1150, new Date()],
-    [8, "AGT003", "PROD004", 11, 999999, 1100, new Date()],
+    [7, "AG003", "PROD004", 1, 10, 1150, new Date()],
+    [8, "AG003", "PROD004", 11, 999999, 1100, new Date()],
 
     // PROD005
-    [9, "AGT004", "PROD005", 1, 10, 1500, new Date()],
-    [10, "AGT004", "PROD005", 11, 999999, 1400, new Date()],
+    [9, "AG004", "PROD005", 1, 10, 1500, new Date()],
+    [10, "AG004", "PROD005", 11, 999999, 1400, new Date()],
 
     // PROD006
-    [11, "AGT005", "PROD006", 1, 20, 3000, new Date()],
-    [12, "AGT005", "PROD006", 21, 999999, 2800, new Date()]
+    [11, "AG005", "PROD006", 1, 20, 3000, new Date()],
+    [12, "AG005", "PROD006", 21, 999999, 2800, new Date()]
+  ]);
+
+  // ==========================
+  // AGENT GROUP RATES
+  // ==========================
+  const groupRates = ss.getSheetByName(SHEETS.AGENT_GROUP_RATES);
+  groupRates.getRange(2, 1, 6, 7).setValues([
+    ["GRATE001", "VIP รวมส่ง", "PROD001", 1, 5, 4300, new Date()],
+    ["GRATE002", "VIP รวมส่ง", "PROD001", 6, 999999, 4050, new Date()],
+    ["GRATE003", "VIP", "PROD004", 1, 10, 1180, new Date()],
+    ["GRATE004", "VIP", "PROD004", 11, 999999, 1120, new Date()],
+    ["GRATE005", "เรทคลินิก", "PROD003", 1, 5, 5200, new Date()],
+    ["GRATE006", "เรทคลินิก", "PROD003", 6, 999999, 4950, new Date()]
   ]);
 
   // ==========================
@@ -407,7 +493,7 @@ function insertDemoData() {
     [
       "ORD26072801",
       new Date(2026, 6, 28, 10, 15, 0),
-      "AGT001",
+      "AG001",
       3,
       10200,
       6250,
@@ -427,7 +513,7 @@ function insertDemoData() {
     [
       "ORD26072701",
       new Date(2026, 6, 27, 14, 20, 0),
-      "AGT002",
+      "AG002",
       3,
       8700,
       5000,
@@ -447,7 +533,7 @@ function insertDemoData() {
     [
       "ORD26071801",
       new Date(2026, 6, 18, 9, 45, 0),
-      "AGT003",
+      "AG003",
       5,
       11200,
       6200,
@@ -487,7 +573,7 @@ function insertDemoData() {
     [
       "ORD26062101",
       new Date(2026, 5, 21, 11, 5, 0),
-      "AGT004",
+      "AG004",
       3,
       6400,
       3600,
@@ -507,7 +593,7 @@ function insertDemoData() {
     [
       "ORD26031201",
       new Date(2026, 2, 12, 13, 30, 0),
-      "AGT005",
+      "AG005",
       3,
       8600,
       5200,
@@ -527,7 +613,7 @@ function insertDemoData() {
     [
       "ORD25110501",
       new Date(2025, 10, 5, 16, 10, 0),
-      "AGT001",
+      "AG001",
       6,
       8200,
       4450,
@@ -574,3 +660,4 @@ function insertDemoData() {
   ]);
   SpreadsheetApp.flush();
 }
+

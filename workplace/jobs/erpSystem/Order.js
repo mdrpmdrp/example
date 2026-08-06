@@ -5,15 +5,21 @@ function getOrderSchemaStatusColumn_() {
 
 function normalizeShippingType_(value) {
   const type = String(value || '').trim().toUpperCase();
-  if (type === 'VAN' || type === 'CHILLED' || type === 'PARCEL' || type === 'MESSENGER' || type === 'SPLIT' || type === 'NONE') {
-    return type;
-  }
-  return 'NONE';
+  let map = {
+    VAN: 'VAN',
+    CHILLED150: 'CHILLED150',
+    CHILLED100: 'CHILLED100',
+    PARCEL: 'PARCEL',
+    MESSENGER: 'MESSENGER',
+    SPLIT: 'SPLIT',
+    NONE: 'NONE'
+  };
+  return map[type] || 'NONE';
 }
 
 function resolveShippingAmount_(shippingType, shippingAmount) {
   const type = normalizeShippingType_(shippingType);
-  const preset = { VAN: 350, CHILLED: 150, PARCEL: 60 };
+  const preset = { VAN: 350, CHILLED: 150, PARCEL: 60, CHILLED150: 150, CHILLED100: 100, INTER: 300 };
   if (preset[type] != null) return { type: type, amount: preset[type] };
   if (type === 'MESSENGER' || type === 'SPLIT') {
     const amount = Number(shippingAmount);
@@ -21,6 +27,37 @@ function resolveShippingAmount_(shippingType, shippingAmount) {
     return { type: type, amount: amount };
   }
   return { type: 'NONE', amount: 0 };
+}
+
+function resolveOrderDateValue_(value, fallbackDate) {
+  var base = fallbackDate instanceof Date && !isNaN(fallbackDate.getTime())
+    ? new Date(fallbackDate.getTime())
+    : new Date();
+
+  if (!value) return base;
+  if (value instanceof Date && !isNaN(value.getTime())) return new Date(value.getTime());
+
+  var text = String(value || '').trim();
+  if (!text) return base;
+
+  var dateOnlyMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    var year = Number(dateOnlyMatch[1]);
+    var monthIndex = Number(dateOnlyMatch[2]) - 1;
+    var day = Number(dateOnlyMatch[3]);
+    return new Date(
+      year,
+      monthIndex,
+      day,
+      base.getHours(),
+      base.getMinutes(),
+      base.getSeconds(),
+      base.getMilliseconds()
+    );
+  }
+
+  var parsed = new Date(text);
+  return isNaN(parsed.getTime()) ? base : parsed;
 }
 
 function normalizeOrderUnitValue_(product, selectedUnit) {
@@ -464,6 +501,7 @@ function createOrder(sessionToken, payload) {
 
     const orderId = generateId('ORD', SHEETS.ORDERS);
     const shipping = resolveShippingAmount_(payload.shippingType, payload.shippingAmount);
+    const orderDate = resolveOrderDateValue_(payload.orderDate, new Date());
     const customerName = String(payload.customerName || '').trim();
     const customerAddress = String(payload.customerAddress || '').trim();
     const customerPhone = String(payload.customerPhone || '').trim();
@@ -477,7 +515,7 @@ function createOrder(sessionToken, payload) {
 
     appendObject(SHEETS.ORDERS, [
       orderId,
-      new Date(),
+      orderDate,
       payload.agentId,
       totals.quantity,
       netAmount,
@@ -549,6 +587,7 @@ function updateOrder(sessionToken, orderId, payload) {
     const totals = built.totals;
 
     const shipping = resolveShippingAmount_(payload.shippingType, payload.shippingAmount);
+    const orderDate = resolveOrderDateValue_(payload.orderDate, existing.OrderDate || new Date());
     const customerName = String(payload.customerName || '').trim();
     const customerAddress = String(payload.customerAddress || '').trim();
     const customerPhone = String(payload.customerPhone || '').trim();
@@ -576,7 +615,7 @@ function updateOrder(sessionToken, orderId, payload) {
 
     getSheet(SHEETS.ORDERS).getRange(row, 1, 1, 18).setValues([[
       id,
-      existing.OrderDate || new Date(),
+      orderDate,
       payload.agentId,
       totals.quantity,
       netAmount,

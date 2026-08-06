@@ -1,9 +1,24 @@
 /** Dealer / agent data access. */
+function ensureAgentsSchema_() {
+  var sheet = getSheet(SHEETS.AGENTS);
+  if (!sheet) return;
+  var headerRow = sheet.getLastRow() ? sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 7)).getValues()[0] : [];
+  if (String(headerRow[2] || '').trim() !== 'AgentGroup') {
+    migrateAgentsSchema();
+  }
+}
+
 function getAgents() {
+  ensureAgentsSchema_();
   return getData(SHEETS.AGENTS).map(function(row) {
     return {
-      AgentID: row[0], AgentName: row[1], Phone: row[2], Address: row[3],
-      Status: row[4], Created: row[5]
+      AgentID: row[0],
+      AgentName: row[1],
+      AgentGroup: String(row[2] || '').trim() || DEFAULT_AGENT_GROUP,
+      Phone: row[3],
+      Address: row[4],
+      Status: row[5],
+      Created: row[6]
     };
   }).filter(function(agent) { return agent.Status === 'ACTIVE'; });
 }
@@ -13,9 +28,23 @@ function getAgentById(agentId) {
 }
 
 function addAgent(data) {
-  var id = data.AgentID || generateId('AGT', SHEETS.AGENTS);
-  appendObject(SHEETS.AGENTS, [id, data.AgentName, data.Phone || '', data.Address || '', 'ACTIVE', new Date()]);
+  ensureAgentsSchema_();
+  var id = data.AgentID || generateId('AG', SHEETS.AGENTS);
+  appendObject(SHEETS.AGENTS, [
+    id,
+    data.AgentName,
+    String(data.AgentGroup || '').trim() || DEFAULT_AGENT_GROUP,
+    data.Phone || '',
+    data.Address || '',
+    'ACTIVE',
+    new Date()
+  ]);
   return getAgentById(id);
+}
+
+function getAgentRowById_(agentId) {
+  var rowIndex = findRow(SHEETS.AGENTS, agentId);
+  return rowIndex > 1 ? rowIndex : -1;
 }
 
 function createAgent(sessionToken, data) {
@@ -24,9 +53,49 @@ function createAgent(sessionToken, data) {
   return addAgent({
     AgentID: data.AgentID,
     AgentName: String(data.AgentName).trim(),
+    AgentGroup: String(data.AgentGroup || '').trim() || DEFAULT_AGENT_GROUP,
     Phone: String(data.Phone || '').trim(),
     Address: String(data.Address || '').trim()
   });
+}
+
+function updateAgent(sessionToken, data) {
+  requireRole(sessionToken, ['OWNER', 'ADMIN']);
+  ensureAgentsSchema_();
+  if (!data || !String(data.AgentID || '').trim()) throw new Error('Agent ID is required');
+  if (!String(data.AgentName || '').trim()) throw new Error('Agent name is required');
+
+  var id = String(data.AgentID).trim();
+  var rowIndex = getAgentRowById_(id);
+  if (rowIndex < 2) throw new Error('Agent not found');
+
+  var sheet = getSheet(SHEETS.AGENTS);
+  var existing = sheet.getRange(rowIndex, 1, 1, 7).getValues()[0];
+  var createdValue = existing[6] || new Date();
+  sheet.getRange(rowIndex, 1, 1, 7).setValues([[
+    id,
+    String(data.AgentName).trim(),
+    String(data.AgentGroup || '').trim() || DEFAULT_AGENT_GROUP,
+    String(data.Phone || '').trim(),
+    String(data.Address || '').trim(),
+    'ACTIVE',
+    createdValue
+  ]]);
+  return getAgentById(id);
+}
+
+function deleteAgent(sessionToken, agentId) {
+  requireRole(sessionToken, ['OWNER', 'ADMIN']);
+  ensureAgentsSchema_();
+  var id = String(agentId || '').trim();
+  if (!id) throw new Error('Agent ID is required');
+
+  var rowIndex = getAgentRowById_(id);
+  if (rowIndex < 2) throw new Error('Agent not found');
+
+  var sheet = getSheet(SHEETS.AGENTS);
+  sheet.getRange(rowIndex, 6).setValue('INACTIVE');
+  return { success: true, AgentID: id };
 }
 
 function listAgents(sessionToken) {
