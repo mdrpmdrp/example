@@ -12,6 +12,7 @@ function buildProductsPayload_(sessionToken) {
       defaultPrice: Number(product.RetailPrice),
       stock: Number(product.Stock),
       min: Number(product.MinStock),
+      status: String(product.Status || 'ACTIVE').trim() || 'ACTIVE',
       max: null,
       baseUnit: baseUnit,
       unitName: baseUnit,

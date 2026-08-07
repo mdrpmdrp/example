@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="ระบบ ERP สำหรับจัดการสินค้า ตัวแทน สต๊อก และสรุปบิลรายวัน">
     <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#0284c7">
+    <meta name="theme-color" content="#c1e4ff">
     <title>ERP - ระบบจัดการสินค้าและตัวแทน</title>
     <!-- Tailwind CSS -->
     <link rel="preconnect" href="https://cdn.tailwindcss.com">
@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -33,26 +34,26 @@
                     },
                     colors: {
                         primary: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            200: '#bae6fd',
-                            300: '#7dd3fc',
-                            400: '#38bdf8',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1',
-                            850: '#0c4a6e',
-                            900: '#075985',
+                            50: 'oklch(99.2% 0.012 244)',
+                            100: 'oklch(96.8% 0.025 244)',
+                            200: 'oklch(92.6% 0.043 244)',
+                            300: 'oklch(86.9% 0.067 244)',
+                            400: 'oklch(78.4% 0.095 244)',
+                            500: 'oklch(69.6% 0.12 244)',
+                            600: 'oklch(60.4% 0.13 244)',
+                            700: 'oklch(52.1% 0.12 244)',
+                            850: 'oklch(43.6% 0.10 244)',
+                            900: 'oklch(37.5% 0.085 244)',
                         },
                         accent: {
-                            50: '#fff1f2',
-                            100: '#ffe4e6',
-                            200: '#fecdd3',
-                            300: '#fda4af',
-                            400: '#fb7185',
-                            500: '#f43f5e',
-                            600: '#e11d48',
-                            700: '#be123c',
+                            50: 'oklch(99.2% 0.011 345)',
+                            100: 'oklch(96.7% 0.024 345)',
+                            200: 'oklch(92.9% 0.046 345)',
+                            300: 'oklch(86.7% 0.073 345)',
+                            400: 'oklch(79.1% 0.107 345)',
+                            500: 'oklch(71.1% 0.14 345)',
+                            600: 'oklch(62.5% 0.15 345)',
+                            700: 'oklch(54.8% 0.13 345)',
                         }
                     }
                 }
@@ -145,6 +146,20 @@
             return stock + ' ' + unitName;
         }
 
+        function getProductStatusValue(product) {
+            return String(product && (product.status || product.Status) || 'ACTIVE').trim().toUpperCase() === 'INACTIVE'
+                ? 'INACTIVE'
+                : 'ACTIVE';
+        }
+
+        function isProductEnabled(product) {
+            return getProductStatusValue(product) === 'ACTIVE';
+        }
+
+        function getProductStatusDotClass(product) {
+            return isProductEnabled(product) ? 'bg-emerald-500 ring-emerald-100' : 'bg-slate-300 ring-slate-100';
+        }
+
         function formatProductOptionLabel(product) {
             var name = String(product && product.name ? product.name : '');
             var id = String(product && product.id ? product.id : '');
@@ -194,7 +209,7 @@
                 appendLine(item.unit + ' x' + Number(item.packSize), item && item.price);
             });
             if (!lines.length) {
-                lines.push('<div class="text-slate-400 italic">ยังไม่มีราคา</div>');
+                lines.push('<div class="erp-empty-state erp-empty-state--info inline-flex rounded-lg px-2 py-1 italic">ยังไม่มีข้อมูลราคา</div>');
             }
             return '<div class="space-y-0.5 text-[11px] font-medium leading-tight text-slate-700">' + lines.join('') + '</div>';
         }
@@ -575,6 +590,454 @@
                 renderOrdersErrorState(orderTableErrorMessage);
                 return orderTableOrders;
             });
+        }
+
+        function isColdShippingType_(shippingType) {
+            var type = String(shippingType || '').trim().toUpperCase();
+            return type === 'CHILLED150' || type === 'CHILLED100' || type === 'INTER';
+        }
+
+        function sanitizeXlsxSheetName_(value, fallback) {
+            var name = String(value || fallback || 'Sheet').trim();
+            name = name.replace(/[\\/?*\[\]:]/g, ' ').replace(/\s+/g, ' ').trim();
+            name = name.slice(0, 31);
+            return name || String(fallback || 'Sheet').slice(0, 31);
+        }
+
+        function downloadBlobFile_(blob, fileName) {
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(function () {
+                URL.revokeObjectURL(url);
+            }, 1000);
+        }
+
+        function getSummaryExportDayOrders_() {
+            return getSummaryOrdersForDate(selectedSummaryDateKey).filter(function (order) {
+                return !isCancelledOrderRecord(order);
+            });
+        }
+
+        function createXlsxStyles_() {
+            return {
+                title: {
+                    font: { name: 'Noto Sans Thai', sz: 14, bold: true, color: { rgb: 'FFFFFF' } },
+                    fill: { patternType: 'solid', fgColor: { rgb: '0F172A' } },
+                    alignment: { horizontal: 'center', vertical: 'center' }
+                },
+                metaLabel: {
+                    font: { name: 'Noto Sans Thai', sz: 10, bold: true, color: { rgb: '475569' } },
+                    fill: { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } },
+                    border: {
+                        top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+                    }
+                },
+                metaValue: {
+                    font: { name: 'Noto Sans Thai', sz: 10, bold: true, color: { rgb: '0F172A' } },
+                    fill: { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } },
+                    border: {
+                        top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+                    }
+                },
+                header: {
+                    font: { name: 'Noto Sans Thai', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+                    fill: { patternType: 'solid', fgColor: { rgb: '0284C7' } },
+                    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                    border: {
+                        top: { style: 'thin', color: { rgb: '0369A1' } },
+                        bottom: { style: 'thin', color: { rgb: '0369A1' } },
+                        left: { style: 'thin', color: { rgb: '0369A1' } },
+                        right: { style: 'thin', color: { rgb: '0369A1' } }
+                    }
+                },
+                row: {
+                    font: { name: 'Noto Sans Thai', sz: 10, color: { rgb: '0F172A' } },
+                    border: {
+                        top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+                    }
+                },
+                rowAlt: {
+                    font: { name: 'Noto Sans Thai', sz: 10, color: { rgb: '0F172A' } },
+                    fill: { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } },
+                    border: {
+                        top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+                    }
+                },
+                total: {
+                    font: { name: 'Noto Sans Thai', sz: 10, bold: true, color: { rgb: '0F172A' } },
+                    fill: { patternType: 'solid', fgColor: { rgb: 'E0F2FE' } },
+                    border: {
+                        top: { style: 'thin', color: { rgb: 'BAE6FD' } },
+                        bottom: { style: 'thin', color: { rgb: 'BAE6FD' } },
+                        left: { style: 'thin', color: { rgb: 'BAE6FD' } },
+                        right: { style: 'thin', color: { rgb: 'BAE6FD' } }
+                    }
+                },
+                num: {
+                    font: { name: 'Noto Sans Thai', sz: 10, color: { rgb: '0F172A' } },
+                    alignment: { horizontal: 'right', vertical: 'center' },
+                    border: {
+                        top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+                    }
+                },
+                currency: {
+                    font: { name: 'Noto Sans Thai', sz: 10, color: { rgb: '0F172A' } },
+                    alignment: { horizontal: 'right', vertical: 'center' },
+                    border: {
+                        top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                        right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+                    }
+                }
+            };
+        }
+
+        function setXlsxCell_(sheet, rowIndex, colIndex, value, style, numFmt) {
+            var address = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
+            var cell = sheet[address];
+            if (!cell) {
+                cell = sheet[address] = { t: 's', v: '' };
+            }
+            if (value !== undefined) {
+                if (typeof value === 'number') {
+                    cell.t = 'n';
+                    cell.v = value;
+                } else {
+                    cell.t = 's';
+                    cell.v = String(value);
+                }
+            }
+            if (style) cell.s = style;
+            if (numFmt) cell.z = numFmt;
+        }
+
+        function mergeCells_(sheet, startRow, startCol, endRow, endCol) {
+            sheet['!merges'] = sheet['!merges'] || [];
+            sheet['!merges'].push({
+                s: { r: startRow, c: startCol },
+                e: { r: endRow, c: endCol }
+            });
+        }
+
+        function applyRowBanding_(sheet, startRow, endRow, colCount, styles) {
+            for (var row = startRow; row <= endRow; row++) {
+                for (var col = 0; col < colCount; col++) {
+                    var key = XLSX.utils.encode_cell({ r: row, c: col });
+                    if (!sheet[key]) continue;
+                    sheet[key].s = (row - startRow) % 2 === 0 ? styles.row : styles.rowAlt;
+                }
+            }
+        }
+
+        function buildSummaryExportLineRows_(ordersList) {
+            var rows = [];
+            var lineNo = 1;
+
+            asArray(ordersList).forEach(function (order) {
+                var shippingAmount = Number(order && order.shippingAmount) || 0;
+                var discountAmount = Number(order && order.discountAmount) || 0;
+                var regularShipping = isColdShippingType_(order && order.shippingType) ? 0 : shippingAmount;
+                var coldShipping = isColdShippingType_(order && order.shippingType) ? shippingAmount : 0;
+                var items = asArray(order && order.items);
+
+                if (!items.length) {
+                    rows.push([
+                        lineNo++,
+                        String(order && order.customerName || ''),
+                        '',
+                        0,
+                        0,
+                        regularShipping || 0,
+                        coldShipping || 0,
+                        discountAmount || 0,
+                        Number(order && order.totalAmount) || 0
+                    ]);
+                    return;
+                }
+
+                items.forEach(function (item, itemIndex) {
+                    rows.push([
+                        lineNo++,
+                        String(order && order.customerName || ''),
+                        String(item && item.productName || ''),
+                        Number(item && item.unitPrice) || 0,
+                        Number(item && item.total) || 0,
+                        itemIndex === 0 ? (regularShipping || 0) : '',
+                        itemIndex === 0 ? (coldShipping || 0) : '',
+                        itemIndex === 0 ? (discountAmount || 0) : '',
+                        Number(order && order.totalAmount) || 0
+                    ]);
+                });
+            });
+
+            return rows;
+        }
+
+        function buildSummaryExportDetailSheet_(agentName, ordersList, dateLabel) {
+            var styles = createXlsxStyles_();
+            var rows = [
+                ['รายละเอียดรายการของตัวแทน'],
+                ['วันที่', dateLabel],
+                ['ตัวแทน', String(agentName || '-')],
+                [],
+                ['ลำดับ', 'ชื่อลูกค้า', 'รายการ (1 รายการ/1 แถว)', 'ค่าสินค้า/หน่วย', 'รวมค่าสินค้า', 'ค่าแมส/ขนส่ง', 'เคอรี่แพคเย็น/Inter', 'ส่วนลด', 'รวมสุทธิ']
+            ];
+
+            buildSummaryExportLineRows_(ordersList).forEach(function (row) {
+                rows.push(row);
+            });
+
+            var detailSheet = XLSX.utils.aoa_to_sheet(rows);
+            detailSheet['!cols'] = [
+                { wch: 8 },
+                { wch: 24 },
+                { wch: 32 },
+                { wch: 14 },
+                { wch: 14 },
+                { wch: 14 },
+                { wch: 18 },
+                { wch: 14 },
+                { wch: 14 }
+            ];
+            mergeCells_(detailSheet, 0, 0, 0, 8);
+            mergeCells_(detailSheet, 1, 1, 1, 8);
+            mergeCells_(detailSheet, 2, 1, 2, 8);
+            setXlsxCell_(detailSheet, 0, 0, 'รายละเอียดรายการของตัวแทน', styles.title);
+            setXlsxCell_(detailSheet, 1, 0, 'วันที่', styles.metaLabel);
+            setXlsxCell_(detailSheet, 1, 1, dateLabel, styles.metaValue);
+            setXlsxCell_(detailSheet, 2, 0, 'ตัวแทน', styles.metaLabel);
+            setXlsxCell_(detailSheet, 2, 1, String(agentName || '-'), styles.metaValue);
+
+            for (var headerCol = 0; headerCol < 9; headerCol++) {
+                setXlsxCell_(detailSheet, 4, headerCol, detailSheet[XLSX.utils.encode_cell({ r: 4, c: headerCol })].v, styles.header);
+            }
+
+            for (var r = 5; r < rows.length; r++) {
+                for (var c = 0; c < 9; c++) {
+                    var cellKey = XLSX.utils.encode_cell({ r: r, c: c });
+                    var cell = detailSheet[cellKey];
+                    if (!cell) continue;
+                    var baseStyle = (r % 2 === 0) ? styles.row : styles.rowAlt;
+                    if (c === 0) {
+                        cell.s = baseStyle;
+                        cell.t = 'n';
+                        cell.z = '0';
+                    } else if (c === 3 || c === 4 || c === 5 || c === 6 || c === 7 || c === 8) {
+                        cell.s = baseStyle;
+                        cell.t = 'n';
+                        cell.z = '#,##0.00';
+                    } else {
+                        cell.s = baseStyle;
+                    }
+                }
+            }
+
+            applyRowBanding_(detailSheet, 5, rows.length - 1, 9, styles);
+            detailSheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 4, c: 0 }, e: { r: rows.length - 1, c: 8 } }) };
+            detailSheet['!rows'] = [
+                { hpt: 24 },
+                { hpt: 18 },
+                { hpt: 18 },
+                { hpt: 8 },
+                { hpt: 22 }
+            ];
+            return detailSheet;
+        }
+
+        function buildSummaryExportOverviewSheet_(agentName, ordersList, dateLabel) {
+            var styles = createXlsxStyles_();
+            var rows = [
+                ['สรุปรายวันของตัวแทน'],
+                ['วันที่', dateLabel],
+                ['ตัวแทน', String(agentName || '-')],
+                ['จำนวนบิล', String(asArray(ordersList).length)],
+                [],
+                ['ลำดับ', 'เลขบิล', 'ชื่อลูกค้า', 'รายการ', 'ค่าสินค้า', 'ค่าส่ง', 'ส่วนลด', 'รวมสุทธิ']
+            ];
+
+            var totalSubtotal = 0;
+            var totalShipping = 0;
+            var totalDiscount = 0;
+            var totalNet = 0;
+
+            asArray(ordersList).forEach(function (order, index) {
+                var subtotalAmount = Number(order && order.subtotalAmount) || 0;
+                var shippingAmount = Number(order && order.shippingAmount) || 0;
+                var discountAmount = Number(order && order.discountAmount) || 0;
+                var netAmount = Number(order && order.totalAmount) || 0;
+                totalSubtotal += subtotalAmount;
+                totalShipping += shippingAmount;
+                totalDiscount += discountAmount;
+                totalNet += netAmount;
+                rows.push([
+                    index + 1,
+                    String(order && (order.orderId || order.OrderID) || ''),
+                    String(order && order.customerName || ''),
+                    Number(asArray(order && order.items).length) || 0,
+                    subtotalAmount,
+                    shippingAmount,
+                    discountAmount,
+                    netAmount
+                ]);
+            });
+
+            rows.push([
+                'รวม',
+                '',
+                '',
+                String(asArray(ordersList).reduce(function (sum, order) {
+                    return sum + (asArray(order && order.items).length || 0);
+                }, 0)),
+                totalSubtotal,
+                totalShipping,
+                totalDiscount,
+                totalNet
+            ]);
+
+            var overviewSheet = XLSX.utils.aoa_to_sheet(rows);
+            overviewSheet['!cols'] = [
+                { wch: 8 },
+                { wch: 18 },
+                { wch: 24 },
+                { wch: 10 },
+                { wch: 14 },
+                { wch: 14 },
+                { wch: 14 },
+                { wch: 14 }
+            ];
+            mergeCells_(overviewSheet, 0, 0, 0, 7);
+            mergeCells_(overviewSheet, 1, 1, 1, 7);
+            mergeCells_(overviewSheet, 2, 1, 2, 7);
+            setXlsxCell_(overviewSheet, 0, 0, 'สรุปรายวันของตัวแทน', styles.title);
+            setXlsxCell_(overviewSheet, 1, 0, 'วันที่', styles.metaLabel);
+            setXlsxCell_(overviewSheet, 1, 1, dateLabel, styles.metaValue);
+            setXlsxCell_(overviewSheet, 2, 0, 'ตัวแทน', styles.metaLabel);
+            setXlsxCell_(overviewSheet, 2, 1, String(agentName || '-'), styles.metaValue);
+            setXlsxCell_(overviewSheet, 3, 0, 'จำนวนบิล', styles.metaLabel);
+            setXlsxCell_(overviewSheet, 3, 1, String(asArray(ordersList).length), styles.metaValue);
+
+            for (var h = 0; h < 8; h++) {
+                setXlsxCell_(overviewSheet, 5, h, overviewSheet[XLSX.utils.encode_cell({ r: 5, c: h })].v, styles.header);
+            }
+            for (var tr = 6; tr < rows.length - 1; tr++) {
+                for (var tc = 0; tc < 8; tc++) {
+                    var key = XLSX.utils.encode_cell({ r: tr, c: tc });
+                    var cell = overviewSheet[key];
+                    if (!cell) continue;
+                    var style = (tr % 2 === 0) ? styles.row : styles.rowAlt;
+                    if (tc === 0 || tc === 3) {
+                        cell.t = 'n';
+                        cell.z = '0';
+                        cell.s = style;
+                    } else if (tc >= 4) {
+                        cell.t = 'n';
+                        cell.z = '#,##0.00';
+                        cell.s = style;
+                    } else {
+                        cell.s = style;
+                    }
+                }
+            }
+
+            var totalRow = rows.length - 1;
+            for (var totalCol = 0; totalCol < 8; totalCol++) {
+                var totalCell = overviewSheet[XLSX.utils.encode_cell({ r: totalRow, c: totalCol })];
+                if (!totalCell) continue;
+                totalCell.s = styles.total;
+                if (totalCol === 0) totalCell.t = 's';
+                if (totalCol >= 4) {
+                    totalCell.t = 'n';
+                    totalCell.z = '#,##0.00';
+                }
+            }
+
+            overviewSheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 5, c: 0 }, e: { r: totalRow - 1, c: 7 } }) };
+            overviewSheet['!rows'] = [
+                { hpt: 24 },
+                { hpt: 18 },
+                { hpt: 18 },
+                { hpt: 18 },
+                { hpt: 8 },
+                { hpt: 22 }
+            ];
+            return overviewSheet;
+        }
+
+        function buildSummaryExportWorkbook_(agentName, dayOrders) {
+            var workbook = XLSX.utils.book_new();
+            var agentOrders = asArray(dayOrders).filter(function (order) {
+                return String(order && order.agent || '') === String(agentName || '');
+            });
+            var dateLabel = getSummaryDateLabel(selectedSummaryDateKey);
+            var overviewSheet = buildSummaryExportOverviewSheet_(agentName, agentOrders, dateLabel);
+            var detailSheet = buildSummaryExportDetailSheet_(agentName, agentOrders, dateLabel);
+            XLSX.utils.book_append_sheet(workbook, overviewSheet, 'สรุป');
+            XLSX.utils.book_append_sheet(workbook, detailSheet, sanitizeXlsxSheetName_(agentName, 'Agent'));
+            return workbook;
+        }
+
+        function exportSummaryToXlsx() {
+            if (typeof XLSX === 'undefined' || !XLSX.utils || !XLSX.write) {
+                var message = 'ไม่พบไลบรารีสำหรับดาวน์โหลดไฟล์ XLSX กรุณารีเฟรชหน้าแล้วลองใหม่';
+                if (typeof showNotification === 'function') showNotification(message, true);
+                else alert(message);
+                return;
+            }
+
+            var dayOrders = getSummaryExportDayOrders_();
+            if (!dayOrders.length) {
+                var emptyMessage = 'ไม่มีข้อมูลสรุปรายวันสำหรับ export';
+                if (typeof showNotification === 'function') showNotification(emptyMessage, true);
+                else alert(emptyMessage);
+                return;
+            }
+
+            var agentName = String(selectedSummaryAgent || '').trim();
+            if (!agentName) {
+                var agentMessage = 'กรุณาเลือกชื่อตัวแทนก่อน export';
+                if (typeof showNotification === 'function') showNotification(agentMessage, true);
+                else alert(agentMessage);
+                return;
+            }
+
+            var workbook = buildSummaryExportWorkbook_(agentName, dayOrders);
+            var dateKey = normalizeSummaryDateKey(selectedSummaryDateKey) || getTodaySummaryDateKey();
+            var safeAgentFileName = String(agentName || 'agent')
+                .replace(/[\\\/:*?"<>|]/g, ' ')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '')
+                .toLowerCase();
+            var output = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            var blob = new Blob([output], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+
+            downloadBlobFile_(blob, 'summary-' + dateKey + '-' + safeAgentFileName + '.xlsx');
+            if (typeof showNotification === 'function') {
+                showNotification('ส่งออกไฟล์ XLSX ของ ' + agentName + ' เรียบร้อย');
+            }
         }
 
         function getTodaySummaryDateKey() {
@@ -1135,9 +1598,9 @@
                 const hasSales = p.qty > 0;
                 const isKnownProduct = knownProductIds.has(p.id);
                 prodChartRows.push(`
-                    <div class="flex justify-between items-center text-[11px] p-2 rounded-lg border ${hasSales ? 'bg-primary-50/40 border-primary-100' : 'bg-slate-50 border-slate-200'}">
-                        <span class="font-semibold text-slate-700 truncate pr-1.5">${escapeHtml((isKnownProduct ? p.id : '[นอกสต๊อก]') + ' - ' + String(p.name || '-'))}</span>
-                        <span class="${hasSales ? 'bg-primary-100 text-primary-700 font-black' : 'bg-slate-200 text-slate-500 font-bold'} px-2 py-0.5 rounded-full font-mono text-[10px] whitespace-nowrap">${escapeHtml(String(p.qty))} ${escapeHtml(getProductUnitName(p))}</span>
+                    <div class="flex justify-between items-center text-[11px] p-2 rounded-lg border ${hasSales ? 'bg-primary-50/40 border-primary-100' : 'bg-primary-50/30 border-primary-100'}">
+                        <span class="font-semibold ${hasSales ? 'text-primary-900' : 'text-primary-850'} truncate pr-1.5">${escapeHtml((isKnownProduct ? p.id : '[นอกสต๊อก]') + ' - ' + String(p.name || '-'))}</span>
+                        <span class="${hasSales ? 'bg-primary-100 text-primary-700 font-black' : 'bg-primary-50 text-primary-700 font-bold'} px-2 py-0.5 rounded-full font-mono text-[10px] whitespace-nowrap">${escapeHtml(String(p.qty))} ${escapeHtml(getProductUnitName(p))}</span>
                     </div>
                 `);
             });
@@ -1147,14 +1610,35 @@
         function renderSummariesTab() {
             const container = document.getElementById('summaries-agent-list');
             const countLabel = document.getElementById('summary-agent-count');
+            const agentSelect = document.getElementById('summary-agent-select');
             const dayOrders = getSummaryOrdersForDate(selectedSummaryDateKey);
             const agentRows = buildSummaryAgentRows(dayOrders);
             const selectedDate = normalizeSummaryDateKey(selectedSummaryDateKey) || getTodaySummaryDateKey();
             if (countLabel) countLabel.textContent = agentRows.length + ' ตัวแทน';
+            if (agentSelect) {
+                agentSelect.replaceChildren();
+                if (!agentRows.length) {
+                    const emptyOption = document.createElement('option');
+                    emptyOption.value = '';
+                    emptyOption.textContent = 'ไม่มีตัวแทนในวันนี้';
+                    agentSelect.appendChild(emptyOption);
+                    agentSelect.disabled = true;
+                } else {
+                    agentSelect.disabled = false;
+                    agentRows.forEach(function (row) {
+                        const option = document.createElement('option');
+                        option.value = row.agent;
+                        option.textContent = row.agent + ' (' + row.billCount + ' บิล)';
+                        agentSelect.appendChild(option);
+                    });
+                }
+            }
             container.replaceChildren();
             if (!dayOrders.length) {
+                selectedSummaryAgent = '';
+                if (agentSelect) agentSelect.value = '';
                 const empty = document.createElement('div');
-                empty.className = 'rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-400 italic';
+                empty.className = 'erp-empty-state erp-empty-state--info rounded-lg p-4 text-sm italic';
                 empty.textContent = 'ไม่มีบิลในวันที่เลือก';
                 container.appendChild(empty);
                 renderSummaryDetails('', []);
@@ -1163,6 +1647,7 @@
             if (!selectedSummaryAgent || !agentRows.some(function (row) { return row.agent === selectedSummaryAgent; })) {
                 selectedSummaryAgent = agentRows[0].agent;
             }
+            if (agentSelect) agentSelect.value = selectedSummaryAgent;
             agentRows.forEach(function (row) {
                 const button = document.createElement('button');
                 const left = document.createElement('div');
@@ -1172,20 +1657,20 @@
                 const total = document.createElement('span');
                 const badge = document.createElement('span');
                 button.type = 'button';
-                button.className = 'w-full bg-white hover:bg-primary-50/60 p-3 rounded-lg border cursor-pointer transition-all duration-150 flex justify-between items-center group text-left ' + (selectedSummaryAgent === row.agent ? 'border-primary-300 ring-1 ring-primary-100' : 'border-slate-200');
+                button.className = 'w-full bg-[color:var(--erp-surface)] hover:bg-primary-50/60 p-3 rounded-lg border cursor-pointer transition-all duration-150 flex justify-between items-center group text-left ' + (selectedSummaryAgent === row.agent ? 'border-primary-300 ring-1 ring-primary-100' : 'border-primary-100');
                 button.setAttribute('aria-label', 'ดูสรุปบิลของ ' + row.agent);
                 button.addEventListener('click', function () {
                     selectedSummaryAgent = row.agent;
                     renderSummariesTab();
                 });
-                title.className = 'font-extrabold text-slate-800 text-xs';
+                title.className = 'font-extrabold text-primary-900 text-xs';
                 title.textContent = row.agent;
-                count.className = 'text-[10px] text-slate-400 font-semibold';
+                count.className = 'text-[10px] text-primary-600 font-semibold';
                 count.textContent = row.billCount + ' บิล';
                 left.append(title, count);
-                total.className = 'font-mono text-xs font-black text-slate-800 block';
+                total.className = 'font-mono text-xs font-black text-primary-900 block';
                 total.textContent = '฿' + row.totalAmount.toLocaleString();
-                badge.className = 'text-[8px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded tracking-wider uppercase';
+                badge.className = 'text-[8px] bg-primary-100 text-primary-700 font-bold px-1.5 py-0.5 rounded tracking-wider uppercase';
                 badge.textContent = selectedDate;
                 right.append(total, badge);
                 button.append(left, right);
@@ -1294,6 +1779,7 @@
                 cost: normalizeSnapshotValue(document.getElementById('prod-cost')?.value),
                 stock: normalizeSnapshotValue(document.getElementById('prod-stock')?.value),
                 min: normalizeSnapshotValue(document.getElementById('prod-min')?.value),
+                status: document.getElementById('prod-status-switch')?.checked ? 'ACTIVE' : 'INACTIVE',
                 stockAddQty: normalizeSnapshotValue(document.getElementById('prod-stock-add-qty')?.value),
                 stockAddUnit: normalizeSnapshotValue(document.getElementById('prod-stock-add-unit')?.value),
                 packRows: packRows
@@ -1490,6 +1976,7 @@
             const cost = currentRole === 'owner' ? (parseInt(costInput) || 0) : Math.round(retail * 0.6);
             const stock = parseInt(document.getElementById('prod-stock').value);
             const min = parseInt(document.getElementById('prod-min').value) || 10;
+            const status = document.getElementById('prod-status-switch')?.checked ? 'ACTIVE' : 'INACTIVE';
 
             if (!id || !name || isNaN(retail) || isNaN(stock) || !baseUnit || baseUnit.length > 20) {
                 showNotification("กรุณากรอกข้อมูลสินค้าหลักให้ครบถ้วนด้วย", true);
@@ -1511,7 +1998,8 @@
                 RetailPrice: retail,
                 Cost: cost,
                 Stock: stock,
-                MinStock: min
+                MinStock: min,
+                Status: status
             };
             const message = isEditMode ? 'บันทึกการแก้ไขเรียบร้อยแล้ว' : `บันทึกข้อมูลสินค้า ${id} เข้าสต๊อกเรียบร้อย!`;
 
@@ -1814,18 +2302,18 @@
     <div id="splash-screen"
         class="fixed inset-0 z-[60] bg-[color:var(--erp-surface-muted)] flex items-center justify-center p-4">
         <div
-            class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 px-6 py-8 text-center">
+            class="erp-surface-card w-full max-w-sm px-6 py-8 text-center">
             <div
                 class="splash-mark inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary-50 text-primary-700 border border-primary-100 shadow-sm mb-4">
                 <i class="fa-solid fa-layer-group text-2xl"></i>
             </div>
-            <h2 class="text-2xl font-black tracking-tight text-slate-900">ระบบจัดการสินค้าและตัวแทน</h2>
-            <p class="mt-2 text-sm text-slate-500">กำลังตรวจสอบการเข้าสู่ระบบ</p>
+            <h2 class="text-2xl font-black tracking-tight text-[color:var(--erp-ink)]">ระบบจัดการสินค้าและตัวแทน</h2>
+            <p class="mt-2 text-sm text-[color:var(--erp-ink-muted)]">กำลังตรวจสอบการเข้าสู่ระบบ</p>
             <div class="splash-track mt-6 h-1.5 w-full rounded-full overflow-hidden">
                 <div id="splash-progress-bar"
                     class="h-full w-[12%] rounded-full bg-primary-500 transition-[width] duration-1000"></div>
             </div>
-            <div class="mt-4 flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
+            <div class="mt-4 flex items-center justify-center gap-2 text-sm font-semibold text-[color:var(--erp-ink-muted)]">
                 <i class="fa-solid fa-circle-notch fa-spin text-primary-600"></i>
                 <span>เตรียมระบบ</span>
             </div>
@@ -1836,16 +2324,16 @@
     <div id="login-screen"
         class="fixed inset-0 z-50 hidden bg-[color:var(--erp-surface-muted)] flex items-center justify-center p-4 transition-all duration-300">
         <div
-            class="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl shadow-slate-900/10 border border-slate-200/80">
+            class="erp-panel w-full max-w-md overflow-hidden">
             <!-- Login Header Banner -->
-            <div class="bg-white text-slate-900 p-6 text-center relative overflow-hidden border-b border-slate-200">
+            <div class="bg-[color:var(--erp-surface)] text-[color:var(--erp-ink)] p-6 text-center relative overflow-hidden border-b border-[color:var(--erp-border)]">
                 <div class="absolute inset-x-0 top-0 h-1 bg-primary-500" aria-hidden="true"></div>
                 <div
                     class="inline-flex bg-primary-50 text-primary-700 border border-primary-100 p-3 rounded-xl font-bold text-2xl shadow-sm mb-3">
                     <i class="fa-solid fa-layer-group"></i>
                 </div>
-                <h2 class="text-xl font-black tracking-tight uppercase">ระบบจัดการสินค้าและตัวแทน</h2>
-                <p class="text-xs text-slate-500 font-medium mt-1">ระบบ ERP สำหรับสินค้าและตัวแทน</p>
+                <h2 class="text-xl font-black tracking-tight">ระบบจัดการสินค้าและตัวแทน</h2>
+                <p class="text-xs text-[color:var(--erp-ink-muted)] font-medium mt-1">ระบบ ERP สำหรับสินค้าและตัวแทน</p>
             </div>
 
             <!-- Login Form Body -->
@@ -1905,7 +2393,7 @@
 
     <!-- แถบเมนูด้านบนระดับองค์กร (ERP Top Navbar) -->
     <header id="app-header"
-        class="hidden bg-white/90 backdrop-blur-sm border-b border-slate-200/80 shadow-sm sticky top-0 z-40">
+        class="hidden bg-white/95 border-b border-slate-200/80 shadow-sm sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-4">
 
             <!-- โลโก้แบรนด์ระบบ -->
@@ -1915,8 +2403,7 @@
                 </div>
                 <div>
                     <div class="flex items-center gap-2">
-                        <span class="bg-primary-100 text-primary-700 text-[10px] font-bold px-1.5 py-0.5 rounded-md">ERP
-                            PORTAL</span>
+                        <span class="bg-primary-100 text-primary-700 text-[10px] font-bold px-1.5 py-0.5 rounded-md">ERP portal</span>
                     </div>
                     <h1 class="font-extrabold text-base text-slate-800 tracking-tight leading-tight">
                         ระบบจัดการสินค้าและตัวแทน</h1>
@@ -1944,7 +2431,7 @@
                         <span id="user-display-name"
                             class="block text-xs font-extrabold text-slate-800">ผู้บริหารระบบ</span>
                         <span id="user-display-role"
-                            class="block text-[9px] font-bold text-primary-600 uppercase tracking-wider font-mono">OWNER</span>
+                            class="block text-[9px] font-bold text-primary-600 tracking-wider font-mono">Owner</span>
                     </div>
                     <button onclick="handleLogout()"
                         class="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-rose-200"
@@ -1967,12 +2454,13 @@
             <div
                 class="erp-sidebar-panel bg-white/95 rounded-xl shadow-sm border border-slate-200/80 p-3 sticky top-20 space-y-4">
                 <div class="px-2 pt-1">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">เมนู</span>
+                    <span class="text-[10px] font-bold text-slate-400 tracking-wider">เมนู</span>
                 </div>
                 <nav
                     class="flex flex-row md:flex-col gap-1 overflow-x-auto whitespace-nowrap md:whitespace-normal pb-2 md:pb-0">
                     <button onclick="changeTab('dashboard')" id="tab-dashboard"
-                        class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-sm font-bold transition-all duration-150 bg-primary-50 text-primary-700">
+                        class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-sm font-bold transition-all duration-150 bg-primary-50 text-primary-700 border border-primary-200 shadow-sm"
+                        aria-current="page">
                         <i class="fa-solid fa-chart-line text-sm"></i> ภาพรวม
                     </button>
                     <button onclick="changeTab('orders')" id="tab-orders"
@@ -2004,7 +2492,7 @@
                 <!-- รายการแจ้งเตือนจุดสั่งซื้อขั้นต่ำ (Safety Stock Alerts) -->
                 <div class="border-t border-slate-100 pt-4 px-2 hidden" id="low-stock-container">
                     <span
-                        class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">ตรวจสอบความปลอดภัยคลัง</span>
+                        class="text-[10px] font-bold text-slate-400 tracking-wider block mb-2">ตรวจสอบความปลอดภัยคลัง</span>
                     <div class="erp-surface-warning rounded-lg p-3">
                         <h4 class="erp-warning-label font-bold text-[11px] flex items-center gap-1.5 mb-1.5">
                             <i class="fa-solid fa-triangle-exclamation text-xs"></i> สต๊อกต่ำ
@@ -2065,7 +2553,7 @@
                         class="erp-surface-card p-5 h-full min-h-[150px] flex flex-col justify-between owner-only-metric">
                         <div class="flex items-center justify-between gap-3">
                             <div>
-                                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">ต้นทุนรวม
+                                <div class="text-[11px] font-bold tracking-wider text-slate-400">ต้นทุนรวม
                                 </div>
                                 <p class="text-2xl font-black mt-2 text-slate-800 font-mono tracking-tight leading-none"
                                     id="db-total-cost">0.00</p>
@@ -2083,7 +2571,7 @@
                         class="erp-surface-card p-5 h-full min-h-[150px] flex flex-col justify-between owner-only-metric">
                         <div class="flex items-center justify-between gap-3">
                             <div>
-                                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">กำไรสุทธิ
+                                <div class="text-[11px] font-bold tracking-wider text-slate-400">กำไรสุทธิ
                                 </div>
                                 <p class="text-2xl font-black mt-2 text-emerald-700 font-mono tracking-tight leading-none"
                                     id="db-total-profit">0.00</p>
@@ -2203,6 +2691,7 @@
 
                 <!-- ตัวกรองค้นหาสินค้า -->
                 <div class="relative">
+                    <label for="stock-search-input" class="sr-only">ค้นหาสินค้าในคลัง</label>
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                         <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs"></i>
                     </span>
@@ -2223,7 +2712,7 @@
                                 <th class="p-2.5 font-extrabold text-right owner-only-metric">ต้นทุน</th>
                                 <th class="p-2.5 font-extrabold text-right">คงเหลือ</th>
                                 <th class="p-2.5 font-extrabold text-center">ขั้นต่ำ</th>
-                                <th class="p-2.5 font-extrabold text-center">สถานะ</th>
+                                <th class="p-2.5 font-extrabold text-center"><span class="sr-only">สถานะ</span>●</th>
                                 <th class="p-2.5 font-extrabold text-center">ปรับสต๊อก</th>
                             </tr>
                         </thead>
@@ -2310,7 +2799,7 @@
                         </select>
                     </div>
                     <div>
-                        <label
+                        <label for="agent-rate-search"
                             class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">ค้นหาสินค้า</label>
                         <input type="text" id="agent-rate-search" placeholder="ชื่อหรือรหัส..."
                             class="erp-control w-full bg-white text-xs p-1.5">
@@ -2344,11 +2833,23 @@
                         <h2 class="text-base font-extrabold text-slate-800">สรุปจ่ายรายวัน</h2>
                         <p class="text-xs text-slate-400">ดูยอดจ่ายของแต่ละตัวแทนตามวันที่เลือก</p>
                     </div>
-                    <div class="flex flex-col gap-1.5 w-full md:w-auto md:min-w-[17rem]">
-                        <label
-                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">วันที่</label>
-                        <input id="summary-date-input" type="text" readonly
-                            class="erp-control w-full bg-white text-xs font-bold px-3 py-2">
+                    <div class="w-full md:w-auto md:min-w-[28rem]">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div class="flex flex-col gap-1.5">
+                                <label
+                                    class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">วันที่</label>
+                                <input id="summary-date-input" type="text" readonly
+                                    class="erp-control w-full bg-white text-xs font-bold px-3 py-2">
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label
+                                    class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">ชื่อตัวแทน</label>
+                                <select id="summary-agent-select" onchange="selectAgentForInvoice(this.value)"
+                                    class="erp-control w-full bg-white text-xs font-bold px-3 py-2">
+                                    <option value="">เลือกตัวแทน</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2357,7 +2858,7 @@
                     <!-- ส่วนเลือกตัวแทน -->
                     <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
                         <div class="flex items-center justify-between gap-2 mb-3">
-                            <h3 class="font-extrabold text-slate-700 text-xs uppercase tracking-wider">ตัวแทน</h3>
+                            <h3 class="font-extrabold text-slate-700 text-xs tracking-wider">ตัวแทน</h3>
                             <span class="text-[10px] text-slate-400 font-semibold" id="summary-agent-count">0
                                 ตัวแทน</span>
                         </div>
@@ -2374,8 +2875,7 @@
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <span
-                                            class="bg-primary-100 text-primary-700 font-bold px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider">Daily
-                                            Summary</span>
+                                            class="bg-primary-100 text-primary-700 font-bold px-1.5 py-0.5 rounded text-[8px] tracking-wider">Daily summary</span>
                                         <h4 class="font-extrabold text-xs text-slate-800 mt-1.5">สรุปยอดจ่ายของตัวแทน
                                         </h4>
                                         <p class="text-[9px] text-slate-400 font-mono mt-1" id="inv-date">วันที่ -</p>
@@ -2423,17 +2923,23 @@
                                 <span class="text-xl font-black text-primary-600 font-mono"
                                     id="inv-total-amount">฿0.00</span>
                             </div>
-                            <button onclick="mockPrintInvoice()"
-                                class="w-full mt-4 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 rounded-lg shadow transition flex items-center justify-center gap-1.5 uppercase tracking-wider text-[10px]">
-                                <i class="fa-solid fa-print"></i> พิมพ์สรุป
-                            </button>
+                            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <button type="button" onclick="exportSummaryToXlsx()"
+                                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg shadow transition flex items-center justify-center gap-1.5 uppercase tracking-wider text-[10px]">
+                                    <i class="fa-solid fa-file-excel"></i> ดาวน์โหลด XLSX ตัวแทนนี้
+                                </button>
+                                <button type="button" onclick="mockPrintInvoice()"
+                                    class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 rounded-lg shadow transition flex items-center justify-center gap-1.5 uppercase tracking-wider text-[10px]">
+                                    <i class="fa-solid fa-print"></i> พิมพ์สรุป
+                                </button>
+                            </div>
                         </div>
 
                         <div class="text-center text-slate-400 p-6" id="preview-placeholder">
                             <i class="fa-solid fa-file-lines text-5xl mb-3 text-slate-300"></i>
                             <p class="text-xs font-bold text-slate-400">
-                                เลือกตัวแทนจากรายการด้านซ้าย<br><span
-                                    class="text-[10px] text-slate-400 font-normal">ระบบจะแสดงบิลของวันที่เลือก</span>
+                                เลือกตัวแทนจากรายการด้านซ้ายเพื่อดูบิลประจำวัน<br><span
+                                    class="text-[10px] text-slate-400 font-normal">ระบบจะแสดงรายการบิลของวันที่เลือก</span>
                             </p>
                         </div>
                     </div>
@@ -2453,7 +2959,7 @@
                     <span class="erp-modal-header__icon erp-modal-header__icon--brand">
                         <i class="fa-solid fa-folder-plus text-sm"></i>
                     </span>
-                    <h3 id="order-modal-title" class="font-extrabold text-sm uppercase tracking-wider">บันทึกบิล</h3>
+                    <h3 id="order-modal-title" class="font-extrabold text-sm tracking-wider">บันทึกบิล</h3>
                 </div>
                 <button onclick="closeOrderModal()" aria-label="ปิดหน้าต่างบันทึกบิล"
                     class="min-h-11 min-w-11 text-white/80 hover:text-white transition-all text-sm"><i
@@ -2606,7 +3112,7 @@
                     <button onclick="closeOrderModal()"
                         class="px-3.5 py-2 text-xs font-extrabold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg transition-all">ยกเลิก</button>
                     <button onclick="saveOrder()"
-                        class="px-4 py-2 text-xs font-extrabold bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow-sm transition-all">บันทึก</button>
+                        class="px-4 py-2 text-xs font-extrabold bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow-sm transition-all">บันทึกบิล</button>
                 </div>
             </div>
         </div>
@@ -2719,7 +3225,7 @@
                     <span class="erp-modal-header__icon erp-modal-header__icon--success">
                         <i class="fa-solid fa-folder-open text-sm"></i>
                     </span>
-                    <h3 id="product-modal-title" class="font-extrabold text-sm uppercase tracking-wider">เพิ่มสินค้า
+                    <h3 id="product-modal-title" class="font-extrabold text-sm tracking-wider">เพิ่มสินค้า
                     </h3>
                 </div>
                 <button onclick="closeProductModal()" aria-label="ปิดหน้าต่างเพิ่มสินค้า"
@@ -2817,6 +3323,17 @@
                             class="w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono focus:ring-1 focus:ring-primary-500 focus:outline-none">
                     </div>
                 </div>
+                <div class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                    <div class="min-w-0">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">ใช้งาน</label>
+                        <p class="mt-0.5 text-[11px] text-slate-400">ปิดใช้งานแล้วจะไม่ขึ้นเตือน low stock</p>
+                    </div>
+                    <label class="inline-flex cursor-pointer items-center gap-3">
+                        <input id="prod-status-switch" type="checkbox" class="sr-only peer" checked onchange="updateProductModalStatusLabel()">
+                        <span class="relative h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-emerald-500 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-400 peer-focus:ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition after:content-[''] peer-checked:after:translate-x-5"></span>
+                        <span id="prod-status-label" class="text-[11px] font-bold text-slate-600 peer-checked:text-emerald-700">เปิดใช้งาน</span>
+                    </label>
+                </div>
                 <div id="stock-adjust-section"
                     class="hidden rounded-lg border border-primary-100 bg-primary-50/60 p-3 space-y-2">
                     <div class="flex items-center justify-between gap-2">
@@ -2845,7 +3362,7 @@
                 <button onclick="closeProductModal()"
                     class="erp-action erp-action-secondary px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 border border-slate-300 rounded-lg transition-all">ยกเลิก</button>
                 <button onclick="saveNewProduct()"
-                    class="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow transition-all">บันทึก</button>
+                    class="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow transition-all">บันทึกสินค้า</button>
             </div>
         </div>
     </div>
@@ -2859,7 +3376,7 @@
                     <span id="agent-modal-icon" class="erp-modal-header__icon erp-modal-header__icon--brand">
                         <i class="fa-solid fa-user-plus text-sm"></i>
                     </span>
-                    <h3 id="agent-modal-title" class="font-extrabold text-sm uppercase tracking-wider">เพิ่มตัวแทน</h3>
+                    <h3 id="agent-modal-title" class="font-extrabold text-sm tracking-wider">เพิ่มตัวแทน</h3>
                 </div>
                 <button onclick="closeAgentModal()" aria-label="ปิดหน้าต่างเพิ่มตัวแทน"
                     class="min-h-11 min-w-11 text-white/80 hover:text-white transition-all text-sm">
@@ -2900,7 +3417,7 @@
                 <button onclick="closeAgentModal()"
                     class="erp-action erp-action-secondary px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 border border-slate-300 rounded-lg transition-all">ยกเลิก</button>
                 <button id="agent-modal-submit" onclick="saveAgent()"
-                    class="px-5 py-2 text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow transition-all">บันทึก</button>
+                    class="px-5 py-2 text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow transition-all">บันทึกตัวแทน</button>
             </div>
         </div>
     </div>
@@ -2915,7 +3432,7 @@
                     <span class="erp-modal-header__icon erp-modal-header__icon--warning">
                         <i class="fa-solid fa-sliders text-sm"></i>
                     </span>
-                    <h3 id="rate-modal-title" class="font-extrabold text-sm uppercase tracking-wider">ตั้งเรท</h3>
+                    <h3 id="rate-modal-title" class="font-extrabold text-sm tracking-wider">ตั้งเรท</h3>
                 </div>
                 <button onclick="closeRateModal()" aria-label="ปิดหน้าต่างกำหนดเรทราคา"
                     class="min-h-11 min-w-11 text-white/80 hover:text-white text-sm"><i
@@ -2955,7 +3472,7 @@
                 <button onclick="closeRateModal()"
                     class="erp-action erp-action-secondary px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 border border-slate-300 rounded-lg transition-all">ยกเลิก</button>
                 <button onclick="saveDynamicRateTiers()"
-                    class="px-5 py-2 text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow transition-all">บันทึก</button>
+                    class="px-5 py-2 text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow transition-all">บันทึกเรท</button>
             </div>
         </div>
     </div>
@@ -2970,7 +3487,7 @@
                     <span class="erp-modal-header__icon erp-modal-header__icon--danger">
                         <i class="fa-solid fa-triangle-exclamation text-sm"></i>
                     </span>
-                    <h3 id="confirm-modal-title" class="font-extrabold text-sm uppercase tracking-wider">
+                    <h3 id="confirm-modal-title" class="font-extrabold text-sm tracking-wider">
                         ยืนยันการดำเนินการ</h3>
                 </div>
                 <button onclick="closeConfirmModal()" aria-label="ปิดหน้าต่างยืนยันการดำเนินการ"
@@ -3009,7 +3526,7 @@
 
     <!-- แถบด้านล่างระดับ ERP -->
     <footer id="app-footer"
-        class="hidden bg-white border-t border-slate-200 text-center py-3 text-[10px] text-slate-400 mt-auto font-mono uppercase tracking-wider">
+        class="hidden bg-white border-t border-slate-200 text-center py-3 text-[10px] text-slate-400 mt-auto font-mono tracking-wider">
         &copy; 2026 ระบบจัดการสินค้าและตัวแทน &bull; POWERED BY GOOGLE SHEETS &amp; APPS SCRIPT
     </footer>
 
@@ -3020,10 +3537,10 @@
 
     <!-- Global Loading Modal (สำหรับติดต่อ Server/ประมวลผล) -->
     <div id="loading-modal"
-        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4 transition-all duration-200"
+        class="fixed inset-0 bg-slate-900/45 z-[100] hidden flex items-center justify-center p-4 transition-opacity duration-200"
         role="dialog" aria-modal="true" aria-labelledby="loading-modal-text">
         <div
-            class="bg-white rounded-2xl p-6 shadow-2xl border border-slate-100 flex flex-col items-center justify-center gap-3.5 max-w-xs w-full text-center">
+            class="erp-surface-card rounded-2xl p-6 flex flex-col items-center justify-center gap-3.5 max-w-xs w-full text-center">
             <div class="relative flex items-center justify-center w-12 h-12">
                 <div class="absolute inset-0 rounded-full border-4 border-primary-100"></div>
                 <div
@@ -3035,7 +3552,7 @@
                 <h3 id="loading-modal-text" class="text-sm font-extrabold text-slate-800 tracking-tight">
                     กำลังประมวลผล...</h3>
                 <p id="loading-modal-subtext" class="text-[11px] font-semibold text-slate-400 mt-0.5">กรุณารอสักครู่
-                    ระบบกำลังเชื่อมต่อเซิร์ฟเวอร์</p>
+                    ระบบกำลังประมวลผลข้อมูล</p>
             </div>
         </div>
     </div>
@@ -3157,7 +3674,7 @@
             };
             const isOwner = currentRole === 'owner';
             const ordersSkeletonCount = isOwner ? 7 : 6;
-            const stockSkeletonCount = isOwner ? 8 : 7;
+            const stockSkeletonCount = isOwner ? 9 : 8;
             const orderSkeletonCells = isOwner
                 ? [
                     { className: 'p-2.5', width: 'h-3.5 w-24' },
@@ -3185,6 +3702,7 @@
                     { className: 'p-2.5 text-right', width: 'h-3.5 w-16' },
                     { className: 'p-2.5 text-center', width: 'h-3.5 w-12' },
                     { className: 'p-2.5 text-center', width: 'h-3.5 w-14' },
+                    { className: 'p-2.5 text-center', width: 'h-8 w-20' },
                     { className: 'p-2.5 text-center', width: 'h-8 w-20' }
                 ]
                 : [
@@ -3194,6 +3712,7 @@
                     { className: 'p-2.5 text-right', width: 'h-3.5 w-16' },
                     { className: 'p-2.5 text-center', width: 'h-3.5 w-12' },
                     { className: 'p-2.5 text-center', width: 'h-3.5 w-14' },
+                    { className: 'p-2.5 text-center', width: 'h-8 w-20' },
                     { className: 'p-2.5 text-center', width: 'h-8 w-20' }
                 ];
             const rateSkeletonCells = [
@@ -3275,7 +3794,7 @@
             };
             const isOwner = currentRole === 'owner';
             const ordersColSpan = isOwner ? 7 : 6;
-            const stockColSpan = isOwner ? 8 : 7;
+            const stockColSpan = isOwner ? 9 : 8;
             setText('db-total-sales', '฿0.00');
             setText('db-total-qty', 'ขายออกวันนี้ 0 ชิ้น');
             setText('db-order-count', '0');
@@ -3286,7 +3805,7 @@
 
             const lowStockList = document.getElementById('low-stock-list');
             if (lowStockList) {
-                lowStockList.innerHTML = '<li class="text-emerald-700 italic flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> คลังสินค้าอยู่ในเกณฑ์ปลอดภัย</li>';
+                lowStockList.innerHTML = '<li class="erp-empty-state erp-empty-state--success italic flex items-center gap-1 rounded-lg px-2.5 py-1.5"><i class="fa-solid fa-circle-check"></i> คลังสินค้าอยู่ในเกณฑ์ปลอดภัย</li>';
             }
             const agentChart = document.getElementById('agent-sales-chart');
             if (agentChart) agentChart.replaceChildren();
@@ -3295,27 +3814,27 @@
 
             const ordersBody = document.getElementById('orders-table-body');
             if (ordersBody) {
-                ordersBody.innerHTML = '<tr><td colspan="' + ordersColSpan + '" class="p-6 text-center text-slate-400 italic">ยังไม่มีบิลของวันนี้</td></tr>';
+                ordersBody.innerHTML = '<tr><td colspan="' + ordersColSpan + '" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--info rounded-lg px-4 py-3 italic">ยังไม่มีบิลของวันนี้</div></td></tr>';
             }
             const stockBody = document.getElementById('stock-table-body');
             if (stockBody) {
-                stockBody.innerHTML = '<tr><td colspan="' + stockColSpan + '" class="p-6 text-center text-slate-400 italic">ยังไม่มีข้อมูลสินค้าในคลัง</td></tr>';
+                stockBody.innerHTML = '<tr><td colspan="' + stockColSpan + '" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--info rounded-lg px-4 py-3 italic">ยังไม่มีข้อมูลสินค้าในคลัง</div></td></tr>';
             }
             const agentManageBody = document.getElementById('agent-management-table-body');
             if (agentManageBody) {
-                agentManageBody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400 italic">ยังไม่มีข้อมูลตัวแทน</td></tr>';
+                agentManageBody.innerHTML = '<tr><td colspan="4" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--info rounded-lg px-4 py-3 italic">ยังไม่มีข้อมูลตัวแทน</div></td></tr>';
             }
             const ratesBody = document.getElementById('agent-rates-table-body');
             if (ratesBody) {
-                ratesBody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400 italic">ยังไม่มีข้อมูลเรทราคา</td></tr>';
+                ratesBody.innerHTML = '<tr><td colspan="4" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--info rounded-lg px-4 py-3 italic">ยังไม่มีข้อมูลเรทราคา</div></td></tr>';
             }
             const summariesList = document.getElementById('summaries-agent-list');
             if (summariesList) {
-                summariesList.innerHTML = '<div class="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-400 italic">ยังไม่มีข้อมูลตัวแทนสำหรับสรุปบิล</div>';
+                summariesList.innerHTML = '<div class="erp-empty-state erp-empty-state--info rounded-lg p-4 text-sm italic">ยังไม่มีข้อมูลตัวแทนสำหรับสรุปบิล</div>';
             }
             const placeholder = document.getElementById('preview-placeholder');
             if (placeholder) {
-                placeholder.innerHTML = '<i class="fa-solid fa-file-lines text-5xl mb-3 text-slate-300"></i><p class="text-xs font-bold text-slate-400">เลือกตัวแทนจากรายการด้านซ้าย<br><span class="text-[10px] text-slate-400 font-normal">ระบบจะแสดงบิลของวันที่เลือก</span></p>';
+                placeholder.innerHTML = '<i class="fa-solid fa-file-lines text-5xl mb-3 text-primary-300"></i><p class="text-xs font-bold text-slate-500">เลือกตัวแทนจากรายการด้านซ้าย<br><span class="text-[10px] text-slate-500 font-normal">ระบบจะแสดงบิลของวันที่เลือก</span></p>';
             }
         }
 
@@ -3403,7 +3922,7 @@
             var skeletonRow = currentRole === 'owner'
                 ? '<tr class="border-b border-slate-100"><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-24 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-20 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-28 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-full rounded-full"></span></td><td class="p-2.5 text-right"><span class="erp-skeleton inline-block h-3.5 w-24 rounded-full"></span></td><td class="p-2.5 text-right"><span class="erp-skeleton inline-block h-3.5 w-20 rounded-full"></span></td><td class="p-2.5 text-center"><span class="erp-skeleton inline-block h-8 w-16 rounded-full"></span></td></tr>'
                 : '<tr class="border-b border-slate-100"><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-24 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-20 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-28 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-full rounded-full"></span></td><td class="p-2.5 text-right"><span class="erp-skeleton inline-block h-3.5 w-24 rounded-full"></span></td><td class="p-2.5 text-center"><span class="erp-skeleton inline-block h-8 w-16 rounded-full"></span></td></tr>';
-            tbody.innerHTML = '<tr><td colspan="' + colSpan + '" class="p-6 text-center text-slate-400 italic">' + escapeHtml(message || 'กำลังโหลดรายการบิล...') + '</td></tr>' + skeletonRow;
+            tbody.innerHTML = '<tr><td colspan="' + colSpan + '" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--info inline-flex rounded-xl px-4 py-3 italic">' + escapeHtml(message || 'กำลังโหลดรายการบิล...') + '</div></td></tr>' + skeletonRow;
         }
 
         function renderOrdersErrorState(message) {
@@ -3414,7 +3933,7 @@
             if (table) table.setAttribute('aria-busy', 'false');
             if (status) status.textContent = String(message || 'โหลดรายการบิลไม่สำเร็จ');
             var colSpan = currentRole === 'owner' ? 7 : 6;
-            tbody.innerHTML = '<tr><td colspan="' + colSpan + '" class="p-6 text-center"><div class="inline-flex max-w-full flex-col items-center gap-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-rose-800"><div class="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-rose-700"><i class="fa-solid fa-triangle-exclamation text-sm"></i></div><div class="space-y-0.5"><span class="block text-sm font-semibold">' + escapeHtml(message || 'โหลดรายการบิลไม่สำเร็จ') + '</span><span class="block text-[11px] text-rose-700/80">ตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง</span></div><button type="button" class="erp-action erp-action-secondary px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 border border-rose-200" onclick="refreshOrderTableData()">ลองใหม่</button></div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="' + colSpan + '" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--danger inline-flex max-w-full flex-col items-center gap-2 rounded-xl px-4 py-3 text-rose-800"><div class="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-rose-700"><i class="fa-solid fa-triangle-exclamation text-sm"></i></div><div class="space-y-0.5"><span class="block text-sm font-semibold">' + escapeHtml(message || 'โหลดรายการบิลไม่สำเร็จ') + '</span><span class="block text-[11px] text-rose-700/80">ตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง</span></div><button type="button" class="erp-action erp-action-secondary px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 border border-rose-200" onclick="refreshOrderTableData()">ลองใหม่</button></div></td></tr>';
         }
 
         function commitLoadedOrders(monthKey, monthOrders) {
@@ -3690,7 +4209,7 @@
         }
 
         // โหลดดิ้งโมดัลสำหรับการประมวลผลเซิร์ฟเวอร์
-        function showLoadingModal(title = "กำลังประมวลผล...", subtext = "กรุณารอสักครู่ ระบบกำลังเชื่อมต่อเซิร์ฟเวอร์") {
+        function showLoadingModal(title = "กำลังประมวลผล...", subtext = "กรุณารอสักครู่ ระบบกำลังประมวลผลข้อมูล") {
             const modal = document.getElementById('loading-modal');
             const titleEl = document.getElementById('loading-modal-text');
             const subtextEl = document.getElementById('loading-modal-subtext');
@@ -3954,7 +4473,9 @@
         function renderLowStockAlerts() {
             const list = document.getElementById('low-stock-list');
             list.replaceChildren();
-            const lowItems = products.filter(function (product) { return product.stock <= product.min; });
+            const lowItems = products.filter(function (product) {
+                return getProductStatusValue(product) === 'ACTIVE' && Number(product.stock) <= Number(product.min);
+            });
             if (!lowItems.length) {
                 const item = document.createElement('li');
                 item.className = 'text-emerald-700 italic flex items-center gap-1';
@@ -3986,9 +4507,14 @@
             document.getElementById('content-' + tabId).classList.remove('hidden');
 
             document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.className = "nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-sm font-bold transition-all duration-150 text-slate-600 hover:bg-slate-100";
+                btn.removeAttribute('aria-current');
+                btn.className = "nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-sm font-bold transition-all duration-150 text-slate-600 hover:bg-slate-100 border border-transparent";
             });
-            document.getElementById('tab-' + tabId).className = "nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-sm font-bold transition-all duration-150 bg-primary-50 text-primary-700";
+            var activeTab = document.getElementById('tab-' + tabId);
+            if (activeTab) {
+                activeTab.className = "nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-sm font-bold transition-all duration-150 bg-primary-50 text-primary-700 border border-primary-200 shadow-sm";
+                activeTab.setAttribute('aria-current', 'page');
+            }
         }
 
         let orderItemsPopoverEl = null;
@@ -4266,7 +4792,7 @@
             if (visible.length === 0) {
                 const emptyText = 'ไม่มีข้อมูลบิลช่วง' + periodText + 'ในระบบ';
                 if (status) status.textContent = emptyText;
-                tbody.innerHTML = `<tr><td colspan="${currentRole === 'owner' ? 7 : 6}" class="p-6 text-center text-slate-400 italic">${emptyText}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${currentRole === 'owner' ? 7 : 6}" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--info inline-flex rounded-xl px-4 py-3 italic">${emptyText}</div></td></tr>`;
                 return;
             }
 
@@ -4689,11 +5215,11 @@
 
             const tr = document.createElement('tr');
             tr.id = rowId;
-            tr.className = "hover:bg-slate-50/50 transition duration-150 border-b border-slate-100";
+            tr.className = "hover:bg-primary-50/40 transition duration-150 border-b border-primary-100";
             tr.innerHTML = `
                 <!-- คอลัมน์ 1: ประเภทสินค้า -->
                 <td class="p-2" data-label="ประเภทสินค้า">
-                    <select onchange="toggleProductType('${rowId}')" aria-label="ประเภทสินค้า" class="cart-type-select w-full bg-slate-50 border border-slate-300 rounded p-1.5 focus:ring-1 focus:ring-primary-500 text-[10px] font-bold">
+                    <select onchange="toggleProductType('${rowId}')" aria-label="ประเภทสินค้า" class="cart-type-select w-full bg-primary-50/40 border border-primary-200 rounded p-1.5 focus:ring-1 focus:ring-primary-500 text-[10px] font-bold text-primary-900">
                         <option value="IN_STOCK"${typeSelectValue === 'IN_STOCK' ? ' selected' : ''}>สินค้าในคลัง</option>
                         <option value="NON_STOCK"${typeSelectValue === 'NON_STOCK' ? ' selected' : ''}>นอกคลัง/ฝากส่ง</option>
                     </select>
@@ -4702,7 +5228,7 @@
                 <!-- คอลัมน์ 2: รายละเอียดสินค้า -->
                 <td class="p-2" data-label="รายละเอียดสินค้า">
                     <div class="div-stock-select ${stockDivClass}" id="${rowId}-stock-div">
-                        <select onchange="updateCartRowUnitOptions('${rowId}')" aria-label="เลือกรหัสหรือชื่อสินค้า" class="cart-prod-select w-full bg-slate-50 border border-slate-300 rounded p-1.5 focus:outline-none text-[10px] font-bold text-slate-700">
+                        <select onchange="updateCartRowUnitOptions('${rowId}')" aria-label="เลือกรหัสหรือชื่อสินค้า" class="cart-prod-select w-full bg-primary-50/40 border border-primary-200 rounded p-1.5 focus:outline-none text-[10px] font-bold text-primary-900">
                             ${productOptions}
                         </select>
                     </div>
@@ -4713,20 +5239,20 @@
 
                 <!-- คอลัมน์ 3: เลือกหน่วยสินค้า (Unit) -->
                 <td class="p-2" data-label="หน่วยสินค้า">
-                    <select onchange="recalculateCartRow('${rowId}')" aria-label="หน่วยสินค้า" class="cart-unit-select w-full bg-white border border-slate-300 rounded p-1.5 focus:ring-1 focus:ring-primary-500 text-[10px] font-bold text-slate-700">
+                    <select onchange="recalculateCartRow('${rowId}')" aria-label="หน่วยสินค้า" class="cart-unit-select w-full bg-primary-50/20 border border-primary-200 rounded p-1.5 focus:ring-1 focus:ring-primary-500 text-[10px] font-bold text-primary-900">
                         ${unitOptionsHtml}
                     </select>
                 </td>
                 
                 <!-- คอลัมน์ 4: จำนวน -->
                 <td class="p-2" data-label="จำนวน">
-                    <input type="number" value="${qtyValue}" min="1" aria-label="จำนวนสินค้า" onkeyup="recalculateCartRow('${rowId}')" onchange="recalculateCartRow('${rowId}')" class="cart-qty-input w-full bg-white border border-slate-300 rounded p-1.5 text-center focus:outline-none text-[10px] font-bold font-mono">
+                    <input type="number" value="${qtyValue}" min="1" aria-label="จำนวนสินค้า" onkeyup="recalculateCartRow('${rowId}')" onchange="recalculateCartRow('${rowId}')" class="cart-qty-input w-full bg-primary-50/20 border border-primary-200 rounded p-1.5 text-center focus:outline-none text-[10px] font-bold font-mono text-primary-900">
                 </td>
                 
                 <!-- คอลัมน์ 5: ราคาส่ง/หน่วย -->
                 <td class="p-2 text-right" data-label="ราคารวมส่ง/หน่วย">
                     <div class="div-price-readonly ${priceReadDivClass}" id="${rowId}-price-read-div">
-                        <span class="cart-unit-price font-bold font-mono text-slate-700">฿0</span>
+                        <span class="cart-unit-price font-bold font-mono text-primary-800">฿0</span>
                     </div>
                     <div class="div-price-write ${priceWriteDivClass}" id="${rowId}-price-write-div">
                         <input type="number" value="${priceValue}" aria-label="ราคาสินค้านอกคลังต่อหน่วย" onkeyup="recalculateCartRow('${rowId}')" onchange="recalculateCartRow('${rowId}')" class="cart-custom-price w-full bg-accent-50 border border-accent-200 rounded p-1.5 text-right font-mono text-[10px] font-bold focus:outline-none text-accent-850">
@@ -4736,7 +5262,7 @@
                 <!-- คอลัมน์ 6: ต้นทุนจริง/หน่วย -->
                 <td class="p-2 text-right cart-cost-cell ${isOwner ? '' : 'hidden'}" data-label="ต้นทุนจริง/หน่วย">
                     <div class="div-cost-readonly ${costReadDivClass}" id="${rowId}-cost-read-div">
-                        <span class="cart-unit-cost font-bold font-mono text-slate-500">${isOwner ? '฿0' : ''}</span>
+                        <span class="cart-unit-cost font-bold font-mono text-primary-600">${isOwner ? '฿0' : ''}</span>
                     </div>
                     <div class="div-cost-write ${costWriteDivClass}" id="${rowId}-cost-write-div">
                         <input type="number" value="${costValue}" placeholder="${priceValue}" aria-label="ต้นทุนสินค้านอกคลังต่อหน่วย" onkeyup="recalculateCartRow('${rowId}')" onchange="recalculateCartRow('${rowId}')" class="cart-custom-cost w-full bg-emerald-50 border border-emerald-200 rounded p-1.5 text-right font-mono text-[10px] font-bold focus:outline-none text-emerald-900">
@@ -4745,7 +5271,7 @@
                 
                 <!-- คอลัมน์ 7: ผลรวมมูลค่า -->
                 <td class="p-2 text-right" data-label="ผลรวมมูลค่า">
-                    <span class="cart-total-price font-extrabold font-mono text-slate-800">฿0</span>
+                    <span class="cart-total-price font-extrabold font-mono text-primary-900">฿0</span>
                 </td>
                 
                 <!-- คอลัมน์ 8: ลบออก -->
@@ -4847,7 +5373,7 @@
                 if (!emptyRow) {
                     const tr = document.createElement('tr');
                     tr.id = 'cart-empty-row';
-                    tr.innerHTML = '<td colspan="8" class="p-6 text-center text-slate-400 italic font-semibold">ยังไม่ได้เลือกสินค้า</td>';
+                    tr.innerHTML = '<td colspan="8" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--info rounded-lg px-4 py-3 italic font-semibold">ยังไม่ได้เลือกสินค้า</div></td>';
                     container.appendChild(tr);
                 }
             } else {
@@ -5007,20 +5533,27 @@
             if (packPriceLabel) packPriceLabel.textContent = 'ราคา/' + unit;
         }
 
+        function updateProductModalStatusLabel() {
+            var switchEl = document.getElementById('prod-status-switch');
+            var labelEl = document.getElementById('prod-status-label');
+            if (!labelEl) return;
+            labelEl.textContent = switchEl && switchEl.checked ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+        }
+
         function addPackUnitRow(unit, packSize, price) {
             const container = document.getElementById('prod-pack-units-container');
             if (!container) return;
             const row = document.createElement('div');
-            row.className = 'grid grid-cols-[minmax(0,1fr)_8rem_8rem_auto] gap-2 items-center rounded-lg border border-slate-200 bg-white p-2 pack-unit-row';
+            row.className = 'grid grid-cols-[minmax(0,1fr)_8rem_8rem_auto] gap-2 items-center rounded-lg border border-primary-100 bg-[color:var(--erp-surface)] p-2 pack-unit-row';
             row.innerHTML = `
                 <div class="min-w-0">
-                    <input type="text" maxlength="40" placeholder="เช่น กล่องเล็ก" value="${unit ? String(unit).replace(/"/g, '&quot;') : ''}" class="pack-unit-name w-full bg-white border border-slate-300 rounded p-2 text-xs font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                    <input type="text" maxlength="40" placeholder="เช่น กล่องเล็ก" value="${unit ? String(unit).replace(/"/g, '&quot;') : ''}" class="pack-unit-name w-full bg-primary-50/30 border border-primary-200 rounded p-2 text-xs font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none text-primary-900">
                 </div>
                 <div class="min-w-0">
-                    <input type="number" min="1" step="1" inputmode="numeric" placeholder="6" value="${packSize || ''}" class="pack-unit-size w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                    <input type="number" min="1" step="1" inputmode="numeric" placeholder="6" value="${packSize || ''}" class="pack-unit-size w-full bg-primary-50/30 border border-primary-200 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none text-primary-900">
                 </div>
                 <div class="min-w-0">
-                    <input type="number" min="0" step="1" inputmode="numeric" placeholder="1000" value="${price !== undefined && price !== null ? String(price) : ''}" class="pack-unit-price w-full bg-white border border-slate-300 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                    <input type="number" min="0" step="1" inputmode="numeric" placeholder="1000" value="${price !== undefined && price !== null ? String(price) : ''}" class="pack-unit-price w-full bg-primary-50/30 border border-primary-200 rounded p-2 text-xs font-mono font-semibold focus:ring-1 focus:ring-primary-500 focus:outline-none text-primary-900">
                 </div>
                 <button type="button" class="erp-action erp-action-danger px-3 py-2 text-[10px] font-bold" aria-label="ลบหน่วยเพิ่มเติม">ลบ</button>
             `;
@@ -5209,6 +5742,9 @@
             document.getElementById('prod-cost').value = "";
             document.getElementById('prod-stock').value = "";
             document.getElementById('prod-min').value = "10";
+            const statusSwitch = document.getElementById('prod-status-switch');
+            if (statusSwitch) statusSwitch.checked = true;
+            updateProductModalStatusLabel();
             loadPackUnitsIntoForm([]);
             updateProductModalUnitLabels();
             refreshStockAdjustmentUnitSelect();
@@ -5232,6 +5768,9 @@
             document.getElementById('prod-cost').value = Number(product.cost) || 0;
             document.getElementById('prod-stock').value = Number(product.stock) || 0;
             document.getElementById('prod-min').value = Number(product.min) || 0;
+            const statusSwitch = document.getElementById('prod-status-switch');
+            if (statusSwitch) statusSwitch.checked = getProductStatusValue(product) === 'ACTIVE';
+            updateProductModalStatusLabel();
             loadPackUnitsIntoForm(product.packUnits || []);
             updateProductModalUnitLabels();
             refreshStockAdjustmentUnitSelect();
@@ -5473,7 +6012,7 @@
                 if (isNonStock) {
                     prodName = r.querySelector('.cart-custom-name')?.value.trim() || '';
                     if (!prodName) {
-                        showNotification("กรุณากรอกรายละเอียดชื่อสินค้าพิเศษนอกคลังด้วยค่ะ", true);
+                        showNotification("กรุณากรอกชื่อสินค้าพิเศษนอกคลัง", true);
                         return;
                     }
                     prodId = prodName;
@@ -5606,31 +6145,34 @@
             const filtered = safeProducts.filter(function (product) { return product.id.toLowerCase().includes(query) || product.name.toLowerCase().includes(query); });
             const isOwner = currentRole === 'owner';
             const labels = isOwner
-                ? ['รหัส', 'ชื่อสินค้า', 'ราคาขาย', 'ต้นทุน', 'คงเหลือ', 'ขั้นต่ำ', 'สถานะ', 'ปรับสต๊อก']
-                : ['รหัส', 'ชื่อสินค้า', 'ราคาขาย', 'คงเหลือ', 'ขั้นต่ำ', 'สถานะ', 'ปรับสต๊อก'];
+                ? ['รหัส', 'ชื่อสินค้า', 'ราคาขาย', 'ต้นทุน', 'คงเหลือ', 'ขั้นต่ำ', 'จุดสถานะ', 'ปรับสต๊อก']
+                : ['รหัส', 'ชื่อสินค้า', 'ราคาขาย', 'คงเหลือ', 'ขั้นต่ำ', 'จุดสถานะ', 'ปรับสต๊อก'];
             tbody.replaceChildren();
             if (!filtered.length) {
                 const row = document.createElement('tr');
                 appendCell(row, 'ไม่พบสินค้าในคลังที่ตรงกับคำค้น', 'p-6 text-center text-slate-500 italic');
-                row.firstChild.colSpan = isOwner ? 8 : 7;
+                row.firstChild.colSpan = isOwner ? 9 : 8;
                 tbody.appendChild(row);
                 return;
             }
             filtered.forEach(function (product) {
                 const row = document.createElement('tr');
-                row.className = 'hover:bg-slate-50/50 transition duration-150 border-b border-slate-100';
-                const critical = Number(product.stock) <= Number(product.min);
+                row.className = 'hover:bg-primary-50/40 transition duration-150 border-b border-primary-100';
+                const enabled = getProductStatusValue(product) === 'ACTIVE';
+                const critical = enabled && Number(product.stock) <= Number(product.min);
+                if (!enabled) row.classList.add('opacity-60');
                 appendCell(row, product.id, 'p-2.5 font-mono font-bold text-primary-700');
-                const nameCell = appendCell(row, '', 'p-2.5 font-bold text-slate-700 break-words');
-                nameCell.innerHTML = '<div>' + escapeHtml(product.name) + '</div><div class="mt-0.5 text-[9px] font-medium leading-tight text-slate-400">' + escapeHtml(formatProductUnitLabel(product)) + '</div>';
-                const priceCell = appendCell(row, '', 'p-2.5 text-right text-slate-700 font-medium');
+                const nameCell = appendCell(row, '', 'p-2.5 font-bold text-primary-900 break-words');
+                nameCell.innerHTML = '<div>' + escapeHtml(product.name) + '</div><div class="mt-0.5 text-[9px] font-medium leading-tight text-primary-600">' + escapeHtml(formatProductUnitLabel(product)) + '</div>';
+                const priceCell = appendCell(row, '', 'p-2.5 text-right text-primary-800 font-medium');
                 priceCell.innerHTML = buildProductPriceListHtml(product);
                 if (isOwner) {
                     appendCell(row, '฿' + Number(product.cost || 0).toLocaleString(), 'p-2.5 text-right font-extrabold text-primary-700 font-mono');
                 }
-                appendCell(row, formatProductStockLabel(product), 'p-2.5 text-right font-black font-mono ' + (critical ? 'text-accent-600' : 'text-slate-800'));
-                appendCell(row, product.min, 'p-2.5 text-center text-slate-600 font-mono font-bold');
-                appendCell(row, critical ? 'สต็อกต่ำ' : 'ปกติ', 'p-2.5 text-center font-bold ' + (critical ? 'text-accent-700' : 'text-primary-700'));
+                appendCell(row, formatProductStockLabel(product), 'p-2.5 text-right font-black font-mono ' + (critical ? 'text-accent-600' : 'text-primary-900'));
+                appendCell(row, product.min, 'p-2.5 text-center text-primary-600 font-mono font-bold');
+                const dotCell = appendCell(row, '', 'p-2.5 text-center');
+                dotCell.innerHTML = '<span class="inline-flex h-5 w-5 items-center justify-center rounded-full ring-2 ' + getProductStatusDotClass(product) + '" aria-label="' + (enabled ? 'ใช้งานอยู่' : 'ปิดใช้งานแล้ว') + '" title="' + (enabled ? 'ใช้งานอยู่' : 'ปิดใช้งานแล้ว') + '"><span class="h-2.5 w-2.5 rounded-full ' + (enabled ? 'bg-emerald-600' : 'bg-primary-500') + '"></span></span>';
                 const actions = appendCell(row, '', 'p-2.5 text-center');
                 const button = document.createElement('button');
                 button.type = 'button';
@@ -5664,15 +6206,15 @@
             });
             tbody.replaceChildren();
             if (!safeAgents.length) {
-                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400 italic">ไม่พบข้อมูลตัวแทนตามเงื่อนไขที่เลือก</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--info rounded-lg px-4 py-3 italic">ไม่พบข้อมูลตัวแทนตามเงื่อนไขที่เลือก</div></td></tr>';
                 return;
             }
             safeAgents.forEach(function (agent) {
                 const row = document.createElement('tr');
-                row.className = 'hover:bg-slate-50/50 transition';
+                row.className = 'hover:bg-primary-50/40 transition';
                 appendCell(row, agent.AgentID || '-', 'p-2.5 font-mono font-bold text-primary-700');
-                appendCell(row, agent.AgentName || '-', 'p-2.5 font-bold text-slate-700 break-words');
-                appendCell(row, agent.AgentGroup || defaultAgentGroup, 'p-2.5 text-slate-600');
+                appendCell(row, agent.AgentName || '-', 'p-2.5 font-bold text-primary-900 break-words');
+                appendCell(row, agent.AgentGroup || defaultAgentGroup, 'p-2.5 text-primary-600');
                 const actionCell = appendCell(row, '', 'p-2.5 text-center');
                 const actionWrap = document.createElement('div');
                 actionWrap.className = 'inline-flex items-center justify-center gap-1.5';
@@ -5713,13 +6255,13 @@
             safeProducts.filter(function (product) { return product.id.toLowerCase().includes(query) || product.name.toLowerCase().includes(query); }).forEach(function (product) {
                 const tiers = (rateMap[selectedTarget] && rateMap[selectedTarget][product.id]) || [{ min: 1, max: 99999, price: product.defaultPrice }];
                 const row = document.createElement('tr');
-                row.className = 'hover:bg-slate-50/50 transition';
+                row.className = 'hover:bg-primary-50/40 transition';
                 appendCell(row, product.id, 'p-2.5 font-mono font-bold text-primary-700');
-                appendCell(row, product.name, 'p-2.5 font-bold text-slate-700 break-words');
+                appendCell(row, product.name, 'p-2.5 font-bold text-primary-900 break-words');
                 const rateCell = appendCell(row, '', 'p-2.5 text-center');
                 const rateButton = document.createElement('button');
                 rateButton.type = 'button';
-                rateButton.className = 'bg-slate-100 text-slate-700 font-bold px-2.5 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1 hover:bg-slate-200 transition mx-auto';
+                rateButton.className = 'bg-primary-100 text-primary-700 font-bold px-2.5 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1 hover:bg-primary-200 transition mx-auto';
                 rateButton.setAttribute('aria-label', 'ดูรายละเอียดเรท ' + product.id);
                 rateButton.textContent = tiers.length + ' เรท';
                 rateButton.addEventListener('mouseenter', function () {

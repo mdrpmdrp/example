@@ -25,10 +25,20 @@ function applyStockMovement_(productId, quantity, type, reference, remark) {
 function getStockSummary(sessionToken) {
   requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
   return getProducts().map(function(product) {
-    return { productId: product.ProductID, productName: product.ProductName, stock: Number(product.Stock), minStock: Number(product.MinStock), lowStock: Number(product.Stock) <= Number(product.MinStock) };
+    var isActive = String(product.Status || 'ACTIVE').toUpperCase() !== 'INACTIVE';
+    return {
+      productId: product.ProductID,
+      productName: product.ProductName,
+      stock: Number(product.Stock),
+      minStock: Number(product.MinStock),
+      status: String(product.Status || 'ACTIVE').trim() || 'ACTIVE',
+      lowStock: isActive && Number(product.Stock) <= Number(product.MinStock)
+    };
   });
 }
 
 function getLowStockProducts() {
-  return getProducts().filter(function(product) { return Number(product.Stock) <= Number(product.MinStock); });
+  return getProducts().filter(function(product) {
+    return String(product.Status || 'ACTIVE').toUpperCase() !== 'INACTIVE' && Number(product.Stock) <= Number(product.MinStock);
+  });
 }

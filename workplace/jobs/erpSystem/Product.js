@@ -80,6 +80,7 @@ function addProduct(data) {
 
   const sheet = SpreadsheetApp.getActive()
     .getSheetByName(SHEETS.PRODUCTS);
+  const status = String(data && data.Status || 'ACTIVE').trim().toUpperCase() === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
 
   sheet.appendRow([
 
@@ -90,7 +91,7 @@ function addProduct(data) {
     data.RetailPrice,
     data.Stock,
     data.MinStock,
-    "ACTIVE",
+    status,
     new Date(),
     new Date(),
     normalizeProductBaseUnit_(data.BaseUnit || data.UnitName),
@@ -127,7 +128,8 @@ function createProduct(sessionToken, data) {
       ProductID: productId, ProductName: productName, Category: category,
       Cost: values.Cost, RetailPrice: values.RetailPrice, Stock: values.Stock,
       MinStock: values.MinStock,
-      BaseUnit: baseUnit, PackUnits: packUnits
+      BaseUnit: baseUnit, PackUnits: packUnits,
+      Status: String(data.Status || 'ACTIVE').trim().toUpperCase()
     });
     return getProductById(productId);
   } finally {
@@ -195,4 +197,25 @@ function deleteProduct(productId) {
 
   return false;
 
+}
+
+function toggleProductStatus(sessionToken, productId, status) {
+  requireRole(sessionToken, ['OWNER', 'ADMIN']);
+  const id = String(productId || '').trim();
+  if (!id) throw new Error('Product ID is required');
+  const nextStatus = String(status || '').trim().toUpperCase() === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+  const sheet = SpreadsheetApp.getActive()
+    .getSheetByName(SHEETS.PRODUCTS);
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] == id) {
+      sheet.getRange(i + 1, 8).setValue(nextStatus);
+      sheet.getRange(i + 1, 10).setValue(new Date());
+      return getProductById(id);
+    }
+  }
+
+  throw new Error('Product not found: ' + id);
 }
