@@ -60,6 +60,13 @@ function resolveOrderDateValue_(value, fallbackDate) {
   return isNaN(parsed.getTime()) ? base : parsed;
 }
 
+function formatOrderDateForClient_(value) {
+  if (!value) return '';
+  var date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) return String(value || '').trim();
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+}
+
 function normalizeOrderUnitValue_(product, selectedUnit) {
   var unit = String(selectedUnit || '__base__').trim() || '__base__';
   var baseUnit = product ? String(product.BaseUnit || product.UnitName || '').trim() : '';
@@ -97,6 +104,10 @@ function ensureOrderCancellationColumns_() {
   });
 }
 
+function toArray_(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function getOrderRowsForMonth_(monthKey) {
   var normalizedMonthKey = normalizeMonthKey(monthKey);
   var sourceSheets = getOrderSourceSheetsForMonth_(normalizedMonthKey);
@@ -125,18 +136,46 @@ function getOrderRowsForMonth_(monthKey) {
   };
 }
 
-function buildOrderPayloadFromRows_(rows, canViewCost) {
-  var orderRows = rows.orders;
-  var itemRows = rows.items;
-  var tz = rows.tz || Session.getScriptTimeZone();
+function buildOrderIndexes_(rows) {
+  var orderRows = toArray_(rows && rows.orders);
+  var itemRows = toArray_(rows && rows.items);
+  var productsById = getProducts().reduce(function (map, product) {
+    map[product.ProductID] = product;
+    return map;
+  }, {});
   var agentById = getAgents().reduce(function (map, agent) {
     map[agent.AgentID] = agent.AgentName;
     return map;
   }, {});
-  var products = getProducts();
+  var itemsByOrderId = itemRows.reduce(function (map, item) {
+    var orderId = String(item && item[1] || '').trim();
+    if (!orderId) return map;
+    (map[orderId] || (map[orderId] = [])).push(item);
+    return map;
+  }, {});
+
+  return {
+    orderRows: orderRows,
+    itemRows: itemRows,
+    itemsByOrderId: itemsByOrderId,
+    productsById: productsById,
+    agentById: agentById,
+    tz: rows && rows.tz ? rows.tz : Session.getScriptTimeZone()
+  };
+}
+
+function buildOrderPayloadFromRows_(rows, canViewCost, indexes) {
+  var orderRows = toArray_(rows && rows.orders);
+  var resolvedIndexes = indexes || buildOrderIndexes_(rows);
+  var tz = resolvedIndexes.tz || Session.getScriptTimeZone();
+  var itemsByOrderId = resolvedIndexes.itemsByOrderId || {};
+  var productsById = resolvedIndexes.productsById || {};
+  var agentById = resolvedIndexes.agentById || {};
+  var emptyItems = [];
 
   return orderRows.map(function (row) {
     var orderDate = row[1] || new Date();
+    var orderItems = itemsByOrderId[row[0]] || emptyItems;
     return {
       orderId: row[0],
       createdAt: orderDate.getTime(),
@@ -144,7 +183,7 @@ function buildOrderPayloadFromRows_(rows, canViewCost) {
       orderDateLabel: Utilities.formatDate(orderDate, tz, 'dd/MM/yyyy'),
       orderTimeLabel: Utilities.formatDate(orderDate, tz, 'HH:mm'),
       status: String(row[7] || 'COMPLETED'),
-      cancelledAt: row[18] || '',
+      cancelledAt: formatOrderDateForClient_(row[18]),
       cancelledBy: row[19] || '',
       agent: agentById[row[2]] || row[2],
       totalQty: Number(row[3]) || 0,
@@ -157,10 +196,8 @@ function buildOrderPayloadFromRows_(rows, canViewCost) {
       customerAddress: String(row[11] || ''),
       customerPhone: String(row[12] || ''),
       totalCost: canViewCost ? Number(row[5]) || 0 : null,
-      items: itemRows.filter(function (item) {
-        return item[1] === row[0];
-      }).map(function (item) {
-        var product = products.find(function (entry) { return entry.ProductID === item[2]; });
+      items: orderItems.map(function (item) {
+        var product = productsById[item[2]];
         return {
           isNonStock: !product,
           productId: item[2],
@@ -358,10 +395,11 @@ function deleteOrderItemsByOrderId_(orderId) {
 }
 
 function getOrders() {
+  var rows = getData(SHEETS.ORDERS);
   var items = getData(SHEETS.ORDER_ITEMS);
-  var products = getProducts();
+  var indexes = buildOrderIndexes_({ orders: rows, items: items, tz: Session.getScriptTimeZone() });
 
-  return getData(SHEETS.ORDERS).map(function (row) {
+  return indexes.orderRows.map(function (row) {
     return {
       OrderID: row[0],
       OrderDate: row[1],
@@ -373,7 +411,7 @@ function getOrders() {
       Status: row[7],
       CreatedBy: row[8],
       Created: row[9],
-      CancelledAt: row[18],
+      CancelledAt: formatOrderDateForClient_(row[18]),
       CancelledBy: row[19],
       CustomerName: String(row[10] || ''),
       CustomerAddress: String(row[11] || ''),
@@ -383,10 +421,8 @@ function getOrders() {
       DiscountAmount: Number(row[15]) || 0,
       SubtotalAmount: Number(row[16]) || 0,
       NetAmount: Number(row[17]) || 0,
-      Items: items.filter(function (item) {
-        return item[1] === row[0];
-      }).map(function (item) {
-        var product = products.find(function (entry) { return entry.ProductID === item[2]; });
+      Items: (indexes.itemsByOrderId[row[0]] || []).map(function (item) {
+        var product = indexes.productsById[item[2]];
         return {
           ProductID: item[2],
           ProductName: product ? product.ProductName : item[2],
@@ -406,11 +442,12 @@ function getOrders() {
 
 function getOrdersByMonth(monthKey) {
   var rows = getOrderRowsForMonth_(monthKey);
-  var orderRowMap = {};
-  rows.orders.forEach(function (row) {
-    orderRowMap[row[0]] = row;
-  });
-  return buildOrderPayloadFromRows_(rows, true).map(function (order) {
+  var indexes = buildOrderIndexes_(rows);
+  var orderRowMap = indexes.orderRows.reduce(function (map, row) {
+    map[row[0]] = row;
+    return map;
+  }, {});
+  return buildOrderPayloadFromRows_(rows, true, indexes).map(function (order) {
     var sourceRow = orderRowMap[order.orderId] || [];
     return {
       OrderID: order.orderId,
@@ -423,7 +460,7 @@ function getOrdersByMonth(monthKey) {
       Status: sourceRow[7] || 'COMPLETED',
       CreatedBy: '',
       Created: sourceRow[9] || new Date(),
-      CancelledAt: sourceRow[18] || '',
+      CancelledAt: formatOrderDateForClient_(sourceRow[18]),
       CancelledBy: sourceRow[19] || '',
       CustomerName: order.customerName,
       CustomerAddress: order.customerAddress,

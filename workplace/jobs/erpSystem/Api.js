@@ -83,10 +83,8 @@ function buildOrdersPayload_(sessionToken, monthKey) {
   var user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
   var canViewCost = user.role === 'OWNER';
   var rows = getOrderRowsForMonth_(monthKey);
-  rows.items = rows.items.filter(function (item) {
-    return rows.orders.some(function (order) { return order[0] === item[1]; });
-  });
-  return buildOrderPayloadFromRows_(rows, canViewCost).map(function(order) {
+  var indexes = buildOrderIndexes_(rows);
+  return buildOrderPayloadFromRows_(rows, canViewCost, indexes).map(function(order) {
     return {
       orderId: order.orderId,
       createdAt: order.createdAt,
