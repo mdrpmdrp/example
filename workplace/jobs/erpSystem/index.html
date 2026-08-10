@@ -1229,7 +1229,7 @@
             });
         }
 
-        function buildSummaryBillCard(order) {
+        function buildSummaryBillCard(order, sequenceNo) {
             var bill = document.createElement('div');
             bill.className = 'rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2';
 
@@ -1241,7 +1241,7 @@
             var orderTime = document.createElement('div');
             var total = document.createElement('div');
             orderId.className = 'text-xs font-black text-slate-800 font-mono';
-            orderId.textContent = 'บิล ' + order.orderId;
+            orderId.textContent = 'บิล ' + String(sequenceNo || 0) + ' · #' + order.orderId;
             orderTime.className = 'text-[10px] font-semibold text-slate-400';
             orderTime.textContent = order.orderDateLabel ? (order.orderDateLabel + (order.orderTimeLabel ? ' · ' + order.orderTimeLabel : '')) : (order.orderTimeLabel || '');
             left.append(orderId, orderTime);
@@ -1381,12 +1381,12 @@
                 var aKey = (a.orderDateKey || '') + ' ' + (a.orderTimeLabel || '');
                 var bKey = (b.orderDateKey || '') + ' ' + (b.orderTimeLabel || '');
                 return aKey < bKey ? 1 : aKey > bKey ? -1 : String(b.orderId).localeCompare(String(a.orderId));
-            }).forEach(function (order) {
-                listContainer.appendChild(buildSummaryBillCard(order));
+            }).forEach(function (order, index) {
+                listContainer.appendChild(buildSummaryBillCard(order, index + 1));
             });
         }
 
-        function buildSummaryPrintBillMarkup(order) {
+        function buildSummaryPrintBillMarkup(order, sequenceNo) {
             var money = function (value) {
                 return Number(value || 0).toLocaleString('th-TH');
             };
@@ -1397,7 +1397,7 @@
             var html = [];
             html.push('<div class="receipt-block">');
             html.push('<div class="bill-card-header">');
-            html.push('  <span class="bill-id">#' + escapeHtml(order.orderId) + '</span>');
+            html.push('  <span class="bill-id">บิล ' + escapeHtml(String(sequenceNo || 0)) + ' · #' + escapeHtml(order.orderId) + '</span>');
             html.push('  <span class="bill-time">' + escapeHtml(order.orderDateLabel || '') + (order.orderTimeLabel ? ' ' + escapeHtml(order.orderTimeLabel) : '') + '</span>');
             html.push('</div>');
             html.push('<div class="cust-box">');
@@ -1538,8 +1538,8 @@
                 var aKey = (a.orderDateKey || '') + ' ' + (a.orderTimeLabel || '');
                 var bKey = (b.orderDateKey || '') + ' ' + (b.orderTimeLabel || '');
                 return aKey < bKey ? -1 : aKey > bKey ? 1 : String(a.orderId).localeCompare(String(b.orderId));
-            }).forEach(function (order) {
-                html.push(buildSummaryPrintBillMarkup(order));
+            }).forEach(function (order, index) {
+                html.push(buildSummaryPrintBillMarkup(order, index + 1));
             });
 
             /* ── GRAND TOTAL ── */
