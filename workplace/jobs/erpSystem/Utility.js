@@ -27,14 +27,14 @@ function getData(sheetName) {
 
 }
 
-function generateId(prefix, sheetName) {
+function generateId(prefix, sheetName, prefixLength = 6) {
 
   const sheet = getSheet(sheetName);
 
   const lastRow = sheet.getLastRow();
 
   if (lastRow < 2)
-    return prefix + "000001";
+    return prefix + ( "1".padStart(prefixLength,"0") );
 
   const lastId = sheet
     .getRange(lastRow,1)
@@ -45,7 +45,7 @@ function generateId(prefix, sheetName) {
   );
 
   return prefix +
-      String(number+1).padStart(6,"0");
+      String(number+1).padStart(prefixLength,"0");
 
 }
 

@@ -1,4 +1,4 @@
-const ALLOWED_PRODUCT_BASE_UNITS = ['ขวด', 'กล่อง', 'เส้น', 'แพค', 'คู่'];
+const ALLOWED_PRODUCT_BASE_UNITS = ['ขวด', 'กล่อง', 'เส้น', 'แพค', 'คู่', 'ชุด', 'กระปุก', 'แบ่งเซท', 'อัน', 'ไซริงค์', 'แท่ง', 'หลอด'];
 const ALLOWED_PRODUCT_CATEGORIES = ['botox', 'filler', 'fat', 'หน้าใส', 'วิตามินผิว', 'ร้อยไหม', 'อื่นๆ'];
 
 function normalizeProductBaseUnit_(value) {
@@ -131,7 +131,7 @@ function createProduct(sessionToken, data) {
       BaseUnit: baseUnit, PackUnits: packUnits,
       Status: String(data.Status || 'ACTIVE').trim().toUpperCase()
     });
-    return getProductById(productId);
+    return true;
   } finally {
     lock.releaseLock();
   }

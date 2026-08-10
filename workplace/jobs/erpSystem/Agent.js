@@ -29,7 +29,7 @@ function getAgentById(agentId) {
 
 function addAgent(data) {
   ensureAgentsSchema_();
-  var id = data.AgentID || generateId('AG', SHEETS.AGENTS);
+  var id = data.AgentID || generateId('AG', SHEETS.AGENTS, 3);
   appendObject(SHEETS.AGENTS, [
     id,
     data.AgentName,
@@ -39,7 +39,7 @@ function addAgent(data) {
     'ACTIVE',
     new Date()
   ]);
-  return getAgentById(id);
+  return true;
 }
 
 function getAgentRowById_(agentId) {
@@ -81,7 +81,7 @@ function updateAgent(sessionToken, data) {
     'ACTIVE',
     createdValue
   ]]);
-  return getAgentById(id);
+  return true;
 }
 
 function deleteAgent(sessionToken, agentId) {
