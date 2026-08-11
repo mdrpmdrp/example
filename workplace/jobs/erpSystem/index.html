@@ -263,13 +263,58 @@
             selectEl.replaceChildren(fragment);
         }
 
-        function refreshAgentDependentSelects() {
-            const filterSelect = document.getElementById('filter-agent-select');
-            const previousFilterValue = String(filterSelect && filterSelect.value || '').trim() || 'ALL';
-            setSelectOptions(filterSelect, agents, 'แสดงตัวแทนทั้งหมด');
-            if (filterSelect) {
-                filterSelect.value = agents.indexOf(previousFilterValue) !== -1 ? previousFilterValue : 'ALL';
+        function getAgentGroupName_(agentName) {
+            var name = String(agentName || '').trim();
+            if (!name) return String(defaultAgentGroup || 'VIP รวมส่ง').trim() || 'VIP รวมส่ง';
+            var mapGroup = String(agentGroupsByName && agentGroupsByName[name] || '').trim();
+            if (mapGroup) return mapGroup;
+            var record = asArray(agentRecords).find(function (item) {
+                return String(item && item.AgentName || '').trim() === name;
+            });
+            return String(record && record.AgentGroup || defaultAgentGroup || 'VIP รวมส่ง').trim() || 'VIP รวมส่ง';
+        }
+
+        function getOrderFilterAgentGroupValue_() {
+            var select = document.getElementById('filter-agent-group-select');
+            return String(select && select.value || 'ALL').trim() || 'ALL';
+        }
+
+        function getAgentsByGroupFilter_(groupValue) {
+            var selectedGroup = String(groupValue || 'ALL').trim() || 'ALL';
+            var allAgents = asArray(agents).filter(function (name) {
+                return String(name || '').trim() !== '';
+            });
+            if (selectedGroup === 'ALL') return allAgents;
+            return allAgents.filter(function (name) {
+                return getAgentGroupName_(name) === selectedGroup;
+            });
+        }
+
+        function refreshOrderAgentFilterOptions_() {
+            var groupFilterSelect = document.getElementById('filter-agent-group-select');
+            var previousGroupValue = String(groupFilterSelect && groupFilterSelect.value || '').trim() || 'ALL';
+            var groupOptions = agentGroupOptions.length ? agentGroupOptions : [defaultAgentGroup];
+            setSelectOptions(groupFilterSelect, groupOptions, 'ทุกกลุ่มตัวแทน');
+            if (groupFilterSelect) {
+                groupFilterSelect.value = groupOptions.indexOf(previousGroupValue) !== -1 ? previousGroupValue : 'ALL';
             }
+
+            var filterSelect = document.getElementById('filter-agent-select');
+            var previousFilterValue = String(filterSelect && filterSelect.value || '').trim() || 'ALL';
+            var filteredAgents = getAgentsByGroupFilter_(getOrderFilterAgentGroupValue_());
+            setSelectOptions(filterSelect, filteredAgents, 'แสดงตัวแทนทั้งหมด');
+            if (filterSelect) {
+                filterSelect.value = filteredAgents.indexOf(previousFilterValue) !== -1 ? previousFilterValue : 'ALL';
+            }
+        }
+
+        function handleOrderAgentGroupFilterChange() {
+            refreshOrderAgentFilterOptions_();
+            renderOrdersTable();
+        }
+
+        function refreshAgentDependentSelects() {
+            refreshOrderAgentFilterOptions_();
 
             const newOrderAgent = document.getElementById('new-order-agent');
             const previousOrderAgent = String(newOrderAgent && newOrderAgent.value || '').trim();
@@ -475,21 +520,43 @@
             return keys;
         }
 
+        function parseOrderCustomDateSelection_(value) {
+            var text = String(value || '').trim();
+            if (!text) return null;
+            if (text.indexOf('|') !== -1) {
+                var parts = text.split('|');
+                var startKey = normalizeSummaryDateKey(parts[0]);
+                var endKey = normalizeSummaryDateKey(parts[1] || parts[0]);
+                if (startKey && endKey && endKey < startKey) {
+                    var swap = startKey;
+                    startKey = endKey;
+                    endKey = swap;
+                }
+                return {
+                    startKey: startKey || getTodaySummaryDateKey(),
+                    endKey: endKey || startKey || getTodaySummaryDateKey()
+                };
+            }
+            var singleKey = normalizeSummaryDateKey(text);
+            return singleKey ? { startKey: singleKey, endKey: singleKey } : null;
+        }
+
         function getOrderFilterBounds_(filterKey, customDateKey) {
             var key = String(filterKey || 'MONTH').trim().toUpperCase();
-            var anchor = key === 'CUSTOM' ? parseOrderDate_(customDateKey) : new Date();
-            if (!anchor) anchor = new Date();
             if (key === 'TODAY') {
-                var today = startOfDay_(anchor);
+                var today = startOfDay_(new Date());
                 var todayEnd = endOfDay_(today);
                 return { start: today, end: todayEnd, startTs: today.getTime(), endTs: todayEnd.getTime() };
             }
+            var customRange = key === 'CUSTOM' ? parseOrderCustomDateSelection_(customDateKey) : null;
+            var anchor = customRange ? parseOrderDate_(customRange.startKey) : parseOrderDate_(customDateKey);
+            if (!anchor) anchor = new Date();
             if (key === 'WEEK') return getWeekBounds_(anchor);
             if (key === 'YEAR') return getYearBounds_(anchor);
             if (key === 'CUSTOM') {
-                var customDay = startOfDay_(anchor);
-                var customEnd = endOfDay_(customDay);
-                return { start: customDay, end: customEnd, startTs: customDay.getTime(), endTs: customEnd.getTime() };
+                var customStart = startOfDay_(parseOrderDate_(customRange.startKey) || anchor);
+                var customEnd = endOfDay_(parseOrderDate_(customRange.endKey) || customStart);
+                return { start: customStart, end: customEnd, startTs: customStart.getTime(), endTs: customEnd.getTime() };
             }
             return getMonthBounds_(anchor);
         }
@@ -533,8 +600,13 @@
             if (key === 'WEEK') return 'สัปดาห์นี้';
             if (key === 'YEAR') return 'ปีนี้';
             if (key === 'CUSTOM') {
-                var date = parseOrderDate_(customDateKey) || new Date();
-                return 'วันที่ ' + date.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+                var range = parseOrderCustomDateSelection_(customDateKey);
+                if (!range) return 'วันนี้';
+                var startDate = parseOrderDate_(range.startKey) || new Date();
+                var endDate = parseOrderDate_(range.endKey) || startDate;
+                var startLabel = startDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+                var endLabel = endDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+                return range.startKey === range.endKey ? 'วันที่ ' + startLabel : 'ช่วง ' + startLabel + ' ถึง ' + endLabel;
             }
             return 'เดือนนี้';
         }
@@ -543,45 +615,57 @@
             var input = document.getElementById('filter-order-custom-date-input');
             if (!input) return;
             var shouldShow = String(orderTableFilterKey || 'MONTH').toUpperCase() === 'CUSTOM';
-            var value = orderTableCustomDateKey || getTodaySummaryDateKey();
+            var range = parseOrderCustomDateSelection_(orderTableCustomDateKey) || { startKey: getTodaySummaryDateKey(), endKey: getTodaySummaryDateKey() };
             var altInput = orderTableDatePicker && orderTableDatePicker.altInput ? orderTableDatePicker.altInput : null;
             input.classList.toggle('hidden', !shouldShow);
             if (altInput) altInput.classList.toggle('hidden', !shouldShow);
             if (!shouldShow) return;
-            input.value = value;
+            input.value = range.startKey === range.endKey ? range.startKey : (range.startKey + '|' + range.endKey);
             if (orderTableDatePicker && typeof orderTableDatePicker.setDate === 'function') {
-                orderTableDatePicker.setDate(value, false, 'Y-m-d');
+                var startDate = parseOrderDate_(range.startKey) || new Date();
+                var endDate = parseOrderDate_(range.endKey) || startDate;
+                orderTableDatePicker.setDate(range.startKey === range.endKey ? [startDate] : [startDate, endDate], false, 'Y-m-d');
             } else {
-                input.value = value;
+                input.value = range.startKey === range.endKey ? range.startKey : (range.startKey + '|' + range.endKey);
             }
         }
 
         function initOrderDateFilterPicker() {
             var input = document.getElementById('filter-order-custom-date-input');
             if (!input || orderTableDatePicker) return;
-            var defaultDate = parseOrderDate_(orderTableCustomDateKey) || new Date();
+            var defaultRange = parseOrderCustomDateSelection_(orderTableCustomDateKey) || { startKey: getTodaySummaryDateKey(), endKey: getTodaySummaryDateKey() };
+            var defaultStartDate = parseOrderDate_(defaultRange.startKey) || new Date();
+            var defaultEndDate = parseOrderDate_(defaultRange.endKey) || defaultStartDate;
             if (window.flatpickr) {
                 orderTableDatePicker = flatpickr(input, {
                     dateFormat: 'Y-m-d',
+                    mode: 'range',
                     altInput: true,
                     altFormat: 'd/m/Y',
-                    altInputClass: 'erp-control bg-white text-xs font-bold px-3 py-2 w-40',
-                    defaultDate: defaultDate,
+                    altInputClass: 'erp-control bg-white text-xs font-bold px-3 py-2 min-w-52',
+                    defaultDate: defaultRange.startKey === defaultRange.endKey ? [defaultStartDate] : [defaultStartDate, defaultEndDate],
                     locale: flatpickr.l10ns && flatpickr.l10ns.th ? flatpickr.l10ns.th : undefined,
                     allowInput: false,
                     clickOpens: true,
                     disableMobile: true,
                     onChange: function (selectedDates, dateStr) {
-                        orderTableCustomDateKey = normalizeSummaryDateKey(dateStr || selectedDates[0] || new Date());
+                        var startKey = selectedDates[0] ? normalizeSummaryDateKey(selectedDates[0]) : '';
+                        var endKey = selectedDates[1] ? normalizeSummaryDateKey(selectedDates[1]) : startKey;
+                        if (!startKey) {
+                            startKey = getTodaySummaryDateKey();
+                            endKey = startKey;
+                        }
+                        orderTableCustomDateKey = startKey === endKey ? startKey : (startKey + '|' + endKey);
                         if (String(orderTableFilterKey || 'MONTH').toUpperCase() === 'CUSTOM') {
                             refreshOrderTableData();
                         }
                     }
                 });
             } else {
-                input.value = normalizeSummaryDateKey(defaultDate);
+                input.value = defaultRange.startKey === defaultRange.endKey ? defaultRange.startKey : (defaultRange.startKey + '|' + defaultRange.endKey);
                 input.addEventListener('change', function () {
-                    orderTableCustomDateKey = normalizeSummaryDateKey(input.value) || getTodaySummaryDateKey();
+                    var parsed = parseOrderCustomDateSelection_(input.value) || { startKey: getTodaySummaryDateKey(), endKey: getTodaySummaryDateKey() };
+                    orderTableCustomDateKey = parsed.startKey === parsed.endKey ? parsed.startKey : (parsed.startKey + '|' + parsed.endKey);
                     if (String(orderTableFilterKey || 'MONTH').toUpperCase() === 'CUSTOM') {
                         refreshOrderTableData();
                     }
@@ -1634,11 +1718,19 @@
             const knownProductIds = new Set(safeProducts.map(function (product) { return product && product.id; }));
             let totalSales = 0;
             let totalCost = 0;
+            let totalProfit = 0;
             let totalQty = 0;
             let activeAgentsToday = new Set();
             activeOrders.forEach(function (o) {
                 totalSales += Number(o && o.totalAmount) || 0;
-                totalCost += Number(o && o.totalCost) || 0;
+                var orderCost = Number(o && o.totalCost) || 0;
+                totalCost += orderCost;
+                var discountAmount = Number(o && o.discountAmount) || 0;
+                var subtotalAmount = Number(o && o.subtotalAmount);
+                if (!Number.isFinite(subtotalAmount)) {
+                    subtotalAmount = (Number(o && o.totalAmount) || 0) - (Number(o && o.shippingAmount) || 0) + discountAmount;
+                }
+                totalProfit += subtotalAmount - discountAmount - orderCost;
                 totalQty += Number(o && o.totalQty) || 0;
                 if (o && o.agent) activeAgentsToday.add(o.agent);
             });
@@ -1657,7 +1749,7 @@
             if (activeAgentsEl) activeAgentsEl.innerText = `บิลปกติวันนี้จาก ${activeAgentsToday.size} ตัวแทน`;
 
             if (totalCostEl) totalCostEl.innerText = "฿" + totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 });
-            const profit = totalSales - totalCost;
+            const profit = totalProfit;
             if (totalProfitEl) totalProfitEl.innerText = "฿" + profit.toLocaleString(undefined, { minimumFractionDigits: 2 });
 
             const margin = totalSales > 0 ? Math.round((profit / totalSales) * 100) : 0;
@@ -1967,11 +2059,15 @@
                         args: [sessionToken, orderId],
                         onSuccess: function () {
                             cancelOrderInFlight = false;
+                            removeLocalOrderState_(orderId);
+                            renderOrdersTable();
                             showNotification('ยกเลิกบิลและคืนสต๊อกเรียบร้อยแล้ว');
-                            refreshOrdersAndProductsData().catch(function (error) {
-                                if (isSessionError(error)) endSession(true);
-                                showNotification(serverErrorMessage(error), true);
-                            });
+                            setTimeout(function () {
+                                refreshOrdersAndProductsData().catch(function (error) {
+                                    if (isSessionError(error)) endSession(true);
+                                    showNotification(serverErrorMessage(error), true);
+                                });
+                            }, 0);
                         },
                         onFailure: function (error) {
                             cancelOrderInFlight = false;
@@ -2146,13 +2242,17 @@
                 subtext: "กรุณารอสักครู่ ระบบกำลังอัปเดตข้อมูลเซิร์ฟเวอร์",
                 methodName: action,
                 args: args,
-                onSuccess: function () {
+                onSuccess: function (serverResult) {
+                    upsertLocalProductState_(data);
+                    renderStockTable();
                     closeProductModal(true);
                     showNotification(message);
-                    refreshProductsData().catch(function (error) {
-                        if (isSessionError(error)) endSession(true);
-                        showNotification(serverErrorMessage(error), true);
-                    });
+                    setTimeout(function () {
+                        refreshProductsData().catch(function (error) {
+                            if (isSessionError(error)) endSession(true);
+                            showNotification(serverErrorMessage(error), true);
+                        });
+                    }, 0);
                 },
                 onFailure: function (error) {
                     if (isSessionError(error)) endSession(true);
@@ -2263,17 +2363,28 @@
                     Phone: phone,
                     Address: address
                 }],
-                onSuccess: function () {
+                onSuccess: function (serverResult) {
                     if (saveButton) {
                         saveButton.disabled = false;
                         saveButton.removeAttribute('aria-busy');
                     }
+                    upsertLocalAgentState_({
+                        AgentID: agentId,
+                        AgentName: name,
+                        AgentGroup: group,
+                        Phone: phone,
+                        Address: address,
+                        Status: 'ACTIVE'
+                    });
+                    renderAgentManagementTable();
                     closeAgentModal();
                     showNotification(isEditMode ? 'อัปเดตข้อมูลตัวแทนเรียบร้อยแล้ว' : 'บันทึกตัวแทนเรียบร้อยแล้ว');
-                    refreshAgentsData().catch(function (error) {
-                        if (isSessionError(error)) endSession(true);
-                        showNotification(serverErrorMessage(error), true);
-                    });
+                    setTimeout(function () {
+                        refreshAgentsData().catch(function (error) {
+                            if (isSessionError(error)) endSession(true);
+                            showNotification(serverErrorMessage(error), true);
+                        });
+                    }, 0);
                 },
                 onFailure: function (error) {
                     if (saveButton) {
@@ -2386,14 +2497,18 @@
                         saveButton.disabled = false;
                         saveButton.removeAttribute('aria-busy');
                     }
+                    upsertLocalRateTiers_(targetScope, targetScope === 'GROUP' ? target : agentId, prodId, savedTiers && savedTiers.length ? savedTiers : newTiers);
+                    renderAgentRatesTable();
                     closeRateModal(true);
                     showNotification(targetScope === 'GROUP'
                         ? `อัปเดตเรทราคาของกลุ่มเรียบร้อย ${(savedTiers && savedTiers.length) || newTiers.length} ขั้นบันไดแล้ว!`
                         : `อัปเดตเรทราคาของตัวแทนเรียบร้อย ${(savedTiers && savedTiers.length) || newTiers.length} ขั้นบันไดแล้ว!`);
-                    refreshAgentsData().catch(function (error) {
-                        if (isSessionError(error)) endSession(true);
-                        showNotification(serverErrorMessage(error), true);
-                    });
+                    setTimeout(function () {
+                        refreshAgentsData().catch(function (error) {
+                            if (isSessionError(error)) endSession(true);
+                            showNotification(serverErrorMessage(error), true);
+                        });
+                    }, 0);
                 },
                 onFailure: function (error) {
                     rateSaveInFlight = false;
@@ -2793,6 +2908,13 @@
                         class="erp-control hidden bg-white text-xs font-bold px-3 py-2 w-40 min-h-11"
                         placeholder="วัน/เดือน/ปี">
                     <span class="text-slate-300">|</span>
+                    <label for="filter-agent-group-select"
+                        class="text-xs text-slate-600 font-bold uppercase tracking-wider">กลุ่ม:</label>
+                    <select id="filter-agent-group-select" onchange="handleOrderAgentGroupFilterChange()" aria-controls="orders-table"
+                        class="bg-white text-xs font-bold border border-slate-300 rounded-md p-1 px-2 min-h-11 focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                        <option value="ALL">ทุกกลุ่มตัวแทน</option>
+                        <!-- ดึงรายชื่อจาก JS -->
+                    </select>
                     <label for="filter-agent-select"
                         class="text-xs text-slate-600 font-bold uppercase tracking-wider">ตัวแทน:</label>
                     <select id="filter-agent-select" onchange="renderOrdersTable()" aria-controls="orders-table"
@@ -2800,6 +2922,46 @@
                         <option value="ALL">แสดงตัวแทนทั้งหมด</option>
                         <!-- ดึงรายชื่อจาก JS -->
                     </select>
+                </div>
+
+                <div id="orders-summary-card" class="erp-surface-card p-4 sm:p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <div class="text-[11px] font-bold tracking-wider text-slate-400">สรุปตามตัวกรอง</div>
+                        </div>
+                        <div id="orders-summary-note" class="text-[11px] font-semibold text-slate-500">
+                            ช่วงที่เลือกจะอัปเดตอัตโนมัติ
+                        </div>
+                    </div>
+                    <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">จำนวนบิล</div>
+                                    <div id="orders-summary-bill-count" class="mt-1 text-2xl font-black tracking-tight text-slate-800 font-mono">0 บิล</div>
+                                </div>
+                                <i class="fa-solid fa-receipt text-slate-400 text-sm"></i>
+                            </div>
+                        </div>
+                        <div class="rounded-xl border border-primary-100 bg-primary-50/70 p-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <div class="text-[10px] font-bold uppercase tracking-wider text-primary-400">ยอดรวม</div>
+                                    <div id="orders-summary-total" class="mt-1 text-2xl font-black tracking-tight text-primary-700 font-mono">฿0</div>
+                                </div>
+                                <i class="fa-solid fa-chart-line text-primary-500 text-sm"></i>
+                            </div>
+                        </div>
+                        <div class="rounded-xl border border-emerald-100 bg-emerald-50/80 p-3 owner-only-metric">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-500">กำไร</div>
+                                    <div id="orders-summary-profit" class="mt-1 text-2xl font-black tracking-tight text-emerald-700 font-mono">฿0</div>
+                                </div>
+                                <i class="fa-solid fa-sack-dollar text-emerald-500 text-sm"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- ตารางประวัติบิล -->
@@ -4090,6 +4252,52 @@
             return (future ? 'อีก ' : '') + years + ' ปี' + (future ? '' : 'ที่ผ่านมา');
         }
 
+        function getOrderProfitValue_(order) {
+            var orderCost = Number(order && order.totalCost) || 0;
+            var orderDiscount = Number(order && order.discountAmount) || 0;
+            var orderSubtotal = Number(order && order.subtotalAmount);
+            if (!Number.isFinite(orderSubtotal)) {
+                orderSubtotal = (Number(order && order.totalAmount) || 0) - (Number(order && order.shippingAmount) || 0) + orderDiscount;
+            }
+            return orderSubtotal - orderDiscount - orderCost;
+        }
+
+        function getVisibleOrdersForCurrentFilters_() {
+            var agentSelect = document.getElementById('filter-agent-select');
+            var filterVal = String(agentSelect && agentSelect.value || 'ALL').trim() || 'ALL';
+            var groupFilterVal = getOrderFilterAgentGroupValue_();
+            return asArray(orderTableOrders).filter(function (order) {
+                var orderAgent = String(order && order.agent || '').trim();
+                var matchAgent = filterVal === 'ALL' || orderAgent === filterVal;
+                var matchGroup = groupFilterVal === 'ALL' || getAgentGroupName_(orderAgent) === groupFilterVal;
+                return matchAgent && matchGroup;
+            });
+        }
+
+        function updateOrdersSummaryCard(visibleOrders) {
+            var countEl = document.getElementById('orders-summary-bill-count');
+            var totalEl = document.getElementById('orders-summary-total');
+            var profitEl = document.getElementById('orders-summary-profit');
+            var noteEl = document.getElementById('orders-summary-note');
+            var rows = asArray(visibleOrders).filter(function (order) {
+                return !isCancelledOrderRecord(order);
+            });
+            var summary = rows.reduce(function (acc, order) {
+                acc.billCount += 1;
+                acc.totalAmount += Number(order && order.totalAmount) || 0;
+                acc.profitAmount += getOrderProfitValue_(order);
+                return acc;
+            }, { billCount: 0, totalAmount: 0, profitAmount: 0 });
+            if (countEl) countEl.textContent = summary.billCount + ' บิล';
+            if (totalEl) totalEl.textContent = '฿' + summary.totalAmount.toLocaleString('th-TH');
+            if (profitEl) profitEl.textContent = '฿' + summary.profitAmount.toLocaleString('th-TH');
+            if (noteEl) {
+                var periodKey = String(orderTableFilterKey || 'MONTH').trim().toUpperCase() || 'MONTH';
+                var periodLabel = getOrderPeriodLabel(periodKey, orderTableCustomDateKey);
+                noteEl.textContent = (periodLabel || 'ทั้งหมด') + ' · ' + summary.billCount + ' รายการ';
+            }
+        }
+
         function renderOrdersLoadingState(message) {
             var tbody = document.getElementById('orders-table-body');
             var table = document.getElementById('orders-table');
@@ -4097,6 +4305,7 @@
             if (!tbody) return;
             if (table) table.setAttribute('aria-busy', 'true');
             if (status) status.textContent = String(message || 'กำลังโหลดรายการบิล...');
+            updateOrdersSummaryCard([]);
             var colSpan = currentRole === 'owner' ? 8 : 7;
             var skeletonRow = currentRole === 'owner'
                 ? '<tr class="border-b border-slate-100"><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-24 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-20 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-28 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-28 rounded-full"></span></td><td class="p-2.5"><span class="erp-skeleton inline-block h-3.5 w-full rounded-full"></span></td><td class="p-2.5 text-right"><span class="erp-skeleton inline-block h-3.5 w-24 rounded-full"></span></td><td class="p-2.5 text-right"><span class="erp-skeleton inline-block h-3.5 w-20 rounded-full"></span></td><td class="p-2.5 text-center"><span class="erp-skeleton inline-block h-8 w-16 rounded-full"></span></td></tr>'
@@ -4111,6 +4320,7 @@
             if (!tbody) return;
             if (table) table.setAttribute('aria-busy', 'false');
             if (status) status.textContent = String(message || 'โหลดรายการบิลไม่สำเร็จ');
+            updateOrdersSummaryCard([]);
             var colSpan = currentRole === 'owner' ? 8 : 7;
             tbody.innerHTML = '<tr><td colspan="' + colSpan + '" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--danger inline-flex max-w-full flex-col items-center gap-2 rounded-xl px-4 py-3 text-rose-800"><div class="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-rose-700"><i class="fa-solid fa-triangle-exclamation text-sm"></i></div><div class="space-y-0.5"><span class="block text-sm font-semibold">' + escapeHtml(message || 'โหลดรายการบิลไม่สำเร็จ') + '</span><span class="block text-[11px] text-rose-700/80">ตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง</span></div><button type="button" class="erp-action erp-action-secondary px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 border border-rose-200" onclick="refreshOrderTableData()">ลองใหม่</button></div></td></tr>';
         }
@@ -4242,6 +4452,7 @@
         }
 
         function loadApplicationData(showSkeleton) {
+            console.time('ui:loadApplicationData');
             const loadSeq = ++appDataLoadSeq;
             const currentMonthKey = getCurrentMonthKey();
             if (showSkeleton !== false) setAppDataLoading(true);
@@ -4250,7 +4461,10 @@
                 runGoogleScriptPromise('listProducts', [sessionToken]),
                 runGoogleScriptPromise('listOrders', [sessionToken, currentMonthKey])
             ]).then(function (results) {
-                if (loadSeq !== appDataLoadSeq) return;
+                if (loadSeq !== appDataLoadSeq) {
+                    console.timeEnd('ui:loadApplicationData');
+                    return;
+                }
                 orderTableErrorMessage = '';
                 initSystem({
                     agents: (results[0] && results[0].agents) || [],
@@ -4266,8 +4480,49 @@
                 }, { deferOrderRefresh: false });
                 orderTableIsLoading = false;
                 updateSystemState();
+                console.timeEnd('ui:loadApplicationData');
             }).catch(function (error) {
                 if (loadSeq !== appDataLoadSeq) return;
+                console.timeEnd('ui:loadApplicationData');
+                setAppDataLoading(false);
+                orderTableIsLoading = false;
+                if (isSessionError(error)) {
+                    endSession(true);
+                } else {
+                    if (!hasLoadedAppData) renderDefaultAppState();
+                    showNotification(serverErrorMessage(error), true);
+                }
+            });
+        }
+
+        function loadApplicationData(showSkeleton) {
+            console.time('ui:loadApplicationData');
+            const loadSeq = ++appDataLoadSeq;
+            if (showSkeleton !== false) setAppDataLoading(true);
+            runGoogleScriptPromise('bootstrap', [sessionToken, getCurrentMonthKey()]).then(function (result) {
+                if (loadSeq !== appDataLoadSeq) {
+                    console.timeEnd('ui:loadApplicationData');
+                    return;
+                }
+                orderTableErrorMessage = '';
+                initSystem({
+                    agents: (result && result.agents) || [],
+                    agentRecords: (result && result.agentRecords) || [],
+                    agentIdsByName: (result && result.agentIdsByName) || {},
+                    agentGroupsByName: (result && result.agentGroupsByName) || {},
+                    agentGroupOptions: (result && result.agentGroupOptions) || [],
+                    defaultAgentGroup: (result && result.defaultAgentGroup) || 'VIP ร่วมส่ง',
+                    agentGroupRates: (result && result.agentGroupRates) || {},
+                    agentRates: (result && result.agentRates) || {},
+                    products: (result && result.products) || [],
+                    orders: (result && result.orders) || []
+                }, { deferOrderRefresh: false });
+                orderTableIsLoading = false;
+                updateSystemState();
+                console.timeEnd('ui:loadApplicationData');
+            }).catch(function (error) {
+                if (loadSeq !== appDataLoadSeq) return;
+                console.timeEnd('ui:loadApplicationData');
                 setAppDataLoading(false);
                 orderTableIsLoading = false;
                 if (isSessionError(error)) {
@@ -4311,6 +4566,212 @@
             commitLoadedOrders(normalizedMonthKey, Array.isArray(monthOrders) ? monthOrders : []);
         }
 
+        function upsertLocalProductState_(productData) {
+            var productId = String(productData && (productData.ProductID || productData.id) || '').trim();
+            if (!productId) return null;
+            var nextProduct = {
+                id: productId,
+                name: String(productData && (productData.ProductName || productData.name) || '').trim(),
+                category: String(productData && (productData.Category || productData.category) || 'อื่นๆ').trim() || 'อื่นๆ',
+                cost: Number(productData && (productData.Cost != null ? productData.Cost : productData.cost)) || 0,
+                defaultPrice: Number(productData && (productData.RetailPrice != null ? productData.RetailPrice : productData.defaultPrice)) || 0,
+                stock: Number(productData && (productData.Stock != null ? productData.Stock : productData.stock)) || 0,
+                min: Number(productData && (productData.MinStock != null ? productData.MinStock : productData.min)) || 0,
+                status: String(productData && (productData.Status || productData.status) || 'ACTIVE').trim().toUpperCase() || 'ACTIVE',
+                baseUnit: String(productData && (productData.BaseUnit || productData.baseUnit) || productData && (productData.UnitName || productData.unitName) || 'ขวด').trim() || 'ขวด',
+                unitName: String(productData && (productData.UnitName || productData.unitName) || productData && (productData.BaseUnit || productData.baseUnit) || 'ขวด').trim() || 'ขวด',
+                packUnits: asArray(productData && (productData.PackUnits || productData.packUnits)).map(function (item) {
+                    return {
+                        unit: String(item && item.unit || '').trim(),
+                        packSize: Number(item && item.packSize) || 0,
+                        price: item && item.price != null ? Number(item.price) || 0 : undefined
+                    };
+                }).filter(function (item) {
+                    return item.unit && item.packSize > 0;
+                })
+            };
+            var nextProducts = asArray(products).slice();
+            var index = nextProducts.findIndex(function (item) {
+                return String(item && item.id || '').trim() === productId;
+            });
+            if (index >= 0) {
+                nextProducts[index] = Object.assign({}, nextProducts[index], nextProduct);
+            } else {
+                nextProducts.push(nextProduct);
+            }
+            products = nextProducts;
+            return nextProduct;
+        }
+
+        function rebuildAgentLookupMaps_() {
+            agentIdsByName = {};
+            agentGroupsByName = {};
+            asArray(agentRecords).forEach(function (agent) {
+                var agentName = String(agent && agent.AgentName || '').trim();
+                var agentId = String(agent && agent.AgentID || '').trim();
+                var agentGroup = String(agent && agent.AgentGroup || defaultAgentGroup || '').trim() || defaultAgentGroup || 'VIP ร่วมส่ง';
+                if (!agentName) return;
+                if (agentId) agentIdsByName[agentName] = agentId;
+                agentGroupsByName[agentName] = agentGroup;
+            });
+        }
+
+        function upsertLocalAgentState_(agentData) {
+            var agentId = String(agentData && (agentData.AgentID || agentData.id) || '').trim();
+            if (!agentId) return null;
+            var nextRecord = {
+                AgentID: agentId,
+                AgentName: String(agentData && (agentData.AgentName || agentData.name) || '').trim(),
+                AgentGroup: String(agentData && (agentData.AgentGroup || agentData.group) || defaultAgentGroup || '').trim() || defaultAgentGroup || 'VIP ร่วมส่ง',
+                Phone: String(agentData && (agentData.Phone || agentData.phone) || '').trim(),
+                Address: String(agentData && (agentData.Address || agentData.address) || '').trim(),
+                Status: String(agentData && (agentData.Status || agentData.status) || 'ACTIVE').trim().toUpperCase() || 'ACTIVE',
+                Created: agentData && (agentData.Created || agentData.created) || ''
+            };
+            var nextRecords = asArray(agentRecords).slice();
+            var recordIndex = nextRecords.findIndex(function (item) {
+                return String(item && item.AgentID || '').trim() === agentId;
+            });
+            if (recordIndex >= 0) {
+                nextRecords[recordIndex] = Object.assign({}, nextRecords[recordIndex], nextRecord);
+            } else {
+                nextRecords.push(nextRecord);
+            }
+            agentRecords = nextRecords;
+            agents = nextRecords.filter(function (agent) {
+                return String(agent && agent.Status || 'ACTIVE').trim().toUpperCase() === 'ACTIVE';
+            }).map(function (agent) {
+                return String(agent && agent.AgentName || '').trim();
+            }).filter(Boolean);
+            rebuildAgentLookupMaps_();
+            refreshAgentDependentSelects();
+            return nextRecord;
+        }
+
+        function upsertLocalRateTiers_(scope, target, prodId, tiers) {
+            var targetScope = String(scope || 'AGENT').trim().toUpperCase() === 'GROUP' ? 'GROUP' : 'AGENT';
+            var targetKey = String(target || '').trim();
+            var productKey = String(prodId || '').trim();
+            if (!targetKey || !productKey) return;
+            var nextTiers = asArray(tiers).map(function (tier) {
+                return {
+                    min: Number(tier && tier.min) || 0,
+                    max: Number(tier && tier.max) || 0,
+                    price: Number(tier && tier.price) || 0
+                };
+            }).filter(function (tier) {
+                return tier.min > 0 && tier.max >= tier.min;
+            });
+            var rateMap = targetScope === 'GROUP' ? agentGroupRates : agentRates;
+            if (!rateMap[targetKey]) rateMap[targetKey] = {};
+            rateMap[targetKey][productKey] = nextTiers;
+            return nextTiers;
+        }
+
+        function buildOptimisticOrderRecord_(orderId, payload, serverResult, existingOrder) {
+            var fallbackDate = existingOrder ? parseOrderDate_(existingOrder.orderDateKey || existingOrder.orderDate || existingOrder.createdAt || existingOrder.created) : null;
+            var orderDate = parseOrderDate_(payload && payload.orderDate) || fallbackDate || new Date();
+            var items = asArray(payload && payload.items).map(function (item) {
+                var qty = Number(item && item.qty) || 0;
+                var baseQtyNeeded = Number(item && item.baseQtyNeeded) || qty;
+                var unitPrice = Number(item && item.unitPrice) || 0;
+                var cost = Number(item && item.cost) || 0;
+                return {
+                    isNonStock: Boolean(item && item.isNonStock),
+                    productId: String(item && item.productId || '').trim(),
+                    productName: String(item && item.productName || '').trim(),
+                    selectedUnit: String(item && item.selectedUnit || '__base__').trim() || '__base__',
+                    qty: qty,
+                    baseQtyNeeded: baseQtyNeeded,
+                    unitPrice: unitPrice,
+                    cost: cost,
+                    total: Number(item && item.total) || (unitPrice * qty)
+                };
+            });
+            var subtotalAmount = items.reduce(function (sum, item) {
+                return sum + (Number(item.total) || 0);
+            }, 0);
+            var totalCost = items.reduce(function (sum, item) {
+                return sum + (Number(item.cost) || 0) * (Number(item.baseQtyNeeded) || Number(item.qty) || 0);
+            }, 0);
+            var shippingAmount = Number(payload && payload.shippingAmount) || 0;
+            var discountAmount = Number(payload && payload.discountAmount) || 0;
+            var totalAmount = Number(serverResult && serverResult.totalAmount);
+            if (!Number.isFinite(totalAmount)) {
+                totalAmount = subtotalAmount + shippingAmount - discountAmount;
+            }
+            var totalQty = Number(serverResult && serverResult.totalQty);
+            if (!Number.isFinite(totalQty)) {
+                totalQty = items.reduce(function (sum, item) {
+                    return sum + (Number(item.qty) || 0);
+                }, 0);
+            }
+            return {
+                orderId: String(orderId || '').trim(),
+                createdAt: orderDate.getTime(),
+                created: orderDate.toISOString(),
+                orderDateKey: normalizeSummaryDateKey(orderDate),
+                orderDateLabel: orderDate.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                orderTimeLabel: orderDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }),
+                status: 'COMPLETED',
+                cancelledAt: '',
+                cancelledBy: '',
+                agent: String(payload && (payload.agentName || payload.agentId) || '').trim(),
+                totalQty: totalQty,
+                subtotalAmount: subtotalAmount,
+                shippingType: String(payload && payload.shippingType || 'NONE').trim() || 'NONE',
+                shippingAmount: shippingAmount,
+                discountAmount: discountAmount,
+                totalAmount: totalAmount,
+                customerName: String(payload && payload.customerName || '').trim(),
+                customerAddress: String(payload && payload.customerAddress || '').trim(),
+                customerPhone: String(payload && payload.customerPhone || '').trim(),
+                totalCost: totalCost,
+                profitAmount: subtotalAmount - discountAmount - totalCost,
+                items: items
+            };
+        }
+
+        function upsertLocalOrderState_(orderRecord) {
+            var orderId = String(orderRecord && (orderRecord.orderId || orderRecord.OrderID) || '').trim();
+            if (!orderId) return null;
+            var normalized = Object.assign({}, orderRecord, { orderId: orderId });
+            normalizeOrderRecordForCache(normalized, getMonthKeyFromDateKey(normalized.orderDateKey || normalized.orderDate || normalized.createdAt || normalized.created));
+            var monthKey = String(normalized.__orderMonthKey || getMonthKeyFromDateKey(normalized.orderDateKey || normalized.orderDate || normalized.createdAt || normalized.created)).trim() || getCurrentMonthKey();
+            var updatedOrders = asArray(orders).slice();
+            var orderIndex = updatedOrders.findIndex(function (item) {
+                return String(item && (item.orderId || item.OrderID) || '').trim() === orderId;
+            });
+            if (orderIndex >= 0) {
+                updatedOrders[orderIndex] = Object.assign({}, updatedOrders[orderIndex], normalized);
+            } else {
+                updatedOrders.push(normalized);
+            }
+            orders = updatedOrders;
+            ordersMonthKey = monthKey;
+            ordersMonthCache[monthKey] = updatedOrders.slice();
+            orderTableOrders = updatedOrders.slice().filter(function (order) {
+                return isOrderWithinBounds_(order, orderTableRange);
+            });
+            return normalized;
+        }
+
+        function removeLocalOrderState_(orderId) {
+            var id = String(orderId || '').trim();
+            if (!id) return;
+            orders = asArray(orders).filter(function (item) {
+                return String(item && (item.orderId || item.OrderID) || '').trim() !== id;
+            });
+            orderTableOrders = asArray(orderTableOrders).filter(function (item) {
+                return String(item && (item.orderId || item.OrderID) || '').trim() !== id;
+            });
+            Object.keys(ordersMonthCache || {}).forEach(function (key) {
+                ordersMonthCache[key] = asArray(ordersMonthCache[key]).filter(function (item) {
+                    return String(item && (item.orderId || item.OrderID) || '').trim() !== id;
+                });
+            });
+        }
+
         function refreshAgentsData() {
             return runGoogleScriptPromise('getAgentsBundle', [sessionToken]).then(function (bundle) {
                 applyAgentsBundle(bundle || {});
@@ -4328,6 +4789,7 @@
         }
 
         function refreshOrdersData(options) {
+            console.time('ui:refreshOrdersData');
             var opts = options || {};
             var currentMonthKey = String(opts.monthKey || getCurrentMonthKey()).trim() || getCurrentMonthKey();
             return runGoogleScriptPromise('listOrders', [sessionToken, currentMonthKey]).then(function (monthOrders) {
@@ -4335,11 +4797,18 @@
                 orderTableErrorMessage = '';
                 orderTableIsLoading = false;
                 updateSystemState();
-                return refreshOrderTableData();
+                return refreshOrderTableData().then(function (result) {
+                    console.timeEnd('ui:refreshOrdersData');
+                    return result;
+                });
+            }).catch(function (error) {
+                console.timeEnd('ui:refreshOrdersData');
+                throw error;
             });
         }
 
         function refreshOrdersAndProductsData() {
+            console.time('ui:refreshOrdersAndProductsData');
             var currentMonthKey = getCurrentMonthKey();
             return Promise.all([
                 runGoogleScriptPromise('listProducts', [sessionToken]),
@@ -4350,7 +4819,42 @@
                 orderTableErrorMessage = '';
                 orderTableIsLoading = false;
                 updateSystemState();
-                return refreshOrderTableData();
+                return refreshOrderTableData().then(function (result) {
+                    console.timeEnd('ui:refreshOrdersAndProductsData');
+                    return result;
+                });
+            }).catch(function (error) {
+                console.timeEnd('ui:refreshOrdersAndProductsData');
+                throw error;
+            });
+        }
+
+        function refreshOrdersAndProductsData() {
+            console.time('ui:refreshOrdersAndProductsData');
+            var currentMonthKey = getCurrentMonthKey();
+            return runGoogleScriptPromise('bootstrap', [sessionToken, currentMonthKey]).then(function (result) {
+                applyAgentsBundle({
+                    agents: (result && result.agents) || [],
+                    agentRecords: (result && result.agentRecords) || [],
+                    agentIdsByName: (result && result.agentIdsByName) || {},
+                    agentGroupsByName: (result && result.agentGroupsByName) || {},
+                    agentGroupOptions: (result && result.agentGroupOptions) || [],
+                    defaultAgentGroup: (result && result.defaultAgentGroup) || 'VIP ร่วมส่ง',
+                    agentGroupRates: (result && result.agentGroupRates) || {},
+                    agentRates: (result && result.agentRates) || {}
+                });
+                applyProductsList((result && result.products) || []);
+                applyOrdersMonth(currentMonthKey, (result && result.orders) || [], true);
+                orderTableErrorMessage = '';
+                orderTableIsLoading = false;
+                updateSystemState();
+                return refreshOrderTableData().then(function (next) {
+                    console.timeEnd('ui:refreshOrdersAndProductsData');
+                    return next;
+                });
+            }).catch(function (error) {
+                console.timeEnd('ui:refreshOrdersAndProductsData');
+                throw error;
             });
         }
 
@@ -4472,17 +4976,21 @@
         }
 
         function runGoogleScript(methodName, args, handlers) {
+            const timingLabel = `rpc:${String(methodName || 'unknown')}`;
             if (!window.google || !google.script || !google.script.run) {
                 if (handlers && typeof handlers.onFailure === 'function') {
                     handlers.onFailure(new Error('Google Apps Script runtime unavailable'));
                 }
                 return null;
             }
+            console.time(timingLabel);
             const runner = google.script.run
                 .withSuccessHandler(function (result) {
+                    console.timeEnd(timingLabel);
                     if (handlers && typeof handlers.onSuccess === 'function') handlers.onSuccess(result);
                 })
                 .withFailureHandler(function (error) {
+                    console.timeEnd(timingLabel);
                     if (handlers && typeof handlers.onFailure === 'function') handlers.onFailure(error);
                 });
             return runner[methodName].apply(runner, Array.isArray(args) ? args : []);
@@ -5067,20 +5575,18 @@
                 renderOrdersErrorState(orderTableErrorMessage);
                 return;
             }
-            const filterVal = document.getElementById('filter-agent-select').value;
             const periodKey = String(orderTableFilterKey || 'MONTH').trim().toUpperCase() || 'MONTH';
             const periodLabel = getOrderPeriodLabel(periodKey, orderTableCustomDateKey);
             const periodText = periodLabel ? ' ' + periodLabel : '';
             if (table) table.setAttribute('aria-busy', 'false');
             if (caption) caption.textContent = 'ประวัติบิลช่วง' + periodText;
-            const visible = filterVal === "ALL" ? asArray(orderTableOrders) : asArray(orderTableOrders).filter(function (order) {
-                return order.agent === filterVal;
-            });
+            const visible = getVisibleOrdersForCurrentFilters_();
+            updateOrdersSummaryCard(visible);
 
             if (visible.length === 0) {
                 const emptyText = 'ไม่มีข้อมูลบิลช่วง' + periodText + 'ในระบบ';
                 if (status) status.textContent = emptyText;
-                tbody.innerHTML = `<tr><td colspan="${currentRole === 'owner' ? 7 : 6}" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--info inline-flex rounded-xl px-4 py-3 italic">${emptyText}</div></td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${currentRole === 'owner' ? 8 : 7}" class="p-6 text-center"><div class="erp-empty-state erp-empty-state--info inline-flex rounded-xl px-4 py-3 italic">${emptyText}</div></td></tr>`;
                 return;
             }
 
@@ -5103,7 +5609,7 @@
                     const safeCustomerName = escapeHtml(String(o && o.customerName || '-'));
                     const safeAgent = escapeHtml(String(o && o.agent || ''));
                     const itemCountBadge = `<button type="button" class="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1 hover:bg-slate-200 transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1" onmouseenter='showOrderItemsPopover(${safeOrderIdJs}, this, "hover")' onmouseleave="hideOrderItemsPopover()" onblur="hideOrderItemsPopover()" onclick='toggleOrderItemsPopover(${safeOrderIdJs}, this, event)' aria-haspopup="dialog" aria-expanded="false" aria-label="ดูรายการบิล ${safeOrderIdHtml}"><i class="fa-solid fa-list-check text-slate-400"></i> ${itemCount} รายการ</button>`;
-                    const profit = Number(o && o.totalAmount) - Number(o && o.totalCost);
+                    const profit = getOrderProfitValue_(o);
                     const detailText = isCancelled ? 'ยกเลิกแล้ว' : 'อ่านอย่างเดียว';
                     let detailTextClass;
                     if (isCancelled) {
@@ -6057,7 +6563,7 @@
                 button.setAttribute('aria-busy', 'true');
             }
             runGoogleScript('adjustStock', [sessionToken, product.id, delta, 'IN', 'MANUAL-UI', 'เพิ่มสต็อกจากหน้าต่างแก้ไขสินค้า'], {
-                onSuccess: function () {
+                onSuccess: function (serverResult) {
                     if (button) {
                         button.disabled = false;
                         button.removeAttribute('aria-busy');
@@ -6070,10 +6576,12 @@
                     var current = asArray(products).find(function (item) { return item.id === product.id; });
                     if (current) current.stock = (Number(current.stock) || 0) + delta;
                     showNotification('เพิ่มสต็อกเรียบร้อยแล้ว');
-                    refreshProductsData().catch(function (error) {
-                        if (isSessionError(error)) endSession(true);
-                        showNotification(serverErrorMessage(error), true);
-                    });
+                    setTimeout(function () {
+                        refreshProductsData().catch(function (error) {
+                            if (isSessionError(error)) endSession(true);
+                            showNotification(serverErrorMessage(error), true);
+                        });
+                    }, 0);
                 },
                 onFailure: function (error) {
                     if (button) {
@@ -6416,6 +6924,7 @@
 
             const payload = {
                 agentId: agentId,
+                agentName: agent,
                 orderDate: orderDate,
                 items: cartItems,
                 customerName: customerName,
@@ -6435,15 +6944,21 @@
                 subtext: "กรุณารอสักครู่ ระบบกำลังตัดยอดสต๊อกและบันทึกข้อมูล",
                 methodName: methodName,
                 args: args,
-                onSuccess: function () {
+                onSuccess: function (serverResult) {
                     orderSaveInFlight = false;
                     if (button) { button.disabled = false; button.removeAttribute('aria-busy'); }
+                    var optimisticOrderId = String((serverResult && serverResult.orderId) || editingOrderId || document.getElementById('new-order-id')?.value || '').trim();
+                    var optimisticOrder = buildOptimisticOrderRecord_(optimisticOrderId, payload, serverResult, orderMode === 'edit' && editingOrderId ? findLoadedOrderById(editingOrderId) : null);
+                    upsertLocalOrderState_(optimisticOrder);
+                    renderOrdersTable();
                     closeOrderModal(true);
                     showNotification(orderMode === 'edit' ? 'บันทึกการแก้ไขบิลเรียบร้อยแล้ว' : 'บันทึกบิลและตัดสต๊อกเรียบร้อยแล้ว');
-                    refreshOrdersAndProductsData().catch(function (error) {
-                        if (isSessionError(error)) endSession(true);
-                        showNotification(serverErrorMessage(error), true);
-                    });
+                    setTimeout(function () {
+                        refreshOrdersAndProductsData().catch(function (error) {
+                            if (isSessionError(error)) endSession(true);
+                            showNotification(serverErrorMessage(error), true);
+                        });
+                    }, 0);
                 },
                 onFailure: function (error) {
                     orderSaveInFlight = false;
@@ -6468,11 +6983,17 @@
             runGoogleScript('adjustStock', [sessionToken, productId, Math.abs(amount), amount > 0 ? 'IN' : 'OUT', 'MANUAL-UI', 'Manual adjustment from ERP dashboard'], {
                 onSuccess: function () {
                     if (button && button.isConnected) button.disabled = false;
+                    if (product) {
+                        product.stock = (Number(product.stock) || 0) + amount;
+                        renderStockTable();
+                    }
                     showNotification('บันทึกการปรับสต็อกเรียบร้อยแล้ว');
-                    refreshProductsData().catch(function (error) {
-                        if (isSessionError(error)) endSession(true);
-                        showNotification(serverErrorMessage(error), true);
-                    });
+                    setTimeout(function () {
+                        refreshProductsData().catch(function (error) {
+                            if (isSessionError(error)) endSession(true);
+                            showNotification(serverErrorMessage(error), true);
+                        });
+                    }, 0);
                 },
                 onFailure: function (error) {
                     if (button && button.isConnected) button.disabled = false;

@@ -5,25 +5,36 @@ function getSheet(sheetName) {
   return SpreadsheetApp.getActive().getSheetByName(sheetName);
 }
 
+function withConsoleTiming_(label, fn) {
+  var hasConsole = typeof console !== 'undefined' && console && typeof console.time === 'function' && typeof console.timeEnd === 'function';
+  if (hasConsole) console.time(label);
+  try {
+    return fn();
+  } finally {
+    if (hasConsole) console.timeEnd(label);
+  }
+}
+
 /**
  * คืนค่าข้อมูลทั้งหมด (ไม่มี Header)
  */
 function getData(sheetName) {
+  return withConsoleTiming_('server:getData:' + sheetName, function () {
+    const sheet = getSheet(sheetName);
+    if (!sheet) return [];
 
-  const sheet = getSheet(sheetName);
-  if (!sheet) return [];
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
 
-  const lastRow = sheet.getLastRow();
-  const lastCol = sheet.getLastColumn();
+    if (lastRow < 2) return [];
 
-  if (lastRow < 2) return [];
-
-  return sheet.getRange(
-    2,
-    1,
-    lastRow - 1,
-    lastCol
-  ).getValues();
+    return sheet.getRange(
+      2,
+      1,
+      lastRow - 1,
+      lastCol
+    ).getValues();
+  });
 
 }
 

@@ -108,3 +108,34 @@ function getAgentRates(agentId) {
     return { RateID: row[0], AgentID: row[1], ProductID: row[2], MinQty: row[3], MaxQty: row[4], SellPrice: row[5] };
   });
 }
+
+var AGENTS_CACHE_ = null;
+var AGENT_RATES_CACHE_ = {};
+
+function getAgents() {
+  if (AGENTS_CACHE_) return AGENTS_CACHE_;
+  ensureAgentsSchema_();
+  AGENTS_CACHE_ = getData(SHEETS.AGENTS).map(function (row) {
+    return {
+      AgentID: row[0],
+      AgentName: row[1],
+      AgentGroup: String(row[2] || '').trim() || DEFAULT_AGENT_GROUP,
+      Phone: row[3],
+      Address: row[4],
+      Status: row[5],
+      Created: row[6]
+    };
+  }).filter(function (agent) { return agent.Status === 'ACTIVE'; });
+  return AGENTS_CACHE_;
+}
+
+function getAgentRates(agentId) {
+  var id = String(agentId || '').trim();
+  if (!id) return [];
+  if (!AGENT_RATES_CACHE_[id]) {
+    AGENT_RATES_CACHE_[id] = getData(SHEETS.AGENT_RATES).filter(function (row) { return row[1] === id; }).map(function (row) {
+      return { RateID: row[0], AgentID: row[1], ProductID: row[2], MinQty: row[3], MaxQty: row[4], SellPrice: row[5] };
+    });
+  }
+  return AGENT_RATES_CACHE_[id];
+}

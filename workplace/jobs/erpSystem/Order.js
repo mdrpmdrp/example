@@ -5,13 +5,21 @@ function getOrderSchemaStatusColumn_() {
 
 function normalizeShippingType_(value) {
   const type = String(value || '').trim().toUpperCase();
-  let map = {
+  const map = {
     VAN: 'VAN',
+    CHILLED: 'CHILLED',
     CHILLED150: 'CHILLED150',
     CHILLED100: 'CHILLED100',
+    INTER: 'INTER',
     PARCEL: 'PARCEL',
     MESSENGER: 'MESSENGER',
     SPLIT: 'SPLIT',
+    CLINIC_LADPRAO: 'CLINIC_LADPRAO',
+    CLINIC_PHAYATHAI: 'CLINIC_PHAYATHAI',
+    CLINIC_BANGNA: 'CLINIC_BANGNA',
+    CLINIC_RANGSIT_PAHOL: 'CLINIC_RANGSIT_PAHOL',
+    CLINIC_PICKUP: 'CLINIC_PICKUP',
+    FREE: 'FREE',
     NONE: 'NONE'
   };
   return map[type] || 'NONE';
@@ -21,12 +29,22 @@ function resolveShippingAmount_(shippingType, shippingAmount) {
   const type = normalizeShippingType_(shippingType);
   const preset = { VAN: 350, CHILLED: 150, PARCEL: 60, CHILLED150: 150, CHILLED100: 100, INTER: 300 };
   if (preset[type] != null) return { type: type, amount: preset[type] };
+  if (type === 'FREE' || type.indexOf('CLINIC_') === 0 || type === 'NONE') {
+    return { type: type, amount: 0 };
+  }
   if (type === 'MESSENGER' || type === 'SPLIT') {
     const amount = Number(shippingAmount);
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Invalid shipping amount');
     return { type: type, amount: amount };
   }
   return { type: 'NONE', amount: 0 };
+}
+
+function calculateOrderProfitAmount_(subtotalAmount, totalCost, discountAmount) {
+  var subtotal = Number(subtotalAmount) || 0;
+  var cost = Number(totalCost) || 0;
+  var discount = Number(discountAmount) || 0;
+  return subtotal - discount - cost;
 }
 
 function resolveOrderDateValue_(value, fallbackDate) {
@@ -176,6 +194,9 @@ function buildOrderPayloadFromRows_(rows, canViewCost, indexes) {
   return orderRows.map(function (row) {
     var orderDate = row[1] || new Date();
     var orderItems = itemsByOrderId[row[0]] || emptyItems;
+    var subtotalAmount = Number(row[16] || row[4]) || 0;
+    var totalCostAmount = Number(row[5]) || 0;
+    var discountAmount = Number(row[15]) || 0;
     return {
       orderId: row[0],
       createdAt: orderDate.getTime(),
@@ -187,15 +208,16 @@ function buildOrderPayloadFromRows_(rows, canViewCost, indexes) {
       cancelledBy: row[19] || '',
       agent: agentById[row[2]] || row[2],
       totalQty: Number(row[3]) || 0,
-      subtotalAmount: Number(row[16] || row[4]) || 0,
+      subtotalAmount: subtotalAmount,
       shippingType: String(row[13] || 'NONE'),
       shippingAmount: Number(row[14]) || 0,
-      discountAmount: Number(row[15]) || 0,
+      discountAmount: discountAmount,
       totalAmount: Number(row[4]) || 0,
       customerName: String(row[10] || ''),
       customerAddress: String(row[11] || ''),
       customerPhone: String(row[12] || ''),
-      totalCost: canViewCost ? Number(row[5]) || 0 : null,
+      totalCost: canViewCost ? totalCostAmount : null,
+      profitAmount: canViewCost ? calculateOrderProfitAmount_(subtotalAmount, totalCostAmount, discountAmount) : null,
       items: orderItems.map(function (item) {
         var product = productsById[item[2]];
         return {
@@ -456,7 +478,7 @@ function getOrdersByMonth(monthKey) {
       TotalQty: order.totalQty,
       TotalAmount: order.totalAmount,
       TotalCost: Number(order.totalCost) || 0,
-      Profit: Number(order.totalAmount || 0) - Number(order.totalCost || 0),
+      Profit: Number(order.profitAmount) || 0,
       Status: sourceRow[7] || 'COMPLETED',
       CreatedBy: '',
       Created: sourceRow[9] || new Date(),
@@ -548,6 +570,7 @@ function createOrder(sessionToken, payload) {
 
     const subtotalAmount = totals.amount;
     const netAmount = subtotalAmount + shipping.amount - discountAmount;
+    const profitAmount = calculateOrderProfitAmount_(subtotalAmount, totals.cost, discountAmount);
     if (netAmount < 0) throw new Error('Invalid order total');
 
     appendObject(SHEETS.ORDERS, [
@@ -557,7 +580,7 @@ function createOrder(sessionToken, payload) {
       totals.quantity,
       netAmount,
       totals.cost,
-      netAmount - totals.cost,
+      profitAmount,
       'COMPLETED',
       user.username,
       new Date(),
@@ -633,6 +656,7 @@ function updateOrder(sessionToken, orderId, payload) {
 
     const subtotalAmount = totals.amount;
     const netAmount = subtotalAmount + shipping.amount - discountAmount;
+    const profitAmount = calculateOrderProfitAmount_(subtotalAmount, totals.cost, discountAmount);
     if (netAmount < 0) throw new Error('Invalid order total');
 
     existing.Items.forEach(function (item) {
@@ -657,7 +681,7 @@ function updateOrder(sessionToken, orderId, payload) {
       totals.quantity,
       netAmount,
       totals.cost,
-      netAmount - totals.cost,
+      profitAmount,
       existing.Status || 'COMPLETED',
       existing.CreatedBy || user.username,
       existing.Created || new Date(),

@@ -219,3 +219,29 @@ function toggleProductStatus(sessionToken, productId, status) {
 
   throw new Error('Product not found: ' + id);
 }
+
+var PRODUCTS_CACHE_ = null;
+
+function getProducts() {
+  if (PRODUCTS_CACHE_) return PRODUCTS_CACHE_;
+
+  var rows = getData(SHEETS.PRODUCTS);
+  PRODUCTS_CACHE_ = rows.map(function (r) {
+    return {
+      ProductID: r[0],
+      ProductName: r[1],
+      Category: r[2],
+      Cost: r[3],
+      RetailPrice: r[4],
+      Stock: r[5],
+      MinStock: r[6],
+      Status: r[7],
+      Created: r[8],
+      Updated: r[9],
+      BaseUnit: r[10] || 'à¸‚à¸§à¸”',
+      PackUnits: parsePackUnitsFromRow_(r),
+      UnitName: r[10] || 'à¸‚à¸§à¸”'
+    };
+  });
+  return PRODUCTS_CACHE_;
+}

@@ -236,3 +236,18 @@ function listGroupPriceTiers(sessionToken, agentGroup, productId) {
     return !normalizedProductId || rate.ProductID === normalizedProductId;
   });
 }
+
+var AGENT_GROUP_RATES_CACHE_ = {};
+
+function getAgentGroupRates(agentGroup) {
+  var normalizedGroup = String(agentGroup || '').trim();
+  if (!normalizedGroup) return [];
+  if (!AGENT_GROUP_RATES_CACHE_[normalizedGroup]) {
+    AGENT_GROUP_RATES_CACHE_[normalizedGroup] = getData(SHEETS.AGENT_GROUP_RATES).filter(function (row) {
+      return String(row[1] || '').trim() === normalizedGroup;
+    }).map(function (row) {
+      return { RateID: row[0], AgentGroup: row[1], ProductID: row[2], MinQty: row[3], MaxQty: row[4], SellPrice: row[5] };
+    });
+  }
+  return AGENT_GROUP_RATES_CACHE_[normalizedGroup];
+}
