@@ -1505,7 +1505,16 @@
             html.push('</tbody>');
             html.push('</table>');
             html.push('<div class="bill-summary-bar">');
-            html.push('  <span>สินค้า ฿' + money(order.subtotalAmount) + '</span>');
+            html.push('  <span>สินค้า ฿' + money((function () {
+                var items = asArray(order && order.items);
+                if (items.length) {
+                    return items.reduce(function (sum, item) {
+                        var value = Number(item && (item.total != null ? item.total : item.TotalPrice));
+                        return sum + (Number.isFinite(value) ? value : 0);
+                    }, 0);
+                }
+                return Number(order && order.subtotalAmount) || 0;
+            })()) + '</span>');
             if (Number(order.shippingAmount) > 0) html.push('  <span> · ค่าส่ง ฿' + money(order.shippingAmount) + '</span>');
             if (Number(order.discountAmount) > 0) html.push('  <span> · ส่วนลด -฿' + money(order.discountAmount) + '</span>');
             html.push('</div>');
@@ -1725,12 +1734,7 @@
                 totalSales += Number(o && o.totalAmount) || 0;
                 var orderCost = Number(o && o.totalCost) || 0;
                 totalCost += orderCost;
-                var discountAmount = Number(o && o.discountAmount) || 0;
-                var subtotalAmount = Number(o && o.subtotalAmount);
-                if (!Number.isFinite(subtotalAmount)) {
-                    subtotalAmount = (Number(o && o.totalAmount) || 0) - (Number(o && o.shippingAmount) || 0) + discountAmount;
-                }
-                totalProfit += subtotalAmount - discountAmount - orderCost;
+                totalProfit += getOrderProfitValue_(o);
                 totalQty += Number(o && o.totalQty) || 0;
                 if (o && o.agent) activeAgentsToday.add(o.agent);
             });
@@ -4293,6 +4297,16 @@
         }
 
         function getOrderProfitValue_(order) {
+            var orderItems = asArray(order && order.items);
+            if (orderItems.length) {
+                var itemSubtotal = orderItems.reduce(function (sum, item) {
+                    var value = Number(item && (item.total != null ? item.total : item.TotalPrice));
+                    return sum + (Number.isFinite(value) ? value : 0);
+                }, 0);
+                var orderCostFromItems = Number(order && order.totalCost) || 0;
+                var orderDiscountFromItems = Number(order && order.discountAmount) || 0;
+                return itemSubtotal - orderDiscountFromItems - orderCostFromItems;
+            }
             var orderCost = Number(order && order.totalCost) || 0;
             var orderDiscount = Number(order && order.discountAmount) || 0;
             var orderSubtotal = Number(order && order.subtotalAmount);
@@ -7178,7 +7192,8 @@
             if (!selectedTarget) return;
             const rateMap = scope === 'GROUP' ? agentGroupRates : agentRates;
             safeProducts.filter(function (product) { return product.id.toLowerCase().includes(query) || product.name.toLowerCase().includes(query); }).forEach(function (product) {
-                const tiers = (rateMap[selectedTarget] && rateMap[selectedTarget][product.id]) || [{ min: 1, max: 99999, price: product.defaultPrice }];
+                const actualTiers = (rateMap[selectedTarget] && rateMap[selectedTarget][product.id]) || [];
+                const tiers = actualTiers.length ? actualTiers : [{ min: 1, max: 99999, price: product.defaultPrice }];
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-primary-50/40 transition';
                 appendCell(row, product.id, 'p-2.5 font-mono font-bold text-primary-700');
@@ -7188,7 +7203,7 @@
                 rateButton.type = 'button';
                 rateButton.className = 'bg-primary-100 text-primary-700 font-bold px-2.5 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1 hover:bg-primary-200 transition mx-auto';
                 rateButton.setAttribute('aria-label', 'ดูรายละเอียดเรท ' + product.id);
-                rateButton.textContent = tiers.length + ' เรท';
+                rateButton.textContent = actualTiers.length ? actualTiers.length + ' เรท' : 'ค่าเริ่มต้น';
                 rateButton.addEventListener('mouseenter', function () {
                     showAgentRatePopover((scope === 'GROUP' ? 'กลุ่ม: ' : 'ตัวแทน: ') + selectedTarget, product, tiers, rateButton);
                 });
