@@ -48,6 +48,12 @@ function normalizeProductCategory_(value) {
   return ALLOWED_PRODUCT_CATEGORIES.indexOf(category) >= 0 ? category : 'อื่นๆ';
 }
 
+function resetProductCaches_() {
+  PRODUCTS_CACHE_ = null;
+  if (typeof AGENT_RATES_CACHE_ !== 'undefined') AGENT_RATES_CACHE_ = {};
+  if (typeof AGENT_GROUP_RATES_CACHE_ !== 'undefined') AGENT_GROUP_RATES_CACHE_ = {};
+}
+
 function getProducts() {
 
   const rows = getData(SHEETS.PRODUCTS);
@@ -99,6 +105,7 @@ function addProduct(data) {
 
   ]);
 
+  resetProductCaches_();
   return true;
 
 }
@@ -166,6 +173,7 @@ function updateProduct(data) {
 
       ]]);
 
+      resetProductCaches_();
       return true;
 
     }
@@ -176,26 +184,52 @@ function updateProduct(data) {
 
 }
 
-function deleteProduct(productId) {
+function deleteProduct(sessionToken, productId) {
+  const id = String(productId || '').trim().toUpperCase();
+  requireRole(sessionToken, ['OWNER', 'ADMIN']);
 
-  const sheet = SpreadsheetApp.getActive()
-    .getSheetByName(SHEETS.PRODUCTS);
+  if (!id) throw new Error('Product ID is required');
 
-  const values = sheet.getDataRange().getValues();
+  const ss = SpreadsheetApp.getActive();
+  const productSheet = ss.getSheetByName(SHEETS.PRODUCTS);
+  const productValues = productSheet.getDataRange().getValues();
+  var productRowIndex = -1;
 
-  for (let i = 1; i < values.length; i++) {
-
-    if (values[i][0] == productId) {
-
-      sheet.getRange(i + 1, 8).setValue("INACTIVE");
-
-      return true;
-
+  for (let i = 1; i < productValues.length; i++) {
+    if (String(productValues[i][0] || '').trim().toUpperCase() === id) {
+      productRowIndex = i + 1;
+      break;
     }
-
   }
 
-  return false;
+  if (productRowIndex < 2) throw new Error('Product not found');
+
+  function deleteMatchingRows_(sheetName, columnIndex, matchValue) {
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return 0;
+    var rows = getData(sheetName);
+    var rowIndexes = [];
+    for (var rowIndex = rows.length - 1; rowIndex >= 0; rowIndex--) {
+      if (String(rows[rowIndex][columnIndex] || '').trim().toUpperCase() === matchValue) {
+        rowIndexes.push(rowIndex + 2);
+      }
+    }
+    deleteRowsByIndexes_(sheet, rowIndexes);
+    return rowIndexes.length;
+  }
+
+  var removedAgentRates = deleteMatchingRows_(SHEETS.AGENT_RATES, 2, id);
+  var removedGroupRates = deleteMatchingRows_(SHEETS.AGENT_GROUP_RATES, 2, id);
+
+  productSheet.deleteRow(productRowIndex);
+  resetProductCaches_();
+
+  return {
+    success: true,
+    productId: id,
+    removedAgentRates: removedAgentRates,
+    removedGroupRates: removedGroupRates
+  };
 
 }
 
@@ -213,6 +247,7 @@ function toggleProductStatus(sessionToken, productId, status) {
     if (values[i][0] == id) {
       sheet.getRange(i + 1, 8).setValue(nextStatus);
       sheet.getRange(i + 1, 10).setValue(new Date());
+      resetProductCaches_();
       return getProductById(id);
     }
   }

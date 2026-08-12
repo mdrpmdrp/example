@@ -163,6 +163,7 @@ function savePriceTiers(sessionToken, agentId, productId, tiers) {
       ]);
     });
 
+    if (typeof AGENT_RATES_CACHE_ !== 'undefined') AGENT_RATES_CACHE_ = {};
     return getAgentRates(normalizedAgentId).filter(function (rate) {
       return rate.ProductID === normalizedProductId;
     });
@@ -211,6 +212,7 @@ function saveGroupPriceTiers(sessionToken, agentGroup, productId, tiers) {
       ]);
     });
 
+    if (typeof AGENT_GROUP_RATES_CACHE_ !== 'undefined') AGENT_GROUP_RATES_CACHE_ = {};
     return getAgentGroupRates(normalizedGroup).filter(function (rate) {
       return rate.ProductID === normalizedProductId;
     });
