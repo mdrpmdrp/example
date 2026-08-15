@@ -12,14 +12,14 @@ function login(username, password) {
       return String(row[1]).trim().toLowerCase() === normalizedUsername;
     });
     if (!user || String(user[5]).toUpperCase() !== 'ACTIVE') {
-      return { success: false, message: 'à¸Šà¸·à¹ˆà¸­à¸œà¸¹à¹‰à¹ƒà¸Šà¹‰à¸«à¸£à¸·à¸­à¸£à¸«à¸±à¸ªà¸œà¹ˆà¸²à¸™à¹„à¸¡à¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡' };
+      return { success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' };
     }
     if (String(user[2] || '') !== normalizedPassword) {
-      return { success: false, message: 'à¸Šà¸·à¹ˆà¸­à¸œà¸¹à¹‰à¹ƒà¸Šà¹‰à¸«à¸£à¸·à¸­à¸£à¸«à¸±à¸ªà¸œà¹ˆà¸²à¸™à¹„à¸¡à¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡' };
+      return { success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' };
     }
     const role = String(user[4]).toUpperCase();
     if (AUTH.ROLES.indexOf(role) === -1) {
-      return { success: false, message: 'à¸šà¸±à¸à¸Šà¸µà¸™à¸µà¹‰à¹„à¸¡à¹ˆà¸¡à¸µà¸ªà¸´à¸—à¸˜à¸´à¹Œà¹€à¸‚à¹‰à¸²à¹ƒà¸Šà¹‰à¸‡à¸²à¸™à¸£à¸°à¸šà¸š' };
+      return { success: false, message: 'บัญชีนี้ไม่มีสิทธิ์เข้าใช้งานระบบ' };
     }
     return { success: true, session: createSession_({ id: user[0], username: user[1], fullname: user[3], role: role }) };
   });
@@ -28,7 +28,7 @@ function login(username, password) {
 function getSession(token) {
   return withConsoleTiming_('server:getSession', function () {
     const session = readSession_(token);
-    return session ? { success: true, session: session } : { success: false, message: 'à¹€à¸‹à¸ªà¸Šà¸±à¸™à¸«à¸¡à¸”à¸­à¸²à¸¢à¸¸ à¸à¸£à¸¸à¸“à¸²à¹€à¸‚à¹‰à¸²à¸ªà¸¹à¹ˆà¸£à¸°à¸šà¸šà¸­à¸µà¸à¸„à¸£à¸±à¹‰à¸‡' };
+    return session ? { success: true, session: session } : { success: false, message: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง' };
   });
 }
 

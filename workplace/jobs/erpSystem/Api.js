@@ -3,7 +3,7 @@ function buildProductsPayload_(sessionToken) {
     var user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
     var canViewCost = user.role === 'OWNER';
     return getProducts().map(function(product) {
-      var baseUnit = String(product.BaseUnit || product.UnitName || '').trim() || 'à¸‚à¸§à¸”';
+      var baseUnit = String(product.BaseUnit || product.UnitName || '').trim() || 'ขวด';
       var packUnits = Array.isArray(product.PackUnits) ? product.PackUnits : [];
       return {
         id: product.ProductID,

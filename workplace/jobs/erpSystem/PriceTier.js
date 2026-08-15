@@ -113,14 +113,92 @@ function resolveAgentIdOrName_(value) {
   return byName ? String(byName.AgentID || '').trim() : raw;
 }
 
-function getAgentGroupRates(agentGroup) {
-  var normalizedGroup = String(agentGroup || '').trim();
-  if (!normalizedGroup) return [];
-  return getData(SHEETS.AGENT_GROUP_RATES).filter(function(row) {
-    return String(row[1] || '').trim() === normalizedGroup;
-  }).map(function(row) {
-    return { RateID: row[0], AgentGroup: row[1], ProductID: row[2], MinQty: row[3], MaxQty: row[4], SellPrice: row[5] };
+function buildNextPriceTierId_(sheetName, prefix, prefixLength) {
+  var sheet = sheetName === SHEETS.AGENT_GROUP_RATES ? ensureAgentGroupRatesSheet_() : getSheet(sheetName);
+  var lastRow = sheet ? sheet.getLastRow() : 0;
+  if (lastRow < 2) return 1;
+
+  var lastId = sheet.getRange(lastRow, 1).getValue();
+  var number = parseInt(String(lastId).replace(prefix, ''), 10);
+  if (!Number.isFinite(number) || number < 1) return 1;
+  return number + 1;
+}
+
+function buildPriceTierRows_(sheetName, prefix, agentValue, productId, tiers) {
+  var nextId = buildNextPriceTierId_(sheetName, prefix, 6);
+  var now = new Date();
+  return tiers.map(function (tier, index) {
+    return [
+      prefix + String(nextId + index).padStart(6, '0'),
+      agentValue,
+      productId,
+      tier.min,
+      tier.max,
+      tier.price,
+      now
+    ];
   });
+}
+
+function syncPriceTierRows_(sheetName, matchRow, prefix, agentValue, productId, tiers) {
+  var sheet = sheetName === SHEETS.AGENT_GROUP_RATES ? ensureAgentGroupRatesSheet_() : getSheet(sheetName);
+  var rows = getData(sheetName);
+  var existingMatches = [];
+  var existingByKey = {};
+  var rowsToDelete = [];
+  var rowsToUpdate = [];
+  var rowsToAppend = [];
+  var seenKeys = {};
+
+  rows.forEach(function (row, index) {
+    if (!matchRow(row)) return;
+    var key = String(row[3]) + '|' + String(row[4]);
+    var entry = { rowIndex: index + 2, row: row, key: key };
+    existingMatches.push(entry);
+    existingByKey[key] = entry;
+  });
+
+  tiers.forEach(function (tier) {
+    var key = String(tier.min) + '|' + String(tier.max);
+    var existing = existingByKey[key];
+
+    if (existing) {
+      seenKeys[key] = true;
+      if (Number(existing.row[5]) !== tier.price) {
+        rowsToUpdate.push({
+          rowIndex: existing.rowIndex,
+          row: [
+            existing.row[0],
+            agentValue,
+            productId,
+            tier.min,
+            tier.max,
+            tier.price,
+            existing.row[6]
+          ]
+        });
+      }
+      return;
+    }
+
+    rowsToAppend.push(tier);
+  });
+
+  existingMatches.forEach(function (entry) {
+    if (!seenKeys[entry.key]) {
+      rowsToDelete.push(entry.rowIndex);
+    }
+  });
+
+  rowsToUpdate.forEach(function (item) {
+    sheet.getRange(item.rowIndex, 1, 1, 7).setValues([item.row]);
+  });
+
+  deleteRowsByIndexes_(sheet, rowsToDelete);
+
+  if (rowsToAppend.length) {
+    appendRows_(sheetName, buildPriceTierRows_(sheetName, prefix, agentValue, productId, rowsToAppend));
+  }
 }
 
 function savePriceTiers(sessionToken, agentId, productId, tiers) {
@@ -143,26 +221,13 @@ function savePriceTiers(sessionToken, agentId, productId, tiers) {
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    var sheet = getSheet(SHEETS.AGENT_RATES);
-    var rows = getData(SHEETS.AGENT_RATES);
-    for (var rowIndex = rows.length - 1; rowIndex >= 0; rowIndex--) {
-      if (rows[rowIndex][1] === normalizedAgentId && rows[rowIndex][2] === normalizedProductId) {
-        sheet.deleteRow(rowIndex + 2);
-      }
+    syncPriceTierRows_(SHEETS.AGENT_RATES, function (row) {
+      return row[1] === normalizedAgentId && row[2] === normalizedProductId;
+    }, 'RATE', normalizedAgentId, normalizedProductId, normalized);
+
+    if (typeof AGENT_RATES_CACHE_ !== 'undefined') {
+      delete AGENT_RATES_CACHE_[normalizedAgentId];
     }
-
-    normalized.forEach(function (tier) {
-      appendObject(SHEETS.AGENT_RATES, [
-        generateId('RATE', SHEETS.AGENT_RATES),
-        normalizedAgentId,
-        normalizedProductId,
-        tier.min,
-        tier.max,
-        tier.price,
-        new Date()
-      ]);
-    });
-
     return getAgentRates(normalizedAgentId).filter(function (rate) {
       return rate.ProductID === normalizedProductId;
     });
@@ -191,26 +256,13 @@ function saveGroupPriceTiers(sessionToken, agentGroup, productId, tiers) {
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    var sheet = ensureAgentGroupRatesSheet_();
-    var rows = getData(SHEETS.AGENT_GROUP_RATES);
-    for (var rowIndex = rows.length - 1; rowIndex >= 0; rowIndex--) {
-      if (String(rows[rowIndex][1] || '').trim() === normalizedGroup && rows[rowIndex][2] === normalizedProductId) {
-        sheet.deleteRow(rowIndex + 2);
-      }
+    syncPriceTierRows_(SHEETS.AGENT_GROUP_RATES, function (row) {
+      return String(row[1] || '').trim() === normalizedGroup && row[2] === normalizedProductId;
+    }, 'GRATE', normalizedGroup, normalizedProductId, normalized);
+
+    if (typeof AGENT_GROUP_RATES_CACHE_ !== 'undefined') {
+      delete AGENT_GROUP_RATES_CACHE_[normalizedGroup];
     }
-
-    normalized.forEach(function (tier) {
-      appendObject(SHEETS.AGENT_GROUP_RATES, [
-        generateId('GRATE', SHEETS.AGENT_GROUP_RATES),
-        normalizedGroup,
-        normalizedProductId,
-        tier.min,
-        tier.max,
-        tier.price,
-        new Date()
-      ]);
-    });
-
     return getAgentGroupRates(normalizedGroup).filter(function (rate) {
       return rate.ProductID === normalizedProductId;
     });
@@ -247,6 +299,8 @@ function getAgentGroupRates(agentGroup) {
       return String(row[1] || '').trim() === normalizedGroup;
     }).map(function (row) {
       return { RateID: row[0], AgentGroup: row[1], ProductID: row[2], MinQty: row[3], MaxQty: row[4], SellPrice: row[5] };
+    }).sort(function (a, b) {
+      return Number(a.MinQty) - Number(b.MinQty) || Number(a.MaxQty) - Number(b.MaxQty) || String(a.ProductID).localeCompare(String(b.ProductID));
     });
   }
   return AGENT_GROUP_RATES_CACHE_[normalizedGroup];

@@ -135,6 +135,8 @@ function getAgentRates(agentId) {
   if (!AGENT_RATES_CACHE_[id]) {
     AGENT_RATES_CACHE_[id] = getData(SHEETS.AGENT_RATES).filter(function (row) { return row[1] === id; }).map(function (row) {
       return { RateID: row[0], AgentID: row[1], ProductID: row[2], MinQty: row[3], MaxQty: row[4], SellPrice: row[5] };
+    }).sort(function (a, b) {
+      return Number(a.MinQty) - Number(b.MinQty) || Number(a.MaxQty) - Number(b.MaxQty) || String(a.ProductID).localeCompare(String(b.ProductID));
     });
   }
   return AGENT_RATES_CACHE_[id];

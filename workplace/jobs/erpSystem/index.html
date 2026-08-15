@@ -173,6 +173,7 @@
         }
 
         function getShippingTypeLabel(value) {
+            if (String(value || '').trim().toUpperCase() === 'INJECTION_SALES') return 'ชำระค่าฉีดกับเซลล์';
             var map = {
                 'VAN': 'รถตู้/รถทัวร์',
                 'CHILLED150': 'พัสดุ แพคเย็น 150',
@@ -198,8 +199,20 @@
             if (type === 'CHILLED100') return 100;
             if (type === 'INTER') return 300;
             if (type === 'PARCEL') return 60;
-            if (type === 'MESSENGER' || type === 'SPLIT') return Math.max(0, Number(customAmount) || 0);
+            if (type === 'MESSENGER' || type === 'SPLIT' || type === 'INJECTION_SALES') return Math.max(0, Number(customAmount) || 0);
             return 0;
+        }
+
+        function ensureInjectionSalesShippingOption() {
+            var select = document.getElementById('order-shipping-type');
+            if (!select || select.querySelector('option[value="INJECTION_SALES"]')) return;
+            var option = new Option('ชำระค่าฉีดกับเซลล์', 'INJECTION_SALES');
+            var splitOption = select.querySelector('option[value="SPLIT"]');
+            if (splitOption && splitOption.parentNode === select) {
+                select.insertBefore(option, splitOption.nextSibling);
+            } else {
+                select.appendChild(option);
+            }
         }
 
         function getSelectedUnitLabel(product, unitValue) {
@@ -1505,7 +1518,16 @@
             html.push('</tbody>');
             html.push('</table>');
             html.push('<div class="bill-summary-bar">');
-            html.push('  <span>สินค้า ฿' + money(order.subtotalAmount) + '</span>');
+            html.push('  <span>สินค้า ฿' + money((function () {
+                var items = asArray(order && order.items);
+                if (items.length) {
+                    return items.reduce(function (sum, item) {
+                        var value = Number(item && (item.total != null ? item.total : item.TotalPrice));
+                        return sum + (Number.isFinite(value) ? value : 0);
+                    }, 0);
+                }
+                return Number(order && order.subtotalAmount) || 0;
+            })()) + '</span>');
             if (Number(order.shippingAmount) > 0) html.push('  <span> · ค่าส่ง ฿' + money(order.shippingAmount) + '</span>');
             if (Number(order.discountAmount) > 0) html.push('  <span> · ส่วนลด -฿' + money(order.discountAmount) + '</span>');
             html.push('</div>');
@@ -1725,12 +1747,7 @@
                 totalSales += Number(o && o.totalAmount) || 0;
                 var orderCost = Number(o && o.totalCost) || 0;
                 totalCost += orderCost;
-                var discountAmount = Number(o && o.discountAmount) || 0;
-                var subtotalAmount = Number(o && o.subtotalAmount);
-                if (!Number.isFinite(subtotalAmount)) {
-                    subtotalAmount = (Number(o && o.totalAmount) || 0) - (Number(o && o.shippingAmount) || 0) + discountAmount;
-                }
-                totalProfit += subtotalAmount - discountAmount - orderCost;
+                totalProfit += getOrderProfitValue_(o);
                 totalQty += Number(o && o.totalQty) || 0;
                 if (o && o.agent) activeAgentsToday.add(o.agent);
             });
@@ -2436,6 +2453,46 @@
             });
         }
 
+        function deleteProductRecord(productId) {
+            var product = asArray(products).find(function (item) {
+                return String(item && item.id || '').trim() === String(productId || '').trim();
+            });
+            if (!product) {
+                showNotification('ไม่พบข้อมูลสินค้าที่ต้องการลบ', true);
+                return;
+            }
+
+            openConfirmModal({
+                title: 'ยืนยันการลบสินค้า',
+                message: 'การลบสินค้านี้จะไม่สามารถกู้คืนได้',
+                detailLabel: 'สินค้า',
+                detailValue: (product.id || '-') + ' · ' + (product.name || '-'),
+                confirmLabel: 'ลบสินค้า',
+                onConfirm: function () {
+                    runGoogleScriptWithLoading({
+                        title: 'กำลังลบสินค้า...',
+                        subtext: 'กรุณารอสักครู่ ระบบกำลังลบข้อมูลออกจากชีทที่เกี่ยวข้อง',
+                        methodName: 'deleteProduct',
+                        args: [sessionToken, product.id],
+                        onSuccess: function () {
+                            showNotification('ลบสินค้าเรียบร้อยแล้ว');
+                            Promise.all([
+                                refreshProductsData(),
+                                refreshAgentsData()
+                            ]).catch(function (error) {
+                                if (isSessionError(error)) endSession(true);
+                                showNotification(serverErrorMessage(error), true);
+                            });
+                        },
+                        onFailure: function (error) {
+                            if (isSessionError(error)) endSession(true);
+                            showNotification(serverErrorMessage(error), true);
+                        }
+                    });
+                }
+            });
+        }
+
         function saveDynamicRateTiers() {
             if (rateSaveInFlight) return;
             const { scope, target, prodId } = selectedRateEdit;
@@ -2532,6 +2589,7 @@
             window.deleteOrder = hardenedDeleteOrder;
             window.saveNewProduct = hardenedSaveNewProduct;
             window.saveDynamicRateTiers = hardenedSaveDynamicRateTiers;
+            ensureInjectionSalesShippingOption();
             if (typeof window.addCartRow === 'function') {
                 const originalAddCartRow = window.addCartRow;
                 window.addCartRow = function () {
@@ -4253,6 +4311,16 @@
         }
 
         function getOrderProfitValue_(order) {
+            var orderItems = asArray(order && order.items);
+            if (orderItems.length) {
+                var itemSubtotal = orderItems.reduce(function (sum, item) {
+                    var value = Number(item && (item.total != null ? item.total : item.TotalPrice));
+                    return sum + (Number.isFinite(value) ? value : 0);
+                }, 0);
+                var orderCostFromItems = Number(order && order.totalCost) || 0;
+                var orderDiscountFromItems = Number(order && order.discountAmount) || 0;
+                return itemSubtotal - orderDiscountFromItems - orderCostFromItems;
+            }
             var orderCost = Number(order && order.totalCost) || 0;
             var orderDiscount = Number(order && order.discountAmount) || 0;
             var orderSubtotal = Number(order && order.subtotalAmount);
@@ -5654,13 +5722,64 @@
 
         let lastModalTrigger = null;
         let customerAutocompleteHideTimer = null;
+        let modalScrollLockState = null;
+
+        function lockBodyScroll() {
+            if (modalScrollLockState) {
+                modalScrollLockState.count += 1;
+                return;
+            }
+
+            const scrollY = window.scrollY || window.pageYOffset || 0;
+            modalScrollLockState = {
+                count: 1,
+                scrollY: scrollY,
+                body: {
+                    position: document.body.style.position,
+                    top: document.body.style.top,
+                    left: document.body.style.left,
+                    right: document.body.style.right,
+                    width: document.body.style.width,
+                    overflow: document.body.style.overflow
+                },
+                html: {
+                    overflow: document.documentElement.style.overflow
+                }
+            };
+
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.top = '-' + scrollY + 'px';
+            document.body.style.left = '0';
+            document.body.style.right = '0';
+            document.body.style.width = '100%';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function unlockBodyScroll() {
+            if (!modalScrollLockState) return;
+            modalScrollLockState.count -= 1;
+            if (modalScrollLockState.count > 0) return;
+
+            const state = modalScrollLockState;
+            modalScrollLockState = null;
+
+            document.documentElement.style.overflow = state.html.overflow;
+            document.body.style.position = state.body.position;
+            document.body.style.top = state.body.top;
+            document.body.style.left = state.body.left;
+            document.body.style.right = state.body.right;
+            document.body.style.width = state.body.width;
+            document.body.style.overflow = state.body.overflow;
+            window.scrollTo(0, state.scrollY);
+        }
 
         function showModal(modalId, initialSelector) {
             const modal = document.getElementById(modalId);
             lastModalTrigger = document.activeElement;
             modal.classList.remove('hidden');
             modal.setAttribute('aria-hidden', 'false');
-            document.body.classList.add('overflow-hidden');
+            lockBodyScroll();
             const resetScrollPosition = function () {
                 modal.scrollTop = 0;
                 modal.scrollLeft = 0;
@@ -5686,7 +5805,7 @@
             modal.classList.add('hidden');
             modal.setAttribute('aria-hidden', 'true');
             if (modalId === 'confirm-modal') pendingConfirmAction = null;
-            if (!document.querySelector('[role="dialog"]:not(.hidden)')) document.body.classList.remove('overflow-hidden');
+            if (!document.querySelector('[role="dialog"]:not(.hidden)')) unlockBodyScroll();
             if (lastModalTrigger && document.contains(lastModalTrigger)) lastModalTrigger.focus();
         }
 
@@ -5753,6 +5872,7 @@
         }
 
         function clearOrderModalForm() {
+            ensureInjectionSalesShippingOption();
             document.getElementById('new-order-id').value = '';
             document.getElementById('new-order-date').value = normalizeSummaryDateKey(new Date());
             document.getElementById('new-order-agent').value = '';
@@ -5811,6 +5931,7 @@
             document.getElementById('order-customer-name').value = order.customerName || '';
             document.getElementById('order-customer-address').value = order.customerAddress || '';
             document.getElementById('order-customer-phone').value = order.customerPhone || '';
+            ensureInjectionSalesShippingOption();
             document.getElementById('order-shipping-type').value = order.shippingType || '';
             document.getElementById('order-shipping-custom').value = Number(order.shippingAmount || 0) || '';
             document.getElementById('order-discount-amount').value = Number(order.discountAmount || 0);
@@ -6356,7 +6477,7 @@
             const type = document.getElementById('order-shipping-type').value;
             const customWrap = document.getElementById('order-shipping-custom-wrap');
             const customInput = document.getElementById('order-shipping-custom');
-            const needsCustom = type === 'MESSENGER' || type === 'SPLIT';
+            const needsCustom = type === 'MESSENGER' || type === 'SPLIT' || type === 'INJECTION_SALES';
             if (customWrap) customWrap.classList.toggle('hidden', !needsCustom);
             if (!needsCustom && customInput) customInput.value = '';
             calculateCartGrandTotal();
@@ -6799,8 +6920,8 @@
             let shippingAmount = getShippingFeeAmount(shippingType, shippingCustom);
 
             // 3. Validations เบื้องต้น
-            if ((shippingType === 'MESSENGER' || shippingType === 'SPLIT') && shippingAmount <= 0) {
-                showNotification('กรุณาระบุค่าส่งเองก่อนบันทึกบิล', true);
+            if ((shippingType === 'MESSENGER' || shippingType === 'SPLIT' || shippingType === 'INJECTION_SALES') && shippingAmount <= 0) {
+                showNotification('กรุณาระบุยอดเองก่อนบันทึกบิล', true);
                 return;
             }
 
@@ -7024,7 +7145,7 @@
             if (!filtered.length) {
                 const row = document.createElement('tr');
                 appendCell(row, 'ไม่พบสินค้าในคลังที่ตรงกับคำค้น', 'p-6 text-center text-slate-500 italic');
-                row.firstChild.colSpan = isOwner ? 9 : 8;
+                row.firstChild.colSpan = isOwner ? 8 : 7;
                 tbody.appendChild(row);
                 return;
             }
@@ -7047,13 +7168,25 @@
                 const dotCell = appendCell(row, '', 'p-2.5 text-center');
                 dotCell.innerHTML = '<span class="inline-flex h-5 w-5 items-center justify-center rounded-full ring-2 ' + getProductStatusDotClass(product) + '" aria-label="' + (enabled ? 'ใช้งานอยู่' : 'ปิดใช้งานแล้ว') + '" title="' + (enabled ? 'ใช้งานอยู่' : 'ปิดใช้งานแล้ว') + '"><span class="h-2.5 w-2.5 rounded-full ' + (enabled ? 'bg-emerald-600' : 'bg-primary-500') + '"></span></span>';
                 const actions = appendCell(row, '', 'p-2.5 text-center');
+                const actionWrap = document.createElement('div');
+                actionWrap.className = 'inline-flex items-center justify-center gap-1.5';
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'erp-action erp-action-secondary px-3 py-1.5 text-[10px] font-bold';
                 button.textContent = 'แก้ไข';
                 button.setAttribute('aria-label', 'แก้ไขสต็อก ' + product.id);
                 button.addEventListener('click', function () { openEditStockModal(product.id); });
-                actions.appendChild(button);
+                actionWrap.appendChild(button);
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'erp-action erp-action-danger px-3 py-1.5 text-[10px] font-bold';
+                deleteButton.innerHTML = '<i class="fa-regular fa-trash-can"></i>';
+                deleteButton.setAttribute('aria-label', 'ลบสินค้า ' + product.id);
+                deleteButton.addEventListener('click', function () {
+                    deleteProductRecord(product.id);
+                });
+                actionWrap.appendChild(deleteButton);
+                actions.appendChild(actionWrap);
                 Array.from(row.cells).forEach(function (cell, index) {
                     cell.dataset.label = labels[index] || '';
                 });
@@ -7126,7 +7259,8 @@
             if (!selectedTarget) return;
             const rateMap = scope === 'GROUP' ? agentGroupRates : agentRates;
             safeProducts.filter(function (product) { return product.id.toLowerCase().includes(query) || product.name.toLowerCase().includes(query); }).forEach(function (product) {
-                const tiers = (rateMap[selectedTarget] && rateMap[selectedTarget][product.id]) || [{ min: 1, max: 99999, price: product.defaultPrice }];
+                const actualTiers = (rateMap[selectedTarget] && rateMap[selectedTarget][product.id]) || [];
+                const tiers = actualTiers.length ? actualTiers : [{ min: 1, max: 99999, price: product.defaultPrice }];
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-primary-50/40 transition';
                 appendCell(row, product.id, 'p-2.5 font-mono font-bold text-primary-700');
@@ -7136,7 +7270,7 @@
                 rateButton.type = 'button';
                 rateButton.className = 'bg-primary-100 text-primary-700 font-bold px-2.5 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1 hover:bg-primary-200 transition mx-auto';
                 rateButton.setAttribute('aria-label', 'ดูรายละเอียดเรท ' + product.id);
-                rateButton.textContent = tiers.length + ' เรท';
+                rateButton.textContent = actualTiers.length ? actualTiers.length + ' เรท' : 'ค่าเริ่มต้น';
                 rateButton.addEventListener('mouseenter', function () {
                     showAgentRatePopover((scope === 'GROUP' ? 'กลุ่ม: ' : 'ตัวแทน: ') + selectedTarget, product, tiers, rateButton);
                 });

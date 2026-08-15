@@ -14,6 +14,7 @@ function normalizeShippingType_(value) {
     PARCEL: 'PARCEL',
     MESSENGER: 'MESSENGER',
     SPLIT: 'SPLIT',
+    INJECTION_SALES: 'INJECTION_SALES',
     CLINIC_LADPRAO: 'CLINIC_LADPRAO',
     CLINIC_PHAYATHAI: 'CLINIC_PHAYATHAI',
     CLINIC_BANGNA: 'CLINIC_BANGNA',
@@ -32,7 +33,7 @@ function resolveShippingAmount_(shippingType, shippingAmount) {
   if (type === 'FREE' || type.indexOf('CLINIC_') === 0 || type === 'NONE') {
     return { type: type, amount: 0 };
   }
-  if (type === 'MESSENGER' || type === 'SPLIT') {
+  if (type === 'MESSENGER' || type === 'SPLIT' || type === 'INJECTION_SALES') {
     const amount = Number(shippingAmount);
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Invalid shipping amount');
     return { type: type, amount: amount };
@@ -45,6 +46,24 @@ function calculateOrderProfitAmount_(subtotalAmount, totalCost, discountAmount) 
   var cost = Number(totalCost) || 0;
   var discount = Number(discountAmount) || 0;
   return subtotal - discount - cost;
+}
+
+function calculateOrderSubtotalFromItems_(items) {
+  return toArray_(items).reduce(function (sum, item) {
+    return sum + (Number(item && item[8]) || 0);
+  }, 0);
+}
+
+function resolveOrderSubtotalAmount_(rowSubtotalAmount, totalAmount, shippingAmount, discountAmount, items) {
+  var itemSubtotal = calculateOrderSubtotalFromItems_(items);
+  if (itemSubtotal > 0 || (Array.isArray(items) && items.length)) {
+    return itemSubtotal;
+  }
+
+  var rowSubtotal = Number(rowSubtotalAmount);
+  if (Number.isFinite(rowSubtotal)) return rowSubtotal;
+
+  return (Number(totalAmount) || 0) - (Number(shippingAmount) || 0) + (Number(discountAmount) || 0);
 }
 
 function resolveOrderDateValue_(value, fallbackDate) {
@@ -194,9 +213,9 @@ function buildOrderPayloadFromRows_(rows, canViewCost, indexes) {
   return orderRows.map(function (row) {
     var orderDate = row[1] || new Date();
     var orderItems = itemsByOrderId[row[0]] || emptyItems;
-    var subtotalAmount = Number(row[16] || row[4]) || 0;
     var totalCostAmount = Number(row[5]) || 0;
     var discountAmount = Number(row[15]) || 0;
+    var subtotalAmount = resolveOrderSubtotalAmount_(row[16] || row[4], row[4], row[14], discountAmount, orderItems);
     return {
       orderId: row[0],
       createdAt: orderDate.getTime(),
@@ -422,6 +441,9 @@ function getOrders() {
   var indexes = buildOrderIndexes_({ orders: rows, items: items, tz: Session.getScriptTimeZone() });
 
   return indexes.orderRows.map(function (row) {
+    var orderItems = indexes.itemsByOrderId[row[0]] || [];
+    var discountAmount = Number(row[15]) || 0;
+    var subtotalAmount = resolveOrderSubtotalAmount_(row[16] || row[4], row[4], row[14], discountAmount, orderItems);
     return {
       OrderID: row[0],
       OrderDate: row[1],
@@ -440,10 +462,10 @@ function getOrders() {
       CustomerPhone: String(row[12] || ''),
       ShippingType: String(row[13] || 'NONE'),
       ShippingAmount: Number(row[14]) || 0,
-      DiscountAmount: Number(row[15]) || 0,
-      SubtotalAmount: Number(row[16]) || 0,
+      DiscountAmount: discountAmount,
+      SubtotalAmount: subtotalAmount,
       NetAmount: Number(row[17]) || 0,
-      Items: (indexes.itemsByOrderId[row[0]] || []).map(function (item) {
+      Items: orderItems.map(function (item) {
         var product = indexes.productsById[item[2]];
         return {
           ProductID: item[2],
@@ -471,6 +493,7 @@ function getOrdersByMonth(monthKey) {
   }, {});
   return buildOrderPayloadFromRows_(rows, true, indexes).map(function (order) {
     var sourceRow = orderRowMap[order.orderId] || [];
+    var orderItems = order.items || [];
     return {
       OrderID: order.orderId,
       OrderDate: sourceRow[1] || new Date(),
@@ -492,7 +515,7 @@ function getOrdersByMonth(monthKey) {
       DiscountAmount: order.discountAmount,
       SubtotalAmount: order.subtotalAmount,
       NetAmount: order.totalAmount,
-      Items: order.items.map(function (item) {
+      Items: orderItems.map(function (item) {
         return {
           ProductID: item.productId,
           ProductName: item.productName,
