@@ -145,6 +145,103 @@ function toArray_(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function buildProductMap_() {
+  return getProducts().reduce(function (map, product) {
+    map[product.ProductID] = product;
+    return map;
+  }, {});
+}
+
+function generateSequentialIds_(prefix, sheetName, count, prefixLength) {
+  var total = Number(count) || 0;
+  if (total <= 0) return [];
+
+  var sheet = getSheet(sheetName);
+  var lastRow = sheet.getLastRow();
+  var nextNumber = 0;
+
+  if (lastRow >= 2) {
+    var lastId = String(sheet.getRange(lastRow, 1).getValue() || '').trim();
+    var parsed = parseInt(lastId.replace(prefix, ''), 10);
+    if (Number.isFinite(parsed)) nextNumber = parsed;
+  }
+
+  var width = Number(prefixLength) || 6;
+  var ids = [];
+  for (var index = 1; index <= total; index++) {
+    ids.push(prefix + String(nextNumber + index).padStart(width, '0'));
+  }
+  return ids;
+}
+
+function buildOrderItemRows_(orderId, lines) {
+  var itemIds = generateSequentialIds_('ITEM', SHEETS.ORDER_ITEMS, lines.length);
+  return lines.map(function (line, index) {
+    return [
+      itemIds[index],
+      orderId,
+      line.productId,
+      line.selectedUnit,
+      line.quantity,
+      line.baseQtyNeeded,
+      line.price,
+      line.cost * line.baseQtyNeeded,
+      line.amount
+    ];
+  });
+}
+
+function getOrderRecordById_(orderId) {
+  var id = String(orderId || '').trim();
+  if (!id) return null;
+
+  var rowIndex = findRow(SHEETS.ORDERS, id);
+  if (rowIndex < 2) return null;
+
+  var orderRow = getSheet(SHEETS.ORDERS).getRange(rowIndex, 1, 1, 18).getValues()[0];
+  var itemRows = getData(SHEETS.ORDER_ITEMS).filter(function (row) {
+    return String(row[1] || '').trim() === id;
+  });
+
+  return {
+    rowIndex: rowIndex,
+    orderRow: orderRow,
+    order: {
+      OrderID: orderRow[0],
+      OrderDate: orderRow[1],
+      AgentID: orderRow[2],
+      TotalQty: Number(orderRow[3]) || 0,
+      TotalAmount: Number(orderRow[4]) || 0,
+      TotalCost: Number(orderRow[5]) || 0,
+      Profit: Number(orderRow[6]) || 0,
+      Status: orderRow[7],
+      CreatedBy: orderRow[8],
+      Created: orderRow[9],
+      CustomerName: String(orderRow[10] || ''),
+      CustomerAddress: String(orderRow[11] || ''),
+      CustomerPhone: String(orderRow[12] || ''),
+      ShippingType: String(orderRow[13] || 'NONE'),
+      ShippingAmount: Number(orderRow[14]) || 0,
+      DiscountAmount: Number(orderRow[15]) || 0,
+      SubtotalAmount: Number(orderRow[16]) || 0,
+      NetAmount: Number(orderRow[17]) || 0,
+      Items: itemRows.map(function (item) {
+        return {
+          ItemID: item[0],
+          OrderID: item[1],
+          ProductID: item[2],
+          SelectedUnit: item[3],
+          Qty: Number(item[4]) || 0,
+          BaseQtyNeeded: Number(item[5]) || 0,
+          Price: Number(item[6]) || 0,
+          Cost: Number(item[7]) || 0,
+          Amount: Number(item[8]) || 0
+        };
+      })
+    }
+  };
+}
+
 function getOrderRowsForMonth_(sessionToken, monthKey) {
   return withConsoleTiming_('server:getOrderRowsForMonth', function () {
     requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
@@ -398,8 +495,9 @@ function installMonthlyOrderBackupTrigger() {
   return { success: true };
 }
 
-function buildOrderLines_(sessionToken, payload, stockBufferByProduct) {
+function buildOrderLines_(sessionToken, payload, stockBufferByProduct, productById) {
   const requiredStock = {};
+  const products = productById || buildProductMap_();
   const lines = payload.items.map(function (item) {
     const isNonStock = Boolean(item && item.isNonStock);
     const productId = String(item && item.productId || '').trim();
@@ -431,7 +529,7 @@ function buildOrderLines_(sessionToken, payload, stockBufferByProduct) {
       };
     }
 
-    const product = getProductById(productId);
+    const product = products[productId];
     if (!product) {
       throw new Error('Invalid product: ' + productId);
     }
@@ -475,11 +573,13 @@ function buildOrderLines_(sessionToken, payload, stockBufferByProduct) {
 function deleteOrderItemsByOrderId_(orderId) {
   const sheet = getSheet(SHEETS.ORDER_ITEMS);
   const rows = getData(SHEETS.ORDER_ITEMS);
+  const rowIndexes = [];
   for (let index = rows.length - 1; index >= 0; index--) {
     if (rows[index][1] === orderId) {
-      sheet.deleteRow(index + 2);
+      rowIndexes.push(index + 2);
     }
   }
+  deleteRowsByIndexes_(sheet, rowIndexes);
 }
 
 function getOrders() {
@@ -615,219 +715,247 @@ function getOrderRecordForCancellation_(orderId) {
 }
 
 function createOrder(sessionToken, payload) {
-  const user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
-  if (!payload || !getAgentById(payload.agentId) || !Array.isArray(payload.items) || !payload.items.length || payload.items.length > 100) {
-    throw new Error('Invalid order');
-  }
+  return withConsoleTiming_('server:createOrder', function () {
+    const user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
+    if (!payload || !getAgentById(payload.agentId) || !Array.isArray(payload.items) || !payload.items.length || payload.items.length > 100) {
+      throw new Error('Invalid order');
+    }
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
 
-  try {
-    const built = buildOrderLines_(sessionToken, payload, {});
-    const lines = built.lines;
-    const totals = built.totals;
+    try {
+      const products = buildProductMap_();
+      const built = withConsoleTiming_('server:createOrder:buildLines', function () {
+        return buildOrderLines_(sessionToken, payload, {}, products);
+      });
+      const lines = built.lines;
+      const totals = built.totals;
 
-    const orderId = generateId('ORD', SHEETS.ORDERS);
-    const shipping = resolveShippingAmount_(payload.shippingType, payload.shippingAmount);
-    const orderDate = resolveOrderDateValue_(payload.orderDate, new Date());
-    const customerName = String(payload.customerName || '').trim();
-    const customerAddress = String(payload.customerAddress || '').trim();
-    const customerPhone = String(payload.customerPhone || '').trim();
-    const discountAmount = Number(payload.discountAmount) || 0;
+      const orderId = generateId('ORD', SHEETS.ORDERS);
+      const shipping = resolveShippingAmount_(payload.shippingType, payload.shippingAmount);
+      const orderDate = resolveOrderDateValue_(payload.orderDate, new Date());
+      const customerName = String(payload.customerName || '').trim();
+      const customerAddress = String(payload.customerAddress || '').trim();
+      const customerPhone = String(payload.customerPhone || '').trim();
+      const discountAmount = Number(payload.discountAmount) || 0;
 
-    if (discountAmount < 0) throw new Error('Invalid discount amount');
+      if (discountAmount < 0) throw new Error('Invalid discount amount');
 
-    const subtotalAmount = totals.amount;
-    const netAmount = subtotalAmount + shipping.amount - discountAmount;
-    const profitAmount = calculateOrderProfitAmount_(subtotalAmount, totals.cost, discountAmount);
-    if (netAmount < 0) throw new Error('Invalid order total');
+      const subtotalAmount = totals.amount;
+      const netAmount = subtotalAmount + shipping.amount - discountAmount;
+      const profitAmount = calculateOrderProfitAmount_(subtotalAmount, totals.cost, discountAmount);
+      if (netAmount < 0) throw new Error('Invalid order total');
 
-    appendObject(SHEETS.ORDERS, [
-      orderId,
-      orderDate,
-      payload.agentId,
-      totals.quantity,
-      netAmount,
-      totals.cost,
-      profitAmount,
-      'COMPLETED',
-      user.username,
-      new Date(),
-      customerName,
-      customerAddress,
-      customerPhone,
-      shipping.type,
-      shipping.amount,
-      discountAmount,
-      subtotalAmount,
-      netAmount
-    ]);
+      withConsoleTiming_('server:createOrder:writeOrder', function () {
+        appendObject(SHEETS.ORDERS, [
+          orderId,
+          orderDate,
+          payload.agentId,
+          totals.quantity,
+          netAmount,
+          totals.cost,
+          profitAmount,
+          'COMPLETED',
+          user.username,
+          new Date(),
+          customerName,
+          customerAddress,
+          customerPhone,
+          shipping.type,
+          shipping.amount,
+          discountAmount,
+          subtotalAmount,
+          netAmount
+        ]);
+      });
 
-    lines.forEach(function (line) {
-      appendObject(SHEETS.ORDER_ITEMS, [
-        generateId('ITEM', SHEETS.ORDER_ITEMS),
-        orderId,
-        line.productId,
-        line.selectedUnit,
-        line.quantity,
-        line.baseQtyNeeded,
-        line.price,
-        line.cost * line.baseQtyNeeded,
-        line.amount
-      ]);
+      withConsoleTiming_('server:createOrder:writeItems', function () {
+        appendRows_(SHEETS.ORDER_ITEMS, buildOrderItemRows_(orderId, lines));
+      });
 
-      // ตัดสต๊อกสินค้าหลักด้วย baseQtyNeeded (เช่น 6 ชิ้น)
-      if (!line.isNonStock) {
-        applyStockMovement_(line.productId, line.baseQtyNeeded, 'OUT', orderId, 'Order created');
-      }
-    });
+      var stockMovements = lines
+        .filter(function (line) { return !line.isNonStock; })
+        .map(function (line) {
+          return {
+            productId: line.productId,
+            quantity: line.baseQtyNeeded,
+            type: 'OUT',
+            reference: orderId,
+            remark: 'Order created'
+          };
+        });
 
-    return { orderId: orderId, totalAmount: netAmount, totalQty: totals.quantity };
+      withConsoleTiming_('server:createOrder:stockBatch', function () {
+        applyStockMovementsBatch_(stockMovements);
+      });
 
-  } finally {
-    lock.releaseLock();
-  }
+      return { orderId: orderId, totalAmount: netAmount, totalQty: totals.quantity };
+
+    } finally {
+      lock.releaseLock();
+    }
+  });
 }
 
 function updateOrder(sessionToken, orderId, payload) {
-  const user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
-  const id = String(orderId || '').trim();
-  if (!id || !payload || !getAgentById(payload.agentId) || !Array.isArray(payload.items) || !payload.items.length || payload.items.length > 100) {
-    throw new Error('Invalid order');
-  }
+  return withConsoleTiming_('server:updateOrder', function () {
+    const user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
+    const id = String(orderId || '').trim();
+    if (!id || !payload || !getAgentById(payload.agentId) || !Array.isArray(payload.items) || !payload.items.length || payload.items.length > 100) {
+      throw new Error('Invalid order');
+    }
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
 
-  try {
-    const existing = getOrders().find(function (item) { return item.OrderID === id; });
-    if (!existing) throw new Error('Order not found');
-    if (String(existing.Status).toUpperCase() === 'CANCELLED') throw new Error('Order is already cancelled');
+    try {
+      const existingRecord = withConsoleTiming_('server:updateOrder:loadOrder', function () {
+        return getOrderRecordById_(id);
+      });
+      const existing = existingRecord && existingRecord.order;
+      if (!existing) throw new Error('Order not found');
+      if (String(existing.Status).toUpperCase() === 'CANCELLED') throw new Error('Order is already cancelled');
 
-    const stockBufferByProduct = {};
-    existing.Items.forEach(function (item) {
-      const product = getProductById(item.ProductID);
-      if (!product) return;
-      stockBufferByProduct[item.ProductID] = (stockBufferByProduct[item.ProductID] || 0) + Number(item.BaseQtyNeeded || item.Qty || 0);
-    });
+      const products = buildProductMap_();
+      const stockBufferByProduct = {};
+      existing.Items.forEach(function (item) {
+        const product = products[item.ProductID];
+        if (!product) return;
+        stockBufferByProduct[item.ProductID] = (stockBufferByProduct[item.ProductID] || 0) + Number(item.BaseQtyNeeded || item.Qty || 0);
+      });
 
-    const built = buildOrderLines_(sessionToken, payload, stockBufferByProduct);
-    const lines = built.lines;
-    const totals = built.totals;
+      const built = withConsoleTiming_('server:updateOrder:buildLines', function () {
+        return buildOrderLines_(sessionToken, payload, stockBufferByProduct, products);
+      });
+      const lines = built.lines;
+      const totals = built.totals;
 
-    const shipping = resolveShippingAmount_(payload.shippingType, payload.shippingAmount);
-    const orderDate = resolveOrderDateValue_(payload.orderDate, existing.OrderDate || new Date());
-    const customerName = String(payload.customerName || '').trim();
-    const customerAddress = String(payload.customerAddress || '').trim();
-    const customerPhone = String(payload.customerPhone || '').trim();
-    const discountAmount = Number(payload.discountAmount) || 0;
-    if (discountAmount < 0) throw new Error('Invalid discount amount');
+      const shipping = resolveShippingAmount_(payload.shippingType, payload.shippingAmount);
+      const orderDate = resolveOrderDateValue_(payload.orderDate, existing.OrderDate || new Date());
+      const customerName = String(payload.customerName || '').trim();
+      const customerAddress = String(payload.customerAddress || '').trim();
+      const customerPhone = String(payload.customerPhone || '').trim();
+      const discountAmount = Number(payload.discountAmount) || 0;
+      if (discountAmount < 0) throw new Error('Invalid discount amount');
 
-    const subtotalAmount = totals.amount;
-    const netAmount = subtotalAmount + shipping.amount - discountAmount;
-    const profitAmount = calculateOrderProfitAmount_(subtotalAmount, totals.cost, discountAmount);
-    if (netAmount < 0) throw new Error('Invalid order total');
+      const subtotalAmount = totals.amount;
+      const netAmount = subtotalAmount + shipping.amount - discountAmount;
+      const profitAmount = calculateOrderProfitAmount_(subtotalAmount, totals.cost, discountAmount);
+      if (netAmount < 0) throw new Error('Invalid order total');
 
-    existing.Items.forEach(function (item) {
-      const qtyToRestore = Number(item.BaseQtyNeeded || item.Qty || 0);
-      if (qtyToRestore > 0) {
-        const product = getProductById(item.ProductID);
-        if (product) {
-          applyStockMovement_(item.ProductID, qtyToRestore, 'IN', id, 'Order updated - restore old line');
+      var stockMovements = [];
+      existing.Items.forEach(function (item) {
+        const qtyToRestore = Number(item.BaseQtyNeeded || item.Qty || 0);
+        if (qtyToRestore > 0 && products[item.ProductID]) {
+          stockMovements.push({
+            productId: item.ProductID,
+            quantity: qtyToRestore,
+            type: 'IN',
+            reference: id,
+            remark: 'Order updated - restore old line'
+          });
         }
-      }
-    });
+      });
 
-    deleteOrderItemsByOrderId_(id);
+      lines.forEach(function (line) {
+        if (!line.isNonStock) {
+          stockMovements.push({
+            productId: line.productId,
+            quantity: line.baseQtyNeeded,
+            type: 'OUT',
+            reference: id,
+            remark: 'Order updated'
+          });
+        }
+      });
 
-    const row = findRow(SHEETS.ORDERS, id);
-    if (row < 0) throw new Error('Order not found in sheet');
+      withConsoleTiming_('server:updateOrder:writeOrder', function () {
+        const row = existingRecord.rowIndex || findRow(SHEETS.ORDERS, id);
+        if (row < 0) throw new Error('Order not found in sheet');
 
-    getSheet(SHEETS.ORDERS).getRange(row, 1, 1, 18).setValues([[
-      id,
-      orderDate,
-      payload.agentId,
-      totals.quantity,
-      netAmount,
-      totals.cost,
-      profitAmount,
-      existing.Status || 'COMPLETED',
-      existing.CreatedBy || user.username,
-      existing.Created || new Date(),
-      customerName,
-      customerAddress,
-      customerPhone,
-      shipping.type,
-      shipping.amount,
-      discountAmount,
-      subtotalAmount,
-      netAmount
-    ]]);
+        getSheet(SHEETS.ORDERS).getRange(row, 1, 1, 18).setValues([[
+          id,
+          orderDate,
+          payload.agentId,
+          totals.quantity,
+          netAmount,
+          totals.cost,
+          profitAmount,
+          existing.Status || 'COMPLETED',
+          existing.CreatedBy || user.username,
+          existing.Created || new Date(),
+          customerName,
+          customerAddress,
+          customerPhone,
+          shipping.type,
+          shipping.amount,
+          discountAmount,
+          subtotalAmount,
+          netAmount
+        ]]);
+      });
 
-    lines.forEach(function (line) {
-      appendObject(SHEETS.ORDER_ITEMS, [
-        generateId('ITEM', SHEETS.ORDER_ITEMS),
-        id,
-        line.productId,
-        line.selectedUnit,
-        line.quantity,
-        line.baseQtyNeeded,
-        line.price,
-        line.cost * line.baseQtyNeeded,
-        line.amount
-      ]);
+      withConsoleTiming_('server:updateOrder:writeItems', function () {
+        deleteOrderItemsByOrderId_(id);
+        appendRows_(SHEETS.ORDER_ITEMS, buildOrderItemRows_(id, lines));
+      });
 
-      if (!line.isNonStock) {
-        applyStockMovement_(line.productId, line.baseQtyNeeded, 'OUT', id, 'Order updated');
-      }
-    });
+      withConsoleTiming_('server:updateOrder:stockBatch', function () {
+        applyStockMovementsBatch_(stockMovements);
+      });
 
-    return { orderId: id, totalAmount: netAmount, totalQty: totals.quantity };
-  } finally {
-    lock.releaseLock();
-  }
+      return { orderId: id, totalAmount: netAmount, totalQty: totals.quantity };
+    } finally {
+      lock.releaseLock();
+    }
+  });
 }
 
 function cancelOrder(sessionToken, orderId) {
-  var user = requireRole(sessionToken, ['OWNER', 'ADMIN']);
-  const id = String(orderId || '').trim();
-  if (!id) throw new Error('Order ID is required');
+  return withConsoleTiming_('server:cancelOrder', function () {
+    var user = requireRole(sessionToken, ['OWNER', 'ADMIN']);
+    const id = String(orderId || '').trim();
+    if (!id) throw new Error('Order ID is required');
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
 
-  try {
-    ensureOrderCancellationColumns_();
-    const target = getOrderRecordForCancellation_(id);
-    if (!target || !target.order) throw new Error('Order not found');
-    if (String(target.order.Status).toUpperCase() === 'CANCELLED') throw new Error('Order is already cancelled');
+    try {
+      ensureOrderCancellationColumns_();
+      const target = getOrderRecordForCancellation_(id);
+      if (!target || !target.order) throw new Error('Order not found');
+      if (String(target.order.Status).toUpperCase() === 'CANCELLED') throw new Error('Order is already cancelled');
 
-    // 1. คืนสต๊อกสินค้า
-    target.order.Items.forEach(function (item) {
-      // ดึงจำนวนชิ้นฐานจริงที่จะต้อง คืนเข้าคลัง (ถ้าไม่มี BaseQtyNeeded ให้ fallback ไปใช้ Qty)
-      const qtyToRestore = Number(item.BaseQtyNeeded || item.Qty || 0);
-
-      if (qtyToRestore > 0) {
-        // เช็กว่าเป็นสินค้านอกคลังหรือไม่ (ถ้าไม่มีใน Master Product ถือว่าเป็น Non-Stock)
-        const product = getProductById(item.ProductID);
-        const isNonStock = !product || Boolean(product.isNonStock);
-
-        // ตัดคืนสต๊อกเฉพาะสินค้าที่มีในระบบสต๊อกหลักเท่านั้น
-        if (!isNonStock) {
-          applyStockMovement_(item.ProductID, qtyToRestore, 'IN', id, 'Order cancelled');
+      const products = buildProductMap_();
+      const stockMovements = [];
+      target.order.Items.forEach(function (item) {
+        const qtyToRestore = Number(item.BaseQtyNeeded || item.Qty || 0);
+        if (qtyToRestore > 0 && products[item.ProductID]) {
+          stockMovements.push({
+            productId: item.ProductID,
+            quantity: qtyToRestore,
+            type: 'IN',
+            reference: id,
+            remark: 'Order cancelled'
+          });
         }
-      }
-    });
+      });
 
-    // 2. อัปเดตสถานะออเดอร์ในชีทต้นทางของบิลนั้น
-    getSheet(target.sheetName).getRange(target.rowIndex, getOrderSchemaStatusColumn_()).setValue('CANCELLED');
-    getSheet(target.sheetName).getRange(target.rowIndex, 19).setValue(new Date());
-    getSheet(target.sheetName).getRange(target.rowIndex, 20).setValue(user && user.username ? user.username : '');
+      withConsoleTiming_('server:cancelOrder:stockBatch', function () {
+        applyStockMovementsBatch_(stockMovements);
+      });
 
-    return { orderId: id, status: 'CANCELLED' };
+      withConsoleTiming_('server:cancelOrder:writeStatus', function () {
+        getSheet(target.sheetName).getRange(target.rowIndex, getOrderSchemaStatusColumn_()).setValue('CANCELLED');
+        getSheet(target.sheetName).getRange(target.rowIndex, 19).setValue(new Date());
+        getSheet(target.sheetName).getRange(target.rowIndex, 20).setValue(user && user.username ? user.username : '');
+      });
 
-  } finally {
-    lock.releaseLock();
-  }
+      return { orderId: id, status: 'CANCELLED' };
+
+    } finally {
+      lock.releaseLock();
+    }
+  });
 }
