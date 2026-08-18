@@ -104,11 +104,11 @@ function buildAgentsPayload_(sessionToken) {
   });
 }
 
-function buildOrdersPayload_(sessionToken, monthKey) {
+function buildOrdersPayload_(sessionToken, monthKey = 'today') {
   return withConsoleTiming_('server:buildOrdersPayload', function () {
     var user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
     var canViewCost = user.role === 'OWNER';
-    var rows = getOrderRowsForMonth_(monthKey);
+    var rows = monthKey === 'today' ? getTodayOrderRows_(sessionToken) : getOrderRowsForMonth_(sessionToken, monthKey);
     var indexes = buildOrderIndexes_(rows);
     var productsById = indexes.productsById || {};
     return buildOrderPayloadFromRows_(rows, canViewCost, indexes).map(function(order) {

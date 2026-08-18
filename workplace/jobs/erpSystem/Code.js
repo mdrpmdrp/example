@@ -9,7 +9,7 @@
 //     .addItem("Reset Demo Data", "resetDemoData")
 //     .addToUi();
 // }
-
+let ss = SpreadsheetApp.getActiveSpreadsheet();
 function doGet() {
   return withConsoleTiming_('server:doGet', function () {
     return HtmlService

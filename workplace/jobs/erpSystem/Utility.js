@@ -1,8 +1,9 @@
 /**
  * คืนค่า Sheet
  */
+const SHEET_CACHE = {};
 function getSheet(sheetName) {
-  return SpreadsheetApp.getActive().getSheetByName(sheetName);
+  return SHEET_CACHE[sheetName] || (SHEET_CACHE[sheetName] = ss.getSheetByName(sheetName));
 }
 
 function withConsoleTiming_(label, fn) {
@@ -23,8 +24,8 @@ function getData(sheetName) {
     const sheet = getSheet(sheetName);
     if (!sheet) return [];
 
-    const lastRow = sheet.getLastRow();
-    const lastCol = sheet.getLastColumn();
+    const lastRow = getRealLastRow('A', sheet);
+    const lastCol = getRealLastCol(1, sheet);
 
     if (lastRow < 2) return [];
 
@@ -69,10 +70,9 @@ function appendObject(sheetName,data){
 }
 
 function ensureSheetWithHeaders(sheetName, headers) {
-  const ss = SpreadsheetApp.getActive();
-  let sheet = ss.getSheetByName(sheetName);
+  let sheet = getSheet(sheetName);
   if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
+    sheet = ss.insertSheet(sheetName); // ss is already defined at the top of the file
   }
   if (sheet.getLastRow() === 0) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -165,3 +165,41 @@ function findRow(
   return -1;
 
 }
+
+
+
+function getRealLastRow(column, sheet) {
+  let range
+  if (!sheet.getRange) range = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheet).getRange(column + ":" + column).getValues()
+  else range = sheet.getRange(column + ":" + column).getValues()
+  var rowNum = 0;
+  var blank = false;
+  range.forEach((row, index) => {
+    if (row[0] === "" && !blank) {
+      rowNum = index;
+      blank = true;
+    } else if (row[0] !== "") {
+      blank = false;
+    };
+  })
+  if (rowNum == 0 && range.filter(r => r[0] != 0).length > 0) rowNum = range.length
+  return rowNum;
+};
+
+function getRealLastCol(row, sheet) {
+  let range;
+  if (!sheet.getRange) range = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheet).getRange(row + ":" + row).getValues()
+  else range = sheet.getRange(row + ":" + row).getValues()
+  var colNum = 0;
+  var blank = false;
+  range[0].forEach((cell, index) => {
+    if (cell === "" && !blank) {
+      colNum = index;
+      blank = true;
+    } else if (cell !== "") {
+      blank = false;
+    };
+  })
+  if (colNum == 0 && range[0].filter(c => c != 0).length > 0) colNum = range[0].length
+  return colNum;
+};

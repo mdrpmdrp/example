@@ -406,25 +406,37 @@
             ordersMonthCache[key] = prepareOrderRecordsForCache(key, monthOrders).slice();
         }
 
-        function loadOrdersForMonthKey(monthKey) {
+        function loadOrdersForMonthKey(monthKey, options) {
             var normalized = String(monthKey || '').trim() || getCurrentMonthKey();
-            if (normalized === ordersMonthKey && Array.isArray(orders)) {
+            var opts = options || {};
+            var currentMonthKey = getCurrentMonthKey();
+            var usePartialCurrentMonthCache = normalized === currentMonthKey && isCurrentMonthCachePartial_();
+            if (normalized === ordersMonthKey && Array.isArray(orders) && !usePartialCurrentMonthCache) {
                 cacheOrdersForMonth(normalized, orders);
                 return Promise.resolve(orders);
             }
-            if (ordersMonthCache[normalized]) {
-                if (normalized === getCurrentMonthKey()) {
+            if (ordersMonthCache[normalized] && !usePartialCurrentMonthCache) {
+                if (normalized === currentMonthKey) {
                     orders = ordersMonthCache[normalized].slice();
                     ordersMonthKey = normalized;
+                    ordersMonthLoadMode = 'MONTH';
                 }
                 return Promise.resolve(ordersMonthCache[normalized].slice());
+            }
+            if (opts.showSkeleton !== false && !orderTableIsLoading) {
+                orderTableIsLoading = true;
+                renderOrdersLoadingState('กำลังโหลดรายการบิล...');
+                if (typeof showNotification === 'function' && opts.showNotification !== false) {
+                    showNotification('กำลังโหลดรายการบิล...');
+                }
             }
             return runGoogleScriptPromise('listOrders', [sessionToken, normalized]).then(function (data) {
                 var payload = prepareOrderRecordsForCache(normalized, Array.isArray(data) ? data : []);
                 ordersMonthCache[normalized] = payload.slice();
-                if (normalized === getCurrentMonthKey()) {
+                if (normalized === currentMonthKey) {
                     orders = payload.slice();
                     ordersMonthKey = normalized;
+                    ordersMonthLoadMode = 'MONTH';
                 }
                 return payload.slice();
             });
@@ -701,10 +713,7 @@
             var monthKeys = getMonthKeysBetween_(bounds.start, bounds.end);
             var currentSeq = ++orderTableLoadSeq;
             orderTableErrorMessage = '';
-            var needsNetworkLoad = monthKeys.some(function (monthKey) {
-                return !hasCachedOrdersForMonth_(monthKey);
-            });
-            if (filterKey === 'MONTH' && monthKeys.length === 1 && monthKeys[0] === getCurrentMonthKey()) {
+            if (filterKey === 'TODAY') {
                 orderTableRange = bounds;
                 orderTableOrders = orders.slice().filter(function (order) {
                     return isOrderWithinBounds_(order, bounds);
@@ -713,6 +722,9 @@
                 renderOrdersTable();
                 return Promise.resolve(orderTableOrders);
             }
+            var needsNetworkLoad = monthKeys.some(function (monthKey) {
+                return !hasCachedOrdersForMonth_(monthKey);
+            });
             if (needsNetworkLoad) {
                 orderTableIsLoading = true;
                 renderOrdersLoadingState('กำลังโหลดรายการบิล...');
@@ -721,7 +733,7 @@
                 }
             }
             return Promise.all(monthKeys.map(function (monthKey) {
-                return loadOrdersForMonthKey(monthKey);
+                return loadOrdersForMonthKey(monthKey, { showSkeleton: false, showNotification: false });
             })).then(function () {
                 if (currentSeq !== orderTableLoadSeq) return orderTableOrders;
                 orderTableRange = bounds;
@@ -1690,17 +1702,32 @@
         function setSummaryDateKey(dateKey) {
             selectedSummaryDateKey = normalizeSummaryDateKey(dateKey) || getTodaySummaryDateKey();
             var monthKey = getMonthKeyFromDateKey(selectedSummaryDateKey);
+            var todayKey = getTodaySummaryDateKey();
             var finalize = function () {
+                summaryIsLoading = false;
                 if (summaryDatePicker && typeof summaryDatePicker.setDate === 'function') {
                     summaryDatePicker.setDate(selectedSummaryDateKey, false);
                 }
                 renderSummariesTab();
             };
-            if (monthKey === ordersMonthKey || ordersMonthCache[monthKey]) {
+            if (monthKey === getCurrentMonthKey() && isCurrentMonthCachePartial_() && selectedSummaryDateKey !== todayKey) {
+                summaryIsLoading = true;
+                renderSummariesTab();
+                loadOrdersForMonthKey(monthKey, { showSkeleton: false, showNotification: false }).then(finalize).catch(function (error) {
+                    summaryIsLoading = false;
+                    showNotification(serverErrorMessage(error), true);
+                    finalize();
+                });
+                return;
+            }
+            if (hasCachedOrdersForMonth_(monthKey) || (monthKey === getCurrentMonthKey() && selectedSummaryDateKey === todayKey)) {
                 finalize();
                 return;
             }
-            loadOrdersForMonthKey(monthKey).then(finalize).catch(function (error) {
+            summaryIsLoading = true;
+            renderSummariesTab();
+            loadOrdersForMonthKey(monthKey, { showSkeleton: false, showNotification: false }).then(finalize).catch(function (error) {
+                summaryIsLoading = false;
                 showNotification(serverErrorMessage(error), true);
                 finalize();
             });
@@ -1854,9 +1881,34 @@
             const container = document.getElementById('summaries-agent-list');
             const countLabel = document.getElementById('summary-agent-count');
             const agentSelect = document.getElementById('summary-agent-select');
+            const selectedDate = normalizeSummaryDateKey(selectedSummaryDateKey) || getTodaySummaryDateKey();
+            if (summaryIsLoading) {
+                if (countLabel) countLabel.textContent = 'กำลังโหลด...';
+                if (agentSelect) {
+                    agentSelect.replaceChildren();
+                    agentSelect.disabled = true;
+                    const loadingOption = document.createElement('option');
+                    loadingOption.value = '';
+                    loadingOption.textContent = 'กำลังโหลดข้อมูล...';
+                    agentSelect.appendChild(loadingOption);
+                }
+                if (container) {
+                    container.replaceChildren();
+                    const skeletonWrap = document.createElement('div');
+                    skeletonWrap.className = 'space-y-3';
+                    for (let i = 0; i < 4; i += 1) {
+                        const row = document.createElement('div');
+                        row.className = 'rounded-lg border border-slate-200 bg-white p-3 shadow-sm';
+                        row.innerHTML = '<div class="flex items-center justify-between gap-3"><div class="space-y-2 flex-1"><span class="erp-skeleton block h-3 w-32 rounded-full"></span><span class="erp-skeleton block h-2.5 w-20 rounded-full"></span></div><span class="erp-skeleton block h-4 w-16 rounded-full"></span></div>';
+                        skeletonWrap.appendChild(row);
+                    }
+                    container.appendChild(skeletonWrap);
+                }
+                renderSummaryDetails('', []);
+                return;
+            }
             const dayOrders = getSummaryOrdersForDate(selectedSummaryDateKey);
             const agentRows = buildSummaryAgentRows(dayOrders);
-            const selectedDate = normalizeSummaryDateKey(selectedSummaryDateKey) || getTodaySummaryDateKey();
             if (countLabel) countLabel.textContent = agentRows.length + ' ตัวแทน';
             if (agentSelect) {
                 agentSelect.replaceChildren();
@@ -4246,6 +4298,7 @@
         let appDataLoadSeq = 0;
         let ordersMonthKey = '';
         let ordersMonthCache = {};
+        let ordersMonthLoadMode = 'MONTH';
         let orderTableFilterKey = 'TODAY';
         let orderTableCustomDateKey = getTodaySummaryDateKey();
         let orderTableRange = null;
@@ -4254,6 +4307,7 @@
         let orderTableDatePicker = null;
         let orderTableIsLoading = false;
         let orderTableErrorMessage = '';
+        let summaryIsLoading = false;
         let agentModalMode = 'create';
         let editingAgentId = '';
 
@@ -4268,7 +4322,16 @@
 
         function hasCachedOrdersForMonth_(monthKey) {
             var key = String(monthKey || '').trim();
+            if (!key) return false;
+            if (key === getCurrentMonthKey() && String(ordersMonthLoadMode || 'MONTH').trim().toUpperCase() === 'DAY') {
+                return false;
+            }
             return key === ordersMonthKey || Object.prototype.hasOwnProperty.call(ordersMonthCache, key);
+        }
+
+        function isCurrentMonthCachePartial_() {
+            return String(ordersMonthKey || '').trim() === getCurrentMonthKey() &&
+                String(ordersMonthLoadMode || 'MONTH').trim().toUpperCase() === 'DAY';
         }
 
         function getOrderRelativeLabel(order) {
@@ -4398,6 +4461,7 @@
             agentGroupOptions = Array.isArray(data && data.agentGroupOptions) ? data.agentGroupOptions : [];
             defaultAgentGroup = String(data && data.defaultAgentGroup || defaultAgentGroup).trim() || 'VIP รวมส่ง';
             commitLoadedOrders(getCurrentMonthKey(), Array.isArray(data && data.orders) ? data.orders : []);
+            ordersMonthLoadMode = String(opts.orderLoadMode || 'MONTH').trim().toUpperCase() === 'DAY' ? 'DAY' : 'MONTH';
             orderTableFilterKey = String(orderTableFilterKey || 'TODAY').trim().toUpperCase() || 'TODAY';
             orderTableCustomDateKey = normalizeSummaryDateKey(orderTableCustomDateKey) || getTodaySummaryDateKey();
             orderTableRange = getOrderFilterBounds_(orderTableFilterKey, orderTableCustomDateKey);
@@ -4505,86 +4569,52 @@
             if (!isRestore) showNotification(`ยินดีต้อนรับ ${user.fullname || user.username}`);
         }
 
-        function loadApplicationData(showSkeleton) {
-            console.time('ui:loadApplicationData');
-            const loadSeq = ++appDataLoadSeq;
-            const currentMonthKey = getCurrentMonthKey();
-            if (showSkeleton !== false) setAppDataLoading(true);
-            Promise.all([
-                runGoogleScriptPromise('getAgentsBundle', [sessionToken]),
-                runGoogleScriptPromise('listProducts', [sessionToken]),
-                runGoogleScriptPromise('listOrders', [sessionToken, currentMonthKey])
-            ]).then(function (results) {
-                if (loadSeq !== appDataLoadSeq) {
+        function loadApplicationData(showSkeleton, forceReload) {
+            return new Promise(function (resolve, reject) {
+                console.time('ui:loadApplicationData');
+                const loadSeq = ++appDataLoadSeq;
+                const currentMonthKey = getCurrentMonthKey();
+                console.log('Loading application data for month:', currentMonthKey, 'seq:', loadSeq);
+                if (showSkeleton !== false) setAppDataLoading(true);
+                Promise.all([
+                    runGoogleScriptPromise('getAgentsBundle', [sessionToken]),
+                    runGoogleScriptPromise('listProducts', [sessionToken]),
+                    runGoogleScriptPromise('listOrders', [sessionToken, forceReload ? currentMonthKey : 'today'])
+                ]).then(function (results) {
+                    if (loadSeq !== appDataLoadSeq) {
+                        console.timeEnd('ui:loadApplicationData');
+                        return;
+                    }
+                    orderTableErrorMessage = '';
+                    initSystem({
+                        agents: (results[0] && results[0].agents) || [],
+                        agentRecords: (results[0] && results[0].agentRecords) || [],
+                        agentIdsByName: (results[0] && results[0].agentIdsByName) || {},
+                        agentGroupsByName: (results[0] && results[0].agentGroupsByName) || {},
+                        agentGroupOptions: (results[0] && results[0].agentGroupOptions) || [],
+                        defaultAgentGroup: (results[0] && results[0].defaultAgentGroup) || 'VIP รวมส่ง',
+                        agentGroupRates: (results[0] && results[0].agentGroupRates) || {},
+                        agentRates: (results[0] && results[0].agentRates) || {},
+                        products: results[1] || [],
+                        orders: results[2] || []
+                    }, { deferOrderRefresh: false, orderLoadMode: forceReload ? 'MONTH' : 'DAY' });
+                    orderTableIsLoading = false;
+                    updateSystemState();
                     console.timeEnd('ui:loadApplicationData');
-                    return;
-                }
-                orderTableErrorMessage = '';
-                initSystem({
-                    agents: (results[0] && results[0].agents) || [],
-                    agentRecords: (results[0] && results[0].agentRecords) || [],
-                    agentIdsByName: (results[0] && results[0].agentIdsByName) || {},
-                    agentGroupsByName: (results[0] && results[0].agentGroupsByName) || {},
-                    agentGroupOptions: (results[0] && results[0].agentGroupOptions) || [],
-                    defaultAgentGroup: (results[0] && results[0].defaultAgentGroup) || 'VIP รวมส่ง',
-                    agentGroupRates: (results[0] && results[0].agentGroupRates) || {},
-                    agentRates: (results[0] && results[0].agentRates) || {},
-                    products: results[1] || [],
-                    orders: results[2] || []
-                }, { deferOrderRefresh: false });
-                orderTableIsLoading = false;
-                updateSystemState();
-                console.timeEnd('ui:loadApplicationData');
-            }).catch(function (error) {
-                if (loadSeq !== appDataLoadSeq) return;
-                console.timeEnd('ui:loadApplicationData');
-                setAppDataLoading(false);
-                orderTableIsLoading = false;
-                if (isSessionError(error)) {
-                    endSession(true);
-                } else {
-                    if (!hasLoadedAppData) renderDefaultAppState();
-                    showNotification(serverErrorMessage(error), true);
-                }
-            });
-        }
-
-        function loadApplicationData(showSkeleton) {
-            console.time('ui:loadApplicationData');
-            const loadSeq = ++appDataLoadSeq;
-            if (showSkeleton !== false) setAppDataLoading(true);
-            runGoogleScriptPromise('bootstrap', [sessionToken, getCurrentMonthKey()]).then(function (result) {
-                if (loadSeq !== appDataLoadSeq) {
+                    resolve();
+                }).catch(function (error) {
+                    reject(error);
+                    if (loadSeq !== appDataLoadSeq) return;
                     console.timeEnd('ui:loadApplicationData');
-                    return;
-                }
-                orderTableErrorMessage = '';
-                initSystem({
-                    agents: (result && result.agents) || [],
-                    agentRecords: (result && result.agentRecords) || [],
-                    agentIdsByName: (result && result.agentIdsByName) || {},
-                    agentGroupsByName: (result && result.agentGroupsByName) || {},
-                    agentGroupOptions: (result && result.agentGroupOptions) || [],
-                    defaultAgentGroup: (result && result.defaultAgentGroup) || 'VIP ร่วมส่ง',
-                    agentGroupRates: (result && result.agentGroupRates) || {},
-                    agentRates: (result && result.agentRates) || {},
-                    products: (result && result.products) || [],
-                    orders: (result && result.orders) || []
-                }, { deferOrderRefresh: false });
-                orderTableIsLoading = false;
-                updateSystemState();
-                console.timeEnd('ui:loadApplicationData');
-            }).catch(function (error) {
-                if (loadSeq !== appDataLoadSeq) return;
-                console.timeEnd('ui:loadApplicationData');
-                setAppDataLoading(false);
-                orderTableIsLoading = false;
-                if (isSessionError(error)) {
-                    endSession(true);
-                } else {
-                    if (!hasLoadedAppData) renderDefaultAppState();
-                    showNotification(serverErrorMessage(error), true);
-                }
+                    setAppDataLoading(false);
+                    orderTableIsLoading = false;
+                    if (isSessionError(error)) {
+                        endSession(true);
+                    } else {
+                        if (!hasLoadedAppData) renderDefaultAppState();
+                        showNotification(serverErrorMessage(error), true);
+                    }
+                });
             });
         }
 
@@ -4611,13 +4641,14 @@
             }
         }
 
-        function applyOrdersMonth(monthKey, monthOrders, shouldResetCache) {
+        function applyOrdersMonth(monthKey, monthOrders, shouldResetCache, loadMode) {
             var normalizedMonthKey = String(monthKey || '').trim() || getCurrentMonthKey();
             if (shouldResetCache) {
                 ordersMonthCache = {};
                 ordersMonthKey = '';
             }
             commitLoadedOrders(normalizedMonthKey, Array.isArray(monthOrders) ? monthOrders : []);
+            ordersMonthLoadMode = String(loadMode || 'MONTH').trim().toUpperCase() === 'DAY' ? 'DAY' : 'MONTH';
         }
 
         function upsertLocalProductState_(productData) {
@@ -4864,30 +4895,38 @@
             });
         }
 
-        function refreshOrdersAndProductsData() {
+        function refreshOrdersAndProductsData(options) {
             console.time('ui:refreshOrdersAndProductsData');
+            var opts = options || {};
+            var loadSeq = ++appDataLoadSeq;
             var currentMonthKey = getCurrentMonthKey();
-            return runGoogleScriptPromise('bootstrap', [sessionToken, currentMonthKey]).then(function (result) {
-                applyAgentsBundle({
-                    agents: (result && result.agents) || [],
-                    agentRecords: (result && result.agentRecords) || [],
-                    agentIdsByName: (result && result.agentIdsByName) || {},
-                    agentGroupsByName: (result && result.agentGroupsByName) || {},
-                    agentGroupOptions: (result && result.agentGroupOptions) || [],
-                    defaultAgentGroup: (result && result.defaultAgentGroup) || 'VIP ร่วมส่ง',
-                    agentGroupRates: (result && result.agentGroupRates) || {},
-                    agentRates: (result && result.agentRates) || {}
-                });
-                applyProductsList((result && result.products) || []);
-                applyOrdersMonth(currentMonthKey, (result && result.orders) || [], true);
+            var forceReload = Boolean(opts.forceReload);
+            var loadMonthKey = forceReload ? currentMonthKey : 'today';
+            if (opts.showSkeleton !== false) setAppDataLoading(true);
+            return Promise.all([
+                runGoogleScriptPromise('listProducts', [sessionToken]),
+                runGoogleScriptPromise('listOrders', [sessionToken, loadMonthKey])
+            ]).then(function (results) {
+                if (loadSeq !== appDataLoadSeq) {
+                    console.timeEnd('ui:refreshOrdersAndProductsData');
+                    return orderTableOrders;
+                }
+                applyProductsList(results[0] || []);
+                applyOrdersMonth(currentMonthKey, results[1] || [], true, forceReload ? 'MONTH' : 'DAY');
                 orderTableErrorMessage = '';
                 orderTableIsLoading = false;
+                setAppDataLoading(false);
                 updateSystemState();
                 return refreshOrderTableData().then(function (next) {
                     console.timeEnd('ui:refreshOrdersAndProductsData');
                     return next;
                 });
             }).catch(function (error) {
+                if (loadSeq !== appDataLoadSeq) {
+                    console.timeEnd('ui:refreshOrdersAndProductsData');
+                    return orderTableOrders;
+                }
+                setAppDataLoading(false);
                 console.timeEnd('ui:refreshOrdersAndProductsData');
                 throw error;
             });
@@ -5001,6 +5040,7 @@
             agentGroupRates = {};
             ordersMonthKey = '';
             ordersMonthCache = {};
+            ordersMonthLoadMode = 'MONTH';
             selectedSummaryDateKey = getTodaySummaryDateKey();
             selectedSummaryAgent = '';
             orderTableFilterKey = 'TODAY';
@@ -5009,6 +5049,7 @@
             orderTableOrders = [];
             orderTableLoadSeq += 1;
             orderTableIsLoading = false;
+            summaryIsLoading = false;
             localStorage.removeItem('erpDealerSession');
             sessionToken = '';
             authenticatedRole = '';
@@ -5421,7 +5462,18 @@
             changeTab('dashboard');
             renderDefaultAppState();
             setAppDataLoading(true);
-            loadApplicationData(true);
+            loadApplicationData(true,true).then(function () {
+                setAppDataLoading(false);
+                showNotification('โหลดระบบใหม่เรียบร้อยแล้ว');
+            }).catch(function (error) {
+                setAppDataLoading(false);
+                if (isSessionError(error)) {
+                    endSession(true);
+                    showLoginError('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง');
+                } else {
+                    showNotification(serverErrorMessage(error), true);
+                }
+            });
             showNotification('กำลังโหลดระบบใหม่');
         }
 

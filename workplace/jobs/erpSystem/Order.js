@@ -145,33 +145,80 @@ function toArray_(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function getOrderRowsForMonth_(monthKey) {
-  var normalizedMonthKey = normalizeMonthKey(monthKey);
-  var sourceSheets = getOrderSourceSheetsForMonth_(normalizedMonthKey);
-  var orderRows = getData(sourceSheets.ordersSheet);
-  var itemRows = getData(sourceSheets.itemsSheet);
-  var tz = Session.getScriptTimeZone();
+function getOrderRowsForMonth_(sessionToken, monthKey) {
+  return withConsoleTiming_('server:getOrderRowsForMonth', function () {
+    requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
+    var normalizedMonthKey = normalizeMonthKey(monthKey);
+    var sourceSheets = getOrderSourceSheetsForMonth_(normalizedMonthKey);
+    var orderRows = getData(sourceSheets.ordersSheet);
+    var itemRows = getData(sourceSheets.itemsSheet);
+    var tz = Session.getScriptTimeZone();
 
-  var filteredOrders = orderRows.filter(function (row) {
-    return isDateInMonth_(row[1], normalizedMonthKey);
+    var filteredOrders = orderRows.filter(function (row) {
+      return isDateInMonth_(row[1], normalizedMonthKey);
+    });
+
+    var orderIds = {};
+    filteredOrders.forEach(function (row) {
+      orderIds[row[0]] = true;
+    });
+
+    var filteredItems = itemRows.filter(function (row) {
+      return orderIds[row[1]];
+    });
+
+    return {
+      monthKey: normalizedMonthKey,
+      orders: filteredOrders,
+      items: filteredItems,
+      tz: tz
+    };
   });
-
-  var orderIds = {};
-  filteredOrders.forEach(function (row) {
-    orderIds[row[0]] = true;
-  });
-
-  var filteredItems = itemRows.filter(function (row) {
-    return orderIds[row[1]];
-  });
-
-  return {
-    monthKey: normalizedMonthKey,
-    orders: filteredOrders,
-    items: filteredItems,
-    tz: tz
-  };
 }
+
+function getTodayOrderRows_(sessionToken) {
+  return withConsoleTiming_('server:getTodayOrderRows', function () {
+    requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
+    var orderRows = getData(SHEETS.TODAY_ORDERS);
+    if (!orderRows || !orderRows.length) return { monthKey: getMonthKeyFromDate(new Date()), orders: [], items: [], tz: Session.getScriptTimeZone() };
+    var itemRows = getData(SHEETS.TODAY_ORDER_ITEMS);
+    var tz = Session.getScriptTimeZone();
+
+    return {
+      monthKey: getMonthKeyFromDate(new Date()),
+      orders: orderRows,
+      items: itemRows,
+      tz: tz
+    };
+
+  });
+}
+
+// function getTodayOrderRows_() {
+//   return withConsoleTiming_('server:getTodayOrderRows', function () {
+//     const orderRows = getData(SHEETS.ORDERS);
+//     const itemRows = getData(SHEETS.ORDER_ITEMS);
+//     const tz = Session.getScriptTimeZone();
+//     const todayStr = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+
+//     // Column J คือ index ที่ 9 (นับจาก 0)
+//     const todayOrders = orderRows.filter((row, index) => {
+//       if (index === 0) return false; // ข้าม Header
+//       if (!row[1]) return false;
+
+//       const rowDateStr = Utilities.formatDate(new Date(row[1]), tz, "yyyy-MM-dd");
+//       return rowDateStr === todayStr;
+//     });
+
+
+//     return {
+//       monthKey: getMonthKeyFromDate(new Date()),
+//       orders: todayOrders,
+//       items: itemRows,
+//       tz: tz
+//     };
+//   });
+// }
 
 function buildOrderIndexes_(rows) {
   var orderRows = toArray_(rows && rows.orders);
