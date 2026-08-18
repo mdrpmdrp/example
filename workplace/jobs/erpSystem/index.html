@@ -1295,6 +1295,15 @@
             });
         }
 
+        function sortOrdersByOrderNumberAsc_(ordersList) {
+            return asArray(ordersList).slice().sort(function (a, b) {
+                var aId = String(a && (a.orderId || a.OrderID || '')).trim();
+                var bId = String(b && (b.orderId || b.OrderID || '')).trim();
+                var diff = aId.localeCompare(bId, 'en', { numeric: true, sensitivity: 'base' });
+                return diff || (getOrderDateValue(a) - getOrderDateValue(b));
+            });
+        }
+
         function buildSummaryAgentRows(dayOrders) {
             var rows = {};
             asArray(dayOrders).filter(function (order) {
@@ -1474,11 +1483,7 @@
 
             var listContainer = document.getElementById('inv-items-list');
             listContainer.replaceChildren();
-            billList.sort(function (a, b) {
-                var aKey = (a.orderDateKey || '') + ' ' + (a.orderTimeLabel || '');
-                var bKey = (b.orderDateKey || '') + ' ' + (b.orderTimeLabel || '');
-                return aKey < bKey ? 1 : aKey > bKey ? -1 : String(b.orderId).localeCompare(String(a.orderId));
-            }).forEach(function (order, index) {
+            sortOrdersByOrderNumberAsc_(billList).forEach(function (order, index) {
                 listContainer.appendChild(buildSummaryBillCard(order, index + 1));
             });
         }
@@ -1640,11 +1645,7 @@
             html.push('<div class="rh-divider"></div>');
 
             /* ── BILL LIST ── */
-            agentBills.sort(function (a, b) {
-                var aKey = (a.orderDateKey || '') + ' ' + (a.orderTimeLabel || '');
-                var bKey = (b.orderDateKey || '') + ' ' + (b.orderTimeLabel || '');
-                return aKey < bKey ? -1 : aKey > bKey ? 1 : String(a.orderId).localeCompare(String(b.orderId));
-            }).forEach(function (order, index) {
+            sortOrdersByOrderNumberAsc_(agentBills).forEach(function (order, index) {
                 html.push(buildSummaryPrintBillMarkup(order, index + 1));
             });
 
@@ -2262,14 +2263,9 @@
                 onSuccess: function (serverResult) {
                     upsertLocalProductState_(data);
                     renderStockTable();
-                    closeProductModal(true);
-                    showNotification(message);
-                    setTimeout(function () {
-                        refreshProductsData().catch(function (error) {
-                            if (isSessionError(error)) endSession(true);
-                            showNotification(serverErrorMessage(error), true);
-                        });
-                    }, 0);
+                    postSaveRefresh('product', {
+                        message: message
+                    });
                 },
                 onFailure: function (error) {
                     if (isSessionError(error)) endSession(true);
@@ -2396,12 +2392,7 @@
                     renderAgentManagementTable();
                     closeAgentModal();
                     showNotification(isEditMode ? 'อัปเดตข้อมูลตัวแทนเรียบร้อยแล้ว' : 'บันทึกตัวแทนเรียบร้อยแล้ว');
-                    setTimeout(function () {
-                        refreshAgentsData().catch(function (error) {
-                            if (isSessionError(error)) endSession(true);
-                            showNotification(serverErrorMessage(error), true);
-                        });
-                    }, 0);
+                    postSaveRefresh('agent', { refresh: true });
                 },
                 onFailure: function (error) {
                     if (saveButton) {
@@ -2560,12 +2551,7 @@
                     showNotification(targetScope === 'GROUP'
                         ? `อัปเดตเรทราคาของกลุ่มเรียบร้อย ${(savedTiers && savedTiers.length) || newTiers.length} ขั้นบันไดแล้ว!`
                         : `อัปเดตเรทราคาของตัวแทนเรียบร้อย ${(savedTiers && savedTiers.length) || newTiers.length} ขั้นบันไดแล้ว!`);
-                    setTimeout(function () {
-                        refreshAgentsData().catch(function (error) {
-                            if (isSessionError(error)) endSession(true);
-                            showNotification(serverErrorMessage(error), true);
-                        });
-                    }, 0);
+                    postSaveRefresh('rate', { refresh: true });
                 },
                 onFailure: function (error) {
                     rateSaveInFlight = false;
@@ -3328,7 +3314,7 @@
     <div id="order-modal" role="dialog" aria-modal="true" aria-labelledby="order-modal-title" aria-hidden="true"
         tabindex="-1" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center hidden p-4">
         <div
-            class="bg-white rounded-xl w-full max-w-4xl overflow-hidden shadow-md flex flex-col max-h-[90vh] border border-slate-200">
+            class="bg-white rounded-xl w-full max-w-4xl overflow-hidden shadow-md flex flex-col max-h-[90vh] min-h-0 border border-slate-200">
             <div class="erp-modal-header erp-modal-header--brand">
                 <div class="erp-modal-header__group">
                     <span class="erp-modal-header__icon erp-modal-header__icon--brand">
@@ -3341,7 +3327,7 @@
                         class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <div class="p-5 overflow-y-auto space-y-4 flex-1">
+            <div class="p-5 overflow-y-auto space-y-4 flex-1 min-h-0">
                 <!-- ข้อมูลหัวบิล -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <div>
@@ -4739,6 +4725,9 @@
         function buildOptimisticOrderRecord_(orderId, payload, serverResult, existingOrder) {
             var fallbackDate = existingOrder ? parseOrderDate_(existingOrder.orderDateKey || existingOrder.orderDate || existingOrder.createdAt || existingOrder.created) : null;
             var orderDate = parseOrderDate_(payload && payload.orderDate) || fallbackDate || new Date();
+            var existingCreatedAt = existingOrder ? Number(existingOrder.createdAt || existingOrder.__orderDateValue || 0) : 0;
+            var createdAt = Number.isFinite(existingCreatedAt) && existingCreatedAt > 0 ? existingCreatedAt : orderDate.getTime();
+            var createdValue = existingOrder && existingOrder.created ? String(existingOrder.created) : new Date(createdAt).toISOString();
             var items = asArray(payload && payload.items).map(function (item) {
                 var qty = Number(item && item.qty) || 0;
                 var baseQtyNeeded = Number(item && item.baseQtyNeeded) || qty;
@@ -4776,8 +4765,8 @@
             }
             return {
                 orderId: String(orderId || '').trim(),
-                createdAt: orderDate.getTime(),
-                created: orderDate.toISOString(),
+                createdAt: createdAt,
+                created: createdValue,
                 orderDateKey: normalizeSummaryDateKey(orderDate),
                 orderDateLabel: orderDate.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' }),
                 orderTimeLabel: orderDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }),
@@ -4878,28 +4867,6 @@
         function refreshOrdersAndProductsData() {
             console.time('ui:refreshOrdersAndProductsData');
             var currentMonthKey = getCurrentMonthKey();
-            return Promise.all([
-                runGoogleScriptPromise('listProducts', [sessionToken]),
-                runGoogleScriptPromise('listOrders', [sessionToken, currentMonthKey])
-            ]).then(function (results) {
-                applyProductsList(results[0] || []);
-                applyOrdersMonth(currentMonthKey, results[1] || [], true);
-                orderTableErrorMessage = '';
-                orderTableIsLoading = false;
-                updateSystemState();
-                return refreshOrderTableData().then(function (result) {
-                    console.timeEnd('ui:refreshOrdersAndProductsData');
-                    return result;
-                });
-            }).catch(function (error) {
-                console.timeEnd('ui:refreshOrdersAndProductsData');
-                throw error;
-            });
-        }
-
-        function refreshOrdersAndProductsData() {
-            console.time('ui:refreshOrdersAndProductsData');
-            var currentMonthKey = getCurrentMonthKey();
             return runGoogleScriptPromise('bootstrap', [sessionToken, currentMonthKey]).then(function (result) {
                 applyAgentsBundle({
                     agents: (result && result.agents) || [],
@@ -4924,6 +4891,38 @@
                 console.timeEnd('ui:refreshOrdersAndProductsData');
                 throw error;
             });
+        }
+
+        function postSaveRefresh(type, options) {
+            var saveType = String(type || '').trim().toLowerCase();
+            var config = options || {};
+            var closeHandlers = {
+                order: function () { closeOrderModal(true); },
+                product: function () { closeProductModal(true); },
+                agent: function () { closeAgentModal(); },
+                rate: function () { closeRateModal(true); }
+            };
+            var refreshHandlers = {
+                order: refreshOrdersAndProductsData,
+                product: refreshProductsData,
+                agent: refreshAgentsData,
+                rate: refreshAgentsData
+            };
+            var refresh = refreshHandlers[saveType];
+            var close = closeHandlers[saveType];
+            var message = typeof config.message === 'function' ? config.message() : config.message;
+
+            if (typeof config.beforeClose === 'function') config.beforeClose();
+            if (typeof close === 'function') close();
+            if (message) showNotification(message, Boolean(config.isError));
+            if (typeof refresh === 'function' && config.refresh !== false) {
+                setTimeout(function () {
+                    refresh().catch(function (error) {
+                        if (isSessionError(error)) endSession(true);
+                        showNotification(serverErrorMessage(error), true);
+                    });
+                }, 0);
+            }
         }
 
         function isSessionError(error) {
@@ -5756,10 +5755,10 @@
             document.body.style.overflow = 'hidden';
         }
 
-        function unlockBodyScroll() {
+        function unlockBodyScroll(force = false) {
             if (!modalScrollLockState) return;
             modalScrollLockState.count -= 1;
-            if (modalScrollLockState.count > 0) return;
+            if (modalScrollLockState.count > 0 && !force) return;
 
             const state = modalScrollLockState;
             modalScrollLockState = null;
@@ -5805,7 +5804,7 @@
             modal.classList.add('hidden');
             modal.setAttribute('aria-hidden', 'true');
             if (modalId === 'confirm-modal') pendingConfirmAction = null;
-            if (!document.querySelector('[role="dialog"]:not(.hidden)')) unlockBodyScroll();
+            if (!document.querySelector('[role="dialog"]:not(.hidden)')) unlockBodyScroll(true);
             if (lastModalTrigger && document.contains(lastModalTrigger)) lastModalTrigger.focus();
         }
 
@@ -7074,12 +7073,7 @@
                     renderOrdersTable();
                     closeOrderModal(true);
                     showNotification(orderMode === 'edit' ? 'บันทึกการแก้ไขบิลเรียบร้อยแล้ว' : 'บันทึกบิลและตัดสต๊อกเรียบร้อยแล้ว');
-                    setTimeout(function () {
-                        refreshOrdersAndProductsData().catch(function (error) {
-                            if (isSessionError(error)) endSession(true);
-                            showNotification(serverErrorMessage(error), true);
-                        });
-                    }, 0);
+                    postSaveRefresh('order', { refresh: true });
                 },
                 onFailure: function (error) {
                     orderSaveInFlight = false;
