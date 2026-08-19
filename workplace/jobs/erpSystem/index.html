@@ -4635,7 +4635,9 @@
             refreshAgentDependentSelects();
             const orderModal = document.getElementById('order-modal');
             if (orderModal && !orderModal.classList.contains('hidden')) {
+                const sessionId = orderModalSessionId;
                 requestAnimationFrame(function () {
+                    if (sessionId !== orderModalSessionId) return;
                     initializeCartProductSelects(orderModal);
                 });
             }
@@ -4956,7 +4958,7 @@
             if (message) showNotification(message, Boolean(config.isError));
             if (typeof refresh === 'function' && config.refresh !== false) {
                 setTimeout(function () {
-                    refresh().catch(function (error) {
+                    refresh(config).catch(function (error) {
                         if (isSessionError(error)) endSession(true);
                         showNotification(serverErrorMessage(error), true);
                     });
@@ -5774,6 +5776,7 @@
         let lastModalTrigger = null;
         let customerAutocompleteHideTimer = null;
         let modalScrollLockState = null;
+        let orderModalSessionId = 0;
 
         function lockBodyScroll() {
             if (modalScrollLockState) {
@@ -5941,6 +5944,7 @@
             ensureTabInitialized('orders');
             editingOrderId = '';
             setOrderModalState('create', 'บันทึกบิล', 'บันทึก');
+            orderModalSessionId += 1;
             const orderNum = "ORD-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-" + String(orders.length + 1).padStart(2, '0');
             clearOrderModalForm();
             document.getElementById('new-order-id').value = orderNum;
@@ -5950,10 +5954,13 @@
             orderModalSnapshot = getOrderModalSnapshot();
             showModal('order-modal', '#new-order-agent');
             wireCustomerAutocomplete();
+            const sessionId = orderModalSessionId;
             requestAnimationFrame(function () {
+                if (sessionId !== orderModalSessionId) return;
                 initializeCartProductSelects(document.getElementById('order-modal'));
             });
             setTimeout(function () {
+                if (sessionId !== orderModalSessionId) return;
                 var firstRow = document.querySelector('#cart-rows-container tr:not(#cart-empty-row)');
                 if (firstRow && typeof firstRow.scrollIntoView === 'function') {
                     firstRow.scrollIntoView({ block: 'start', inline: 'nearest', behavior: 'auto' });
@@ -5975,6 +5982,7 @@
 
             editingOrderId = orderId;
             setOrderModalState('edit', 'แก้ไขบิล', 'บันทึกการแก้ไข');
+            orderModalSessionId += 1;
             clearOrderModalForm();
             document.getElementById('new-order-id').value = order.orderId;
             document.getElementById('new-order-date').value = normalizeSummaryDateKey(order.orderDateKey || order.createdAt || order.created) || normalizeSummaryDateKey(new Date());
@@ -6009,7 +6017,9 @@
             orderModalSnapshot = getOrderModalSnapshot();
             showModal('order-modal', '#new-order-agent');
             wireCustomerAutocomplete();
+            const sessionId = orderModalSessionId;
             requestAnimationFrame(function () {
+                if (sessionId !== orderModalSessionId) return;
                 initializeCartProductSelects(document.getElementById('order-modal'));
             });
         }
@@ -6027,6 +6037,7 @@
                 return;
             }
             editingOrderId = '';
+            orderModalSessionId += 1;
             setOrderModalState('create', 'บันทึกบิล', 'บันทึก');
             hideCustomerAutocompleteDropdown();
             hideModal('order-modal');
@@ -7123,9 +7134,13 @@
                     var optimisticOrder = buildOptimisticOrderRecord_(optimisticOrderId, payload, serverResult, orderMode === 'edit' && editingOrderId ? findLoadedOrderById(editingOrderId) : null);
                     upsertLocalOrderState_(optimisticOrder);
                     renderOrdersTable();
-                    closeOrderModal(true);
-                    showNotification(orderMode === 'edit' ? 'บันทึกการแก้ไขบิลเรียบร้อยแล้ว' : 'บันทึกบิลและตัดสต๊อกเรียบร้อยแล้ว');
-                    postSaveRefresh('order', { refresh: true });
+                    postSaveRefresh('order', {
+                        refresh: true,
+                        showSkeleton: false,
+                        message: orderMode === 'edit'
+                            ? 'บันทึกการแก้ไขบิลเรียบร้อยแล้ว'
+                            : 'บันทึกบิลและตัดสต๊อกเรียบร้อยแล้ว'
+                    });
                 },
                 onFailure: function (error) {
                     orderSaveInFlight = false;
