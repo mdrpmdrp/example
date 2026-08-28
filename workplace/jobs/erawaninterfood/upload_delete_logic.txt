@@ -1,0 +1,233 @@
+﻿================================================================================
+สรุประบบอัปโหลด/ลบไฟล์ — QualityLabHub.html
+สำหรับนำไปสร้างระบบใหม่
+================================================================================
+
+--------------------------------------------------------------------------------
+สถาปัตยกรรมโดยรวม
+--------------------------------------------------------------------------------
+
+- ไฟล์แนบถูกอัปโหลดจาก browser โดยตรงไปยัง Google Drive ผ่าน Resumable Upload API
+- ไม่ผ่าน server กลาง ทำให้ไม่มี size limit จาก server และ server ไม่ต้องรับภาระ bandwidth
+- ข้อมูลไฟล์เก็บใน client-side state array (เช่น thaiFiles[]) ตลอดอายุ session
+- แต่ละไฟล์เป็น object ที่ติดตามสถานะด้วย uploadStatus ซึ่งมี 4 ค่า:
+    PENDING -> UPLOADING -> UPLOADED | ERROR
+- รองรับการอัปโหลดหลายไฟล์พร้อมกัน (concurrent) ทันทีที่ผู้ใช้เลือก
+
+
+--------------------------------------------------------------------------------
+ข้อมูลที่เก็บต่อไฟล์ 1 รายการ (File Object)
+--------------------------------------------------------------------------------
+
+name         - ชื่อไฟล์
+size         - ขนาดไฟล์ (bytes)
+type         - MIME type
+file         - binary File object (จาก input)
+uploadStatus - PENDING / UPLOADING / UPLOADED / ERROR
+progress     - 0–100 (เปอร์เซ็นต์ขณะอัปโหลด)
+id           - Google Drive File ID (ได้หลังอัปโหลดสำเร็จ)
+url          - webViewLink ของ Drive (ได้หลังอัปโหลดสำเร็จ)
+mimeType     - MIME type จริงจาก Drive (อาจต่างจาก type)
+justAdded    - flag สำหรับ CSS entry animation
+uploadHandle - { aborted, initXhr, uploadXhr } สำหรับ cancel XHR ได้
+
+
+--------------------------------------------------------------------------------
+ขั้นตอนการอัปโหลด (ทีละขั้น)
+--------------------------------------------------------------------------------
+
+ขั้นที่ 1 — ผู้ใช้เปิด file picker
+  - ปุ่มที่มองเห็นไม่ใช่ <input type="file"> จริง
+  - ปุ่ม trigger ทำหน้าที่ .click() ให้ input ที่ซ่อนอยู่
+  - เหตุผล: ทำให้ปุ่มออกแบบ UI ได้อิสระโดยไม่ถูก style ของ browser จำกัด
+
+ขั้นที่ 2 — ผู้ใช้เลือกไฟล์ -> handler รับ FileList
+  - สร้าง fileObj ด้วย uploadStatus = PENDING, push เข้า array
+  - เรียก upload function สำหรับแต่ละไฟล์ทันที (async, ไม่รอ)
+  - re-render รายการไฟล์
+  - input.value ถูกเคลียร์ทันทีด้วย setTimeout เพื่อให้เลือกไฟล์เดิมซ้ำได้
+
+ขั้นที่ 3 — ขอ Access Token (ครั้งเดียวต่อ session)
+  - เรียก backend API (action = "getUploadAuth")
+  - ได้กลับมา: { accessToken, folderId }
+  - cache ไว้ใน state ไม่ขอซ้ำจนกว่าจะ refresh page
+  - folderId คือโฟลเดอร์ temporary ที่ไฟล์จะไปอยู่ก่อน (ย้ายทีหลังเมื่อบันทึก record)
+
+ขั้นที่ 4 — สร้าง Resumable Upload Session (Init Request)
+  - XHR POST ไปยัง:
+      https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink,mimeType,size
+  - Header สำคัญ:
+      Authorization: Bearer {accessToken}
+      Content-Type: application/json; charset=UTF-8
+      X-Upload-Content-Type: {mime type ของไฟล์}
+      X-Upload-Content-Length: {ขนาดไฟล์ bytes}
+  - Body (JSON): { name, mimeType, parents: [folderId] }
+  - Response: HTTP 200 พร้อม Header "Location: {sessionUrl}"
+  - sessionUrl คือ URL เฉพาะสำหรับอัปโหลดครั้งนี้ (มี expiry)
+  - XHR object นี้เก็บไว้ใน uploadHandle.initXhr เพื่อ abort ได้
+
+ขั้นที่ 5 — อัปโหลดไฟล์จริง (Upload Request)
+  - ตั้ง uploadStatus = UPLOADING แล้ว re-render
+  - XHR PUT ไปยัง sessionUrl
+  - Header สำคัญ:
+      Content-Type: {mime type}
+      Content-Range: bytes 0-{size-1}/{size}   (single-part upload)
+  - Body: binary file object โดยตรง
+  - xhr.upload.onprogress: คำนวณ % และ schedule re-render ด้วย requestAnimationFrame (throttle)
+  - HTTP 200/201 = สำเร็จ
+  - HTTP 308 = incomplete (error, แจ้งให้ลองใหม่)
+  - อื่นๆ = error
+  - XHR object นี้เก็บไว้ใน uploadHandle.uploadXhr
+
+ขั้นที่ 6 — บันทึกผลลัพธ์
+  - สำเร็จ: uploadStatus = UPLOADED, เก็บ id/url/mimeType/size จาก response, เคลียร์ uploadHandle
+  - ผิดพลาด: uploadStatus = ERROR, เคลียร์ uploadHandle
+  - ถูก cancel: ตรวจด้วย error.code === 'UPLOAD_CANCELLED' หรือ AbortError
+               ไม่แสดง error UI ใดๆ
+  - re-render และอัปเดต screen reader live region
+
+หมายเหตุการ parse response:
+  - รองรับ res.result (object), res.response (object), res.response (string JSON)
+  - ป้องกัน crash กรณี response format ผิดปกติ
+
+
+--------------------------------------------------------------------------------
+ขั้นตอนการลบไฟล์
+--------------------------------------------------------------------------------
+
+กรณีที่ 1: ยกเลิกระหว่างอัปโหลด (uploadStatus = PENDING หรือ UPLOADING)
+  1. เรียก abortFileUpload(fileObj):
+       - เซ็ต handle.aborted = true
+       - เรียก .abort() บน initXhr ถ้ายังไม่เสร็จ
+       - เรียก .abort() บน uploadXhr ถ้ายังไม่เสร็จ
+  2. splice ออกจาก array
+  3. re-render
+  4. ไม่ต้องขอยืนยันจากผู้ใช้ (ไฟล์ยังไม่ได้อยู่บน Drive จริง)
+
+กรณีที่ 2: ลบไฟล์ที่อัปโหลดสำเร็จแล้ว (uploadStatus = UPLOADED)
+  1. แสดง dialog ยืนยัน (SweetAlert2)
+  2. ถ้ายืนยัน:
+       - เรียก backend API (action = "deleteFiles", payload = { fileIds: [id] })
+       - แสดง loading dialog ระหว่างรอ
+  3. splice ออกจาก array
+  4. re-render
+
+กรณีที่ 3: ลบไฟล์ที่ ERROR (ไม่มี Drive ID)
+  1. แสดง dialog ยืนยัน
+  2. ถ้ายืนยัน: splice ออกจาก array เท่านั้น (ไม่เรียก Drive API เพราะไม่มี file.id)
+  3. re-render
+
+กรณีที่ 4: ลบทั้งหมด
+  1. รวบรวม uploadedIds (ทุก UPLOADED) และ activeFiles (ที่กำลัง upload)
+  2. แสดง dialog ยืนยัน พร้อมแจ้งจำนวน
+  3. ถ้ายืนยัน:
+       - abortFileUpload() ทุก active file ก่อน
+       - ถ้ามี uploadedIds -> เรียก deleteFiles ส่ง ids ทั้งหมดไปพร้อมกันครั้งเดียว (batch)
+       - เคลียร์ array ด้วย files.length = 0
+  4. re-render
+
+
+--------------------------------------------------------------------------------
+Guard ก่อนบันทึกฟอร์ม (handleSave)
+--------------------------------------------------------------------------------
+
+ตรวจสอบตามลำดับก่อนที่ฟอร์มจะ submit ได้:
+
+1. ตรวจ required fields
+   - ถ้าไม่ครบ -> แสดง validation error, focus ที่ field แรกที่ผิด -> block
+
+2. ตรวจไฟล์ที่ยังไม่ UPLOADED
+   - มีไฟล์ PENDING/UPLOADING -> alert "ไฟล์กำลังอัปโหลด รอให้เสร็จก่อน" -> block
+   - มีไฟล์ ERROR -> alert "มีไฟล์อัปโหลดไม่สำเร็จ ลบหรืออัปโหลดใหม่ก่อน" -> block
+
+3. ตรวจลายเซ็น operator
+   - ถ้าไม่มีลายเซ็น -> block
+
+4. รวบรวม attachments
+   - กรองเฉพาะไฟล์ที่ UPLOADED เท่านั้น
+   - map เป็น { id, name, mimeType, size }
+
+5. บันทึก record
+   - ส่ง attachments metadata ไปพร้อมกับข้อมูลฟอร์ม
+   - action = "upsertRecord"
+
+6. ย้ายไฟล์ใน Drive
+   - action = "movefilestorecordfolder"
+   - payload = { recordId, attachments, type }
+   - ย้ายไฟล์จาก temp folder ไปยัง folder ของ record นั้นๆ
+
+7. reset ฟอร์ม
+   - abort ไฟล์ที่ค้าง, เคลียร์ array, เคลียร์ input value
+
+
+--------------------------------------------------------------------------------
+Backend API ที่เกี่ยวข้อง
+--------------------------------------------------------------------------------
+
+action                   | payload                         | หน้าที่
+-------------------------|------------------------------------|---------------------------------
+getUploadAuth            | (ไม่มี)                         | คืน { accessToken, folderId }
+deleteFiles              | { fileIds: string[] }           | ลบไฟล์จาก Drive (batch)
+upsertRecord             | { record }                      | บันทึก/อัปเดต record ใน Sheets
+movefilestorecordfolder  | { recordId, attachments, type } | ย้ายไฟล์ temp -> record folder
+
+ทุก API call ผ่านฟังก์ชัน postApi(action, payload) ที่รองรับ:
+  - ตรวจ offline ก่อน fetch
+  - timeout 30 วินาที (AbortController)
+  - parse JSON response
+  - map HTTP status code เป็น error message
+  - flag "retryable" สำหรับ error ที่ลองใหม่ได้ (status 0, 408, 429, 5xx)
+
+
+--------------------------------------------------------------------------------
+UX และ Accessibility
+--------------------------------------------------------------------------------
+
+- Screen reader  : live region อัปเดตทุกครั้งที่สถานะไฟล์เปลี่ยน
+- Busy state     : aria-busy="true" บน list container ขณะมีการอัปโหลด
+- Animation      : ไฟล์ใหม่ play fade+slide-up 240ms พร้อม stagger delay (index x 40ms)
+- Reduced motion : ยึดตาม prefers-reduced-motion ตัด animation ทั้งหมด
+- Touch friendly : ปุ่มทุกตัวมี min-height 44px
+- Thumbnail      : ถ้าไฟล์เป็น image และ UPLOADED จะแสดง preview 40x40px จาก Google CDN
+- Counter        : แสดง "x/10 ไฟล์" อัปเดตทุกครั้งที่รายการเปลี่ยน
+- Limit notice   : banner แจ้งเตือนเมื่อถึง limit แล้วหายไปเองใน 2 วินาที
+
+
+--------------------------------------------------------------------------------
+จุดสำคัญสำหรับการนำไปสร้างระบบใหม่
+--------------------------------------------------------------------------------
+
+1. ไม่ส่งไฟล์ผ่าน backend
+   ประหยัด bandwidth และ quota ของ server อย่างมาก
+   ใช้ Resumable Upload API ของ Google Drive โดยตรง
+
+2. Resumable Upload ป้องกันไฟล์หาย
+   เหมาะกับไฟล์ขนาดใหญ่หรือ connection ไม่เสถียร
+   ถ้า connection ขาดกลางคัน สามารถ resume ต่อได้จาก sessionUrl
+
+3. uploadHandle pattern
+   เก็บ XHR reference ไว้ใน fileObj ทำให้ cancel ได้ทุกเมื่อโดยไม่ต้องใช้ global state
+   ป้องกัน memory leak โดย set uploadHandle = null หลัง upload เสร็จ
+
+4. Optimistic UI
+   render รายการไฟล์ทันทีที่เลือก ไม่รอให้อัปโหลดเสร็จก่อน
+   ผู้ใช้เห็น feedback ทันที
+
+5. Deferred file move (Temp folder -> Record folder)
+   ไฟล์ถูกอัปโหลดไปยัง temp folder ก่อน
+   ย้ายไปที่ถูกต้องเมื่อบันทึก record เสร็จสมบูรณ์
+   ป้องกันไฟล์กระจายถ้าผู้ใช้ไม่กดบันทึก
+
+6. Token caching
+   ขอ access token แค่ครั้งเดียวต่อ session
+   ลด latency และ round-trip ไปยัง server
+
+7. Batch delete
+   ส่ง fileIds[] หลายตัวพร้อมกันครั้งเดียว
+   ไม่ loop เรียก API ทีละตัว
+
+8. Progress throttle ด้วย requestAnimationFrame
+   ป้องกัน UI jank จากการ re-render บ่อยเกินไป
+   ใช้ flag เพื่อไม่ให้ schedule ซ้อนกัน
+
+================================================================================
