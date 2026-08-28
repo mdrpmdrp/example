@@ -27,6 +27,13 @@
     my: Object.keys(UPLOAD_DEFINITIONS.my),
   }
 
+  const FLEX_THEME = {
+    header: '#1c2e77',
+    headerSoft: '#dbe4ff',
+    bodyText: '#0f172a',
+    mutedText: '#5b6788',
+  }
+
   const state = {
     lang: null,
     liffReady: false,
@@ -46,7 +53,7 @@
       title: 'ใบสมัคร บริษัท เอราวัณอินเตอร์ฟู้ด จำกัด',
       subtitle: 'กรอกข้อมูลให้ครบถ้วน',
       back: 'กลับหน้าเลือกสัญชาติ / နိုင်ငံသားရွေးချယ်ရန်',
-      status: 'ภาษาไทย',
+      status: 'สัญชาติไทย',
       save: 'บันทึกใบสมัคร',
       saving: 'กำลังบันทึก...',
       clear: 'ล้างไฟล์ทั้งหมด',
@@ -71,6 +78,10 @@
       replacePrompt: 'ไฟล์นี้มีอยู่แล้ว ต้องการแทนที่หรือไม่',
       confirmDelete: 'ต้องการลบไฟล์แนบหรือไม่',
       confirmDeleteAll: 'ต้องการลบไฟล์แนบทั้งหมดหรือไม่',
+      deletingFile: 'กำลังลบไฟล์...',
+      deletedFile: 'ลบไฟล์แล้ว',
+      deletingFiles: 'กำลังลบไฟล์ทั้งหมด...',
+      deletedFiles: 'ลบไฟล์ทั้งหมดแล้ว',
       loadingUpload: 'กำลังอัปโหลด',
       uploaded: 'อัปโหลดแล้ว',
       uploadReady: 'พร้อมอัปโหลด',
@@ -84,43 +95,47 @@
     },
     my: {
       title: 'Erawaninterfood co.,LTD',
-      subtitle: 'ဖြည့်စွက်ပြီးလျှင် ဖောင်ကိုသိမ်းဆည်းပါ',
-      back: 'ပြန်သွားရန် / กลับหน้าเลือกสัญชาติ',
+      subtitle: 'ဖြည့်စွက်ပြီးလျှင် ဖောင်ကို သိမ်းဆည်းပါ',
+      back: 'ပြန်သွားရန် / ဘာသာရွေးရန်',
       status: 'မြန်မာ',
       save: 'ဖောင်တင်မည်',
-      saving: 'သိမ်းနေသည်...',
-      clear: 'ဖိုင်အားလုံးဖျက်မည်',
-      userId: 'LIFF UserID',
-      fileNote: 'လိုအပ်သော ဖိုင်များကို အပ်လုဒ်လုပ်ပါ',
-      intro: 'ဖောင်အချက်အလက်နှင့် ဖိုင်များကို LIFF UserID နှင့်တကွ Google Sheets ထဲသို့ သိမ်းမည်',
+      saving: 'သိမ်းဆည်းနေသည်...',
+      clear: 'ဖိုင်အားလုံး ဖျက်မည်',
+      userId: 'LIFF အသုံးပြုသူ ID',
+      fileNote: 'လိုအပ်သောဖိုင်များကို အပ်လုဒ်လုပ်ပါ',
+      intro: 'ဖောင်အချက်အလက်နှင့် ဖိုင်များကို LIFF အသုံးပြုသူ ID ဖြင့် Google Sheets ထဲသို့ သိမ်းမည်',
       section: 'လျှောက်ထားသူအချက်အလက်',
       uploadSection: 'စာရွက်စာတမ်းများ',
       otherLabel: 'အခြား (ဖြည့်ပါ)',
-      idCardNumber: 'ကတ်နံပါတ် / Passport No.',
+      idCardNumber: 'ကတ်နံပါတ် / Passport နံပါတ်',
       dobHint: '',
-      commonRequired: 'ကြယ်ပွင့်(*) ပါသော အချက်အလက်များကို ပြည့်စုံစွာ ဖြည့်ပါ',
-      uploadPending: 'ဖိုင်တချို့ upload လုပ်နေဆဲဖြစ်ပါတယ်။ စောင့်ပေးပါ',
-      uploadError: 'ဖိုင် upload မအောင်မြင်ပါ။ ဖျက်ပြီး ထပ်မံ upload လုပ်ပါ',
-      saveOk: 'ဖောင်ကိုအောင်မြင်စွာ သိမ်းပြီးပါပြီ',
+      commonRequired: 'ကြယ်ပွင့် (*) ပါသော အချက်အလက်များကို ပြည့်စုံစွာ ဖြည့်ပါ',
+      uploadPending: 'ဖိုင်အချို့ကို အပ်လုဒ်လုပ်နေဆဲဖြစ်ပါတယ်။ စောင့်ပေးပါ',
+      uploadError: 'ဖိုင်အပ်လုဒ် မအောင်မြင်ပါ။ ဖျက်ပြီး ထပ်မံအပ်လုဒ်လုပ်ပါ',
+      saveOk: 'ဖောင်ကို အောင်မြင်စွာ သိမ်းပြီးပါပြီ',
       saveErr: 'သိမ်းဆည်းမှု မအောင်မြင်ပါ',
       successTitle: 'အောင်မြင်စွာ သိမ်းပြီးပါပြီ',
-      successDesc: 'သင့်လျှောက်လွှာကို စနစ်ထဲသိမ်းထားပြီးပါပြီ',
+      successDesc: 'သင့်လျှောက်လွှာကို စနစ်ထဲသို့ သိမ်းပြီးပါပြီ',
       successNote: 'ကိုးကားရန်အတွက် လျှောက်လွှာနံပါတ်ကို သိမ်းထားပါ',
       applicationId: 'လျှောက်လွှာနံပါတ်',
-      uploadAuthErr: 'Google Apps Script backend မချိတ်ဆက်ရသေးပါ',
-      replacePrompt: 'ဒီဖိုင်ရှိပြီးသား ဖြစ်ပါတယ်။ အစားထိုးမလား',
-      confirmDelete: 'ဖိုင်ကိုဖျက်မည်လား',
-      confirmDeleteAll: 'ဖိုင်အားလုံးကိုဖျက်မည်လား',
-      loadingUpload: 'upload လုပ်နေသည်',
-      uploaded: 'upload ပြီးပြီ',
-      uploadReady: 'upload လုပ်ရန် အဆင်သင့်',
-      uploadFailed: 'error ဖြစ်သည်',
-      saveConfirm: 'ဖောင်ကိုသိမ်းမည်လား',
-      saveConfirmDesc: 'သိမ်းပြီးနောက် အချက်အလက်များကို ပြန်ပြင်လို့မရတော့ပါ',
-      saveConfirmBtn: 'သိမ်းမည်',
-      saveCancelBtn: 'မသိမ်းပါ',
-      saveInprogress: 'ဖောင်ကိုသိမ်းနေဆဲဖြစ်ပါတယ်။ စောင့်ပေးပါ',
-      saveInprogressDesc: 'သိမ်းခြင်းမပြီးခင်မှာ ဒီပေါ်ကနေထွက်သွားရင် အချက်အလက်များကို သိမ်းမရနိုင်ပါ။ စောင့်ပေးပါ',
+      uploadAuthErr: 'Google Apps Script backend ကို မချိတ်ဆက်ရသေးပါ',
+      replacePrompt: 'ဒီဖိုင်ရှိပြီးသားဖြစ်ပါတယ်။ အစားထိုးမလား',
+      confirmDelete: 'ဖိုင်ကို ဖျက်မည်လား',
+      confirmDeleteAll: 'ဖိုင်အားလုံးကို ဖျက်မည်လား',
+      deletingFile: 'ဖိုင် ဖျက်နေသည်...',
+      deletedFile: 'ဖိုင် ဖျက်ပြီးပါပြီ',
+      deletingFiles: 'ဖိုင်အားလုံး ဖျက်နေသည်...',
+      deletedFiles: 'ဖိုင်အားလုံး ဖျက်ပြီးပါပြီ',
+      loadingUpload: 'အပ်လုဒ်လုပ်နေသည်',
+      uploaded: 'အပ်လုဒ်ပြီးပြီ',
+      uploadReady: 'အပ်လုဒ်လုပ်ရန် အဆင်သင့်',
+      uploadFailed: 'အပ်လုဒ် မအောင်မြင်ပါ',
+      saveConfirm: 'ဖောင်တင်မည်လား',
+      saveConfirmDesc: 'တင်ပြီးနောက် အချက်အလက်များကို ပြန်ပြင်၍ မရတော့ပါ',
+      saveConfirmBtn: 'ဖောင်တင်မည်',
+      saveCancelBtn: 'မတင်တော့ပါ',
+      saveInprogress: 'ဖောင်ကို သိမ်းနေဆဲဖြစ်ပါတယ်။ စောင့်ပေးပါ',
+      saveInprogressDesc: 'သိမ်းခြင်း မပြီးမချင်း ဤဝင်းဒိုးကို မပိတ်ပါနှင့်',
     },
   }
 
@@ -164,7 +179,7 @@
   const myGenderOptions = [
     { value: 'ကျား', label: 'ကျား' },
     { value: 'မိန်းမ', label: 'မိန်းမ' },
-    { value: 'other', label: 'Other:' },
+    { value: 'other', label: 'အခြား:' },
   ]
 
   const myShiftOptions = [
@@ -205,12 +220,32 @@
   function renderApp() {
     const root = document.getElementById('app')
     const copy = state.lang ? appText[state.lang] : null
-    const headerAccent = state.lang === 'my' ? 'မြန်မာ' : state.lang === 'th' ? 'TH' : 'Application'
+    const headerAccent = state.lang === 'my' ? 'မြန်မာ' : state.lang === 'th' ? 'สัญชาติไทย' : 'Application'
+    const heroTitle = state.lang === 'my'
+      ? 'Erawan Interfood ဖောင်လျှောက်လွှာ'
+      : 'ใบสมัคร บริษัท เอราวัณอินเตอร์ฟู้ด จำกัด'
+    const heroCopy = state.lang === 'my'
+      ? 'အောက်ပါဖောင်ကို ဖြည့်စွက်ပြီး ဆက်လက်လုပ်ဆောင်ပါ'
+      : 'กรุณากรอกข้อมูลในแบบฟอร์มให้ครบถ้วน'
+    const splashMarkup = state.liffReady
+      ? ''
+      : `
+        <div class="liff-splash" role="status" aria-live="polite" aria-busy="true">
+          <div class="liff-splash__card">
+            <div class="liff-splash__ring" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <h2 class="liff-splash__title">Erawan Interfood</h2>
+          </div>
+        </div>
+      `
     const formMarkup = state.lang && state.liffReady
       ? `
         <div id="form-section" class="form-shell p-4 sm:p-6">
           <div class="flex flex-col gap-2">
-            <p class="status-pill w-fit" data-tone="cool">${state.lang === 'th' ? 'ฟอร์มภาษาไทย' : 'မြန်မာဖောင်'}</p>
+            <p class="status-pill w-fit" data-tone="cool">${state.lang === 'th' ? 'ฟอร์มสัญชาติไทย' : 'မြန်မာဖောင်'}</p>
             <h3 class="section-title">${state.lang === 'th' ? 'กรอกข้อมูลการสมัคร' : 'လျှောက်လွှာအချက်အလက် ဖြည့်ရန်'}</h3>
             <p class="help-text">${state.lang === 'th' ? 'กรอกข้อมูลและอัปโหลดไฟล์ให้ครบก่อนกดบันทึก' : 'အချက်အလက်နှင့် ဖိုင်များကို ပြည့်စုံစွာ ဖြည့်ပြီး သိမ်းပါ'}</p>
           </div>
@@ -267,8 +302,8 @@
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div class="max-w-3xl">
                 <p class="status-pill status-pill--inverse w-fit">${headerAccent}</p>
-                <h1 class="hero-title mt-4" data-auto-fit-title data-max-font-size="38">ใบสมัคร บริษัท เอราวัณอินเตอร์ฟู้ด จำกัด</h1>
-                <p class="hero-copy mt-3">กรุณาเลือกสัญชาติของคุณ แล้วกรอกข้อมูลในแบบฟอร์มให้ครบถ้วน</p>
+                <h1 class="hero-title mt-4" data-auto-fit-title data-max-font-size="38">${escapeHtml(heroTitle)}</h1>
+                <p class="hero-copy mt-3">${escapeHtml(heroCopy)}</p>
               </div>
               <div class="flex flex-wrap items-center gap-2 text-sm">
                 <div class="profile-chip">
@@ -286,32 +321,24 @@
             </div>
           </div>
 
-          <div class="px-4 py-6 sm:px-6 lg:px-8">
+          <div class="px-2 py-6 md:px-6 lg:px-8">
             <section class="grid gap-6">
               <div class="field-card p-4 sm:p-6 ${state.lang ? 'hidden' : ''}">
-                <div class="flex flex-col gap-2">
-                <p class="status-pill w-fit" data-tone="cool">เลือกสัญชาติ / နိုင်ငံသား</p>
-                <h2 class="section-title">เลือกสัญชาติของคุณ / သင့်နိုင်ငံသားရွေးပါ</h2>
-                <p class="help-text">ภาษาเพื่อเริ่มกรอกใบสมัครในหน้าเดียวกัน / လျှောက်လွှာစရန် ဘာသာစကားတစ်ခုကို ရွေးပါ</p>
-                </div>
-              </div>
-
-              <div class="field-card p-4 sm:p-6 ${state.lang ? 'hidden' : ''}">
-                <h3 class="section-title">เลือกภาษา</h3>
-                <p class="help-text mt-2">เลือกภาษาไทยหรือภาษาพม่าเพื่อแสดงฟอร์มด้านล่าง</p>
+                <h3 class="section-title">เลือกสัญชาติ / ဘာသာရွေးရန်</h3>
+                <p class="help-text mt-2">เลือกสัญชาติไทยหรือพม่าเพื่อแสดงฟอร์มด้านล่าง / အောက်ဖော်ပြပါဖောင်ကို ကြည့်ရန် ဘာသာစကားရွေးပါ</p>
                 <div class="mt-6 grid gap-4">
                   <button type="button" data-lang-select="th" aria-pressed="${state.lang === 'th' ? 'true' : 'false'}" class="language-option group ${state.lang === 'th' ? 'is-active' : ''}" ${state.liffReady ? '' : 'disabled'}>
-                    <span class="language-badge">ไทย</span>
+                    <span class="language-badge">สัญชาติไทย</span>
                     <span class="language-copy">
-                      <strong>ภาษาไทย</strong>
+                      <strong>สัญชาติไทย</strong>
                       <span>ใบสมัคร บริษัท เอราวัณอินเตอร์ฟู้ด จำกัด</span>
                     </span>
                   </button>
                   <button type="button" data-lang-select="my" aria-pressed="${state.lang === 'my' ? 'true' : 'false'}" class="language-option group ${state.lang === 'my' ? 'is-active' : ''}" ${state.liffReady ? '' : 'disabled'}>
                     <span class="language-badge">မြန်မာ</span>
                     <span class="language-copy">
-                      <strong>မြန်မာဘာသာ</strong>
-                      <span>Erawaninterfood co., LTD</span>
+                      <strong>မြန်မာ</strong>
+                      <span>Erawan Interfood ဖောင်လျှောက်လွှာ</span>
                     </span>
                   </button>
                 </div>
@@ -321,6 +348,7 @@
           </div>
         </div>
       </main>
+      ${splashMarkup}
     `
     bindHeroTitleAutoFit()
   }
@@ -434,7 +462,6 @@
           ${renderTextField({ id: 'thai-cardNumber', label: copy.idCardNumber, required: true, placeholder: 'กรอกเลขบัตรประชาชน' })}
           ${renderDateField({ id: 'thai-dob', label: 'วัน เดือน ปีเกิด (พ.ศ.)', hint: copy.dobHint })}
           ${renderTextField({ id: 'thai-age', label: 'อายุ', required: true, type: 'number', readonly: true, placeholder: 'ระบบคำนวณให้อัตโนมัติ' })}
-          ${renderTextField({ id: 'thai-nationality', label: 'สัญชาติ / နိုင်ငံသား', required: true, placeholder: 'เช่น ไทย / ဥပမာ ไทย' })}
         </div>
       </div>
 
@@ -485,18 +512,18 @@
       <div class="field-card p-4 sm:p-6">
         <h3 class="section-title">လျှောက်ထားသူအချက်အလက်</h3>
         <div class="mt-5 grid gap-5">
-          ${renderTextField({ id: 'my-name', label: 'နာမည်', required: true, placeholder: 'နာမည်ထည့်ပါ' })}
+          ${renderTextField({ id: 'my-name', label: 'အမည်', required: true, placeholder: 'အမည်ထည့်ပါ' })}
           ${renderTextField({ id: 'my-cardNumber', label: copy.idCardNumber, required: true, placeholder: 'နံပါတ်ထည့်ပါ' })}
           ${renderRadioGroup({
       name: 'my-gender',
       label: 'ကျား/မ',
       required: true,
       options: myGenderOptions,
-      otherInput: { id: 'my-gender-other', placeholder: copy.otherLabel },
+      otherInput: { id: 'my-gender-other', placeholder: 'အခြားကို ဖြည့်ပါ' },
     })}
           ${renderRadioGroup({
       name: 'my-shift',
-      label: 'အလုပ်ချိန် အလုညိကျ လုပ်နိုင်ပါသလား',
+      label: 'အလှည့်ကျ အလုပ်လုပ်နိုင်ပါသလား',
       required: true,
       options: myShiftOptions,
     })}
@@ -504,9 +531,9 @@
       </div>
 
       <div class="field-card p-4 sm:p-6">
-        <h3 class="section-title">အလုပ်အကိုင် ရာဇဝင်</h3>
+        <h3 class="section-title">အလုပ်အတွေ့အကြုံ</h3>
         <div class="mt-5 grid gap-5">
-          ${renderTextareaField({ id: 'my-work-history', label: 'အလုပ်အကိုင် ရာဇဝင် (ประวัติการทำงาน)', required: true, placeholder: 'အလုပ်အကိုင် ရာဇဝင် ထည့်ပါ' })}
+          ${renderTextareaField({ id: 'my-work-history', label: 'အလုပ်အတွေ့အကြုံ', required: true, placeholder: 'အလုပ်အတွေ့အကြုံကို ထည့်ပါ' })}
         </div>
       </div>
     `
@@ -590,9 +617,10 @@
   function renderUploadField({ key, label, accept = 'image/*' }) {
     return `
       <div class="upload-zone" data-upload-zone="${key}">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <div class="upload-zone-head">
+          <div class="upload-zone-label">
             <p class="form-label">${escapeHtml(label)} ${renderRequiredMark()}</p>
+            <p class="upload-zone-note">${state.lang === 'th' ? 'หนึ่งช่องต่อหนึ่งไฟล์แนบ' : 'တစ်ช่องလျှင် ဖိုင်တစ်ဖိုင်'}</p>
           </div>
           <div class="file-actions">
             <button type="button" class="btn-secondary" data-pick-file="${key}">${state.lang === 'th' ? 'เลือกไฟล์' : 'ဖိုင်ရွေးမည်'}</button>
@@ -600,7 +628,7 @@
           </div>
         </div>
         <input id="${key}-input" type="file" class="hidden" accept="${accept}" data-file-input="${key}" />
-        <div class="mt-4 grid gap-3" id="${key}-slot"></div>
+        <div class="upload-slot" id="${key}-slot"></div>
       </div>
     `
   }
@@ -949,7 +977,7 @@
 
   function validateForm() {
         const requiredFields = state.lang === 'th'
-          ? ['thai-gender', 'thai-fullName', 'thai-cardNumber', 'thai-dob', 'thai-age', 'thai-nationality', 'thai-education', 'thai-experience', 'thai-skill', 'thai-position', 'thai-shift', 'thai-phone']
+          ? ['thai-gender', 'thai-fullName', 'thai-cardNumber', 'thai-dob', 'thai-age', 'thai-education', 'thai-experience', 'thai-skill', 'thai-position', 'thai-shift', 'thai-phone']
           : ['my-name', 'my-cardNumber', 'my-gender', 'my-shift', 'my-work-history']
         const labels = state.lang === 'th'
           ? {
@@ -958,7 +986,6 @@
             'thai-cardNumber': 'เลขบัตรประชาชน',
             'thai-dob': 'วัน เดือน ปีเกิด',
             'thai-age': 'อายุ',
-            'thai-nationality': 'สัญชาติ / နိုင်ငံသား',
             'thai-education': 'วุฒิการศึกษา',
             'thai-experience': 'ประสบการณ์ทำงาน',
             'thai-skill': 'ความสามารถพิเศษ',
@@ -967,11 +994,11 @@
             'thai-phone': 'เบอร์โทรติดต่อกลับ',
           }
           : {
-            'my-name': 'နာမည်',
-            'my-cardNumber': 'ကတ်နံပါတ် / Passport No.',
+            'my-name': 'အမည်',
+            'my-cardNumber': 'ကတ်နံပါတ် / Passport နံပါတ်',
             'my-gender': 'ကျား/မ',
-            'my-shift': 'အလုပ်ချိန်',
-            'my-work-history': 'အလုပ်အကိုင် ရာဇဝင်',
+            'my-shift': 'အလှည့်ကျ အလုပ်လုပ်နိုင်မှု',
+            'my-work-history': 'အလုပ်အတွေ့အကြုံ',
           }
 
         for (const field of requiredFields) {
@@ -992,8 +1019,8 @@
         }
 
         if (state.lang === 'my' && getRadioValue('my-gender') === 'other' && !getValue('my-gender-other')) {
-          return { ok: false, message: 'အခြားကျား/မ ကို ဖြည့်ပါ', focus: focusField('my-gender-other') }
-        }
+            return { ok: false, message: 'ကျား/မ အခြားကို ဖြည့်ပါ', focus: focusField('my-gender-other') }
+          }
 
         return { ok: true }
       }
@@ -1007,7 +1034,9 @@
         for (const key of requiredKeys) {
           const item = state.uploads[key]
           if (!item) {
-            return { ok: false, message: `กรุณาแนบไฟล์: ${getUploadDefinitions()[key]?.label || key}` }
+            return { ok: false, message: state.lang === 'th'
+              ? `กรุณาแนบไฟล์: ${getUploadDefinitions()[key]?.label || key}`
+              : `ဖိုင်ကို အပ်လုဒ်လုပ်ပါ: ${getUploadDefinitions()[key]?.label || key}` }
           }
           if (item.uploadStatus === 'PENDING' || item.uploadStatus === 'UPLOADING') {
             return { ok: false, message: appText[state.lang].uploadPending }
@@ -1052,7 +1081,7 @@
               cardNumber: getValue('thai-cardNumber'),
               dob: getValue('thai-dob'),
               age: Number(getValue('thai-age')) || null,
-              nationality: getValue('thai-nationality'),
+              nationality: state.lang === 'th' ? 'ไทย' : 'မြန်မာ',
               education: getSelectedOtherAwareValue('thai-education', 'thai-education-other'),
               experience: getValue('thai-experience'),
               specialSkill: getValue('thai-skill'),
@@ -1135,7 +1164,7 @@
           uploadFile.progress = 0
           uploadFile.uploadHandle = null
           renderUploadSlot(uploadFile.fieldKey)
-          await showAlert('error', state.lang === 'th' ? 'อัปโหลดไฟล์ไม่สำเร็จ' : 'ဖိုင်ကို upload မအောင်မြင်ပါ', normalizeErrorMessage(error))
+          await showAlert('error', state.lang === 'th' ? 'อัปโหลดไฟล์ไม่สำเร็จ' : 'ဖိုင်အပ်လုဒ် မအောင်မြင်ပါ', normalizeErrorMessage(error))
         }
       }
 
@@ -1206,10 +1235,16 @@
             uploadXhr.send(uploadFile.file)
           })
 
+          uploadFile.id = response.id || ''
+          if (isPublicPhotoUpload(uploadFile.fieldKey) && uploadFile.id) {
+            await makeDriveFilePublic(uploadFile.id, auth.accessToken)
+            uploadFile.url = buildPublicDriveImageUrl(uploadFile.id)
+          } else {
+            uploadFile.url = response.webViewLink || ''
+          }
+
           uploadFile.uploadStatus = 'UPLOADED'
           uploadFile.progress = 100
-          uploadFile.id = response.id || ''
-          uploadFile.url = response.webViewLink || ''
           uploadFile.mimeType = response.mimeType || uploadFile.type || ''
           uploadFile.size = Number(response.size || uploadFile.size || 0)
           uploadFile.uploadHandle = null
@@ -1227,7 +1262,7 @@
           uploadFile.progress = 0
           uploadFile.uploadHandle = null
           renderUploadSlot(uploadFile.fieldKey)
-          await showAlert('error', state.lang === 'th' ? 'อัปโหลดไฟล์ไม่สำเร็จ' : 'ဖိုင် upload မအောင်မြင်ပါ', normalizeErrorMessage(error))
+          await showAlert('error', state.lang === 'th' ? 'อัปโหลดไฟล์ไม่สำเร็จ' : 'ဖိုင်အပ်လုဒ် မအောင်မြင်ပါ', normalizeErrorMessage(error))
         }
       }
 
@@ -1253,13 +1288,42 @@
           if (!ok) return
         }
 
+        const hasRemoteFile = Boolean(item.id && item.uploadStatus === 'UPLOADED')
+        if (!options.silent && hasRemoteFile) {
+          void showToast({
+            icon: 'info',
+            title: appText[state.lang].deletingFile,
+            loading: true,
+          })
+        }
+
         try {
-          await postApi('deleteFiles', { fileIds: [item.id] })
+          if (hasRemoteFile) {
+            await postApi('deleteFiles', { fileIds: [item.id] })
+          }
         } catch (error) {
           console.warn('Delete file failed:', error)
+          closeLoadingDialog()
+          if (!options.silent) {
+            await showToast({
+              icon: 'error',
+              title: state.lang === 'th' ? 'ลบไฟล์ไม่สำเร็จ' : 'ဖိုင်ဖျက်မရပါ',
+              text: normalizeErrorMessage(error),
+            })
+          }
+          return
         }
+
         delete state.uploads[fieldKey]
         renderUploadSlot(fieldKey)
+
+        if (!options.silent) {
+          closeLoadingDialog()
+          await showToast({
+            icon: 'success',
+            title: appText[state.lang].deletedFile,
+          })
+        }
       }
 
   async function clearAllAttachments() {
@@ -1274,16 +1338,42 @@
           .filter((item) => item.uploadStatus === 'UPLOADING' || item.uploadStatus === 'PENDING')
           .forEach((item) => abortUpload(item))
 
+        const hasRemoteFiles = uploadedIds.length > 0
+        if (hasRemoteFiles) {
+          void showToast({
+            icon: 'info',
+            title: appText[state.lang].deletingFiles,
+            loading: true,
+          })
+        }
+
         if (uploadedIds.length) {
           try {
             await postApi('deleteFiles', { fileIds: uploadedIds })
           } catch (error) {
             console.warn('Batch delete failed:', error)
+            closeLoadingDialog()
+            await showToast({
+              icon: 'error',
+              title: state.lang === 'th' ? 'ลบไฟล์ไม่สำเร็จ' : 'ဖိုင်ဖျက်မရပါ',
+              text: normalizeErrorMessage(error),
+            })
+            return
           }
         }
 
+        if (hasRemoteFiles) {
+          closeLoadingDialog()
+        }
         state.uploads = {}
         renderAllUploadSlots()
+
+        if (items.length) {
+          await showToast({
+            icon: 'success',
+            title: appText[state.lang].deletedFiles,
+          })
+        }
       }
 
   function abortUpload(item) {
@@ -1307,8 +1397,6 @@
         const removeButton = document.querySelector(`[data-remove-file="${fieldKey}"]`)
         const item = state.uploads[fieldKey]
         if (!slot) return
-        const uploadDefinitions = getUploadDefinitions()
-
         if (!item) {
           slot.innerHTML = `<div class="file-empty">${state.lang === 'th' ? 'ยังไม่มีไฟล์แนบ' : 'ဖိုင်မရှိသေးပါ'}</div>`
           if (removeButton) removeButton.classList.add('hidden')
@@ -1330,18 +1418,17 @@
         slot.innerHTML = `
       <div class="upload-file">
         <div class="upload-meta">
-          <div class="min-w-0">
-            <p class="upload-file-title">${escapeHtml(uploadDefinitions[fieldKey]?.label || item.name)}</p>
+          <div class="min-w-0 upload-file-main">
             <p class="upload-file-name truncate">${escapeHtml(item.name)}</p>
+            <div class="upload-file-meta">
+              <span>${formatBytes(item.size || 0)}</span>
+              ${item.url ? `<a class="accent-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noreferrer">${state.lang === 'th' ? 'เปิดไฟล์' : 'ဖိုင်ဖွင့်ကြည့်ရန်'}</a>` : ''}
+            </div>
           </div>
           <span class="status-pill shrink-0" data-tone="${item.uploadStatus === 'ERROR' ? 'danger' : item.uploadStatus === 'UPLOADED' ? 'success' : item.uploadStatus === 'UPLOADING' ? 'cool' : 'warning'}">${labels[item.uploadStatus] || item.uploadStatus}</span>
         </div>
-        <div class="mt-3 upload-progress" aria-hidden="true">
+        <div class="upload-progress" aria-hidden="true">
           <span style="--progress: ${uploadProgress / 100}"></span>
-        </div>
-        <div class="upload-file-meta">
-          <span>${formatBytes(item.size || 0)}</span>
-          ${item.url ? `<a class="accent-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noreferrer">เปิดไฟล์</a>` : ''}
         </div>
       </div>
     `
@@ -1354,12 +1441,25 @@
 
   function buildSubmissionFlexMessage(recordId, record) {
     const applicant = record?.applicant || {}
-    const profileImage = state.pictureUrl || 'https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png'
+    const profileImage = getSubmissionPhotoUrl(record)
     const submittedAt = formatSubmissionDate_(record?.createdAt)
     if (state.lang === 'my') {
       return buildSubmissionFlexMessageMyanmar_(recordId, applicant, profileImage, submittedAt)
     }
     return buildSubmissionFlexMessageThai_(recordId, applicant, profileImage, submittedAt)
+  }
+
+  function getSubmissionPhotoUrl(record) {
+    const photoKey = state.lang === 'my' ? 'myPhoto' : 'thaiPhoto'
+    const attachments = Array.isArray(record && record.attachments) ? record.attachments : []
+    const attachment = attachments.find((item) => item && item.fieldKey === photoKey && item.id)
+    if (attachment && attachment.url) return String(attachment.url)
+    if (attachment && attachment.id) return buildPublicDriveImageUrl(attachment.id)
+    return state.pictureUrl || 'https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png'
+  }
+
+  function buildPublicDriveImageUrl(fileId) {
+    return `https://lh3.googleusercontent.com/d/${encodeURIComponent(String(fileId || '').trim())}`
   }
 
   function buildSubmissionFlexMessageThai_(recordId, applicant, profileImage, submittedAt) {
@@ -1371,7 +1471,7 @@
       header: {
         type: 'box',
         layout: 'vertical',
-        backgroundColor: '#0f766e',
+        backgroundColor: FLEX_THEME.header,
         paddingAll: '18px',
         contents: [
           {
@@ -1417,14 +1517,14 @@
                 type: 'text',
                 text: 'เลขที่สมัคร',
                 size: 'sm',
-                color: '#64748b',
+                color: FLEX_THEME.mutedText,
               },
               {
                 type: 'text',
                 text: recordId,
                 weight: 'bold',
                 size: 'xl',
-                color: '#0f172a',
+                color: FLEX_THEME.bodyText,
                 wrap: true,
               },
             ],
@@ -1442,16 +1542,16 @@
                 type: 'box',
                 layout: 'horizontal',
                 contents: [
-                  { type: 'text', text: 'ชื่อผู้สมัคร', size: 'sm', color: '#64748b', flex: 2 },
-                  { type: 'text', text: name, size: 'sm', color: '#0f172a', weight: 'bold', align: 'end', flex: 3, wrap: true },
+                  { type: 'text', text: 'ชื่อผู้สมัคร', size: 'sm', color: FLEX_THEME.mutedText, flex: 2 },
+                  { type: 'text', text: name, size: 'sm', color: FLEX_THEME.bodyText, weight: 'bold', align: 'end', flex: 3, wrap: true },
                 ],
               },
               {
                 type: 'box',
                 layout: 'horizontal',
                 contents: [
-                  { type: 'text', text: 'เลขบัตร', size: 'sm', color: '#64748b', flex: 2 },
-                  { type: 'text', text: cardNumber, size: 'sm', color: '#0f172a', weight: 'bold', align: 'end', flex: 3, wrap: true },
+                  { type: 'text', text: 'เลขบัตร', size: 'sm', color: FLEX_THEME.mutedText, flex: 2 },
+                  { type: 'text', text: cardNumber, size: 'sm', color: FLEX_THEME.bodyText, weight: 'bold', align: 'end', flex: 3, wrap: true },
                 ],
               },
             ],
@@ -1460,8 +1560,8 @@
             type: 'box',
             layout: 'horizontal',
             contents: [
-              { type: 'text', text: 'วันที่บันทึก', size: 'sm', color: '#64748b', flex: 2 },
-              { type: 'text', text: submittedAt, size: 'sm', color: '#0f172a', weight: 'bold', align: 'end', flex: 3, wrap: true },
+              { type: 'text', text: 'วันที่บันทึก', size: 'sm', color: FLEX_THEME.mutedText, flex: 2 },
+              { type: 'text', text: submittedAt, size: 'sm', color: FLEX_THEME.bodyText, weight: 'bold', align: 'end', flex: 3, wrap: true },
             ],
           },
         ],
@@ -1475,8 +1575,10 @@
             type: 'text',
             text: 'เก็บเลขที่สมัครนี้ไว้สำหรับติดต่อกับเจ้าหน้าที่',
             size: 'xs',
-            color: '#64748b',
+            color: FLEX_THEME.mutedText,
             wrap: true,
+            adjustMode: 'shrink-to-fit',
+            align: 'center',
           },
         ],
       },
@@ -1492,7 +1594,7 @@
       header: {
         type: 'box',
         layout: 'vertical',
-        backgroundColor: '#312e81',
+        backgroundColor: FLEX_THEME.header,
         paddingAll: '18px',
         contents: [
           {
@@ -1506,7 +1608,7 @@
           {
             type: 'text',
             text: 'သင့်လျှောက်လွှာကို စနစ်ထဲသို့ သိမ်းပြီးပါပြီ',
-            color: '#c7d2fe',
+            color: FLEX_THEME.headerSoft,
             size: 'sm',
             wrap: true,
             margin: 'sm',
@@ -1538,14 +1640,14 @@
                 type: 'text',
                 text: 'လျှောက်လွှာနံပါတ်',
                 size: 'sm',
-                color: '#64748b',
+                color: FLEX_THEME.mutedText,
               },
               {
                 type: 'text',
                 text: recordId,
                 weight: 'bold',
                 size: 'xl',
-                color: '#111827',
+                color: FLEX_THEME.bodyText,
                 wrap: true,
               },
             ],
@@ -1563,16 +1665,16 @@
                 type: 'box',
                 layout: 'horizontal',
                 contents: [
-                  { type: 'text', text: 'လျှောက်ထားသူအမည်', size: 'sm', color: '#64748b', flex: 2 },
-                  { type: 'text', text: name, size: 'sm', color: '#111827', weight: 'bold', align: 'end', flex: 3, wrap: true },
+                  { type: 'text', text: 'လျှောက်ထားသူအမည်', size: 'sm', color: FLEX_THEME.mutedText, flex: 2 },
+                  { type: 'text', text: name, size: 'sm', color: FLEX_THEME.bodyText, weight: 'bold', align: 'end', flex: 3, wrap: true },
                 ],
               },
               {
                 type: 'box',
                 layout: 'horizontal',
                 contents: [
-                  { type: 'text', text: 'ကတ်နံပါတ်', size: 'sm', color: '#64748b', flex: 2 },
-                  { type: 'text', text: cardNumber, size: 'sm', color: '#111827', weight: 'bold', align: 'end', flex: 3, wrap: true },
+                  { type: 'text', text: 'ကတ်နံပါတ်', size: 'sm', color: FLEX_THEME.mutedText, flex: 2 },
+                  { type: 'text', text: cardNumber, size: 'sm', color: FLEX_THEME.bodyText, weight: 'bold', align: 'end', flex: 3, wrap: true },
                 ],
               },
             ],
@@ -1581,8 +1683,8 @@
             type: 'box',
             layout: 'horizontal',
             contents: [
-              { type: 'text', text: 'သိမ်းသည့်နေ့စွဲ', size: 'sm', color: '#64748b', flex: 2 },
-              { type: 'text', text: submittedAt, size: 'sm', color: '#111827', weight: 'bold', align: 'end', flex: 3, wrap: true },
+              { type: 'text', text: 'သိမ်းသည့်နေ့စွဲ', size: 'sm', color: FLEX_THEME.mutedText, flex: 2 },
+              { type: 'text', text: submittedAt, size: 'sm', color: FLEX_THEME.bodyText, weight: 'bold', align: 'end', flex: 3, wrap: true },
             ],
           },
         ],
@@ -1596,7 +1698,7 @@
             type: 'text',
             text: 'နံပါတ်ကို သိမ်းထားပြီး HR နဲ့ ဆက်သွယ်ရာမှာ အသုံးပြုပါ',
             size: 'xs',
-            color: '#64748b',
+            color: FLEX_THEME.mutedText,
             wrap: true,
           },
         ],
@@ -1688,6 +1790,34 @@
         return Boolean(error && (error.code === 'UPLOAD_CANCELLED' || String(error.message || '').includes('cancel')))
       }
 
+  function isPublicPhotoUpload(fieldKey) {
+        return fieldKey === 'thaiPhoto' || fieldKey === 'myPhoto'
+      }
+
+  function buildPublicDriveImageUrl(fileId) {
+        return `https://lh3.googleusercontent.com/d/${encodeURIComponent(String(fileId || '').trim())}`
+      }
+
+  async function makeDriveFilePublic(fileId, accessToken) {
+        if (!fileId || !accessToken) return false
+        const response = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: JSON.stringify({
+            role: 'reader',
+            type: 'anyone',
+            allowFileDiscovery: false,
+          }),
+        })
+        if (!response.ok) {
+          throw new Error(`Permission update failed (${response.status})`)
+        }
+        return true
+      }
+
   async function postApi(action, payload) {
         if (!BACKEND_URL) throw new Error(appText[state.lang].uploadAuthErr)
         const controller = new AbortController()
@@ -1775,6 +1905,37 @@
         return Promise.resolve()
       }
 
+  function showToast(options = {}) {
+        if (window.Swal && typeof Swal.fire === 'function') {
+          return Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: options.icon || 'info',
+            title: options.title || '',
+            text: options.text || '',
+            showConfirmButton: false,
+            timer: options.loading ? undefined : (options.timer || 2000),
+            timerProgressBar: !options.loading,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            allowEnterKey: false,
+            buttonsStyling: false,
+            customClass: getSweetAlertClasses({
+              popup: 'app-swal app-swal--toast',
+              title: 'app-swal__title',
+              htmlContainer: 'app-swal__text',
+              loader: 'app-swal__loader',
+            }),
+            didOpen: () => {
+              if (options.loading && typeof Swal.showLoading === 'function') {
+                Swal.showLoading()
+              }
+            },
+          })
+        }
+        return Promise.resolve()
+      }
+
   function closeLoadingDialog() {
         if (window.Swal && typeof Swal.close === 'function') {
           Swal.close()
@@ -1833,7 +1994,6 @@
           'thai-cardNumber': 'thai-cardNumber',
           'thai-dob': 'thai-dob',
           'thai-age': 'thai-age',
-          'thai-nationality': 'thai-nationality',
           'thai-education': 'thai-education',
           'thai-education-other': 'thai-education-other',
           'thai-experience': 'thai-experience',
