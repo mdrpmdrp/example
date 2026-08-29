@@ -227,11 +227,13 @@
     const heroCopy = state.lang === 'my'
       ? 'အောက်ပါဖောင်ကို ဖြည့်စွက်ပြီး ဆက်လက်လုပ်ဆောင်ပါ'
       : 'กรุณากรอกข้อมูลในแบบฟอร์มให้ครบถ้วน'
+    const appLogoUrl = 'https://drive.google.com/thumbnail?id=10nWcbPfta83dLZjPN7NE5a6NFo0VlO6G&sz=w512'
     const splashMarkup = state.liffReady
       ? ''
       : `
         <div class="liff-splash" role="status" aria-live="polite" aria-busy="true">
           <div class="liff-splash__card">
+            <img class="liff-splash__logo" src="${escapeAttribute(appLogoUrl)}" alt="Erawan Interfood logo" />
             <div class="liff-splash__ring" aria-hidden="true">
               <span></span>
               <span></span>
@@ -301,6 +303,12 @@
           <div class="hero-panel px-5 py-5 sm:px-6">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div class="max-w-3xl">
+                <div class="app-brand">
+                  <img class="app-brand__logo" src="${escapeAttribute(appLogoUrl)}" alt="Erawan Interfood logo" />
+                  <div class="app-brand__copy">
+                    <p class="app-brand__name">Erawan Interfood</p>
+                  </div>
+                </div>
                 <p class="status-pill status-pill--inverse w-fit">${headerAccent}</p>
                 <h1 class="hero-title mt-4" data-auto-fit-title data-max-font-size="38">${escapeHtml(heroTitle)}</h1>
                 <p class="hero-copy mt-3">${escapeHtml(heroCopy)}</p>
