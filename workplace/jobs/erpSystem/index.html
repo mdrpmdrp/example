@@ -1264,19 +1264,13 @@
             }
 
             var workbook = buildSummaryExportWorkbook_(agentName, dayOrders);
-            var dateKey = normalizeSummaryDateKey(selectedSummaryDateKey) || getTodaySummaryDateKey();
-            var safeAgentFileName = String(agentName || 'agent')
-                .replace(/[\\\/:*?"<>|]/g, ' ')
-                .replace(/\s+/g, '-')
-                .replace(/-+/g, '-')
-                .replace(/^-|-$/g, '')
-                .toLowerCase();
+            var fileBaseName = getSummaryFileBaseName_(agentName, selectedSummaryDateKey);
             var output = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
             var blob = new Blob([output], {
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             });
 
-            downloadBlobFile_(blob, 'summary-' + dateKey + '-' + safeAgentFileName + '.xlsx');
+            downloadBlobFile_(blob, fileBaseName + '.xlsx');
             if (typeof showNotification === 'function') {
                 showNotification('ส่งออกไฟล์ XLSX ของ ' + agentName + ' เรียบร้อย');
             }
@@ -1284,6 +1278,17 @@
 
         function getTodaySummaryDateKey() {
             return normalizeSummaryDateKey(new Date());
+        }
+
+        function getSummaryFileBaseName_(agentName, dateKey) {
+            var normalizedDateKey = normalizeSummaryDateKey(dateKey) || getTodaySummaryDateKey();
+            var safeAgentFileName = String(agentName || 'agent')
+                .replace(/[\\\/:*?"<>|]/g, ' ')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '')
+                .toLowerCase();
+            return 'summary-' + normalizedDateKey + '-' + safeAgentFileName;
         }
 
         function getSummaryDateLabel(dateKey) {
@@ -1569,6 +1574,7 @@
                 return acc;
             }, { subtotalAmount: 0, shippingAmount: 0, discountAmount: 0, totalAmount: 0, itemLines: 0 });
             var docNo = 'SR-' + String(dateKey || '').replace(/-/g, '') + '-' + String(agentName || 'ALL').replace(/\s+/g, '').slice(0, 8).toUpperCase();
+            var printTitle = getSummaryFileBaseName_(agentName, dateKey);
             var printedAt = new Date().toLocaleString('th-TH', {
                 day: '2-digit',
                 month: '2-digit',
@@ -1579,7 +1585,7 @@
             var html = [];
             html.push('<!doctype html><html lang="th"><head><meta charset="utf-8">');
             html.push('<meta name="viewport" content="width=device-width, initial-scale=1">');
-            html.push('<title>สรุปยอดบัญชี ' + escapeHtml(agentName) + '</title>');
+            html.push('<title>' + escapeHtml(printTitle) + '</title>');
             html.push('<link rel="preconnect" href="https://fonts.googleapis.com">');
             html.push('<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>');
             html.push('<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;600;700;800&display=swap" rel="stylesheet">');
@@ -1680,23 +1686,110 @@
             return html.join('');
         }
 
+        function isIOSPrintBrowser_() {
+            var ua = navigator.userAgent || '';
+            var platform = navigator.platform || '';
+            return /iPad|iPhone|iPod/.test(ua) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        function createPrintFrame_() {
+            var frame = document.createElement('iframe');
+            frame.setAttribute('aria-hidden', 'true');
+            frame.style.position = 'fixed';
+            frame.style.right = '0';
+            frame.style.bottom = '0';
+            frame.style.width = '0';
+            frame.style.height = '0';
+            frame.style.border = '0';
+            frame.style.opacity = '0';
+            frame.style.pointerEvents = 'none';
+            frame.style.zIndex = '-1';
+            return frame;
+        }
+
+        function writePrintDocument_(win, html) {
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+        }
+
         function mockPrintInvoice() {
             var dayOrders = getSummaryOrdersForDate(selectedSummaryDateKey);
             var html = buildSummaryPrintHtml(selectedSummaryAgent, selectedSummaryDateKey, dayOrders);
+            var printTimer = null;
+            var fallbackTimer = null;
+
+            if (isIOSPrintBrowser_()) {
+                var frame = createPrintFrame_();
+                var cleaned = false;
+                var cleanupIOS = function () {
+                    if (cleaned) return;
+                    cleaned = true;
+                    if (printTimer) {
+                        clearTimeout(printTimer);
+                        printTimer = null;
+                    }
+                    if (fallbackTimer) {
+                        clearTimeout(fallbackTimer);
+                        fallbackTimer = null;
+                    }
+                    if (frame && frame.parentNode) {
+                        frame.parentNode.removeChild(frame);
+                    }
+                };
+
+                frame.addEventListener('load', function () {
+                    var frameWindow = frame.contentWindow;
+                    if (!frameWindow) return cleanupIOS();
+                    try {
+                        frameWindow.addEventListener('afterprint', cleanupIOS, { once: true });
+                    } catch (err) {}
+                    try {
+                        frameWindow.focus();
+                        frameWindow.print();
+                    } catch (err) {
+                        cleanupIOS();
+                        return;
+                    }
+                    fallbackTimer = window.setTimeout(cleanupIOS, 30000);
+                }, { once: true });
+
+                frame.srcdoc = html;
+                document.body.appendChild(frame);
+                return;
+            }
+
             var win = window.open('', '_blank');
             if (!win) return;
-            win.document.write(html);
-            win.document.close();
+            writePrintDocument_(win, html);
             win.focus();
-            const cleanup = () => {
-                win.close();
+            const cleanupDesktop = () => {
+                if (printTimer) {
+                    win.clearTimeout(printTimer);
+                    printTimer = null;
+                }
+                if (fallbackTimer) {
+                    win.clearTimeout(fallbackTimer);
+                    fallbackTimer = null;
+                }
+                try {
+                    win.close();
+                } catch (err) {}
             };
 
-            win.addEventListener('afterprint', cleanup, { once: true });
-            win.setTimeout(() => {
-                win.print();
-                win.setTimeout(cleanup, 0);
-            }, 50);
+            try {
+                win.addEventListener('afterprint', cleanupDesktop, { once: true });
+            } catch (err) {}
+
+            printTimer = win.setTimeout(() => {
+                try {
+                    win.print();
+                } catch (err) {
+                    cleanupDesktop();
+                    return;
+                }
+            }, 0);
+            fallbackTimer = win.setTimeout(cleanupDesktop, 30000);
         }
 
         function setSummaryDateKey(dateKey) {
