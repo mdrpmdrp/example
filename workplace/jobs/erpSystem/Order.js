@@ -115,10 +115,22 @@ function getOrderRecordMonthKey_(value) {
   return getMonthKeyFromDate(value);
 }
 
-function getOrderSourceSheetsForMonth_(monthKey) {
+function getOrderSourceSheetsForMonth_(monthKey, orderRows) {
   var normalizedMonthKey = normalizeMonthKey(monthKey);
   var currentMonthKey = getMonthKeyFromDate(new Date());
-  return normalizedMonthKey === currentMonthKey
+  if (normalizedMonthKey === currentMonthKey) {
+    return {
+      ordersSheet: SHEETS.ORDERS,
+      itemsSheet: SHEETS.ORDER_ITEMS
+    };
+  }
+
+  var rows = Array.isArray(orderRows) ? orderRows : [];
+  var hasRowsInMainOrders = rows.some(function (row) {
+    return isDateInMonth_(row[1], normalizedMonthKey);
+  });
+
+  return hasRowsInMainOrders
     ? {
       ordersSheet: SHEETS.ORDERS,
       itemsSheet: SHEETS.ORDER_ITEMS
@@ -246,8 +258,11 @@ function getOrderRowsForMonth_(sessionToken, monthKey) {
   return withConsoleTiming_('server:getOrderRowsForMonth', function () {
     requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
     var normalizedMonthKey = normalizeMonthKey(monthKey);
-    var sourceSheets = getOrderSourceSheetsForMonth_(normalizedMonthKey);
-    var orderRows = getData(sourceSheets.ordersSheet);
+    var orderRows = getData(SHEETS.ORDERS);
+    var sourceSheets = getOrderSourceSheetsForMonth_(normalizedMonthKey, orderRows);
+    if (sourceSheets.ordersSheet !== SHEETS.ORDERS) {
+      orderRows = getData(sourceSheets.ordersSheet);
+    }
     var itemRows = getData(sourceSheets.itemsSheet);
     var tz = Session.getScriptTimeZone();
 
