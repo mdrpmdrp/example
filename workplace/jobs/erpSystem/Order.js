@@ -115,22 +115,10 @@ function getOrderRecordMonthKey_(value) {
   return getMonthKeyFromDate(value);
 }
 
-function getOrderSourceSheetsForMonth_(monthKey, orderRows) {
+function getOrderSourceSheetsForMonth_(monthKey) {
   var normalizedMonthKey = normalizeMonthKey(monthKey);
   var currentMonthKey = getMonthKeyFromDate(new Date());
-  if (normalizedMonthKey === currentMonthKey) {
-    return {
-      ordersSheet: SHEETS.ORDERS,
-      itemsSheet: SHEETS.ORDER_ITEMS
-    };
-  }
-
-  var rows = Array.isArray(orderRows) ? orderRows : [];
-  var hasRowsInMainOrders = rows.some(function (row) {
-    return isDateInMonth_(row[1], normalizedMonthKey);
-  });
-
-  return hasRowsInMainOrders
+  return normalizedMonthKey === currentMonthKey
     ? {
       ordersSheet: SHEETS.ORDERS,
       itemsSheet: SHEETS.ORDER_ITEMS
@@ -186,8 +174,9 @@ function generateSequentialIds_(prefix, sheetName, count, prefixLength) {
   return ids;
 }
 
-function buildOrderItemRows_(orderId, lines) {
-  var itemIds = generateSequentialIds_('ITEM', SHEETS.ORDER_ITEMS, lines.length);
+function buildOrderItemRows_(orderId, lines, itemSheetName) {
+  var targetSheetName = itemSheetName || SHEETS.ORDER_ITEMS;
+  var itemIds = generateSequentialIds_('ITEM', targetSheetName, lines.length);
   return lines.map(function (line, index) {
     return [
       itemIds[index],
@@ -207,15 +196,36 @@ function getOrderRecordById_(orderId) {
   var id = String(orderId || '').trim();
   if (!id) return null;
 
-  var rowIndex = findRow(SHEETS.ORDERS, id);
+  var sheetName = SHEETS.ORDERS;
+  var itemSheetName = SHEETS.ORDER_ITEMS;
+  var rowIndex = findRow(sheetName, id);
+  if (rowIndex < 2) {
+    sheetName = SHEETS.BACKUP_ORDERS;
+    itemSheetName = SHEETS.BACKUP_ORDER_ITEMS;
+    rowIndex = findRow(sheetName, id);
+  }
   if (rowIndex < 2) return null;
 
-  var orderRow = getSheet(SHEETS.ORDERS).getRange(rowIndex, 1, 1, 18).getValues()[0];
-  var itemRows = getData(SHEETS.ORDER_ITEMS).filter(function (row) {
-    return String(row[1] || '').trim() === id;
+  var orderRow = getSheet(sheetName).getRange(rowIndex, 1, 1, 18).getValues()[0];
+  var alternateItemSheetName = itemSheetName === SHEETS.ORDER_ITEMS
+    ? SHEETS.BACKUP_ORDER_ITEMS
+    : SHEETS.ORDER_ITEMS;
+  var itemRows = [];
+  var seenItemIds = Object.create(null);
+  [itemSheetName, alternateItemSheetName].forEach(function (sourceSheetName) {
+    getData(sourceSheetName).forEach(function (row) {
+      if (String(row[1] || '').trim() !== id) return;
+      var itemId = String(row[0] || '').trim();
+      var itemKey = itemId || row.join('\u0001');
+      if (seenItemIds[itemKey]) return;
+      seenItemIds[itemKey] = true;
+      itemRows.push(row);
+    });
   });
 
   return {
+    sheetName: sheetName,
+    itemSheetName: itemSheetName,
     rowIndex: rowIndex,
     orderRow: orderRow,
     order: {
@@ -258,25 +268,47 @@ function getOrderRowsForMonth_(sessionToken, monthKey) {
   return withConsoleTiming_('server:getOrderRowsForMonth', function () {
     requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
     var normalizedMonthKey = normalizeMonthKey(monthKey);
-    var orderRows = getData(SHEETS.ORDERS);
-    var sourceSheets = getOrderSourceSheetsForMonth_(normalizedMonthKey, orderRows);
-    if (sourceSheets.ordersSheet !== SHEETS.ORDERS) {
-      orderRows = getData(sourceSheets.ordersSheet);
-    }
-    var itemRows = getData(sourceSheets.itemsSheet);
+    var isCurrentMonth = normalizedMonthKey === getMonthKeyFromDate(new Date());
+    var mainOrderRows = getData(SHEETS.ORDERS);
+    var mainItemRows = getData(SHEETS.ORDER_ITEMS);
+    var backupOrderRows = isCurrentMonth ? [] : getData(SHEETS.BACKUP_ORDERS);
+    var backupItemRows = isCurrentMonth ? [] : getData(SHEETS.BACKUP_ORDER_ITEMS);
     var tz = Session.getScriptTimeZone();
+
+    // Prefer the main sheet when the same order exists in both sheets.
+    var orderRows = [];
+    var seenOrderIds = Object.create(null);
+    [mainOrderRows, backupOrderRows].forEach(function (rows) {
+      rows.forEach(function (row) {
+        var orderId = String(row && row[0] || '').trim();
+        if (orderId && seenOrderIds[orderId]) return;
+        if (orderId) seenOrderIds[orderId] = true;
+        orderRows.push(row);
+      });
+    });
 
     var filteredOrders = orderRows.filter(function (row) {
       return isDateInMonth_(row[1], normalizedMonthKey);
     });
 
-    var orderIds = {};
+    var orderIds = Object.create(null);
     filteredOrders.forEach(function (row) {
-      orderIds[row[0]] = true;
+      orderIds[String(row[0] || '').trim()] = true;
     });
 
-    var filteredItems = itemRows.filter(function (row) {
-      return orderIds[row[1]];
+    var filteredItems = [];
+    var seenItemIds = Object.create(null);
+    [mainItemRows, backupItemRows].forEach(function (rows) {
+      rows.forEach(function (row) {
+        var orderId = String(row && row[1] || '').trim();
+        if (!orderIds[orderId]) return;
+
+        var itemId = String(row && row[0] || '').trim();
+        var itemKey = orderId + '|' + (itemId || row.join('\u0001'));
+        if (seenItemIds[itemKey]) return;
+        seenItemIds[itemKey] = true;
+        filteredItems.push(row);
+      });
     });
 
     return {
@@ -585,16 +617,21 @@ function buildOrderLines_(sessionToken, payload, stockBufferByProduct, productBy
   return { lines: lines, totals: totals };
 }
 
-function deleteOrderItemsByOrderId_(orderId) {
-  const sheet = getSheet(SHEETS.ORDER_ITEMS);
-  const rows = getData(SHEETS.ORDER_ITEMS);
-  const rowIndexes = [];
-  for (let index = rows.length - 1; index >= 0; index--) {
-    if (rows[index][1] === orderId) {
-      rowIndexes.push(index + 2);
+function deleteOrderItemsByOrderId_(orderId, itemSheetName) {
+  const targetSheetNames = Array.isArray(itemSheetName)
+    ? itemSheetName
+    : [itemSheetName || SHEETS.ORDER_ITEMS];
+  targetSheetNames.forEach(function (targetSheetName) {
+    const sheet = getSheet(targetSheetName);
+    const rows = getData(targetSheetName);
+    const rowIndexes = [];
+    for (let index = rows.length - 1; index >= 0; index--) {
+      if (String(rows[index][1] || '').trim() === String(orderId || '').trim()) {
+        rowIndexes.push(index + 2);
+      }
     }
-  }
-  deleteRowsByIndexes_(sheet, rowIndexes);
+    deleteRowsByIndexes_(sheet, rowIndexes);
+  });
 }
 
 function getOrders() {
@@ -886,10 +923,10 @@ function updateOrder(sessionToken, orderId, payload) {
       });
 
       withConsoleTiming_('server:updateOrder:writeOrder', function () {
-        const row = existingRecord.rowIndex || findRow(SHEETS.ORDERS, id);
+        const row = existingRecord.rowIndex || findRow(existingRecord.sheetName, id);
         if (row < 0) throw new Error('Order not found in sheet');
 
-        getSheet(SHEETS.ORDERS).getRange(row, 1, 1, 18).setValues([[
+        getSheet(existingRecord.sheetName).getRange(row, 1, 1, 18).setValues([[
           id,
           orderDate,
           payload.agentId,
@@ -912,8 +949,8 @@ function updateOrder(sessionToken, orderId, payload) {
       });
 
       withConsoleTiming_('server:updateOrder:writeItems', function () {
-        deleteOrderItemsByOrderId_(id);
-        appendRows_(SHEETS.ORDER_ITEMS, buildOrderItemRows_(id, lines));
+        deleteOrderItemsByOrderId_(id, [SHEETS.ORDER_ITEMS, SHEETS.BACKUP_ORDER_ITEMS]);
+        appendRows_(existingRecord.itemSheetName, buildOrderItemRows_(id, lines, existingRecord.itemSheetName));
       });
 
       withConsoleTiming_('server:updateOrder:stockBatch', function () {
