@@ -362,7 +362,8 @@ Message: ${e.message}
 Stack: ${e.stack}
 
 Script URL: https://script.google.com/home/projects/${ScriptApp.getScriptId()}/edit`;
-  let token = '7372234796:AAEsjanQB5cvgbDkXhZdaUeUB9VdcCF7v6o'
-  let chatId = '1354847893'
+let prop = PropertiesService.getScriptProperties()
+  let token = prop.getProperty('telegram_token') 
+  let chatId = prop.getProperty('telegram_chat_id')
   TelegramApp.sendMessage(token, chatId, message, { parse_mode: 'HTML', link_preview_options: JSON.stringify({ is_disabled: true }) });
 }
