@@ -916,6 +916,10 @@ function upsertRecord_(payload) {
     throw new Error('record is required')
   }
 
+  if (record.language === 'my') {
+    normalizeMyanmarRecord_(record)
+  }
+
   return withScriptLock_(30000, () => {
     const spreadsheet = getOrCreateSpreadsheet_()
     const language = record.language === 'my' ? 'my' : 'th'
@@ -1217,6 +1221,22 @@ function recordToMyanmarRow_(record) {
     JSON.stringify(record),
     record.status || '',
   ]
+}
+
+function normalizeMyanmarRecord_(record) {
+  const applicant = record.applicant || (record.applicant = {})
+  const genderMap = {
+    'ကျား': 'ชาย',
+    'မိန်းမ': 'หญิง',
+  }
+  const shiftMap = {
+    'ရပါတယ်': 'ได้',
+    'မရပါဘူး': 'ไม่ได้',
+  }
+
+  if (genderMap[applicant.gender]) applicant.gender = genderMap[applicant.gender]
+  if (shiftMap[applicant.shiftAble]) applicant.shiftAble = shiftMap[applicant.shiftAble]
+  return record
 }
 
 function buildAttachmentMap_(attachments) {

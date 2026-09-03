@@ -177,14 +177,14 @@
   ]
 
   const myGenderOptions = [
-    { value: 'ကျား', label: 'ကျား' },
-    { value: 'မိန်းမ', label: 'မိန်းမ' },
+    { value: 'ชาย', label: 'ကျား' },
+    { value: 'หญิง', label: 'မိန်းမ' },
     { value: 'other', label: 'အခြား:' },
   ]
 
   const myShiftOptions = [
-    { value: 'ရပါတယ်', label: 'ရပါတယ်' },
-    { value: 'မရပါဘူး', label: 'မရပါဘူး' },
+    { value: 'ได้', label: 'ရပါတယ်' },
+    { value: 'ไม่ได้', label: 'မရပါဘူး' },
   ]
 
   let heroTitleResizeObserver = null
