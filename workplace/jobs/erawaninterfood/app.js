@@ -16,9 +16,9 @@
       thaiWorkCert: { label: 'หนังสือรับรองการทำงานเกี่ยวข้องกับประสบการณ์ที่ทำมา' },
     },
     my: {
-      myPhoto: { label: 'ဓာတ်ပုံ' },
-      myPassport: { label: 'နိုင်ငံကူးလက်မှတ်' },
-      myPinkCard: { label: 'ပန်းရောင် မှတ်ပုံတင်ကတ် / အလုပ်သမားလက်မှတ်' },
+      myPhoto: { label: 'ဓာတ်ပုံ', labelTh: 'รูปถ่าย' },
+      myPassport: { label: 'နိုင်ငံကူးလက်မှတ်', labelTh: 'หนังสือเดินทาง' },
+      myPinkCard: { label: 'ပန်းရောင် မှတ်ပုံတင်ကတ် / အလုပ်သမားလက်မှတ်', labelTh: 'บัตรสีชมพู / บัตรแรงงาน' },
     },
   }
 
@@ -270,10 +270,11 @@
               </div>
               <div class="mt-5 grid gap-4">
                 ${renderUploadField({
-        key: state.lang === 'th' ? 'thaiPhoto' : 'myPhoto',
-        label: state.lang === 'th' ? 'รูปถ่าย' : 'ဓာတ်ပုံ',
-        accept: 'image/*',
-      })}
+                  key: state.lang === 'th' ? 'thaiPhoto' : 'myPhoto',
+                  label: state.lang === 'th' ? 'รูปถ่าย' : 'ဓာတ်ပုံ',
+                  labelSecondary: state.lang === 'th' ? '' : 'รูปถ่าย',
+                  accept: 'image/*',
+                })}
                 ${state.lang === 'th'
         ? `
                     ${renderUploadField({ key: 'thaiIdCard', label: 'สำเนาบัตรประชาชน', accept: 'image/*,application/pdf' })}
@@ -282,8 +283,8 @@
                     ${renderUploadField({ key: 'thaiWorkCert', label: 'หนังสือรับรองการทำงานเกี่ยวข้องกับประสบการณ์ที่ทำมา', accept: 'image/*,application/pdf' })}
                   `
         : `
-                    ${renderUploadField({ key: 'myPassport', label: 'နိုင်ငံကူးလက်မှတ်', accept: 'image/*,application/pdf' })}
-                    ${renderUploadField({ key: 'myPinkCard', label: 'ပန်းရောင် မှတ်ပုံတင်ကတ် / အလုပ်သမားလက်မှတ်', accept: 'image/*,application/pdf' })}
+                    ${renderUploadField({ key: 'myPassport', label: 'နိုင်ငံကူးလက်မှတ်', labelSecondary: 'หนังสือเดินทาง', accept: 'image/*,application/pdf' })}
+                    ${renderUploadField({ key: 'myPinkCard', label: 'ပန်းရောင် မှတ်ပုံတင်ကတ် / အလုပ်သမားလက်မှတ်', labelSecondary: 'บัตรสีชมพู / บัตรแรงงาน', accept: 'image/*,application/pdf' })}
                   `}
               </div>
             </div>
@@ -520,11 +521,12 @@
       <div class="field-card p-4 sm:p-6">
         <h3 class="section-title">လျှောက်ထားသူအချက်အလက်</h3>
         <div class="mt-5 grid gap-5">
-          ${renderTextField({ id: 'my-name', label: 'အမည်', required: true, placeholder: 'အမည်ထည့်ပါ' })}
-          ${renderTextField({ id: 'my-cardNumber', label: copy.idCardNumber, required: true, placeholder: 'နံပါတ်ထည့်ပါ' })}
+          ${renderTextField({ id: 'my-name', label: 'အမည်', labelSecondary: 'ชื่อ', required: true, placeholder: 'အမည်ထည့်ပါ' })}
+          ${renderTextField({ id: 'my-cardNumber', label: copy.idCardNumber, labelSecondary: 'เลขบัตรประชาชน / เลขพาสปอร์ต', required: true, placeholder: 'နံပါတ်ထည့်ပါ' })}
           ${renderRadioGroup({
       name: 'my-gender',
       label: 'ကျား/မ',
+      labelSecondary: 'เพศ',
       required: true,
       options: myGenderOptions,
       otherInput: { id: 'my-gender-other', placeholder: 'အခြားကို ဖြည့်ပါ' },
@@ -532,6 +534,7 @@
           ${renderRadioGroup({
       name: 'my-shift',
       label: 'အလှည့်ကျ အလုပ်လုပ်နိုင်ပါသလား',
+      labelSecondary: 'ทำงานเป็นกะได้หรือไม่',
       required: true,
       options: myShiftOptions,
     })}
@@ -541,31 +544,42 @@
       <div class="field-card p-4 sm:p-6">
         <h3 class="section-title">အလုပ်အတွေ့အကြုံ</h3>
         <div class="mt-5 grid gap-5">
-          ${renderTextareaField({ id: 'my-work-history', label: 'အလုပ်အတွေ့အကြုံ', required: true, placeholder: 'အလုပ်အတွေ့အကြုံကို ထည့်ပါ' })}
+          ${renderTextareaField({ id: 'my-work-history', label: 'အလုပ်အတွေ့အကြုံ', labelSecondary: 'ประสบการณ์ทำงาน', required: true, placeholder: 'အလုပ်အတွေ့အကြုံကို ထည့်ပါ' })}
         </div>
       </div>
     `
   }
 
-  function renderTextField({ id, label, type = 'text', placeholder = '', required = false, readonly = false }) {
+  function renderLabelContent(label, labelSecondary = '', required = false) {
+    const requiredMark = required ? ` ${renderRequiredMark()}` : ''
+    const secondaryLabel = labelSecondary ? `<span class="form-label-secondary">${escapeHtml(labelSecondary)}</span>` : ''
+    return `
+      <span class="form-label-stack">
+        <span class="form-label-main">${escapeHtml(label)}${requiredMark}</span>
+        ${secondaryLabel}
+      </span>
+    `
+  }
+
+  function renderTextField({ id, label, labelSecondary = '', type = 'text', placeholder = '', required = false, readonly = false }) {
     return `
       <label class="grid gap-2">
-        <span class="form-label">${escapeHtml(label)}${required ? ` ${renderRequiredMark()}` : ''}</span>
+        ${renderLabelContent(label, labelSecondary, required)}
         <input id="${id}" name="${id}" type="${type}" class="form-control" placeholder="${escapeHtml(placeholder)}" ${readonly ? 'readonly' : ''} ${required ? 'required' : ''} />
       </label>
     `
   }
 
-  function renderTextareaField({ id, label, placeholder = '', required = false }) {
+  function renderTextareaField({ id, label, labelSecondary = '', placeholder = '', required = false }) {
     return `
       <label class="grid gap-2">
-        <span class="form-label">${escapeHtml(label)}${required ? ` ${renderRequiredMark()}` : ''}</span>
+        ${renderLabelContent(label, labelSecondary, required)}
         <textarea id="${id}" name="${id}" class="form-control min-h-[7rem] resize-y" placeholder="${escapeHtml(placeholder)}" ${required ? 'required' : ''}></textarea>
       </label>
     `
   }
 
-  function renderSelectField({ id, label, options, required = false, otherInput = null }) {
+  function renderSelectField({ id, label, labelSecondary = '', options, required = false, otherInput = null }) {
     const renderedOptions = id === 'thai-experience'
       ? [
         { value: '', label: 'เลือกประสบการณ์ทำงาน', disabled: true, selected: true },
@@ -578,7 +592,7 @@
       : options
     return `
       <label class="grid gap-2">
-        <span class="form-label">${escapeHtml(label)}${required ? ` ${renderRequiredMark()}` : ''}</span>
+        ${renderLabelContent(label, labelSecondary, required)}
         <select id="${id}" name="${id}" class="form-control" data-other-trigger="${otherInput ? 'true' : 'false'}" ${required ? 'required' : ''}>
           ${renderedOptions
         .map((option) => `<option value="${escapeAttribute(option.value)}"${option.disabled ? ' disabled' : ''}${option.selected ? ' selected' : ''}>${escapeHtml(option.label)}</option>`)
@@ -589,20 +603,20 @@
     `
   }
 
-  function renderDateField({ id, label, hint = '' }) {
+  function renderDateField({ id, label, labelSecondary = '', hint = '' }) {
     return `
       <label class="grid gap-2">
-        <span class="form-label">${escapeHtml(label)} ${renderRequiredMark()}</span>
+        ${renderLabelContent(label, labelSecondary, true)}
         <input id="${id}" name="${id}" type="text" class="form-control" placeholder="เลือกวันเกิด" readonly />
         ${hint ? `<span class="help-text">${escapeHtml(hint)}</span>` : ''}
       </label>
     `
   }
 
-  function renderRadioGroup({ name, label, options, required = false, otherInput = null }) {
+  function renderRadioGroup({ name, label, labelSecondary = '', options, required = false, otherInput = null }) {
     return `
       <fieldset class="grid gap-3">
-        <legend class="form-label">${escapeHtml(label)}${required ? ` ${renderRequiredMark()}` : ''}</legend>
+        <legend class="form-label">${renderLabelContent(label, labelSecondary, required)}</legend>
         <div class="radio-group">
           ${options
         .map((option, index) => {
@@ -622,12 +636,12 @@
     `
   }
 
-  function renderUploadField({ key, label, accept = 'image/*' }) {
+  function renderUploadField({ key, label, labelSecondary = '', accept = 'image/*' }) {
     return `
       <div class="upload-zone" data-upload-zone="${key}">
         <div class="upload-zone-head">
           <div class="upload-zone-label">
-            <p class="form-label">${escapeHtml(label)} ${renderRequiredMark()}</p>
+            ${renderLabelContent(label, labelSecondary, true)}
             <p class="upload-zone-note">${state.lang === 'th' ? 'หนึ่งช่องต่อหนึ่งไฟล์แนบ' : 'တစ်ช่องလျှင် ဖိုင်တစ်ဖိုင်'}</p>
           </div>
           <div class="file-actions">
