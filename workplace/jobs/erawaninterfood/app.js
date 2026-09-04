@@ -177,14 +177,14 @@
   ]
 
   const myGenderOptions = [
-    { value: 'ชาย', label: 'ကျား' },
-    { value: 'หญิง', label: 'မိန်းမ' },
-    { value: 'other', label: 'အခြား:' },
+    { value: 'ชาย', label: 'ကျား', labelSecondary: 'ชาย' },
+    { value: 'หญิง', label: 'မိန်းမ', labelSecondary: 'หญิง' },
+    { value: 'other', label: 'အခြား:', labelSecondary: 'อื่นๆ' },
   ]
 
   const myShiftOptions = [
-    { value: 'ได้', label: 'ရပါတယ်' },
-    { value: 'ไม่ได้', label: 'မရပါဘူး' },
+    { value: 'ได้', label: 'ရပါတယ်', labelSecondary: 'ได้' },
+    { value: 'ไม่ได้', label: 'မရပါဘူး', labelSecondary: 'ไม่ได้' },
   ]
 
   let heroTitleResizeObserver = null
@@ -346,7 +346,7 @@
                   <button type="button" data-lang-select="my" aria-pressed="${state.lang === 'my' ? 'true' : 'false'}" class="language-option group ${state.lang === 'my' ? 'is-active' : ''}" ${state.liffReady ? '' : 'disabled'}>
                     <span class="language-badge">မြန်မာ</span>
                     <span class="language-copy">
-                      <strong>မြန်မာ / เมียนมา</strong>
+                      <strong>မြန်မာ</strong>
                       <span>Erawan Interfood ဖောင်လျှောက်လွှာ</span>
                     </span>
                   </button>
@@ -625,7 +625,10 @@
           return `
                 <label class="radio-pill" for="${optionId}">
                   <input id="${optionId}" type="radio" name="${name}" value="${escapeAttribute(option.value)}" data-other-trigger="${isOther ? 'true' : 'false'}" ${required ? 'required' : ''} />
-                  <span>${escapeHtml(option.label)}</span>
+                  <span class="form-label-stack">
+                    <span class="form-label-main">${escapeHtml(option.label)}</span>
+                    ${option.labelSecondary ? `<span class="form-label-secondary">${escapeHtml(option.labelSecondary)}</span>` : ''}
+                  </span>
                 </label>
               `
         })
