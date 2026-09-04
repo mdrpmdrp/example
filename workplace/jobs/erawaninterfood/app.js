@@ -346,7 +346,7 @@
                   <button type="button" data-lang-select="my" aria-pressed="${state.lang === 'my' ? 'true' : 'false'}" class="language-option group ${state.lang === 'my' ? 'is-active' : ''}" ${state.liffReady ? '' : 'disabled'}>
                     <span class="language-badge">မြန်မာ</span>
                     <span class="language-copy">
-                      <strong>မြန်မာ</strong>
+                      <strong>မြန်မာ / เมียนมา</strong>
                       <span>Erawan Interfood ဖောင်လျှောက်လွှာ</span>
                     </span>
                   </button>
