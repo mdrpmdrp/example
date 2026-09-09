@@ -159,19 +159,6 @@
     { value: 'มากกว่า 5 ปี', label: 'มากกว่า 5 ปี' },
   ]
 
-  const thaiPositionOptions = [
-      { value: '', label: 'เลือกตำแหน่งที่ต้องการสมัคร', disabled: true, selected: true },
-    { value: 'ฝ่ายผลิต', label: 'ฝ่ายผลิต' },
-    { value: 'ฝ่ายบัญชีการเงิน', label: 'ฝ่ายบัญชีการเงิน' },
-    { value: 'ฝ่ายทรัพยากรบุคคล', label: 'ฝ่ายทรัพยากรบุคคล' },
-    { value: 'QC', label: 'QC' },
-    { value: 'QA', label: 'QA' },
-    { value: 'ช่างแม่พิมพ์/ช่างตั้งเครื่อง', label: 'ช่างแม่พิมพ์/ช่างตั้งเครื่อง' },
-    { value: 'ช่างซ่อมบำรุงทางกายภาพ (ออนไลน์)', label: 'ช่างซ่อมบำรุงทางกายภาพ (ออนไลน์)' },
-    { value: 'ช่างซ่อมบำรุงทางกายภาพ (ออฟไลน์/ประจำโรงงาน)', label: 'ช่างซ่อมบำรุงทางกายภาพ (ออฟไลน์/ประจำโรงงาน)' },
-    { value: 'other', label: 'อื่นๆ' },
-  ]
-
   const thaiDepartmentOptions = [
     { value: '', label: 'เลือกแผนกที่ต้องการสมัคร', disabled: true, selected: true },
     { value: 'แผนกบัญชี', label: 'แผนกบัญชี' },
@@ -525,13 +512,6 @@
       label: 'แผนกที่ต้องการสมัคร',
       required: true,
       options: thaiDepartmentOptions,
-    })}
-          ${renderSelectField({
-      id: 'thai-position',
-      label: 'สนใจสมัครงานในตำแหน่งใด',
-      required: true,
-      options: thaiPositionOptions,
-      otherInput: { id: 'thai-position-other', placeholder: copy.otherLabel },
     })}
           ${renderTextField({ id: 'thai-desired-income', label: 'ประสงค์รายได้ที่ต้องการ (บาท/เดือน)', required: true, type: 'number', placeholder: 'เช่น 15,000' })}
           ${renderRadioGroup({
@@ -1079,7 +1059,7 @@
 
   function validateForm() {
         const requiredFields = state.lang === 'th'
-          ? ['thai-gender', 'thai-fullName', 'thai-cardNumber', 'thai-dob', 'thai-age', 'thai-education', 'thai-experience', 'thai-skill', 'thai-department', 'thai-position', 'thai-desired-income', 'thai-shift', 'thai-phone', 'thai-latest-company', 'thai-latest-position', 'thai-latest-income', 'thai-criminal-record', 'thai-congenital-disease', 'thai-emergency-name', 'thai-emergency-phone', 'thai-emergency-relation']
+          ? ['thai-gender', 'thai-fullName', 'thai-cardNumber', 'thai-dob', 'thai-age', 'thai-education', 'thai-experience', 'thai-skill', 'thai-department', 'thai-desired-income', 'thai-shift', 'thai-phone', 'thai-latest-company', 'thai-latest-position', 'thai-latest-income', 'thai-criminal-record', 'thai-congenital-disease', 'thai-emergency-name', 'thai-emergency-phone', 'thai-emergency-relation']
           : ['my-name', 'my-cardNumber', 'my-gender', 'my-shift', 'my-work-history']
         const labels = state.lang === 'th'
           ? {
@@ -1091,7 +1071,6 @@
             'thai-education': 'วุฒิการศึกษา',
             'thai-experience': 'ประสบการณ์ทำงาน',
             'thai-skill': 'ความสามารถพิเศษ',
-            'thai-position': 'ตำแหน่งที่สนใจ',
             'thai-department': 'แผนกที่ต้องการสมัคร',
             'thai-desired-income': 'ประสงค์รายได้ที่ต้องการ',
             'thai-shift': 'การทำงานเป็นกะ',
@@ -1124,9 +1103,6 @@
         if (state.lang === 'th') {
           if ((getValue('thai-education') === 'other' || getRadioValue('thai-education') === 'other') && !getValue('thai-education-other')) {
             return { ok: false, message: 'โปรดระบุวุฒิการศึกษาในช่องอื่นๆ', focus: focusField('thai-education-other') }
-          }
-          if (getValue('thai-position') === 'other' && !getValue('thai-position-other')) {
-            return { ok: false, message: 'โปรดระบุตำแหน่งที่สนใจในช่องอื่นๆ', focus: focusField('thai-position-other') }
           }
           if (getRadioValue('thai-criminal-record') === 'เคย' && !getValue('thai-criminal-case')) {
             return { ok: false, message: 'โปรดระบุคดีที่เคยต้องโทษ', focus: focusField('thai-criminal-case') }
@@ -1201,7 +1177,7 @@
               experience: getValue('thai-experience'),
               specialSkill: getValue('thai-skill'),
               department: getValue('thai-department'),
-              position: getSelectedOtherAwareValue('thai-position', 'thai-position-other'),
+              position: '',
               desiredIncome: getValue('thai-desired-income'),
               shiftAble: getRadioValue('thai-shift'),
               phone: getValue('thai-phone'),
@@ -2124,8 +2100,6 @@
           'thai-education-other': 'thai-education-other',
           'thai-experience': 'thai-experience',
           'thai-skill': 'thai-skill',
-          'thai-position': 'thai-position',
-          'thai-position-other': 'thai-position-other',
           'thai-department': 'thai-department',
           'thai-desired-income': 'thai-desired-income',
           'thai-shift': 'thai-shift-0',
