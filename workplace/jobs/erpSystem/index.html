@@ -498,6 +498,8 @@
             return result;
         }
 
+        const ORDER_EDIT_WINDOW_DAYS = 90;
+
         function isOrderOlderThanDays_(order, days) {
             var orderDate = getOrderDateTime_(order);
             if (!orderDate) return false;
@@ -2285,7 +2287,7 @@
             var shippingAmountEl = document.getElementById('order-detail-shipping-amount');
             var discountEl = document.getElementById('order-detail-discount');
             var totalEl = document.getElementById('order-detail-total');
-            var isReadOnlyByAge = isOrderOlderThanDays_(order, 30);
+            var isReadOnlyByAge = isOrderOlderThanDays_(order, ORDER_EDIT_WINDOW_DAYS);
             var isCancelled = Boolean(order.cancelledAt || String(order.status || order.Status || '').toUpperCase() === 'CANCELLED');
 
             if (idEl) idEl.textContent = order.orderId || order.OrderID || '-';
@@ -5819,7 +5821,7 @@
                 .map(o => {
                     const orderItems = asArray(o && o.items);
                     const itemCount = orderItems.length;
-                    const isReadOnlyByAge = isOrderOlderThanDays_(o, 30);
+                    const isReadOnlyByAge = isOrderOlderThanDays_(o, ORDER_EDIT_WINDOW_DAYS);
                     const isCancelled = Boolean(o && (o.cancelledAt || String(o.status || o.Status || '').toUpperCase() === 'CANCELLED'));
                     const safeOrderId = String(o && (o.orderId || o.OrderID || '')).trim();
                     const safeOrderIdHtml = escapeHtml(safeOrderId || '-');
@@ -6076,8 +6078,8 @@
                 showNotification('บิลนี้ยกเลิกแล้ว ไม่สามารถแก้ไขได้', true);
                 return;
             }
-            if (isOrderOlderThanDays_(order, 30)) {
-                showNotification('บิลนี้สร้างเกิน 30 วันแล้ว ไม่สามารถแก้ไขได้', true);
+            if (isOrderOlderThanDays_(order, ORDER_EDIT_WINDOW_DAYS)) {
+                showNotification('บิลนี้สร้างเกิน ' + ORDER_EDIT_WINDOW_DAYS + ' วันแล้ว ไม่สามารถแก้ไขได้', true);
                 return;
             }
 
