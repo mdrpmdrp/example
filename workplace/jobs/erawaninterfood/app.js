@@ -160,6 +160,7 @@
   ]
 
   const thaiPositionOptions = [
+      { value: '', label: 'เลือกตำแหน่งที่ต้องการสมัคร', disabled: true, selected: true },
     { value: 'ฝ่ายผลิต', label: 'ฝ่ายผลิต' },
     { value: 'ฝ่ายบัญชีการเงิน', label: 'ฝ่ายบัญชีการเงิน' },
     { value: 'ฝ่ายทรัพยากรบุคคล', label: 'ฝ่ายทรัพยากรบุคคล' },
@@ -172,7 +173,7 @@
   ]
 
   const thaiDepartmentOptions = [
-    { value: '', label: 'เลือกแผนกที่เปิดรับ', disabled: true, selected: true },
+    { value: '', label: 'เลือกแผนกที่ต้องการสมัคร', disabled: true, selected: true },
     { value: 'แผนกบัญชี', label: 'แผนกบัญชี' },
     { value: 'แผนกฝ่ายขายและการตลาด', label: 'แผนกฝ่ายขายและการตลาด' },
     { value: 'แผนกฝ่ายบุคคล', label: 'แผนกฝ่ายบุคคล' },
@@ -521,7 +522,7 @@
         <div class="mt-5 grid gap-5">
           ${renderSelectField({
       id: 'thai-department',
-      label: 'แผนกที่เปิดรับ',
+      label: 'แผนกที่ต้องการสมัคร',
       required: true,
       options: thaiDepartmentOptions,
     })}
@@ -916,10 +917,11 @@
       select.addEventListener('change', () => {
         const wrapper = select.closest('label')
         if (!wrapper) return
-        const otherInput = wrapper.querySelector('input.form-control.hidden')
+        const otherInput = wrapper.querySelector('input.form-control')
         if (!otherInput) return
         const shouldShow = select.value === 'other'
         otherInput.classList.toggle('hidden', !shouldShow)
+        otherInput.required = shouldShow && select.required
         if (!shouldShow) otherInput.value = ''
       })
     })
@@ -1090,7 +1092,7 @@
             'thai-experience': 'ประสบการณ์ทำงาน',
             'thai-skill': 'ความสามารถพิเศษ',
             'thai-position': 'ตำแหน่งที่สนใจ',
-            'thai-department': 'แผนกที่เปิดรับ',
+            'thai-department': 'แผนกที่ต้องการสมัคร',
             'thai-desired-income': 'ประสงค์รายได้ที่ต้องการ',
             'thai-shift': 'การทำงานเป็นกะ',
             'thai-phone': 'เบอร์โทรติดต่อกลับ',
