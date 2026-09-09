@@ -562,7 +562,7 @@
       required: true,
       options: thaiCriminalRecordOptions,
     })}
-          ${renderTextField({ id: 'thai-criminal-case', label: 'ระบุคดี', placeholder: 'กรณีเคย โปรดระบุคดี' })}
+          ${renderTextField({ id: 'thai-criminal-case', label: 'ระบุคดี', placeholder: 'กรณีเคย โปรดระบุคดี', hidden: true })}
           ${renderTextField({ id: 'thai-congenital-disease', label: 'โรคประจำตัว', required: true, placeholder: 'ถ้าไม่มีให้ระบุ “ไม่มี”' })}
         </div>
       </div>
@@ -623,9 +623,9 @@
     `
   }
 
-  function renderTextField({ id, label, labelSecondary = '', type = 'text', placeholder = '', required = false, readonly = false }) {
+  function renderTextField({ id, label, labelSecondary = '', type = 'text', placeholder = '', required = false, readonly = false, hidden = false }) {
     return `
-      <label class="grid gap-2">
+      <label class="grid gap-2${hidden ? ' hidden' : ''}" data-field-wrapper="${id}">
         ${renderLabelContent(label, labelSecondary, required)}
         <input id="${id}" name="${id}" type="${type}" class="form-control" placeholder="${escapeHtml(placeholder)}" ${readonly ? 'readonly' : ''} ${required ? 'required' : ''} />
       </label>
@@ -923,6 +923,19 @@
         if (!shouldShow) otherInput.value = ''
       })
     })
+
+    const criminalRecordInputs = document.querySelectorAll('input[name="thai-criminal-record"]')
+    const criminalCaseWrapper = document.querySelector('[data-field-wrapper="thai-criminal-case"]')
+    const criminalCaseInput = document.getElementById('thai-criminal-case')
+    if (criminalRecordInputs.length && criminalCaseWrapper && criminalCaseInput) {
+      const syncCriminalCaseVisibility = () => {
+        const shouldShow = getRadioValue('thai-criminal-record') === 'เคย'
+        criminalCaseWrapper.classList.toggle('hidden', !shouldShow)
+        if (!shouldShow) criminalCaseInput.value = ''
+      }
+      criminalRecordInputs.forEach((input) => input.addEventListener('change', syncCriminalCaseVisibility))
+      syncCriminalCaseVisibility()
+    }
   }
 
   function hydrateUploadSlots() {
