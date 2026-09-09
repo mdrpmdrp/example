@@ -1134,6 +1134,17 @@ function thaiHeaders_() {
     'attachmentsJson',
     'rawJson',
     'status',
+    'department',
+    'desiredIncome',
+    'latestCompany',
+    'latestPosition',
+    'latestIncome',
+    'criminalRecord',
+    'criminalCase',
+    'congenitalDisease',
+    'emergencyContactName',
+    'emergencyContactPhone',
+    'emergencyContactRelation',
   ]
 }
 
@@ -1198,6 +1209,17 @@ function recordToThaiRow_(record) {
     JSON.stringify(record.attachments || []),
     JSON.stringify(record),
     record.status || '',
+    applicant.department || '',
+    applicant.desiredIncome || '',
+    applicant.latestCompany || '',
+    applicant.latestPosition || '',
+    applicant.latestIncome || '',
+    applicant.criminalRecord || '',
+    applicant.criminalCase || '',
+    applicant.congenitalDisease || '',
+    applicant.emergencyContactName || '',
+    applicant.emergencyContactPhone || '',
+    applicant.emergencyContactRelation || '',
   ]
 }
 

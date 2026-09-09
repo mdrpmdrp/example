@@ -171,6 +171,28 @@
     { value: 'other', label: 'อื่นๆ' },
   ]
 
+  const thaiDepartmentOptions = [
+    { value: '', label: 'เลือกแผนกที่เปิดรับ', disabled: true, selected: true },
+    { value: 'แผนกบัญชี', label: 'แผนกบัญชี' },
+    { value: 'แผนกฝ่ายขายและการตลาด', label: 'แผนกฝ่ายขายและการตลาด' },
+    { value: 'แผนกฝ่ายบุคคล', label: 'แผนกฝ่ายบุคคล' },
+    { value: 'QA', label: 'QA' },
+    { value: 'QC', label: 'QC' },
+    { value: 'R&D', label: 'R&D' },
+    { value: 'ซ่อมบำรุง', label: 'ซ่อมบำรุง' },
+    { value: 'ไฟฟ้า', label: 'ไฟฟ้า' },
+    { value: 'บอยเลอร์', label: 'บอยเลอร์' },
+    { value: 'ฝ่ายผลิต', label: 'ฝ่ายผลิต' },
+    { value: 'แผนกจัดส่ง', label: 'แผนกจัดส่ง' },
+    { value: 'แผนกคลังสินค้า', label: 'แผนกคลังสินค้า' },
+    { value: 'แผนกจัดซื้อ/สโตร์', label: 'แผนกจัดซื้อ/สโตร์' },
+  ]
+
+  const thaiCriminalRecordOptions = [
+    { value: 'เคย', label: 'เคย' },
+    { value: 'ไม่เคย', label: 'ไม่เคย' },
+  ]
+
   const thaiYesNo = [
     { value: 'ได้', label: 'ได้' },
     { value: 'ไม่ได้', label: 'ไม่ได้' },
@@ -498,12 +520,19 @@
         <h3 class="section-title">ข้อมูลการสมัครงาน</h3>
         <div class="mt-5 grid gap-5">
           ${renderSelectField({
+      id: 'thai-department',
+      label: 'แผนกที่เปิดรับ',
+      required: true,
+      options: thaiDepartmentOptions,
+    })}
+          ${renderSelectField({
       id: 'thai-position',
       label: 'สนใจสมัครงานในตำแหน่งใด',
       required: true,
       options: thaiPositionOptions,
       otherInput: { id: 'thai-position-other', placeholder: copy.otherLabel },
     })}
+          ${renderTextField({ id: 'thai-desired-income', label: 'ประสงค์รายได้ที่ต้องการ (บาท/เดือน)', required: true, type: 'number', placeholder: 'เช่น 15,000' })}
           ${renderRadioGroup({
       name: 'thai-shift',
       label: 'สามารถทำงานเป็นกะได้หรือไม่',
@@ -511,6 +540,39 @@
       options: thaiYesNo,
     })}
           ${renderTextField({ id: 'thai-phone', label: 'เบอร์โทรติดต่อกลับ', required: true, type: 'tel', placeholder: 'เช่น 08x-xxx-xxxx' })}
+        </div>
+      </div>
+
+      <div class="field-card p-4 sm:p-6">
+        <h3 class="section-title">ประวัติการทำงานล่าสุด</h3>
+        <p class="help-text mt-2">ระบุข้อมูลสถานประกอบการที่ทำงานล่าสุด หากไม่มีประสบการณ์ให้กรอก “ไม่มี”</p>
+        <div class="mt-5 grid gap-5 sm:grid-cols-3">
+          ${renderTextField({ id: 'thai-latest-company', label: 'ชื่อบริษัท', required: true, placeholder: 'ระบุชื่อบริษัท' })}
+          ${renderTextField({ id: 'thai-latest-position', label: 'ตำแหน่ง', required: true, placeholder: 'ระบุตำแหน่ง' })}
+          ${renderTextField({ id: 'thai-latest-income', label: 'รายได้ (บาท/เดือน)', required: true, type: 'number', placeholder: 'เช่น 15,000' })}
+        </div>
+      </div>
+
+      <div class="field-card p-4 sm:p-6">
+        <h3 class="section-title">ข้อมูลสุขภาพและประวัติ</h3>
+        <div class="mt-5 grid gap-5">
+          ${renderRadioGroup({
+      name: 'thai-criminal-record',
+      label: 'เคยต้องโทษหรือไม่',
+      required: true,
+      options: thaiCriminalRecordOptions,
+    })}
+          ${renderTextField({ id: 'thai-criminal-case', label: 'ระบุคดี', placeholder: 'กรณีเคย โปรดระบุคดี' })}
+          ${renderTextField({ id: 'thai-congenital-disease', label: 'โรคประจำตัว', required: true, placeholder: 'ถ้าไม่มีให้ระบุ “ไม่มี”' })}
+        </div>
+      </div>
+
+      <div class="field-card p-4 sm:p-6">
+        <h3 class="section-title">ผู้ติดต่อกรณีฉุกเฉิน</h3>
+        <div class="mt-5 grid gap-5 sm:grid-cols-3">
+          ${renderTextField({ id: 'thai-emergency-name', label: 'ชื่อผู้ติดต่อ', required: true, placeholder: 'ระบุชื่อ-นามสกุล' })}
+          ${renderTextField({ id: 'thai-emergency-phone', label: 'เบอร์โทร', required: true, type: 'tel', placeholder: 'เช่น 08x-xxx-xxxx' })}
+          ${renderTextField({ id: 'thai-emergency-relation', label: 'มีความเกี่ยวข้องเป็น', required: true, placeholder: 'เช่น บิดา / มารดา / คู่สมรส' })}
         </div>
       </div>
     `
@@ -1002,7 +1064,7 @@
 
   function validateForm() {
         const requiredFields = state.lang === 'th'
-          ? ['thai-gender', 'thai-fullName', 'thai-cardNumber', 'thai-dob', 'thai-age', 'thai-education', 'thai-experience', 'thai-skill', 'thai-position', 'thai-shift', 'thai-phone']
+          ? ['thai-gender', 'thai-fullName', 'thai-cardNumber', 'thai-dob', 'thai-age', 'thai-education', 'thai-experience', 'thai-skill', 'thai-department', 'thai-position', 'thai-desired-income', 'thai-shift', 'thai-phone', 'thai-latest-company', 'thai-latest-position', 'thai-latest-income', 'thai-criminal-record', 'thai-congenital-disease', 'thai-emergency-name', 'thai-emergency-phone', 'thai-emergency-relation']
           : ['my-name', 'my-cardNumber', 'my-gender', 'my-shift', 'my-work-history']
         const labels = state.lang === 'th'
           ? {
@@ -1015,8 +1077,18 @@
             'thai-experience': 'ประสบการณ์ทำงาน',
             'thai-skill': 'ความสามารถพิเศษ',
             'thai-position': 'ตำแหน่งที่สนใจ',
+            'thai-department': 'แผนกที่เปิดรับ',
+            'thai-desired-income': 'ประสงค์รายได้ที่ต้องการ',
             'thai-shift': 'การทำงานเป็นกะ',
             'thai-phone': 'เบอร์โทรติดต่อกลับ',
+            'thai-latest-company': 'ชื่อบริษัทที่ทำงานล่าสุด',
+            'thai-latest-position': 'ตำแหน่งงานล่าสุด',
+            'thai-latest-income': 'รายได้จากงานล่าสุด',
+            'thai-criminal-record': 'ประวัติเคยต้องโทษ',
+            'thai-congenital-disease': 'โรคประจำตัว',
+            'thai-emergency-name': 'ชื่อผู้ติดต่อกรณีฉุกเฉิน',
+            'thai-emergency-phone': 'เบอร์ผู้ติดต่อกรณีฉุกเฉิน',
+            'thai-emergency-relation': 'ความเกี่ยวข้องกับผู้ติดต่อฉุกเฉิน',
           }
           : {
             'my-name': 'အမည်',
@@ -1027,7 +1099,7 @@
           }
 
         for (const field of requiredFields) {
-          const isRadio = ['thai-gender', 'thai-shift', 'my-gender', 'my-shift'].includes(field)
+          const isRadio = ['thai-gender', 'thai-shift', 'thai-criminal-record', 'my-gender', 'my-shift'].includes(field)
           const value = isRadio ? getRadioValue(field) : getValue(field)
           if (!value) {
             return { ok: false, message: `โปรดกรอกข้อมูล: ${labels[field] || field}`, focus: focusField(field) }
@@ -1040,6 +1112,9 @@
           }
           if (getValue('thai-position') === 'other' && !getValue('thai-position-other')) {
             return { ok: false, message: 'โปรดระบุตำแหน่งที่สนใจในช่องอื่นๆ', focus: focusField('thai-position-other') }
+          }
+          if (getRadioValue('thai-criminal-record') === 'เคย' && !getValue('thai-criminal-case')) {
+            return { ok: false, message: 'โปรดระบุคดีที่เคยต้องโทษ', focus: focusField('thai-criminal-case') }
           }
         }
 
@@ -1110,9 +1185,20 @@
               education: getSelectedOtherAwareValue('thai-education', 'thai-education-other'),
               experience: getValue('thai-experience'),
               specialSkill: getValue('thai-skill'),
+              department: getValue('thai-department'),
               position: getSelectedOtherAwareValue('thai-position', 'thai-position-other'),
+              desiredIncome: getValue('thai-desired-income'),
               shiftAble: getRadioValue('thai-shift'),
               phone: getValue('thai-phone'),
+              latestCompany: getValue('thai-latest-company'),
+              latestPosition: getValue('thai-latest-position'),
+              latestIncome: getValue('thai-latest-income'),
+              criminalRecord: getRadioValue('thai-criminal-record'),
+              criminalCase: getValue('thai-criminal-case'),
+              congenitalDisease: getValue('thai-congenital-disease'),
+              emergencyContactName: getValue('thai-emergency-name'),
+              emergencyContactPhone: getValue('thai-emergency-phone'),
+              emergencyContactRelation: getValue('thai-emergency-relation'),
             },
             attachments,
           }
@@ -2025,8 +2111,19 @@
           'thai-skill': 'thai-skill',
           'thai-position': 'thai-position',
           'thai-position-other': 'thai-position-other',
+          'thai-department': 'thai-department',
+          'thai-desired-income': 'thai-desired-income',
           'thai-shift': 'thai-shift-0',
           'thai-phone': 'thai-phone',
+          'thai-latest-company': 'thai-latest-company',
+          'thai-latest-position': 'thai-latest-position',
+          'thai-latest-income': 'thai-latest-income',
+          'thai-criminal-record': 'thai-criminal-record-0',
+          'thai-criminal-case': 'thai-criminal-case',
+          'thai-congenital-disease': 'thai-congenital-disease',
+          'thai-emergency-name': 'thai-emergency-name',
+          'thai-emergency-phone': 'thai-emergency-phone',
+          'thai-emergency-relation': 'thai-emergency-relation',
           'my-name': 'my-name',
           'my-cardNumber': 'my-cardNumber',
           'my-gender': 'my-gender-0',
