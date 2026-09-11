@@ -19,6 +19,7 @@
       myPhoto: { label: 'ဓာတ်ပုံ', labelTh: 'รูปถ่าย' },
       myPassport: { label: 'နိုင်ငံကူးလက်မှတ်', labelTh: 'หนังสือเดินทาง' },
       myPinkCard: { label: 'ပန်းရောင် မှတ်ပုံတင်ကတ် / အလုပ်သမားလက်မှတ်', labelTh: 'บัตรสีชมพู / บัตรแรงงาน' },
+      myWorkPermit: { label: 'အလုပ်လုပ်ခွင့် လက်မှတ်', labelTh: 'Work Permit' },
     },
   }
 
@@ -187,14 +188,14 @@
   ]
 
   const myGenderOptions = [
-    { value: 'ชาย', label: 'ကျား', labelSecondary: 'ชาย' },
-    { value: 'หญิง', label: 'မိန်းမ', labelSecondary: 'หญิง' },
-    { value: 'other', label: 'အခြား:', labelSecondary: 'อื่นๆ' },
+    { value: 'ชาย', label: 'ကျား', labelSecondary: 'Male' },
+    { value: 'หญิง', label: 'မိန်းမ', labelSecondary: 'Female' },
+    { value: 'other', label: 'အခြား:', labelSecondary: 'Other' },
   ]
 
   const myShiftOptions = [
-    { value: 'ได้', label: 'ရပါတယ်', labelSecondary: 'ได้' },
-    { value: 'ไม่ได้', label: 'မရပါဘူး', labelSecondary: 'ไม่ได้' },
+    { value: 'ได้', label: 'ရပါတယ်', labelSecondary: 'Yes' },
+    { value: 'ไม่ได้', label: 'မရပါဘူး', labelSecondary: 'No' },
   ]
 
   let heroTitleResizeObserver = null
@@ -293,8 +294,9 @@
                     ${renderUploadField({ key: 'thaiWorkCert', label: 'หนังสือรับรองการทำงานเกี่ยวข้องกับประสบการณ์ที่ทำมา', accept: 'image/*,application/pdf' })}
                   `
         : `
-                    ${renderUploadField({ key: 'myPassport', label: 'နိုင်ငံကူးလက်မှတ်', labelSecondary: 'หนังสือเดินทาง', accept: 'image/*,application/pdf' })}
-                    ${renderUploadField({ key: 'myPinkCard', label: 'ပန်းရောင် မှတ်ပုံတင်ကတ် / အလုပ်သမားလက်မှတ်', labelSecondary: 'บัตรสีชมพู / บัตรแรงงาน', accept: 'image/*,application/pdf' })}
+                    ${renderUploadField({ key: 'myPassport', label: 'နိုင်ငံကူးလက်မှတ်', labelSecondary: 'Passport', accept: 'image/*,application/pdf' })}
+                    ${renderUploadField({ key: 'myPinkCard', label: 'ပန်းရောင် မှတ်ပုံတင်ကတ်', labelSecondary: 'Pink Card', accept: 'image/*,application/pdf' })}
+                    ${renderUploadField({ key: 'myWorkPermit', label: 'အလုပ်လုပ်ခွင့် လက်မှတ်', labelSecondary: 'Work Permit', accept: 'image/*,application/pdf' })}
                   `}
               </div>
             </div>
@@ -564,12 +566,16 @@
       <div class="field-card p-4 sm:p-6">
         <h3 class="section-title">လျှောက်ထားသူအချက်အလက်</h3>
         <div class="mt-5 grid gap-5">
-          ${renderTextField({ id: 'my-name', label: 'အမည်', labelSecondary: 'ชื่อ', required: true, placeholder: 'အမည်ထည့်ပါ' })}
-          ${renderTextField({ id: 'my-cardNumber', label: copy.idCardNumber, labelSecondary: 'เลขบัตรประชาชน / เลขพาสปอร์ต', required: true, placeholder: 'နံပါတ်ထည့်ပါ' })}
+          ${renderTextField({ id: 'my-name', label: 'အမည်', labelSecondary: 'Name', required: true, placeholder: 'အမည်ထည့်ပါ' })}
+          ${renderTextField({ id: 'my-cardNumber', label: copy.idCardNumber, labelSecondary: 'ID Card Number / Passport Number', required: true, placeholder: 'နံပါတ်ထည့်ပါ' })}
+          <div class="grid gap-5 sm:grid-cols-2">
+            ${renderDateField({ id: 'my-passport-expiry', label: 'နိုင်ငံကူးလက်မှတ် သက်တမ်းကုန်ဆုံးရက်', labelSecondary: 'Passport Expiry Date', required: true })}
+            ${renderDateField({ id: 'my-pink-card-expiry', label: 'ပန်းရောင်ကတ် သက်တမ်းကုန်ဆုံးရက်', labelSecondary: 'Pink Card Expiry Date', required: true })}
+          </div>
           ${renderRadioGroup({
       name: 'my-gender',
       label: 'ကျား/မ',
-      labelSecondary: 'เพศ',
+      labelSecondary: 'Gender',
       required: true,
       options: myGenderOptions,
       otherInput: { id: 'my-gender-other', placeholder: 'အခြားကို ဖြည့်ပါ' },
@@ -577,7 +583,7 @@
           ${renderRadioGroup({
       name: 'my-shift',
       label: 'အလှည့်ကျ အလုပ်လုပ်နိုင်ပါသလား',
-      labelSecondary: 'ทำงานเป็นกะได้หรือไม่',
+      labelSecondary: 'Can work shifts?',
       required: true,
       options: myShiftOptions,
     })}
@@ -587,7 +593,7 @@
       <div class="field-card p-4 sm:p-6">
         <h3 class="section-title">အလုပ်အတွေ့အကြုံ</h3>
         <div class="mt-5 grid gap-5">
-          ${renderTextareaField({ id: 'my-work-history', label: 'အလုပ်အတွေ့အကြုံ', labelSecondary: 'ประสบการณ์ทำงาน', required: true, placeholder: 'အလုပ်အတွေ့အကြုံကို ထည့်ပါ' })}
+          ${renderTextareaField({ id: 'my-work-history', label: 'အလုပ်အတွေ့အကြုံ', labelSecondary: 'Work Experience', required: true, placeholder: 'အလုပ်အတွေ့အကြုံကို ထည့်ပါ' })}
         </div>
       </div>
     `
@@ -646,11 +652,11 @@
     `
   }
 
-  function renderDateField({ id, label, labelSecondary = '', hint = '' }) {
+  function renderDateField({ id, label, labelSecondary = '', hint = '', required = true }) {
     return `
       <label class="grid gap-2">
-        ${renderLabelContent(label, labelSecondary, true)}
-        <input id="${id}" name="${id}" type="text" class="form-control" placeholder="เลือกวันเกิด" readonly />
+        ${renderLabelContent(label, labelSecondary, required)}
+        <input id="${id}" name="${id}" type="${id === 'thai-dob' ? 'text' : 'date'}" class="form-control" placeholder="${id === 'thai-dob' ? 'เลือกวันเกิด' : ''}" ${id === 'thai-dob' ? 'readonly' : ''} ${required ? 'required' : ''} />
         ${hint ? `<span class="help-text">${escapeHtml(hint)}</span>` : ''}
       </label>
     `
@@ -1060,7 +1066,7 @@
   function validateForm() {
         const requiredFields = state.lang === 'th'
           ? ['thai-gender', 'thai-fullName', 'thai-cardNumber', 'thai-dob', 'thai-age', 'thai-education', 'thai-experience', 'thai-skill', 'thai-department', 'thai-desired-income', 'thai-shift', 'thai-phone', 'thai-latest-company', 'thai-latest-position', 'thai-latest-income', 'thai-criminal-record', 'thai-congenital-disease', 'thai-emergency-name', 'thai-emergency-phone', 'thai-emergency-relation']
-          : ['my-name', 'my-cardNumber', 'my-gender', 'my-shift', 'my-work-history']
+          : ['my-name', 'my-cardNumber', 'my-passport-expiry', 'my-pink-card-expiry', 'my-gender', 'my-shift', 'my-work-history']
         const labels = state.lang === 'th'
           ? {
             'thai-gender': 'เพศ',
@@ -1087,6 +1093,8 @@
           : {
             'my-name': 'အမည်',
             'my-cardNumber': 'ကတ်နံပါတ် / Passport နံပါတ်',
+            'my-passport-expiry': 'Passport Expiry Date',
+            'my-pink-card-expiry': 'Pink Card Expiry Date',
             'my-gender': 'ကျား/မ',
             'my-shift': 'အလှည့်ကျ အလုပ်လုပ်နိုင်မှု',
             'my-work-history': 'အလုပ်အတွေ့အကြုံ',
@@ -1119,7 +1127,7 @@
   function validateAttachments() {
         const requiredKeys = state.lang === 'th'
           ? ['thaiPhoto', 'thaiIdCard', 'thaiHousehold', 'thaiEducationCert', 'thaiWorkCert']
-          : ['myPhoto', 'myPassport', 'myPinkCard']
+          : ['myPhoto', 'myPassport', 'myPinkCard', 'myWorkPermit']
 
         const attachments = []
         for (const key of requiredKeys) {
@@ -1203,6 +1211,8 @@
           applicant: {
             name: getValue('my-name'),
             cardNumber: getValue('my-cardNumber'),
+            passportExpiryDate: getValue('my-passport-expiry'),
+            pinkCardExpiryDate: getValue('my-pink-card-expiry'),
             gender: getSelectedOtherAwareValue('my-gender', 'my-gender-other'),
             shiftAble: getRadioValue('my-shift'),
             workHistory: getValue('my-work-history'),
@@ -2115,6 +2125,8 @@
           'thai-emergency-relation': 'thai-emergency-relation',
           'my-name': 'my-name',
           'my-cardNumber': 'my-cardNumber',
+          'my-passport-expiry': 'my-passport-expiry',
+          'my-pink-card-expiry': 'my-pink-card-expiry',
           'my-gender': 'my-gender-0',
           'my-gender-other': 'my-gender-other',
           'my-shift': 'my-shift-0',

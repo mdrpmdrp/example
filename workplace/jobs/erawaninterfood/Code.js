@@ -916,10 +916,6 @@ function upsertRecord_(payload) {
     throw new Error('record is required')
   }
 
-  if (record.language === 'my') {
-    normalizeMyanmarRecord_(record)
-  }
-
   return withScriptLock_(30000, () => {
     const spreadsheet = getOrCreateSpreadsheet_()
     const language = record.language === 'my' ? 'my' : 'th'
@@ -1126,14 +1122,6 @@ function thaiHeaders_() {
     'position',
     'shiftAble',
     'phone',
-    'thaiPhotoUrl',
-    'thaiIdCardUrl',
-    'thaiHouseholdUrl',
-    'thaiEducationCertUrl',
-    'thaiWorkCertUrl',
-    'attachmentsJson',
-    'rawJson',
-    'status',
     'department',
     'desiredIncome',
     'latestCompany',
@@ -1145,6 +1133,14 @@ function thaiHeaders_() {
     'emergencyContactName',
     'emergencyContactPhone',
     'emergencyContactRelation',
+    'thaiPhotoUrl',
+    'thaiIdCardUrl',
+    'thaiHouseholdUrl',
+    'thaiEducationCertUrl',
+    'thaiWorkCertUrl',
+    'attachmentsJson',
+    'rawJson',
+    'status',
   ]
 }
 
@@ -1157,11 +1153,14 @@ function myanmarHeaders_() {
     'name',
     'gender',
     'cardNumber',
+    'passportExpiryDate',
+    'pinkCardExpiryDate',
     'shiftAble',
     'workHistory',
     'myPhotoUrl',
     'myPassportUrl',
     'myPinkCardUrl',
+    'myWorkPermitUrl',
     'attachmentsJson',
     'rawJson',
     'status',
@@ -1178,6 +1177,7 @@ function attachmentKeys_() {
     'myPhoto',
     'myPassport',
     'myPinkCard',
+    'myWorkPermit',
   ]
 }
 
@@ -1201,14 +1201,6 @@ function recordToThaiRow_(record) {
     applicant.position || '',
     applicant.shiftAble || '',
     applicant.phone || '',
-    attachmentUrl_(attachmentMap, 'thaiPhoto'),
-    attachmentUrl_(attachmentMap, 'thaiIdCard'),
-    attachmentUrl_(attachmentMap, 'thaiHousehold'),
-    attachmentUrl_(attachmentMap, 'thaiEducationCert'),
-    attachmentUrl_(attachmentMap, 'thaiWorkCert'),
-    JSON.stringify(record.attachments || []),
-    JSON.stringify(record),
-    record.status || '',
     applicant.department || '',
     applicant.desiredIncome || '',
     applicant.latestCompany || '',
@@ -1220,6 +1212,14 @@ function recordToThaiRow_(record) {
     applicant.emergencyContactName || '',
     applicant.emergencyContactPhone || '',
     applicant.emergencyContactRelation || '',
+    attachmentUrl_(attachmentMap, 'thaiPhoto'),
+    attachmentUrl_(attachmentMap, 'thaiIdCard'),
+    attachmentUrl_(attachmentMap, 'thaiHousehold'),
+    attachmentUrl_(attachmentMap, 'thaiEducationCert'),
+    attachmentUrl_(attachmentMap, 'thaiWorkCert'),
+    JSON.stringify(record.attachments || []),
+    JSON.stringify(record),
+    record.status || '',
   ]
 }
 
@@ -1234,31 +1234,18 @@ function recordToMyanmarRow_(record) {
     applicant.name || '',
     applicant.gender || '',
     applicant.cardNumber || '',
+    applicant.passportExpiryDate || '',
+    applicant.pinkCardExpiryDate || '',
     applicant.shiftAble || '',
     applicant.workHistory || '',
     attachmentUrl_(attachmentMap, 'myPhoto'),
     attachmentUrl_(attachmentMap, 'myPassport'),
     attachmentUrl_(attachmentMap, 'myPinkCard'),
+    attachmentUrl_(attachmentMap, 'myWorkPermit'),
     JSON.stringify(record.attachments || []),
     JSON.stringify(record),
     record.status || '',
   ]
-}
-
-function normalizeMyanmarRecord_(record) {
-  const applicant = record.applicant || (record.applicant = {})
-  const genderMap = {
-    'ကျား': 'ชาย',
-    'မိန်းမ': 'หญิง',
-  }
-  const shiftMap = {
-    'ရပါတယ်': 'ได้',
-    'မရပါဘူး': 'ไม่ได้',
-  }
-
-  if (genderMap[applicant.gender]) applicant.gender = genderMap[applicant.gender]
-  if (shiftMap[applicant.shiftAble]) applicant.shiftAble = shiftMap[applicant.shiftAble]
-  return record
 }
 
 function buildAttachmentMap_(attachments) {
