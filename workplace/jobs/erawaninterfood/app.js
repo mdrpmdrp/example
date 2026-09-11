@@ -283,7 +283,7 @@
                 ${renderUploadField({
         key: state.lang === 'th' ? 'thaiPhoto' : 'myPhoto',
         label: state.lang === 'th' ? 'รูปถ่าย' : 'ဓာတ်ပုံ',
-        labelSecondary: state.lang === 'th' ? '' : 'รูปถ่าย',
+        labelSecondary: state.lang === 'th' ? '' : 'Photo',
         accept: 'image/*',
       })}
                 ${state.lang === 'th'
@@ -566,7 +566,7 @@
       <div class="field-card p-4 sm:p-6">
         <h3 class="section-title">လျှောက်ထားသူအချက်အလက်</h3>
         <div class="mt-5 grid gap-5">
-          ${renderTextField({ id: 'my-name', label: 'အမည်', labelSecondary: 'Name', required: true, placeholder: 'အမည်ထည့်ပါ' })}
+          ${renderTextField({ id: 'my-name', label: 'အမည်', labelSecondary: 'Name', required: true, placeholder: 'Enter name in English', pattern: "[A-Za-z](?:[A-Za-z .'-]*[A-Za-z])?", title: 'Please enter your name using English letters only.' })}
           ${renderTextField({ id: 'my-cardNumber', label: copy.idCardNumber, labelSecondary: 'ID Card Number / Passport Number', required: true, placeholder: 'နံပါတ်ထည့်ပါ' })}
           <div class="grid gap-5 sm:grid-cols-2">
             ${renderDateField({ id: 'my-passport-expiry', label: 'နိုင်ငံကူးလက်မှတ် သက်တမ်းကုန်ဆုံးရက်', labelSecondary: 'Passport Expiry Date', required: true })}
@@ -610,11 +610,11 @@
     `
   }
 
-  function renderTextField({ id, label, labelSecondary = '', type = 'text', placeholder = '', required = false, readonly = false, hidden = false }) {
+  function renderTextField({ id, label, labelSecondary = '', type = 'text', placeholder = '', required = false, readonly = false, hidden = false, pattern = '', title = '' }) {
     return `
       <label class="grid gap-2${hidden ? ' hidden' : ''}" data-field-wrapper="${id}">
         ${renderLabelContent(label, labelSecondary, required)}
-        <input id="${id}" name="${id}" type="${type}" class="form-control" placeholder="${escapeHtml(placeholder)}" ${readonly ? 'readonly' : ''} ${required ? 'required' : ''} />
+        <input id="${id}" name="${id}" type="${type}" class="form-control" placeholder="${escapeHtml(placeholder)}" ${pattern ? `pattern="${escapeAttribute(pattern)}"` : ''} ${title ? `title="${escapeAttribute(title)}"` : ''} ${readonly ? 'readonly' : ''} ${required ? 'required' : ''} />
       </label>
     `
   }
@@ -1100,15 +1100,19 @@
         'my-work-history': 'အလုပ်အတွေ့အကြုံ',
       }
 
-    for (const field of requiredFields) {
+        for (const field of requiredFields) {
       const isRadio = ['thai-gender', 'thai-shift', 'thai-criminal-record', 'my-gender', 'my-shift'].includes(field)
       const value = isRadio ? getRadioValue(field) : getValue(field)
       if (!value) {
         return { ok: false, message: `โปรดกรอกข้อมูล: ${labels[field] || field}`, focus: focusField(field) }
-      }
-    }
+          }
+        }
 
-    if (state.lang === 'th') {
+        if (state.lang === 'my' && !/^[A-Za-z](?:[A-Za-z .'-]*[A-Za-z])?$/.test(getValue('my-name'))) {
+          return { ok: false, message: 'Please enter your name using English letters only.', focus: focusField('my-name') }
+        }
+
+        if (state.lang === 'th') {
       if ((getValue('thai-education') === 'other' || getRadioValue('thai-education') === 'other') && !getValue('thai-education-other')) {
         return { ok: false, message: 'โปรดระบุวุฒิการศึกษาในช่องอื่นๆ', focus: focusField('thai-education-other') }
       }

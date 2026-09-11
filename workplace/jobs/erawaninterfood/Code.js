@@ -920,7 +920,7 @@ function upsertRecord_(payload) {
     const spreadsheet = getOrCreateSpreadsheet_()
     const language = record.language === 'my' ? 'my' : 'th'
     if (!String(record.status || '').trim()) {
-      record.status = '1. รับใบสมัครแล้ว'
+      record.status = '01. รับใบสมัครแล้ว'
     }
 
     if (!isGeneratedRecordId_(record.recordId)) {
