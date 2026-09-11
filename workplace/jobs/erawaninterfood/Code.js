@@ -13,16 +13,16 @@ const CONFIG = {
 }
 
 const STATUS_OPTIONS = [
-  '1. รับใบสมัครแล้ว',
+  '01. รับใบสมัครแล้ว',
   '02. เรียกสัมภาษณ์',
-  'ผ่านสัมภาษณ์',
-  'ไม่ผ่านสัมภาษณ์',
-  'ตรวจสุขภาพ',
-  'ผลตรวจสุขภาพผ่าน',
-  'ผลตรวจสุขภาพไม่ผ่าน',
-  'รอยืนยัน',
-  'ยืนยัน',
-  'ยกเลิก',
+  '03. ผ่านสัมภาษณ์',
+  '04. ไม่ผ่านสัมภาษณ์',
+  '05. ตรวจสุขภาพ',
+  '06. ผลตรวจสุขภาพผ่าน',
+  '07. ผลตรวจสุขภาพไม่ผ่าน',
+  '08. รอยืนยัน',
+  '09. ยืนยัน',
+  '10. ยกเลิก',
 ]
 
 const STATUS_LOG_HEADERS = [
@@ -181,7 +181,7 @@ function ensureInterviewControlSheet_(spreadsheet) {
 
   sheet.setHiddenGridlines(true)
   sheet.getRange('A1:F20').breakApart()
-  sheet.getRange('D2:F12').clearContent().clearFormat()
+  sheet.getRange('D2:F30').breakApart().clearContent().clearFormat()
 
   const maxColumns = Math.max(sheet.getMaxColumns(), 6)
   if (sheet.getMaxColumns() < maxColumns) {
@@ -286,10 +286,12 @@ function ensureInterviewControlSheet_(spreadsheet) {
   sheet.getRange('A5:C8').setVerticalAlignment('middle').setWrap(true)
 
   sheet.setFrozenRows(1)
-  sheet.setRowHeights(1, 11, 34)
+  sheet.setRowHeights(1, 30, 34)
   sheet.setRowHeights(10, 2, 42)
   sheet.setColumnWidths(1, 3, 240)
-  sheet.setColumnWidths(4, 3, 40)
+  sheet.setColumnWidth(4, 150)
+  sheet.setColumnWidth(5, 260)
+  sheet.setColumnWidth(6, 180)
 
   const nationalityRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['ไทย', 'เมียนมา'], true)
@@ -780,7 +782,7 @@ function showSpreadsheetAlert_(title, message) {
 function callInterviewCandidate() {
   return withScriptLock_(30000, () => {
     const spreadsheet = getOrCreateSpreadsheet_()
-    const controlSheet = ensureInterviewControlSheet_(spreadsheet)
+    const controlSheet = spreadsheet.getSheetByName(CONFIG.sheets.interviewControl)
     const criteria = readInterviewCriteria_(controlSheet)
     const match = findNextInterviewCandidate_(spreadsheet, criteria)
 
@@ -817,6 +819,7 @@ function callInterviewCandidate() {
 
     const updatedStatus = '02. เรียกสัมภาษณ์'
     updateCandidateStatus_(match, updatedStatus)
+    renderInterviewCandidate_(controlSheet, match, criteria)
 
     showSpreadsheetAlert_(
       'ส่งข้อมูลแล้ว',
@@ -824,6 +827,138 @@ function callInterviewCandidate() {
     )
 
   })
+}
+
+function renderInterviewCandidate_(controlSheet, match, criteria) {
+  if (!controlSheet || !match || !match.sheet) return
+
+  const area = controlSheet.getRange('D2:F30')
+  area.breakApart().clearContent().clearFormat()
+
+  controlSheet.getRange('D2:F2').merge()
+  controlSheet.getRange('D2').setValue('ผู้สมัครที่เรียกสัมภาษณ์ล่าสุด')
+    .setBackground('#1c2e77')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setFontSize(13)
+    .setHorizontalAlignment('center')
+    .setVerticalAlignment('middle')
+  controlSheet.getRange('D2:F2').setBorder(true, true, true, true, true, true, '#1c2e77', SpreadsheetApp.BorderStyle.SOLID_MEDIUM)
+
+  const headers = match.sheet.getRange(1, 1, 1, match.sheet.getLastColumn()).getValues()[0]
+  const row = match.sheet.getRange(match.rowIndex, 1, 1, headers.length).getValues()[0]
+  const valuesByHeader = {}
+  headers.forEach((header, index) => {
+    valuesByHeader[String(header || '').trim()] = row[index]
+  })
+
+  const name = match.displayName || match.fullName || match.name || match.recordId
+  const details = [
+    ['รหัสผู้สมัคร', match.recordId],
+    ['ชื่อผู้สมัคร', name],
+    ['เพศ', valuesByHeader.gender || match.gender],
+    ['สัญชาติ', match.nationality],
+    ['ตำแหน่งที่สมัคร', valuesByHeader.position || ''],
+    ['เบอร์โทรศัพท์', valuesByHeader.phone || ''],
+    ['วันสัมภาษณ์', criteria.interviewDate],
+    ['เวลาสัมภาษณ์', criteria.interviewTime],
+  ]
+
+  details.forEach((detail, index) => {
+    const rowNumber = index + 3
+    controlSheet.getRange(rowNumber, 4).setValue(detail[0])
+      .setBackground('#f1f3f9')
+      .setFontColor('#243b63')
+      .setFontWeight('bold')
+      .setVerticalAlignment('middle')
+    controlSheet.getRange(rowNumber, 5, 1, 2).merge()
+      .setValue(detail[1] || '')
+      .setBackground('#ffffff')
+      .setFontColor('#0f172a')
+      .setWrap(true)
+      .setVerticalAlignment('middle')
+  })
+  controlSheet.getRange('D3:F10').setBorder(true, true, true, true, true, true, '#d8deeb', SpreadsheetApp.BorderStyle.SOLID)
+  controlSheet.getRange('D9:F9').setNumberFormat('dd/MM/yyyy')
+  controlSheet.getRange('D10:F10').setNumberFormat('hh:mm')
+
+  controlSheet.getRange('D12:F12').merge()
+  controlSheet.getRange('D12').setValue('รูปถ่ายและเอกสารประกอบ')
+    .setBackground('#e7f5ff')
+    .setFontColor('#0c4a6e')
+    .setFontWeight('bold')
+  controlSheet.getRange('D12:F12').setBorder(true, true, true, true, true, true, '#a5d8ff', SpreadsheetApp.BorderStyle.SOLID)
+
+  const fileRows = []
+  const attachmentMetaByKey = {}
+  try {
+    const attachments = JSON.parse(String(valuesByHeader.attachmentsJson || '[]'))
+    if (Array.isArray(attachments)) {
+      attachments.forEach((attachment) => {
+        if (attachment && attachment.fieldKey) {
+          attachmentMetaByKey[String(attachment.fieldKey)] = attachment
+        }
+      })
+    }
+  } catch (error) {
+    // Keep rendering URL fields even if the optional attachment metadata is invalid.
+  }
+
+  headers.forEach((header, index) => {
+    const key = String(header || '').trim()
+    const value = String(row[index] || '').trim()
+    if (!value || !/Url$/i.test(key)) return
+    const fieldKey = key.replace(/Url$/i, '')
+    const attachment = attachmentMetaByKey[fieldKey]
+    const isImage = key === (match.language === 'th' ? 'thaiPhotoUrl' : 'myPhotoUrl')
+      || Boolean(attachment && String(attachment.mimeType || '').toLowerCase().startsWith('image/'))
+    fileRows.push({ key, value, isImage })
+  })
+
+  if (!fileRows.length) {
+    controlSheet.getRange('D13:F13').merge().setValue('ไม่มีไฟล์แนบ')
+      .setFontColor('#667085').setFontStyle('italic')
+    controlSheet.getRange('D13:F13').setBorder(true, true, true, true, true, true, '#d8deeb', SpreadsheetApp.BorderStyle.SOLID)
+  } else {
+    fileRows.forEach((file, index) => {
+      const rowNumber = index + 13
+      controlSheet.getRange(rowNumber, 4).setValue(interviewFileLabel_(file.key))
+        .setBackground('#f8f9fc')
+        .setFontColor('#243b63')
+        .setFontWeight('bold')
+      controlSheet.getRange(rowNumber, 5, 1, 2).merge()
+        .setFormula(file.isImage
+          ? buildInterviewImageFormula_(file.value)
+          : buildInterviewHyperlinkFormula_(file.value))
+        .setFontColor(file.isImage ? '#0f172a' : '#1155cc')
+        .setFontWeight('bold')
+        .setHorizontalAlignment(file.isImage ? 'center' : 'left')
+        .setVerticalAlignment('middle')
+      controlSheet.getRange(rowNumber, 4, 1, 3).setBorder(true, true, true, true, true, true, '#d8deeb', SpreadsheetApp.BorderStyle.SOLID)
+      if (file.isImage) controlSheet.setRowHeight(rowNumber, 170)
+    })
+  }
+}
+
+function buildInterviewImageFormula_(url) {
+  return `=IMAGE("${escapeInterviewFormulaText_(url)}",4,150,150)`
+}
+
+function buildInterviewHyperlinkFormula_(url) {
+  return `=HYPERLINK("${escapeInterviewFormulaText_(url)}","เปิดไฟล์")`
+}
+
+function escapeInterviewFormulaText_(value) {
+  return String(value || '').replace(/"/g, '""')
+}
+
+function interviewFileLabel_(header) {
+  return String(header || '')
+    .replace(/Url$/i, '')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^thai/i, 'ไทย ')
+    .replace(/^my/i, 'เมียนมา ')
+    .trim()
 }
 
 function handleStatusEdit_(e) {
@@ -920,7 +1055,7 @@ function upsertRecord_(payload) {
     const spreadsheet = getOrCreateSpreadsheet_()
     const language = record.language === 'my' ? 'my' : 'th'
     if (!String(record.status || '').trim()) {
-      record.status = '01. รับใบสมัครแล้ว'
+      record.status = '1. รับใบสมัครแล้ว'
     }
 
     if (!isGeneratedRecordId_(record.recordId)) {
