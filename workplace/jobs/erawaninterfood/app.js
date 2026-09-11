@@ -566,7 +566,7 @@
       <div class="field-card p-4 sm:p-6">
         <h3 class="section-title">လျှောက်ထားသူအချက်အလက်</h3>
         <div class="mt-5 grid gap-5">
-          ${renderTextField({ id: 'my-name', label: 'အမည်', labelSecondary: 'Name', required: true, placeholder: 'Enter name in English', pattern: "[A-Za-z](?:[A-Za-z .'-]*[A-Za-z])?", title: 'Please enter your name using English letters only.' })}
+          ${renderTextField({ id: 'my-name', label: 'အမည်', labelSecondary: 'Name', required: true, placeholder: 'Enter name in English ONLY', pattern: "[A-Za-z](?:[A-Za-z .'-]*[A-Za-z])?", title: 'Please enter your name using English letters only.' })}
           ${renderTextField({ id: 'my-cardNumber', label: copy.idCardNumber, labelSecondary: 'ID Card Number / Passport Number', required: true, placeholder: 'နံပါတ်ထည့်ပါ' })}
           <div class="grid gap-5 sm:grid-cols-2">
             ${renderDateField({ id: 'my-passport-expiry', label: 'နိုင်ငံကူးလက်မှတ် သက်တမ်းကုန်ဆုံးရက်', labelSecondary: 'Passport Expiry Date', required: true })}
