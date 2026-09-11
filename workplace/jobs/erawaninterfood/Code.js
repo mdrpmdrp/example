@@ -494,12 +494,13 @@ function normalizeStatusLabel_(value) {
 function buildInterviewInstructionText_(language, interviewDateText, interviewTimeText) {
   if (language === 'my') {
     return [
-      'အင်တာဗျူးဖိတ်ကြားချက်',
-      `အင်တာဗျူးရက် - ${interviewDateText}`,
-      `အချိန် - ${interviewTimeText}`,
-      '\n\n',
-      'ကျေးဇူးပြု၍ အတည်ပြုရန် ပြန်လည်ဆက်သွယ်ပေးပါ သို့မဟုတ် မလာနိုင်ပါက ကြိုတင်အသိပေးပါ။',
-      'အောက်ပါ Flex message ကို အင်တာဗျူးနေ့တွင် ကုမ္ပဏီဝန်ထမ်းထံ ပြသပေးပါ။',
+      'Interview Invitation',
+      `Interview date: ${interviewDateText}`,
+      `Interview time: ${interviewTimeText}`,
+      '\n',
+      'Please contact us to confirm your appointment or inform us in advance if you are unavailable.',
+      '\n',
+      'Show this message to the company staff on the interview day.',
     ].join('\n')
   }
 
@@ -507,9 +508,10 @@ function buildInterviewInstructionText_(language, interviewDateText, interviewTi
     'แจ้งเรียกสัมภาษณ์',
     `กำหนดวันสัมภาษณ์: ${interviewDateText}`,
     `เวลา: ${interviewTimeText}`,
-    '\n\n',
+    '\n',
     'กรุณาติดต่อกลับเพื่อยืนยันนัดหมาย หรือแจ้งหากไม่สะดวกเข้าสัมภาษณ์',
-    'กรุณาแสดง Flex message นี้ให้เจ้าหน้าที่บริษัทในวันสัมภาษณ์',
+    '\n',
+    'กรุณาแสดงข้อความนี้ให้เจ้าหน้าที่บริษัทในวันสัมภาษณ์',
   ].join('\n')
 }
 
@@ -611,8 +613,8 @@ function buildInterviewFlexMessageMyanmar_(match, interviewDateText, interviewTi
           layout: 'vertical',
           spacing: 'xs',
           contents: [
-            { type: 'text', text: 'အင်တာဗျူးခေါ်ဆိုမှု', weight: 'bold', size: 'xl', color: FLEX_THEME.bodyText, wrap: true },
-            { type: 'text', text: 'အင်တာဗျူးနေ့တွင် ကုမ္ပဏီဝန်ထမ်းထံ ပြသပေးပါ', size: 'sm', color: FLEX_THEME.mutedText, wrap: true },
+            { type: 'text', text: 'Interview Invitation', weight: 'bold', size: 'xl', color: FLEX_THEME.bodyText, wrap: true },
+            { type: 'text', text: 'Please check the interview details below.', size: 'sm', color: FLEX_THEME.mutedText, wrap: true },
           ],
         },
         {
@@ -620,9 +622,9 @@ function buildInterviewFlexMessageMyanmar_(match, interviewDateText, interviewTi
           margin: 'md',
         },
         buildInterviewFlexRow_('record id', match.recordId),
-        buildInterviewFlexRow_('အမည်', name),
-        buildInterviewFlexRow_('အင်တာဗျူးရက်', interviewDateText),
-        buildInterviewFlexRow_('အချိန်', interviewTimeText),
+        buildInterviewFlexRow_('Name', name),
+        buildInterviewFlexRow_('Interview date', interviewDateText),
+        buildInterviewFlexRow_('Interview time', interviewTimeText),
       ],
     },
     footer: {
@@ -631,7 +633,7 @@ function buildInterviewFlexMessageMyanmar_(match, interviewDateText, interviewTi
       contents: [
         {
           type: 'text',
-          text: 'ကျေးဇူးပြု၍ ပြန်လည်ဆက်သွယ်ကာ ချိန်းဆိုချက်ကို အတည်ပြုပါ သို့မဟုတ် မလာနိုင်ပါက ကြိုတင်အသိပေးပါ',
+          text: 'Please arrive on time and prepare the required documents for your interview.',
           size: 'xs',
           color: FLEX_THEME.mutedText,
           wrap: true,
