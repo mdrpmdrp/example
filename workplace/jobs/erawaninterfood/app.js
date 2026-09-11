@@ -281,11 +281,11 @@
               </div>
               <div class="mt-5 grid gap-4">
                 ${renderUploadField({
-                  key: state.lang === 'th' ? 'thaiPhoto' : 'myPhoto',
-                  label: state.lang === 'th' ? 'รูปถ่าย' : 'ဓာတ်ပုံ',
-                  labelSecondary: state.lang === 'th' ? '' : 'รูปถ่าย',
-                  accept: 'image/*',
-                })}
+        key: state.lang === 'th' ? 'thaiPhoto' : 'myPhoto',
+        label: state.lang === 'th' ? 'รูปถ่าย' : 'ဓာတ်ပုံ',
+        labelSecondary: state.lang === 'th' ? '' : 'รูปถ่าย',
+        accept: 'image/*',
+      })}
                 ${state.lang === 'th'
         ? `
                     ${renderUploadField({ key: 'thaiIdCard', label: 'สำเนาบัตรประชาชน', accept: 'image/*,application/pdf' })}
@@ -398,7 +398,7 @@
     scheduleHeroTitleFit()
 
     if (document.fonts?.ready) {
-      document.fonts.ready.then(scheduleHeroTitleFit).catch(() => {})
+      document.fonts.ready.then(scheduleHeroTitleFit).catch(() => { })
     }
   }
 
@@ -734,44 +734,44 @@
     }
 
     if (statusEl) statusEl.textContent = 'initializing'
-    await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true })
-
-    if (!liff.isLoggedIn()) {
-      const target = `${window.location.origin}${window.location.pathname}${window.location.search}`
-      liff.login({ redirectUri: target })
-      return
-    }
-
-    try {
-      if (!liff.isInClient()) {
-        const friendship = await liff.getFriendship()
-        if (friendship && friendship.friendFlag === false && typeof liff.requestFriendship === 'function') {
-          await liff.requestFriendship()
-        }
+    liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true })
+    liff.ready.then(async () => {
+      if (!liff.isLoggedIn()) {
+        const target = `${window.location.origin}${window.location.pathname}${window.location.search}`
+        liff.login({ redirectUri: target })
+        return
       }
-    } catch (error) {
-      console.warn('Friendship check failed:', error)
-    }
+      try {
+        if (!liff.isInClient()) {
+          const friendship = await liff.getFriendship()
+          if (friendship && friendship.friendFlag === false && typeof liff.requestFriendship === 'function') {
+            await liff.requestFriendship()
+          }
+        }
+      } catch (error) {
+        console.warn('Friendship check failed:', error)
+      }
 
-    try {
-      const profile = await liff.getProfile()
-      state.displayName = profile?.displayName || ''
-      state.pictureUrl = profile?.pictureUrl || ''
-    } catch (error) {
-      console.warn('Profile fetch failed:', error)
-    }
+      try {
+        const profile = await liff.getProfile()
+        state.displayName = profile?.displayName || ''
+        state.pictureUrl = profile?.pictureUrl || ''
+      } catch (error) {
+        console.warn('Profile fetch failed:', error)
+      }
 
-    try {
-      const context = liff.getContext?.()
-      state.userId = context?.userId || ''
-    } catch (error) {
-      console.warn('Context fetch failed:', error)
-    }
+      try {
+        const context = liff.getContext?.()
+        state.userId = context?.userId || ''
+      } catch (error) {
+        console.warn('Context fetch failed:', error)
+      }
 
-    state.liffReady = true
-    renderApp()
-    if (state.lang) initFormEnhancements()
-    refreshUserPanel()
+      state.liffReady = true
+      renderApp()
+      if (state.lang) initFormEnhancements()
+      refreshUserPanel()
+    })
   }
 
   function initFormEnhancements() {
@@ -1064,470 +1064,472 @@
   }
 
   function validateForm() {
-        const requiredFields = state.lang === 'th'
-          ? ['thai-gender', 'thai-fullName', 'thai-cardNumber', 'thai-dob', 'thai-age', 'thai-education', 'thai-experience', 'thai-skill', 'thai-department', 'thai-desired-income', 'thai-shift', 'thai-phone', 'thai-latest-company', 'thai-latest-position', 'thai-latest-income', 'thai-criminal-record', 'thai-congenital-disease', 'thai-emergency-name', 'thai-emergency-phone', 'thai-emergency-relation']
-          : ['my-name', 'my-cardNumber', 'my-passport-expiry', 'my-pink-card-expiry', 'my-gender', 'my-shift', 'my-work-history']
-        const labels = state.lang === 'th'
-          ? {
-            'thai-gender': 'เพศ',
-            'thai-fullName': 'ชื่อ-นามสกุล',
-            'thai-cardNumber': 'เลขบัตรประชาชน',
-            'thai-dob': 'วัน เดือน ปีเกิด',
-            'thai-age': 'อายุ',
-            'thai-education': 'วุฒิการศึกษา',
-            'thai-experience': 'ประสบการณ์ทำงาน',
-            'thai-skill': 'ความสามารถพิเศษ',
-            'thai-department': 'แผนกที่ต้องการสมัคร',
-            'thai-desired-income': 'ประสงค์รายได้ที่ต้องการ',
-            'thai-shift': 'การทำงานเป็นกะ',
-            'thai-phone': 'เบอร์โทรติดต่อกลับ',
-            'thai-latest-company': 'ชื่อบริษัทที่ทำงานล่าสุด',
-            'thai-latest-position': 'ตำแหน่งงานล่าสุด',
-            'thai-latest-income': 'รายได้จากงานล่าสุด',
-            'thai-criminal-record': 'ประวัติเคยต้องโทษ',
-            'thai-congenital-disease': 'โรคประจำตัว',
-            'thai-emergency-name': 'ชื่อผู้ติดต่อกรณีฉุกเฉิน',
-            'thai-emergency-phone': 'เบอร์ผู้ติดต่อกรณีฉุกเฉิน',
-            'thai-emergency-relation': 'ความเกี่ยวข้องกับผู้ติดต่อฉุกเฉิน',
-          }
-          : {
-            'my-name': 'အမည်',
-            'my-cardNumber': 'ကတ်နံပါတ် / Passport နံပါတ်',
-            'my-passport-expiry': 'Passport Expiry Date',
-            'my-pink-card-expiry': 'Pink Card Expiry Date',
-            'my-gender': 'ကျား/မ',
-            'my-shift': 'အလှည့်ကျ အလုပ်လုပ်နိုင်မှု',
-            'my-work-history': 'အလုပ်အတွေ့အကြုံ',
-          }
-
-        for (const field of requiredFields) {
-          const isRadio = ['thai-gender', 'thai-shift', 'thai-criminal-record', 'my-gender', 'my-shift'].includes(field)
-          const value = isRadio ? getRadioValue(field) : getValue(field)
-          if (!value) {
-            return { ok: false, message: `โปรดกรอกข้อมูล: ${labels[field] || field}`, focus: focusField(field) }
-          }
-        }
-
-        if (state.lang === 'th') {
-          if ((getValue('thai-education') === 'other' || getRadioValue('thai-education') === 'other') && !getValue('thai-education-other')) {
-            return { ok: false, message: 'โปรดระบุวุฒิการศึกษาในช่องอื่นๆ', focus: focusField('thai-education-other') }
-          }
-          if (getRadioValue('thai-criminal-record') === 'เคย' && !getValue('thai-criminal-case')) {
-            return { ok: false, message: 'โปรดระบุคดีที่เคยต้องโทษ', focus: focusField('thai-criminal-case') }
-          }
-        }
-
-        if (state.lang === 'my' && getRadioValue('my-gender') === 'other' && !getValue('my-gender-other')) {
-            return { ok: false, message: 'ကျား/မ အခြားကို ဖြည့်ပါ', focus: focusField('my-gender-other') }
-          }
-
-        return { ok: true }
+    const requiredFields = state.lang === 'th'
+      ? ['thai-gender', 'thai-fullName', 'thai-cardNumber', 'thai-dob', 'thai-age', 'thai-education', 'thai-experience', 'thai-skill', 'thai-department', 'thai-desired-income', 'thai-shift', 'thai-phone', 'thai-latest-company', 'thai-latest-position', 'thai-latest-income', 'thai-criminal-record', 'thai-congenital-disease', 'thai-emergency-name', 'thai-emergency-phone', 'thai-emergency-relation']
+      : ['my-name', 'my-cardNumber', 'my-passport-expiry', 'my-pink-card-expiry', 'my-gender', 'my-shift', 'my-work-history']
+    const labels = state.lang === 'th'
+      ? {
+        'thai-gender': 'เพศ',
+        'thai-fullName': 'ชื่อ-นามสกุล',
+        'thai-cardNumber': 'เลขบัตรประชาชน',
+        'thai-dob': 'วัน เดือน ปีเกิด',
+        'thai-age': 'อายุ',
+        'thai-education': 'วุฒิการศึกษา',
+        'thai-experience': 'ประสบการณ์ทำงาน',
+        'thai-skill': 'ความสามารถพิเศษ',
+        'thai-department': 'แผนกที่ต้องการสมัคร',
+        'thai-desired-income': 'ประสงค์รายได้ที่ต้องการ',
+        'thai-shift': 'การทำงานเป็นกะ',
+        'thai-phone': 'เบอร์โทรติดต่อกลับ',
+        'thai-latest-company': 'ชื่อบริษัทที่ทำงานล่าสุด',
+        'thai-latest-position': 'ตำแหน่งงานล่าสุด',
+        'thai-latest-income': 'รายได้จากงานล่าสุด',
+        'thai-criminal-record': 'ประวัติเคยต้องโทษ',
+        'thai-congenital-disease': 'โรคประจำตัว',
+        'thai-emergency-name': 'ชื่อผู้ติดต่อกรณีฉุกเฉิน',
+        'thai-emergency-phone': 'เบอร์ผู้ติดต่อกรณีฉุกเฉิน',
+        'thai-emergency-relation': 'ความเกี่ยวข้องกับผู้ติดต่อฉุกเฉิน',
       }
+      : {
+        'my-name': 'အမည်',
+        'my-cardNumber': 'ကတ်နံပါတ် / Passport နံပါတ်',
+        'my-passport-expiry': 'Passport Expiry Date',
+        'my-pink-card-expiry': 'Pink Card Expiry Date',
+        'my-gender': 'ကျား/မ',
+        'my-shift': 'အလှည့်ကျ အလုပ်လုပ်နိုင်မှု',
+        'my-work-history': 'အလုပ်အတွေ့အကြုံ',
+      }
+
+    for (const field of requiredFields) {
+      const isRadio = ['thai-gender', 'thai-shift', 'thai-criminal-record', 'my-gender', 'my-shift'].includes(field)
+      const value = isRadio ? getRadioValue(field) : getValue(field)
+      if (!value) {
+        return { ok: false, message: `โปรดกรอกข้อมูล: ${labels[field] || field}`, focus: focusField(field) }
+      }
+    }
+
+    if (state.lang === 'th') {
+      if ((getValue('thai-education') === 'other' || getRadioValue('thai-education') === 'other') && !getValue('thai-education-other')) {
+        return { ok: false, message: 'โปรดระบุวุฒิการศึกษาในช่องอื่นๆ', focus: focusField('thai-education-other') }
+      }
+      if (getRadioValue('thai-criminal-record') === 'เคย' && !getValue('thai-criminal-case')) {
+        return { ok: false, message: 'โปรดระบุคดีที่เคยต้องโทษ', focus: focusField('thai-criminal-case') }
+      }
+    }
+
+    if (state.lang === 'my' && getRadioValue('my-gender') === 'other' && !getValue('my-gender-other')) {
+      return { ok: false, message: 'ကျား/မ အခြားကို ဖြည့်ပါ', focus: focusField('my-gender-other') }
+    }
+
+    return { ok: true }
+  }
 
   function validateAttachments() {
-        const requiredKeys = state.lang === 'th'
-          ? ['thaiPhoto', 'thaiIdCard', 'thaiHousehold', 'thaiEducationCert', 'thaiWorkCert']
-          : ['myPhoto', 'myPassport', 'myPinkCard', 'myWorkPermit']
+    const requiredKeys = state.lang === 'th'
+      ? ['thaiPhoto', 'thaiIdCard', 'thaiHousehold', 'thaiEducationCert', 'thaiWorkCert']
+      : ['myPhoto', 'myPassport', 'myPinkCard', 'myWorkPermit']
 
-        const attachments = []
-        for (const key of requiredKeys) {
-          const item = state.uploads[key]
-          if (!item) {
-            return { ok: false, message: state.lang === 'th'
-              ? `กรุณาแนบไฟล์: ${getUploadDefinitions()[key]?.label || key}`
-              : `ဖိုင်ကို အပ်လုဒ်လုပ်ပါ: ${getUploadDefinitions()[key]?.label || key}` }
-          }
-          if (item.uploadStatus === 'PENDING' || item.uploadStatus === 'UPLOADING') {
-            return { ok: false, message: appText[state.lang].uploadPending }
-          }
-          if (item.uploadStatus === 'ERROR') {
-            return { ok: false, message: appText[state.lang].uploadError }
-          }
-          attachments.push({
-            id: item.id,
-            name: item.name,
-            mimeType: item.mimeType || item.type || '',
-            size: item.size || 0,
-            fieldKey: item.fieldKey,
-            url: item.url || '',
-          })
+    const attachments = []
+    for (const key of requiredKeys) {
+      const item = state.uploads[key]
+      if (!item) {
+        return {
+          ok: false, message: state.lang === 'th'
+            ? `กรุณาแนบไฟล์: ${getUploadDefinitions()[key]?.label || key}`
+            : `ဖိုင်ကို အပ်လုဒ်လုပ်ပါ: ${getUploadDefinitions()[key]?.label || key}`
         }
-        return { ok: true, attachments }
       }
+      if (item.uploadStatus === 'PENDING' || item.uploadStatus === 'UPLOADING') {
+        return { ok: false, message: appText[state.lang].uploadPending }
+      }
+      if (item.uploadStatus === 'ERROR') {
+        return { ok: false, message: appText[state.lang].uploadError }
+      }
+      attachments.push({
+        id: item.id,
+        name: item.name,
+        mimeType: item.mimeType || item.type || '',
+        size: item.size || 0,
+        fieldKey: item.fieldKey,
+        url: item.url || '',
+      })
+    }
+    return { ok: true, attachments }
+  }
 
   function buildRecord() {
-        const createdAt = new Date().toISOString()
-        const attachments = Object.values(state.uploads)
-          .filter((item) => item && item.uploadStatus === 'UPLOADED' && item.id)
-          .map((item) => ({
-            id: item.id,
-            name: item.name,
-            mimeType: item.mimeType || item.type || '',
-            size: item.size || 0,
-            fieldKey: item.fieldKey,
-            url: item.url || '',
-          }))
+    const createdAt = new Date().toISOString()
+    const attachments = Object.values(state.uploads)
+      .filter((item) => item && item.uploadStatus === 'UPLOADED' && item.id)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        mimeType: item.mimeType || item.type || '',
+        size: item.size || 0,
+        fieldKey: item.fieldKey,
+        url: item.url || '',
+      }))
 
-        if (state.lang === 'th') {
-          return {
-            language: 'th',
-            createdAt,
-            userId: state.userId,
-            displayName: state.displayName,
-            applicant: {
-              gender: getRadioValue('thai-gender'),
-              fullName: getValue('thai-fullName'),
-              cardNumber: getValue('thai-cardNumber'),
-              dob: getValue('thai-dob'),
-              age: Number(getValue('thai-age')) || null,
-              nationality: state.lang === 'th' ? 'ไทย' : 'မြန်မာ',
-              education: getSelectedOtherAwareValue('thai-education', 'thai-education-other'),
-              experience: getValue('thai-experience'),
-              specialSkill: getValue('thai-skill'),
-              department: getValue('thai-department'),
-              position: '',
-              desiredIncome: getValue('thai-desired-income'),
-              shiftAble: getRadioValue('thai-shift'),
-              phone: getValue('thai-phone'),
-              latestCompany: getValue('thai-latest-company'),
-              latestPosition: getValue('thai-latest-position'),
-              latestIncome: getValue('thai-latest-income'),
-              criminalRecord: getRadioValue('thai-criminal-record'),
-              criminalCase: getValue('thai-criminal-case'),
-              congenitalDisease: getValue('thai-congenital-disease'),
-              emergencyContactName: getValue('thai-emergency-name'),
-              emergencyContactPhone: getValue('thai-emergency-phone'),
-              emergencyContactRelation: getValue('thai-emergency-relation'),
-            },
-            attachments,
-          }
-        }
-
-        return {
-          language: 'my',
-          createdAt,
-          userId: state.userId,
-          displayName: state.displayName,
-          applicant: {
-            name: getValue('my-name'),
-            cardNumber: getValue('my-cardNumber'),
-            passportExpiryDate: getValue('my-passport-expiry'),
-            pinkCardExpiryDate: getValue('my-pink-card-expiry'),
-            gender: getSelectedOtherAwareValue('my-gender', 'my-gender-other'),
-            shiftAble: getRadioValue('my-shift'),
-            workHistory: getValue('my-work-history'),
-          },
-          attachments,
-        }
+    if (state.lang === 'th') {
+      return {
+        language: 'th',
+        createdAt,
+        userId: state.userId,
+        displayName: state.displayName,
+        applicant: {
+          gender: getRadioValue('thai-gender'),
+          fullName: getValue('thai-fullName'),
+          cardNumber: getValue('thai-cardNumber'),
+          dob: getValue('thai-dob'),
+          age: Number(getValue('thai-age')) || null,
+          nationality: state.lang === 'th' ? 'ไทย' : 'မြန်မာ',
+          education: getSelectedOtherAwareValue('thai-education', 'thai-education-other'),
+          experience: getValue('thai-experience'),
+          specialSkill: getValue('thai-skill'),
+          department: getValue('thai-department'),
+          position: '',
+          desiredIncome: getValue('thai-desired-income'),
+          shiftAble: getRadioValue('thai-shift'),
+          phone: getValue('thai-phone'),
+          latestCompany: getValue('thai-latest-company'),
+          latestPosition: getValue('thai-latest-position'),
+          latestIncome: getValue('thai-latest-income'),
+          criminalRecord: getRadioValue('thai-criminal-record'),
+          criminalCase: getValue('thai-criminal-case'),
+          congenitalDisease: getValue('thai-congenital-disease'),
+          emergencyContactName: getValue('thai-emergency-name'),
+          emergencyContactPhone: getValue('thai-emergency-phone'),
+          emergencyContactRelation: getValue('thai-emergency-relation'),
+        },
+        attachments,
       }
+    }
+
+    return {
+      language: 'my',
+      createdAt,
+      userId: state.userId,
+      displayName: state.displayName,
+      applicant: {
+        name: getValue('my-name'),
+        cardNumber: getValue('my-cardNumber'),
+        passportExpiryDate: getValue('my-passport-expiry'),
+        pinkCardExpiryDate: getValue('my-pink-card-expiry'),
+        gender: getSelectedOtherAwareValue('my-gender', 'my-gender-other'),
+        shiftAble: getRadioValue('my-shift'),
+        workHistory: getValue('my-work-history'),
+      },
+      attachments,
+    }
+  }
 
   function handleFileSelection(fieldKey, fileList) {
-        const files = Array.from(fileList || [])
-        if (!files.length) return
+    const files = Array.from(fileList || [])
+    if (!files.length) return
 
-        const file = files[0]
-        const previous = state.uploads[fieldKey]
-        if (previous && previous.uploadStatus === 'UPLOADING') {
-          abortUpload(previous)
-        }
-        if (previous && previous.uploadStatus === 'UPLOADED') {
-          void removeAttachment(fieldKey, { silent: true })
-        }
+    const file = files[0]
+    const previous = state.uploads[fieldKey]
+    if (previous && previous.uploadStatus === 'UPLOADING') {
+      abortUpload(previous)
+    }
+    if (previous && previous.uploadStatus === 'UPLOADED') {
+      void removeAttachment(fieldKey, { silent: true })
+    }
 
-        const uploadFile = {
-          fieldKey,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          file,
-          uploadStatus: 'PENDING',
-          progress: 0,
-          id: '',
-          url: '',
-          mimeType: file.type,
-          uploadHandle: null,
-        }
-        state.uploads[fieldKey] = uploadFile
-        renderUploadSlot(fieldKey)
-        void uploadFileToDrive(uploadFile)
-      }
+    const uploadFile = {
+      fieldKey,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      file,
+      uploadStatus: 'PENDING',
+      progress: 0,
+      id: '',
+      url: '',
+      mimeType: file.type,
+      uploadHandle: null,
+    }
+    state.uploads[fieldKey] = uploadFile
+    renderUploadSlot(fieldKey)
+    void uploadFileToDrive(uploadFile)
+  }
 
   async function uploadFileToDrive(uploadFile) {
+    try {
+      await uploadFileToDriveOnce(uploadFile, false)
+    } catch (error) {
+      if (isUploadCancelled(error)) {
+        delete state.uploads[uploadFile.fieldKey]
+        renderUploadSlot(uploadFile.fieldKey)
+        return
+      }
+
+      if (isUploadAuthExpired(error)) {
+        state.uploadAuth = null
         try {
-          await uploadFileToDriveOnce(uploadFile, false)
-        } catch (error) {
-          if (isUploadCancelled(error)) {
-            delete state.uploads[uploadFile.fieldKey]
-            renderUploadSlot(uploadFile.fieldKey)
-            return
-          }
-
-          if (isUploadAuthExpired(error)) {
-            state.uploadAuth = null
-            try {
-              await uploadFileToDriveOnce(uploadFile, true)
-              return
-            } catch (retryError) {
-              error = retryError
-            }
-          }
-
-          uploadFile.uploadStatus = 'ERROR'
-          uploadFile.progress = 0
-          uploadFile.uploadHandle = null
-          renderUploadSlot(uploadFile.fieldKey)
-          await showAlert('error', state.lang === 'th' ? 'อัปโหลดไฟล์ไม่สำเร็จ' : 'ဖိုင်အပ်လုဒ် မအောင်မြင်ပါ', normalizeErrorMessage(error))
+          await uploadFileToDriveOnce(uploadFile, true)
+          return
+        } catch (retryError) {
+          error = retryError
         }
       }
+
+      uploadFile.uploadStatus = 'ERROR'
+      uploadFile.progress = 0
+      uploadFile.uploadHandle = null
+      renderUploadSlot(uploadFile.fieldKey)
+      await showAlert('error', state.lang === 'th' ? 'อัปโหลดไฟล์ไม่สำเร็จ' : 'ဖိုင်အပ်လုဒ် မအောင်မြင်ပါ', normalizeErrorMessage(error))
+    }
+  }
 
   async function uploadFileToDriveOnce(uploadFile, forceRefreshAuth) {
-        try {
-          const auth = await getUploadAuth({ forceRefresh: forceRefreshAuth })
-          const initXhr = new XMLHttpRequest()
-          uploadFile.uploadHandle = { aborted: false, initXhr, uploadXhr: null }
-          uploadFile.uploadStatus = 'UPLOADING'
-          renderUploadSlot(uploadFile.fieldKey)
+    try {
+      const auth = await getUploadAuth({ forceRefresh: forceRefreshAuth })
+      const initXhr = new XMLHttpRequest()
+      uploadFile.uploadHandle = { aborted: false, initXhr, uploadXhr: null }
+      uploadFile.uploadStatus = 'UPLOADING'
+      renderUploadSlot(uploadFile.fieldKey)
 
-          const sessionUrl = await new Promise((resolve, reject) => {
-            initXhr.open('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink,mimeType,size')
-            initXhr.setRequestHeader('Authorization', `Bearer ${auth.accessToken}`)
-            initXhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8')
-            initXhr.setRequestHeader('X-Upload-Content-Type', uploadFile.type || 'application/octet-stream')
-            initXhr.setRequestHeader('X-Upload-Content-Length', String(uploadFile.size || 0))
-            initXhr.onload = () => {
-              if (initXhr.status >= 200 && initXhr.status < 300) {
-                const location = initXhr.getResponseHeader('Location')
-                if (!location) {
-                  reject(new Error('Missing resumable upload location'))
-                  return
-                }
-                resolve(location)
-                return
-              }
-              reject(new Error(`Upload init failed (${initXhr.status})`))
+      const sessionUrl = await new Promise((resolve, reject) => {
+        initXhr.open('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink,mimeType,size')
+        initXhr.setRequestHeader('Authorization', `Bearer ${auth.accessToken}`)
+        initXhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8')
+        initXhr.setRequestHeader('X-Upload-Content-Type', uploadFile.type || 'application/octet-stream')
+        initXhr.setRequestHeader('X-Upload-Content-Length', String(uploadFile.size || 0))
+        initXhr.onload = () => {
+          if (initXhr.status >= 200 && initXhr.status < 300) {
+            const location = initXhr.getResponseHeader('Location')
+            if (!location) {
+              reject(new Error('Missing resumable upload location'))
+              return
             }
-            initXhr.onerror = () => reject(new Error('Upload init network error'))
-            initXhr.onabort = () => reject(Object.assign(new Error('Upload cancelled'), { code: 'UPLOAD_CANCELLED' }))
-            initXhr.send(JSON.stringify({
-              name: uploadFile.name,
-              mimeType: uploadFile.type || 'application/octet-stream',
-              parents: [auth.folderId],
-            }))
-          })
-
-          const uploadXhr = new XMLHttpRequest()
-          uploadFile.uploadHandle.uploadXhr = uploadXhr
-
-          const response = await new Promise((resolve, reject) => {
-            uploadXhr.open('PUT', sessionUrl)
-            uploadXhr.setRequestHeader('Content-Type', uploadFile.type || 'application/octet-stream')
-            uploadXhr.setRequestHeader('Content-Range', `bytes 0-${uploadFile.size - 1}/${uploadFile.size}`)
-            uploadXhr.upload.onprogress = (event) => {
-              if (!event.lengthComputable) return
-              uploadFile.progress = Math.round((event.loaded / event.total) * 100)
-              scheduleUploadSlotRender(uploadFile.fieldKey)
-            }
-            uploadXhr.onload = () => {
-              if (uploadXhr.status === 200 || uploadXhr.status === 201) {
-                try {
-                  resolve(JSON.parse(uploadXhr.responseText || '{}'))
-                } catch (error) {
-                  reject(error)
-                }
-                return
-              }
-              if (uploadXhr.status === 308) {
-                reject(new Error('Upload incomplete'))
-                return
-              }
-              reject(new Error(`Upload failed (${uploadXhr.status})`))
-            }
-            uploadXhr.onerror = () => reject(new Error('Upload network error'))
-            uploadXhr.onabort = () => reject(Object.assign(new Error('Upload cancelled'), { code: 'UPLOAD_CANCELLED' }))
-            uploadXhr.send(uploadFile.file)
-          })
-
-          uploadFile.id = response.id || ''
-          if (isPublicPhotoUpload(uploadFile.fieldKey) && uploadFile.id) {
-            await makeDriveFilePublic(uploadFile.id, auth.accessToken)
-            uploadFile.url = buildPublicDriveImageUrl(uploadFile.id)
-          } else {
-            uploadFile.url = response.webViewLink || ''
-          }
-
-          uploadFile.uploadStatus = 'UPLOADED'
-          uploadFile.progress = 100
-          uploadFile.mimeType = response.mimeType || uploadFile.type || ''
-          uploadFile.size = Number(response.size || uploadFile.size || 0)
-          uploadFile.uploadHandle = null
-          renderUploadSlot(uploadFile.fieldKey)
-        } catch (error) {
-          if (isUploadCancelled(error)) {
-            delete state.uploads[uploadFile.fieldKey]
-            renderUploadSlot(uploadFile.fieldKey)
+            resolve(location)
             return
           }
-          if (isUploadAuthExpired(error)) {
-            throw error
-          }
-          uploadFile.uploadStatus = 'ERROR'
-          uploadFile.progress = 0
-          uploadFile.uploadHandle = null
-          renderUploadSlot(uploadFile.fieldKey)
-          await showAlert('error', state.lang === 'th' ? 'อัปโหลดไฟล์ไม่สำเร็จ' : 'ဖိုင်အပ်လုဒ် မအောင်မြင်ပါ', normalizeErrorMessage(error))
+          reject(new Error(`Upload init failed (${initXhr.status})`))
         }
+        initXhr.onerror = () => reject(new Error('Upload init network error'))
+        initXhr.onabort = () => reject(Object.assign(new Error('Upload cancelled'), { code: 'UPLOAD_CANCELLED' }))
+        initXhr.send(JSON.stringify({
+          name: uploadFile.name,
+          mimeType: uploadFile.type || 'application/octet-stream',
+          parents: [auth.folderId],
+        }))
+      })
+
+      const uploadXhr = new XMLHttpRequest()
+      uploadFile.uploadHandle.uploadXhr = uploadXhr
+
+      const response = await new Promise((resolve, reject) => {
+        uploadXhr.open('PUT', sessionUrl)
+        uploadXhr.setRequestHeader('Content-Type', uploadFile.type || 'application/octet-stream')
+        uploadXhr.setRequestHeader('Content-Range', `bytes 0-${uploadFile.size - 1}/${uploadFile.size}`)
+        uploadXhr.upload.onprogress = (event) => {
+          if (!event.lengthComputable) return
+          uploadFile.progress = Math.round((event.loaded / event.total) * 100)
+          scheduleUploadSlotRender(uploadFile.fieldKey)
+        }
+        uploadXhr.onload = () => {
+          if (uploadXhr.status === 200 || uploadXhr.status === 201) {
+            try {
+              resolve(JSON.parse(uploadXhr.responseText || '{}'))
+            } catch (error) {
+              reject(error)
+            }
+            return
+          }
+          if (uploadXhr.status === 308) {
+            reject(new Error('Upload incomplete'))
+            return
+          }
+          reject(new Error(`Upload failed (${uploadXhr.status})`))
+        }
+        uploadXhr.onerror = () => reject(new Error('Upload network error'))
+        uploadXhr.onabort = () => reject(Object.assign(new Error('Upload cancelled'), { code: 'UPLOAD_CANCELLED' }))
+        uploadXhr.send(uploadFile.file)
+      })
+
+      uploadFile.id = response.id || ''
+      if (isPublicPhotoUpload(uploadFile.fieldKey) && uploadFile.id) {
+        await makeDriveFilePublic(uploadFile.id, auth.accessToken)
+        uploadFile.url = buildPublicDriveImageUrl(uploadFile.id)
+      } else {
+        uploadFile.url = response.webViewLink || ''
       }
+
+      uploadFile.uploadStatus = 'UPLOADED'
+      uploadFile.progress = 100
+      uploadFile.mimeType = response.mimeType || uploadFile.type || ''
+      uploadFile.size = Number(response.size || uploadFile.size || 0)
+      uploadFile.uploadHandle = null
+      renderUploadSlot(uploadFile.fieldKey)
+    } catch (error) {
+      if (isUploadCancelled(error)) {
+        delete state.uploads[uploadFile.fieldKey]
+        renderUploadSlot(uploadFile.fieldKey)
+        return
+      }
+      if (isUploadAuthExpired(error)) {
+        throw error
+      }
+      uploadFile.uploadStatus = 'ERROR'
+      uploadFile.progress = 0
+      uploadFile.uploadHandle = null
+      renderUploadSlot(uploadFile.fieldKey)
+      await showAlert('error', state.lang === 'th' ? 'อัปโหลดไฟล์ไม่สำเร็จ' : 'ဖိုင်အပ်လုဒ် မအောင်မြင်ပါ', normalizeErrorMessage(error))
+    }
+  }
 
   async function removeAttachment(fieldKey, options = {}) {
-        const item = state.uploads[fieldKey]
-        if (!item) return
+    const item = state.uploads[fieldKey]
+    if (!item) return
 
-        if (item.uploadStatus === 'UPLOADING' || item.uploadStatus === 'PENDING') {
-          abortUpload(item)
-          delete state.uploads[fieldKey]
-          renderUploadSlot(fieldKey)
-          return
-        }
+    if (item.uploadStatus === 'UPLOADING' || item.uploadStatus === 'PENDING') {
+      abortUpload(item)
+      delete state.uploads[fieldKey]
+      renderUploadSlot(fieldKey)
+      return
+    }
 
-        if (item.uploadStatus === 'ERROR' || !item.id) {
-          delete state.uploads[fieldKey]
-          renderUploadSlot(fieldKey)
-          return
-        }
+    if (item.uploadStatus === 'ERROR' || !item.id) {
+      delete state.uploads[fieldKey]
+      renderUploadSlot(fieldKey)
+      return
+    }
 
-        if (!options.silent) {
-          const ok = await confirmDialog(appText[state.lang].confirmDelete, `"${item.name}"`)
-          if (!ok) return
-        }
+    if (!options.silent) {
+      const ok = await confirmDialog(appText[state.lang].confirmDelete, `"${item.name}"`)
+      if (!ok) return
+    }
 
-        const hasRemoteFile = Boolean(item.id && item.uploadStatus === 'UPLOADED')
-        if (!options.silent && hasRemoteFile) {
-          void showToast({
-            icon: 'info',
-            title: appText[state.lang].deletingFile,
-            loading: true,
-          })
-        }
+    const hasRemoteFile = Boolean(item.id && item.uploadStatus === 'UPLOADED')
+    if (!options.silent && hasRemoteFile) {
+      void showToast({
+        icon: 'info',
+        title: appText[state.lang].deletingFile,
+        loading: true,
+      })
+    }
 
-        try {
-          if (hasRemoteFile) {
-            await postApi('deleteFiles', { fileIds: [item.id] })
-          }
-        } catch (error) {
-          console.warn('Delete file failed:', error)
-          closeLoadingDialog()
-          if (!options.silent) {
-            await showToast({
-              icon: 'error',
-              title: state.lang === 'th' ? 'ลบไฟล์ไม่สำเร็จ' : 'ဖိုင်ဖျက်မရပါ',
-              text: normalizeErrorMessage(error),
-            })
-          }
-          return
-        }
-
-        delete state.uploads[fieldKey]
-        renderUploadSlot(fieldKey)
-
-        if (!options.silent) {
-          closeLoadingDialog()
-          await showToast({
-            icon: 'success',
-            title: appText[state.lang].deletedFile,
-          })
-        }
+    try {
+      if (hasRemoteFile) {
+        await postApi('deleteFiles', { fileIds: [item.id] })
       }
+    } catch (error) {
+      console.warn('Delete file failed:', error)
+      closeLoadingDialog()
+      if (!options.silent) {
+        await showToast({
+          icon: 'error',
+          title: state.lang === 'th' ? 'ลบไฟล์ไม่สำเร็จ' : 'ဖိုင်ဖျက်မရပါ',
+          text: normalizeErrorMessage(error),
+        })
+      }
+      return
+    }
+
+    delete state.uploads[fieldKey]
+    renderUploadSlot(fieldKey)
+
+    if (!options.silent) {
+      closeLoadingDialog()
+      await showToast({
+        icon: 'success',
+        title: appText[state.lang].deletedFile,
+      })
+    }
+  }
 
   async function clearAllAttachments() {
-        const items = Object.values(state.uploads).filter(Boolean)
-        if (!items.length) return
+    const items = Object.values(state.uploads).filter(Boolean)
+    if (!items.length) return
 
-        const ok = await confirmDialog(appText[state.lang].confirmDeleteAll, '')
-        if (!ok) return
+    const ok = await confirmDialog(appText[state.lang].confirmDeleteAll, '')
+    if (!ok) return
 
-        const uploadedIds = items.filter((item) => item.uploadStatus === 'UPLOADED' && item.id).map((item) => item.id)
-        items
-          .filter((item) => item.uploadStatus === 'UPLOADING' || item.uploadStatus === 'PENDING')
-          .forEach((item) => abortUpload(item))
+    const uploadedIds = items.filter((item) => item.uploadStatus === 'UPLOADED' && item.id).map((item) => item.id)
+    items
+      .filter((item) => item.uploadStatus === 'UPLOADING' || item.uploadStatus === 'PENDING')
+      .forEach((item) => abortUpload(item))
 
-        const hasRemoteFiles = uploadedIds.length > 0
-        if (hasRemoteFiles) {
-          void showToast({
-            icon: 'info',
-            title: appText[state.lang].deletingFiles,
-            loading: true,
-          })
-        }
+    const hasRemoteFiles = uploadedIds.length > 0
+    if (hasRemoteFiles) {
+      void showToast({
+        icon: 'info',
+        title: appText[state.lang].deletingFiles,
+        loading: true,
+      })
+    }
 
-        if (uploadedIds.length) {
-          try {
-            await postApi('deleteFiles', { fileIds: uploadedIds })
-          } catch (error) {
-            console.warn('Batch delete failed:', error)
-            closeLoadingDialog()
-            await showToast({
-              icon: 'error',
-              title: state.lang === 'th' ? 'ลบไฟล์ไม่สำเร็จ' : 'ဖိုင်ဖျက်မရပါ',
-              text: normalizeErrorMessage(error),
-            })
-            return
-          }
-        }
-
-        if (hasRemoteFiles) {
-          closeLoadingDialog()
-        }
-        state.uploads = {}
-        renderAllUploadSlots()
-
-        if (items.length) {
-          await showToast({
-            icon: 'success',
-            title: appText[state.lang].deletedFiles,
-          })
-        }
+    if (uploadedIds.length) {
+      try {
+        await postApi('deleteFiles', { fileIds: uploadedIds })
+      } catch (error) {
+        console.warn('Batch delete failed:', error)
+        closeLoadingDialog()
+        await showToast({
+          icon: 'error',
+          title: state.lang === 'th' ? 'ลบไฟล์ไม่สำเร็จ' : 'ဖိုင်ဖျက်မရပါ',
+          text: normalizeErrorMessage(error),
+        })
+        return
       }
+    }
+
+    if (hasRemoteFiles) {
+      closeLoadingDialog()
+    }
+    state.uploads = {}
+    renderAllUploadSlots()
+
+    if (items.length) {
+      await showToast({
+        icon: 'success',
+        title: appText[state.lang].deletedFiles,
+      })
+    }
+  }
 
   function abortUpload(item) {
-        if (!item || !item.uploadHandle) return
-        item.uploadHandle.aborted = true
-        try {
-          item.uploadHandle.initXhr?.abort()
-        } catch (error) {
-          console.warn(error)
-        }
-        try {
-          item.uploadHandle.uploadXhr?.abort()
-        } catch (error) {
-          console.warn(error)
-        }
-        item.uploadHandle = null
-      }
+    if (!item || !item.uploadHandle) return
+    item.uploadHandle.aborted = true
+    try {
+      item.uploadHandle.initXhr?.abort()
+    } catch (error) {
+      console.warn(error)
+    }
+    try {
+      item.uploadHandle.uploadXhr?.abort()
+    } catch (error) {
+      console.warn(error)
+    }
+    item.uploadHandle = null
+  }
 
   function renderUploadSlot(fieldKey) {
-        const slot = document.getElementById(`${fieldKey}-slot`)
-        const removeButton = document.querySelector(`[data-remove-file="${fieldKey}"]`)
-        const item = state.uploads[fieldKey]
-        if (!slot) return
-        if (!item) {
-          slot.innerHTML = `<div class="file-empty">${state.lang === 'th' ? 'ยังไม่มีไฟล์แนบ' : 'ဖိုင်မရှိသေးပါ'}</div>`
-          if (removeButton) removeButton.classList.add('hidden')
-          return
-        }
+    const slot = document.getElementById(`${fieldKey}-slot`)
+    const removeButton = document.querySelector(`[data-remove-file="${fieldKey}"]`)
+    const item = state.uploads[fieldKey]
+    if (!slot) return
+    if (!item) {
+      slot.innerHTML = `<div class="file-empty">${state.lang === 'th' ? 'ยังไม่มีไฟล์แนบ' : 'ဖိုင်မရှိသေးပါ'}</div>`
+      if (removeButton) removeButton.classList.add('hidden')
+      return
+    }
 
-        if (removeButton) removeButton.classList.remove('hidden')
+    if (removeButton) removeButton.classList.remove('hidden')
 
-        const uploadProgress = Math.max(0, Math.min(100, item.progress || 0))
-        const labels = {
-          PENDING: appText[state.lang].uploadReady,
-          UPLOADING: state.lang === 'th'
-            ? `กำลังอัปโหลด ${uploadProgress}%`
-            : `${appText[state.lang].loadingUpload} ${uploadProgress}%`,
-          UPLOADED: appText[state.lang].uploaded,
-          ERROR: appText[state.lang].uploadFailed,
-        }
+    const uploadProgress = Math.max(0, Math.min(100, item.progress || 0))
+    const labels = {
+      PENDING: appText[state.lang].uploadReady,
+      UPLOADING: state.lang === 'th'
+        ? `กำลังอัปโหลด ${uploadProgress}%`
+        : `${appText[state.lang].loadingUpload} ${uploadProgress}%`,
+      UPLOADED: appText[state.lang].uploaded,
+      ERROR: appText[state.lang].uploadFailed,
+    }
 
-        slot.innerHTML = `
+    slot.innerHTML = `
       <div class="upload-file">
         <div class="upload-meta">
           <div class="min-w-0 upload-file-main">
@@ -1544,12 +1546,12 @@
         </div>
       </div>
     `
-      }
+  }
 
 
   function renderRequiredMark() {
-        return '<span class="required-mark" aria-hidden="true">*</span>'
-      }
+    return '<span class="required-mark" aria-hidden="true">*</span>'
+  }
 
   function buildSubmissionFlexMessage(recordId, record) {
     const applicant = record?.applicant || {}
@@ -1823,7 +1825,7 @@
     if (typeof liff.isInClient === 'function' && !liff.isInClient()) return false
 
     const message = buildSubmissionFlexMessage(recordId, record)
-    console.log('Sending LINE message:', message )
+    console.log('Sending LINE message:', message)
     try {
       await liff.sendMessages([
         {
@@ -1865,393 +1867,393 @@
   }
 
   async function warmUploadAuth() {
-        try {
-          await getUploadAuth({ forceRefresh: true })
-        } catch (error) {
-          console.warn('Upload auth preload failed:', error)
-        }
-      }
+    try {
+      await getUploadAuth({ forceRefresh: true })
+    } catch (error) {
+      console.warn('Upload auth preload failed:', error)
+    }
+  }
 
   async function getUploadAuth(options = {}) {
-        if (state.uploadAuth && !options.forceRefresh) return state.uploadAuth
-        if (!BACKEND_URL) throw new Error(appText[state.lang].uploadAuthErr)
-        const result = await postApi('getUploadAuth', {})
-        state.uploadAuth = result
-        return result
-      }
+    if (state.uploadAuth && !options.forceRefresh) return state.uploadAuth
+    if (!BACKEND_URL) throw new Error(appText[state.lang].uploadAuthErr)
+    const result = await postApi('getUploadAuth', {})
+    state.uploadAuth = result
+    return result
+  }
 
   function buildUploadAuthError(status, message) {
-        const error = new Error(message)
-        error.status = status
-        if (status === 401 || status === 403) {
-          error.code = 'UPLOAD_AUTH_EXPIRED'
-        }
-        return error
-      }
+    const error = new Error(message)
+    error.status = status
+    if (status === 401 || status === 403) {
+      error.code = 'UPLOAD_AUTH_EXPIRED'
+    }
+    return error
+  }
 
   function isUploadAuthExpired(error) {
-        if (!error) return false
-        if (error.code === 'UPLOAD_AUTH_EXPIRED') return true
-        const status = Number(error.status || 0)
-        if (status === 401 || status === 403) return true
-        const message = String(error.message || '')
-        return /unauthoriz|forbidden|invalid_grant|token/i.test(message)
-      }
+    if (!error) return false
+    if (error.code === 'UPLOAD_AUTH_EXPIRED') return true
+    const status = Number(error.status || 0)
+    if (status === 401 || status === 403) return true
+    const message = String(error.message || '')
+    return /unauthoriz|forbidden|invalid_grant|token/i.test(message)
+  }
 
   function isUploadCancelled(error) {
-        return Boolean(error && (error.code === 'UPLOAD_CANCELLED' || String(error.message || '').includes('cancel')))
-      }
+    return Boolean(error && (error.code === 'UPLOAD_CANCELLED' || String(error.message || '').includes('cancel')))
+  }
 
   function isPublicPhotoUpload(fieldKey) {
-        return fieldKey === 'thaiPhoto' || fieldKey === 'myPhoto'
-      }
+    return fieldKey === 'thaiPhoto' || fieldKey === 'myPhoto'
+  }
 
   function buildPublicDriveImageUrl(fileId) {
-        return `https://lh3.googleusercontent.com/d/${encodeURIComponent(String(fileId || '').trim())}`
-      }
+    return `https://lh3.googleusercontent.com/d/${encodeURIComponent(String(fileId || '').trim())}`
+  }
 
   async function makeDriveFilePublic(fileId, accessToken) {
-        if (!fileId || !accessToken) return false
-        const response = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          body: JSON.stringify({
-            role: 'reader',
-            type: 'anyone',
-            allowFileDiscovery: false,
-          }),
-        })
-        if (!response.ok) {
-          throw new Error(`Permission update failed (${response.status})`)
-        }
-        return true
-      }
+    if (!fileId || !accessToken) return false
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: JSON.stringify({
+        role: 'reader',
+        type: 'anyone',
+        allowFileDiscovery: false,
+      }),
+    })
+    if (!response.ok) {
+      throw new Error(`Permission update failed (${response.status})`)
+    }
+    return true
+  }
 
   async function postApi(action, payload) {
-        if (!BACKEND_URL) throw new Error(appText[state.lang].uploadAuthErr)
-        const controller = new AbortController()
-        const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    if (!BACKEND_URL) throw new Error(appText[state.lang].uploadAuthErr)
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    try {
+      const response = await fetch(BACKEND_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action, payload }),
+        signal: controller.signal,
+        cache: 'no-store',
+      })
+      const text = await response.text()
+      let data = {}
+      if (text) {
         try {
-          const response = await fetch(BACKEND_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action, payload }),
-            signal: controller.signal,
-            cache: 'no-store',
-          })
-          const text = await response.text()
-          let data = {}
-          if (text) {
-            try {
-              data = JSON.parse(text)
-            } catch (error) {
-              throw new Error(text)
-            }
-          }
-          if (!response.ok || data.ok === false) {
-            throw new Error(data.error || `Request failed (${response.status})`)
-          }
-          return data.data || data
+          data = JSON.parse(text)
         } catch (error) {
-          if (error && error.name === 'AbortError') {
-            throw new Error('Request timed out. Please check your connection and try again.')
-          }
-          throw error
-        } finally {
-          window.clearTimeout(timeout)
+          throw new Error(text)
         }
       }
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || `Request failed (${response.status})`)
+      }
+      return data.data || data
+    } catch (error) {
+      if (error && error.name === 'AbortError') {
+        throw new Error('Request timed out. Please check your connection and try again.')
+      }
+      throw error
+    } finally {
+      window.clearTimeout(timeout)
+    }
+  }
 
   function resetFormState() {
-        state.uploads = {}
-        const form = document.getElementById('application-form')
-        if (form) {
-          form.reset()
-          form.querySelectorAll('input.form-control.hidden').forEach((input) => {
-            input.classList.add('hidden')
-            input.value = ''
-          })
-        }
+    state.uploads = {}
+    const form = document.getElementById('application-form')
+    if (form) {
+      form.reset()
+      form.querySelectorAll('input.form-control.hidden').forEach((input) => {
+        input.classList.add('hidden')
+        input.value = ''
+      })
+    }
 
-        const dob = document.getElementById('thai-dob')
-        if (dob && dob._flatpickr) {
-          dob._flatpickr.clear()
-        }
+    const dob = document.getElementById('thai-dob')
+    if (dob && dob._flatpickr) {
+      dob._flatpickr.clear()
+    }
 
-        renderAllUploadSlots()
-        refreshUserPanel()
-      }
+    renderAllUploadSlots()
+    refreshUserPanel()
+  }
 
   function setSubmitBusy(isBusy) {
-        const button = document.getElementById('submit-btn')
-        if (!button) return
-        button.disabled = isBusy
-        button.textContent = isBusy ? appText[state.lang].saving : appText[state.lang].save
-      }
+    const button = document.getElementById('submit-btn')
+    if (!button) return
+    button.disabled = isBusy
+    button.textContent = isBusy ? appText[state.lang].saving : appText[state.lang].save
+  }
 
   function showLoadingDialog(title, text) {
-        if (window.Swal && typeof Swal.fire === 'function') {
-          return Swal.fire({
-            icon: 'info',
-            title,
-            text,
-            buttonsStyling: false,
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            allowEnterKey: false,
-            customClass: getSweetAlertClasses({
-              popup: 'app-swal app-swal--loading',
-              title: 'app-swal__title',
-              htmlContainer: 'app-swal__text',
-              actions: 'app-swal__actions',
-            }),
-            didOpen: () => {
-              if (typeof Swal.showLoading === 'function') {
-                Swal.showLoading()
-              }
-            },
-          })
-        }
-        return Promise.resolve()
-      }
+    if (window.Swal && typeof Swal.fire === 'function') {
+      return Swal.fire({
+        icon: 'info',
+        title,
+        text,
+        buttonsStyling: false,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        allowEnterKey: false,
+        customClass: getSweetAlertClasses({
+          popup: 'app-swal app-swal--loading',
+          title: 'app-swal__title',
+          htmlContainer: 'app-swal__text',
+          actions: 'app-swal__actions',
+        }),
+        didOpen: () => {
+          if (typeof Swal.showLoading === 'function') {
+            Swal.showLoading()
+          }
+        },
+      })
+    }
+    return Promise.resolve()
+  }
 
   function showToast(options = {}) {
-        if (window.Swal && typeof Swal.fire === 'function') {
-          return Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: options.icon || 'info',
-            title: options.title || '',
-            text: options.text || '',
-            showConfirmButton: false,
-            timer: options.loading ? undefined : (options.timer || 2000),
-            timerProgressBar: !options.loading,
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            allowEnterKey: false,
-            buttonsStyling: false,
-            customClass: getSweetAlertClasses({
-              popup: 'app-swal app-swal--toast',
-              title: 'app-swal__title',
-              htmlContainer: 'app-swal__text',
-              loader: 'app-swal__loader',
-            }),
-            didOpen: () => {
-              if (options.loading && typeof Swal.showLoading === 'function') {
-                Swal.showLoading()
-              }
-            },
-          })
-        }
-        return Promise.resolve()
-      }
+    if (window.Swal && typeof Swal.fire === 'function') {
+      return Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: options.icon || 'info',
+        title: options.title || '',
+        text: options.text || '',
+        showConfirmButton: false,
+        timer: options.loading ? undefined : (options.timer || 2000),
+        timerProgressBar: !options.loading,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        allowEnterKey: false,
+        buttonsStyling: false,
+        customClass: getSweetAlertClasses({
+          popup: 'app-swal app-swal--toast',
+          title: 'app-swal__title',
+          htmlContainer: 'app-swal__text',
+          loader: 'app-swal__loader',
+        }),
+        didOpen: () => {
+          if (options.loading && typeof Swal.showLoading === 'function') {
+            Swal.showLoading()
+          }
+        },
+      })
+    }
+    return Promise.resolve()
+  }
 
   function closeLoadingDialog() {
-        if (window.Swal && typeof Swal.close === 'function') {
-          Swal.close()
-        }
-      }
+    if (window.Swal && typeof Swal.close === 'function') {
+      Swal.close()
+    }
+  }
 
   function validateThaiAgeFromDate(date) {
-        if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
-        const now = new Date()
-        let age = now.getFullYear() - date.getFullYear()
-        const month = now.getMonth() - date.getMonth()
-        if (month < 0 || (month === 0 && now.getDate() < date.getDate())) {
-          age -= 1
-        }
-        return age >= 0 ? String(age) : ''
-      }
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
+    const now = new Date()
+    let age = now.getFullYear() - date.getFullYear()
+    const month = now.getMonth() - date.getMonth()
+    if (month < 0 || (month === 0 && now.getDate() < date.getDate())) {
+      age -= 1
+    }
+    return age >= 0 ? String(age) : ''
+  }
 
   function syncThaiAge(date) {
-        const ageInput = document.getElementById('thai-age')
-        if (ageInput) ageInput.value = validateThaiAgeFromDate(date)
-      }
+    const ageInput = document.getElementById('thai-age')
+    if (ageInput) ageInput.value = validateThaiAgeFromDate(date)
+  }
 
   function formatThaiBuddhistDate(date) {
-        if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
-        const day = String(date.getDate()).padStart(2, '0')
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        return `${day}/${month}/${date.getFullYear() + THAI_YEAR_OFFSET}`
-      }
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    return `${day}/${month}/${date.getFullYear() + THAI_YEAR_OFFSET}`
+  }
 
   function parseThaiBuddhistDate(dateStr) {
-        if (typeof dateStr !== 'string') return null
-        const match = dateStr.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
-        if (!match) return null
+    if (typeof dateStr !== 'string') return null
+    const match = dateStr.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+    if (!match) return null
 
-        const day = Number(match[1])
-        const month = Number(match[2])
-        const year = Number(match[3])
-        const normalizedYear = year >= 2400 ? year - THAI_YEAR_OFFSET : year
-        const date = new Date(normalizedYear, month - 1, day)
+    const day = Number(match[1])
+    const month = Number(match[2])
+    const year = Number(match[3])
+    const normalizedYear = year >= 2400 ? year - THAI_YEAR_OFFSET : year
+    const date = new Date(normalizedYear, month - 1, day)
 
-        if (
-          date.getFullYear() !== normalizedYear ||
-          date.getMonth() !== month - 1 ||
-          date.getDate() !== day
-        ) {
-          return null
-        }
+    if (
+      date.getFullYear() !== normalizedYear ||
+      date.getMonth() !== month - 1 ||
+      date.getDate() !== day
+    ) {
+      return null
+    }
 
-        return date
-      }
+    return date
+  }
 
   function focusField(field) {
-        const map = {
-          'thai-gender': 'thai-gender-0',
-          'thai-fullName': 'thai-fullName',
-          'thai-cardNumber': 'thai-cardNumber',
-          'thai-dob': 'thai-dob',
-          'thai-age': 'thai-age',
-          'thai-education': 'thai-education',
-          'thai-education-other': 'thai-education-other',
-          'thai-experience': 'thai-experience',
-          'thai-skill': 'thai-skill',
-          'thai-department': 'thai-department',
-          'thai-desired-income': 'thai-desired-income',
-          'thai-shift': 'thai-shift-0',
-          'thai-phone': 'thai-phone',
-          'thai-latest-company': 'thai-latest-company',
-          'thai-latest-position': 'thai-latest-position',
-          'thai-latest-income': 'thai-latest-income',
-          'thai-criminal-record': 'thai-criminal-record-0',
-          'thai-criminal-case': 'thai-criminal-case',
-          'thai-congenital-disease': 'thai-congenital-disease',
-          'thai-emergency-name': 'thai-emergency-name',
-          'thai-emergency-phone': 'thai-emergency-phone',
-          'thai-emergency-relation': 'thai-emergency-relation',
-          'my-name': 'my-name',
-          'my-cardNumber': 'my-cardNumber',
-          'my-passport-expiry': 'my-passport-expiry',
-          'my-pink-card-expiry': 'my-pink-card-expiry',
-          'my-gender': 'my-gender-0',
-          'my-gender-other': 'my-gender-other',
-          'my-shift': 'my-shift-0',
-          'my-work-history': 'my-work-history',
-        }
-        const el = document.getElementById(map[field] || field)
-        if (!el || typeof el.focus !== 'function') return null
-        return () => el.focus({ preventScroll: false })
-      }
+    const map = {
+      'thai-gender': 'thai-gender-0',
+      'thai-fullName': 'thai-fullName',
+      'thai-cardNumber': 'thai-cardNumber',
+      'thai-dob': 'thai-dob',
+      'thai-age': 'thai-age',
+      'thai-education': 'thai-education',
+      'thai-education-other': 'thai-education-other',
+      'thai-experience': 'thai-experience',
+      'thai-skill': 'thai-skill',
+      'thai-department': 'thai-department',
+      'thai-desired-income': 'thai-desired-income',
+      'thai-shift': 'thai-shift-0',
+      'thai-phone': 'thai-phone',
+      'thai-latest-company': 'thai-latest-company',
+      'thai-latest-position': 'thai-latest-position',
+      'thai-latest-income': 'thai-latest-income',
+      'thai-criminal-record': 'thai-criminal-record-0',
+      'thai-criminal-case': 'thai-criminal-case',
+      'thai-congenital-disease': 'thai-congenital-disease',
+      'thai-emergency-name': 'thai-emergency-name',
+      'thai-emergency-phone': 'thai-emergency-phone',
+      'thai-emergency-relation': 'thai-emergency-relation',
+      'my-name': 'my-name',
+      'my-cardNumber': 'my-cardNumber',
+      'my-passport-expiry': 'my-passport-expiry',
+      'my-pink-card-expiry': 'my-pink-card-expiry',
+      'my-gender': 'my-gender-0',
+      'my-gender-other': 'my-gender-other',
+      'my-shift': 'my-shift-0',
+      'my-work-history': 'my-work-history',
+    }
+    const el = document.getElementById(map[field] || field)
+    if (!el || typeof el.focus !== 'function') return null
+    return () => el.focus({ preventScroll: false })
+  }
 
   function getValue(id) {
-        const el = document.getElementById(id)
-        return el && typeof el.value === 'string' ? el.value.trim() : ''
-      }
+    const el = document.getElementById(id)
+    return el && typeof el.value === 'string' ? el.value.trim() : ''
+  }
 
   function getRadioValue(name) {
-        const selected = document.querySelector(`input[name="${name}"]:checked`)
-        return selected ? selected.value : ''
-      }
+    const selected = document.querySelector(`input[name="${name}"]:checked`)
+    return selected ? selected.value : ''
+  }
 
   function getSelectedOtherAwareValue(groupName, otherId) {
-        const selected = getRadioValue(groupName) || getValue(groupName)
-        if (!selected) return ''
-        if (selected !== 'other') return selected
-        return getValue(otherId)
-      }
+    const selected = getRadioValue(groupName) || getValue(groupName)
+    if (!selected) return ''
+    if (selected !== 'other') return selected
+    return getValue(otherId)
+  }
 
   function confirmDialog(title, text) {
-        if (window.Swal && typeof Swal.fire === 'function') {
-          return Swal.fire({
-            icon: 'question',
-            title,
-            text,
-            buttonsStyling: false,
-            showCancelButton: true,
-            confirmButtonText: state.lang === 'th' ? 'ยืนยัน' : 'အတည်ပြုမည်',
-            cancelButtonText: state.lang === 'th' ? 'ยกเลิก' : 'မလုပ်တော့ပါ',
-            reverseButtons: true,
-            focusCancel: true,
-            customClass: getSweetAlertClasses({
-              popup: 'app-swal',
-              title: 'app-swal__title',
-              htmlContainer: 'app-swal__text',
-              actions: 'app-swal__actions',
-              confirmButton: 'app-swal__button app-swal__button--primary',
-              cancelButton: 'app-swal__button app-swal__button--secondary',
-            }),
-          }).then((result) => Boolean(result.isConfirmed))
-        }
-        return Promise.resolve(window.confirm(`${title}\n${text || ''}`))
-      }
+    if (window.Swal && typeof Swal.fire === 'function') {
+      return Swal.fire({
+        icon: 'question',
+        title,
+        text,
+        buttonsStyling: false,
+        showCancelButton: true,
+        confirmButtonText: state.lang === 'th' ? 'ยืนยัน' : 'အတည်ပြုမည်',
+        cancelButtonText: state.lang === 'th' ? 'ยกเลิก' : 'မလုပ်တော့ပါ',
+        reverseButtons: true,
+        focusCancel: true,
+        customClass: getSweetAlertClasses({
+          popup: 'app-swal',
+          title: 'app-swal__title',
+          htmlContainer: 'app-swal__text',
+          actions: 'app-swal__actions',
+          confirmButton: 'app-swal__button app-swal__button--primary',
+          cancelButton: 'app-swal__button app-swal__button--secondary',
+        }),
+      }).then((result) => Boolean(result.isConfirmed))
+    }
+    return Promise.resolve(window.confirm(`${title}\n${text || ''}`))
+  }
 
   function showAlert(icon, title, text) {
-        if (window.Swal && typeof Swal.fire === 'function') {
-          return Swal.fire({
-            icon,
-            title,
-            text,
-            buttonsStyling: false,
-            confirmButtonText: 'OK',
-            customClass: getSweetAlertClasses({
-              popup: 'app-swal',
-              title: 'app-swal__title',
-              htmlContainer: 'app-swal__text',
-              actions: 'app-swal__actions',
-              confirmButton: 'app-swal__button app-swal__button--primary',
-            }),
-          })
-        }
-        window.alert(`${title}\n${text || ''}`)
-        return Promise.resolve()
-      }
+    if (window.Swal && typeof Swal.fire === 'function') {
+      return Swal.fire({
+        icon,
+        title,
+        text,
+        buttonsStyling: false,
+        confirmButtonText: 'OK',
+        customClass: getSweetAlertClasses({
+          popup: 'app-swal',
+          title: 'app-swal__title',
+          htmlContainer: 'app-swal__text',
+          actions: 'app-swal__actions',
+          confirmButton: 'app-swal__button app-swal__button--primary',
+        }),
+      })
+    }
+    window.alert(`${title}\n${text || ''}`)
+    return Promise.resolve()
+  }
 
   function getSweetAlertClasses(classes) {
-        return {
-          popup: classes.popup || 'app-swal',
-          title: classes.title || 'app-swal__title',
-          htmlContainer: classes.htmlContainer || 'app-swal__text',
-          actions: classes.actions || 'app-swal__actions',
-          confirmButton: classes.confirmButton || 'app-swal__button app-swal__button--primary',
-          cancelButton: classes.cancelButton || 'app-swal__button app-swal__button--secondary',
-          loader: classes.loader || 'app-swal__loader',
-        }
-      }
+    return {
+      popup: classes.popup || 'app-swal',
+      title: classes.title || 'app-swal__title',
+      htmlContainer: classes.htmlContainer || 'app-swal__text',
+      actions: classes.actions || 'app-swal__actions',
+      confirmButton: classes.confirmButton || 'app-swal__button app-swal__button--primary',
+      cancelButton: classes.cancelButton || 'app-swal__button app-swal__button--secondary',
+      loader: classes.loader || 'app-swal__loader',
+    }
+  }
 
   function normalizeErrorMessage(error) {
-        if (!error) return ''
-        if (typeof error === 'string') return error
-        if (error.message) return error.message
-        return JSON.stringify(error)
-      }
+    if (!error) return ''
+    if (typeof error === 'string') return error
+    if (error.message) return error.message
+    return JSON.stringify(error)
+  }
 
   function formatBytes(bytes) {
-        const value = Number(bytes || 0)
-        if (value < 1024) return `${value} B`
-        if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
-        return `${(value / (1024 * 1024)).toFixed(1)} MB`
-      }
+    const value = Number(bytes || 0)
+    if (value < 1024) return `${value} B`
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`
+  }
 
   function escapeHtml(value) {
-        return String(value ?? '')
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#39;')
-      }
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  }
 
   function escapeAttribute(value) {
-        return escapeHtml(value).replace(/`/g, '&#96;')
-      }
+    return escapeHtml(value).replace(/`/g, '&#96;')
+  }
 
   function getUserInitials(name) {
-        const trimmed = String(name || '').trim()
-        if (!trimmed) return 'LINE'
+    const trimmed = String(name || '').trim()
+    if (!trimmed) return 'LINE'
 
-        const parts = trimmed.split(/\s+/).filter(Boolean)
-        if (parts.length === 1) {
-          return parts[0].slice(0, 2).toUpperCase()
-        }
+    const parts = trimmed.split(/\s+/).filter(Boolean)
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase()
+    }
 
-        return parts
-          .slice(0, 2)
-          .map((part) => part.charAt(0))
-          .join('')
-          .toUpperCase()
-      }
-}) ()
+    return parts
+      .slice(0, 2)
+      .map((part) => part.charAt(0))
+      .join('')
+      .toUpperCase()
+  }
+})()
