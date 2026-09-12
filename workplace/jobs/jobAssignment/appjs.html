@@ -1,0 +1,909 @@
+<script defer>
+  let jobs = [];
+  let foremen = [];
+  function formatDisplayDate(value) {
+    return value
+      ? new Date(value).toLocaleDateString("th-TH", {
+        day: "2-digit", month: "short", year: "2-digit",
+      })
+      : "-";
+  }
+  function setJobs(assignments) {
+    jobs = (assignments || []).map((a) => ({
+      id: a.AssignmentId,
+      date: formatDisplayDate(a.AssignDate),
+      supervisor: a.SupervisorName || "-",
+      job: a.Job,
+      site: a.Site,
+      area: a.Area,
+      rank: a.Rank,
+      foreman: a.ForemanNames || "-",
+      foremanUsernames: a.ForemanUsernames || "",
+      assignmentDate: a.AssignDate,
+      supervisorUsername: a.SupervisorUsername || "",
+      status: a.Status || "In progress",
+    }));
+    updateSummary();
+  }
+  function setForemen(users) {
+    foremen = users || [];
+    renderForemen();
+  }
+  function renderForemen() {
+    const container = document.getElementById("foremanOptions");
+    const template = document.getElementById("foremanOptionTemplate");
+    container.replaceChildren();
+    if (!foremen.length) {
+      const empty = document.createElement("span");
+      empty.className = "text-sm text-muted";
+      empty.textContent = "ไม่พบรายชื่อ Foreman";
+      container.appendChild(empty);
+      return;
+    }
+    foremen.forEach((foreman) => {
+      const option = document.importNode(template.content, true);
+      const input = option.querySelector("input");
+      input.value = foreman.Username;
+      input.dataset.name = foreman.Name;
+      option.querySelector("label span").textContent = `${foreman.Name} (Foreman)`;
+      container.appendChild(option);
+    });
+  }
+  function fillSelect(selector, values, placeholder) {
+    const select = document.querySelector(selector);
+    if (!select) return;
+    const previous = select.value;
+    select.replaceChildren();
+    if (placeholder) {
+      const option = new Option(placeholder, "");
+      select.appendChild(option);
+    }
+    values.forEach((value) => select.appendChild(new Option(value, value)));
+    // ให้ผู้ใช้เลือกเองเสมอ ไม่เลือกค่ารายการแรกโดยอัตโนมัติ
+    select.value = values.includes(previous) ? previous : "";
+  }
+  function selectedSupervisor() {
+    return (initialData.master?.supervisors || []).find(
+      (item) => item.supervisor === $("#assignSupervisor").val(),
+    );
+  }
+  function renderAssignSites() {
+    const supervisor = selectedSupervisor();
+    const sites = [...new Set((supervisor?.sites || [])
+      .map((site) => site.site)
+      .filter(Boolean))];
+    fillSelect("#assignSite", sites, "เลือก...");
+    renderAssignAreas();
+  }
+  function renderAssignAreas() {
+    const supervisor = selectedSupervisor();
+    const site = $("#assignSite").val();
+    const areas = [...new Set((supervisor?.sites || [])
+      .filter((item) => item.site === site)
+      .flatMap((item) => item.areas || [])
+      .filter(Boolean))];
+    fillSelect("#assignArea", areas, "เลือก...");
+  }
+  function renderAssignJobs() {
+    // งานเป็นรายการอิสระ ไม่ผูกกับ Rank
+    const jobs = [...new Set(window.initialData.dropdowns?.jobs || [])];
+    fillSelect("#assignJob", jobs, "เลือก...");
+  }
+  function renderAssignDropdowns(data, supervisorName) {
+    const safeData = data || {};
+    const existingData = window.initialData || {};
+    const emptyDropdowns = {
+      sites: [], areas: [], ranks: [], jobs: [], rankJobs: [],
+    };
+    window.initialData = {
+      master: safeData.master && Array.isArray(safeData.master.supervisors)
+        ? safeData.master
+        : (existingData.master || { supervisors: [] }),
+      dropdowns: safeData.dropdowns || existingData.dropdowns || emptyDropdowns,
+    };
+    $("#assignSupervisor").val(supervisorName || "");
+    fillSelect("#assignRank", window.initialData.dropdowns?.ranks || [], "เลือก...");
+    renderAssignSites();
+    renderAssignJobs();
+  }
+  function assignDateValue() {
+    const value = $("#assignDate").val();
+    const parts = value.split("/");
+    return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : value;
+  }
+  function updateSummary() {
+    const progress = jobs.filter((j) => j.status === "In progress").length;
+    const success = jobs.filter((j) => j.status === "Success").length;
+    const total = jobs.length;
+    const progressRate = total ? Math.round((progress / total) * 100) : 0;
+    const successRate = total ? Math.round((success / total) * 100) : 0;
+    $("#totalJobs").text(jobs.length);
+    $("#progressJobs").text(progress);
+    $("#successJobs").text(success);
+    $("#waitingJobs,#pendingCount").text(progress);
+    $("#totalJobsNote").text("ข้อมูลปัจจุบัน");
+    $("#progressRate").text(progressRate + "%");
+    $("#successRate").text(successRate + "%");
+    $("#waitingJobsNote").text(progress + " งานที่ยังไม่เสร็จ");
+    $("#assignmentCount").text(jobs.length + " รายการ");
+    $("#reportSummary").text(
+      jobs.length
+        ? `ข้อมูล ${jobs.length} งาน · ${progress} งานกำลังดำเนินการ · ${success} งานเสร็จสิ้น`
+        : "ยังไม่มีข้อมูลงาน",
+    );
+  }
+  function statusTag(s) {
+    if (s === "Updating" || s === "Cancelling") {
+      const label = s === "Cancelling" ? "กำลังยกเลิก..." : "กำลังบันทึก...";
+      return `<span class="status status-loading"><i data-lucide="loader-circle" class="w-3 animate-spin"></i>${label}</span>`;
+    }
+    const className = s === "Success" ? "status-success" : s === "Cancelled" ? "status-cancelled" : "status-progress";
+    return `<span class="status ${className}">${s}</span>`;
+  }
+  function refreshIcons() {
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
+  }
+  function renderRows() {
+    const assignmentHtml = jobs
+      .map(
+        (j) =>
+          `<tr><td>${statusTag(j.status)}</td><td><button type="button" class="font-semibold text-brand hover:underline" data-edit-job="${j.id}">${j.id}</button></td><td>${j.supervisor || "-"}</td><td>${j.site || "-"}</td><td>${j.area || "-"}</td><td><div class="font-semibold">${j.job || "-"}</div></td><td><span class="font-semibold">${j.rank || "-"}</span></td><td>${j.date}</td><td>${j.foreman || "-"}</td></tr>`,
+      )
+      .join("");
+    const recentHtml = jobs
+      .slice(0, 5)
+      .map(
+        (j) =>
+          `<tr><td>${statusTag(j.status)}</td><td><button type="button" class="font-semibold text-brand hover:underline" data-edit-job="${j.id}">${j.id}</button></td><td><div class="font-semibold">${j.job || "-"}</div><div class="text-[11px] text-muted mt-1">${j.site || "-"}</div></td><td>${j.foreman || "-"}</td><td>${j.date}</td></tr>`,
+      )
+      .join("");
+    $("#assignmentRows").html(assignmentHtml);
+    $("#recentRows").html(recentHtml);
+    refreshIcons();
+  }
+  const selectedFiles = {};
+  let uploadAuthPromise = null;
+  let uploadLibrariesPromise = null;
+  function loadExternalScript(src) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("โหลดไลบรารีอัปโหลดไม่สำเร็จ"));
+      document.head.appendChild(script);
+    });
+  }
+
+  function getUploadAuth() {
+    if (uploadAuthPromise) return uploadAuthPromise;
+    if (!window.google || !google.script)
+      return Promise.reject(
+        new Error("กรุณาเปิดผ่าน Google Apps Script Web App"),
+      );
+    uploadAuthPromise = new Promise((resolve, reject) =>
+      google.script.run
+        .withSuccessHandler((r) => resolve(r.accessToken))
+        .withFailureHandler(reject)
+        .getUploadAuth(),
+    );
+    return uploadAuthPromise;
+  }
+
+  function compressSelected(file) {
+    const isHeic =
+      /\.(heic|heif)$/i.test(file.name) || /image\/heic/i.test(file.type);
+    const converted = isHeic
+      ? heic2any({ blob: file, toType: "image/jpeg", quality: 0.82 }).then(
+        (blob) =>
+          new File([blob], file.name.replace(/\.(heic|heif)$/i, ".jpg"), {
+            type: "image/jpeg",
+          }),
+      )
+      : Promise.resolve(file);
+    return converted.then(
+      (input) =>
+        new Promise(
+          (resolve, reject) =>
+            new Compressor(input, {
+              quality: 0.8,
+              maxWidth: 2000,
+              maxHeight: 2000,
+              convertSize: 1000000,
+              success: resolve,
+              error: reject,
+            }),
+        ),
+    );
+  }
+
+  function uploadToDrive(file, token, folderId, onProgress) {
+    return new Promise((resolve, reject) => {
+      const ru = new ResumableUploadToGoogleDrive2();
+      ru.Do({ file, accessToken: token, folderId, fields: "id" }, (res, err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        if (res.status === "Uploading") {
+          const p = res.progressByte
+            ? Math.round(
+              (res.progressByte.current / res.progressByte.total) * 100,
+            )
+            : Math.round(
+              (res.progressNumber.current / res.progressNumber.end) * 100,
+            );
+          onProgress(Math.min(99, p));
+        }
+        if (res.status === "Done") resolve(res.result);
+      });
+    });
+  }
+
+  function renderSubmit() {
+    const template = document.getElementById("submitItemTemplate");
+    const fragment = document.createDocumentFragment();
+
+    jobs
+      .filter((j) => j.status === "In progress")
+      .forEach((j) => {
+        const item = document.importNode(template.content, true).firstElementChild;
+        item.dataset.jobId = j.id;
+        item.querySelector('[data-job-field="job"]').textContent = j.job;
+        item.querySelector('[data-job-field="meta"]').textContent =
+          `${j.id} · ${j.site} · ${j.date}`;
+        fragment.appendChild(item);
+      });
+
+    $("#submitList").empty().append(fragment);
+    refreshIcons();
+  }
+
+  function toast(msg) {
+    $("#toast").text(msg).addClass("show");
+    setTimeout(() => $("#toast").removeClass("show"), 2500);
+  }
+
+  function showTab(tab) {
+    $(".tab-panel").removeClass("active");
+    $("#" + tab).addClass("active");
+    $(".nav-item").removeClass("active");
+    $(`.nav-item[data-tab="${tab}"]`).addClass("active");
+    window.scrollTo(0, 0);
+  }
+  function confirmAction(title, text, confirmButtonText, icon = "question") {
+    return Swal.fire({
+      title,
+      text,
+      icon,
+      showCancelButton: true,
+      confirmButtonText,
+      cancelButtonText: "กลับไปตรวจสอบ",
+      reverseButtons: true,
+      focusCancel: true,
+      confirmButtonColor: "#ec6a2d",
+      cancelButtonColor: "#68746b",
+    }).then((result) => result.isConfirmed);
+  }
+
+  function toInputDate(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+  }
+  function editOptionValues(selector, values, selected) {
+    const select = document.querySelector(selector);
+    if (!select) return;
+    select.replaceChildren(new Option("เลือก...", ""));
+    [...new Set(values.filter(Boolean))].forEach((value) => select.appendChild(new Option(value, value)));
+    select.value = values.includes(selected) ? selected : "";
+  }
+  function renderEditAreas() {
+    const site = $("#editSite").val();
+    const areas = (window.initialData.master?.supervisors || [])
+      .flatMap((supervisor) => supervisor.sites || [])
+      .filter((item) => item.site === site)
+      .flatMap((item) => item.areas || []);
+    const selected = $("#editArea").data("selected") || "";
+    editOptionValues("#editArea", areas, selected);
+    $("#editArea").removeData("selected");
+  }
+  function openAssignmentEditor(jobId) {
+    const job = jobs.find((item) => String(item.id) === String(jobId));
+    if (!job || !window.FIELD_FLOW_USER || window.FIELD_FLOW_USER.Role !== "Supervisor") return;
+    if (job.status === "Updating" || job.status === "Cancelling") {
+      toast("กำลังดำเนินการกับงานนี้ กรุณารอสักครู่");
+      return;
+    }
+    if (job.status === "Cancelled") {
+      toast("งานนี้ถูกยกเลิกแล้ว");
+      return;
+    }
+    $("#editAssignmentTitle").text(job.id);
+    editOptionValues("#editSite", (window.initialData.master?.supervisors || []).flatMap((s) => (s.sites || []).map((site) => site.site)), job.site);
+    $("#editArea").data("selected", job.area);
+    renderEditAreas();
+    editOptionValues("#editJob", window.initialData.dropdowns?.jobs || [], job.job);
+    editOptionValues("#editRank", window.initialData.dropdowns?.ranks || [], job.rank);
+    $("#editAssignDate").val(toInputDate(job.assignmentDate));
+    const container = $("#editForemanOptions").empty();
+    const selectedUsernames = String(job.foremanUsernames || "").split(",").map((name) => name.trim()).filter(Boolean);
+    foremen.forEach((foreman) => {
+      const label = $("<label>", { class: "flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm cursor-pointer hover:border-brand" });
+      const input = $("<input>", { type: "checkbox", class: "accent-brand w-4 h-4", value: foreman.Username }).attr("data-name", foreman.Name).prop("checked", selectedUsernames.includes(foreman.Username));
+      label.append(input, $("<span>").text(`${foreman.Name} (Foreman)`));
+      container.append(label);
+    });
+    if (!foremen.length) container.append($("<span>", { class: "text-sm text-muted" }).text("ไม่พบรายชื่อ Foreman"));
+    $("#assignmentEditDialog").data("job-id", job.id)[0].showModal();
+    refreshIcons();
+  }
+  function closeAssignmentEditor() {
+    const dialog = document.getElementById("assignmentEditDialog");
+    if (dialog?.open) dialog.close();
+  }
+
+  function initApp() {
+    if (appInitialized) return;
+    appInitialized = true;
+    console.log("App.js loaded");
+    if (!window.jQuery) {
+      console.error("FieldFlow: jQuery ไม่ได้โหลด");
+      return;
+    }
+    refreshIcons();
+    $("#assignSite").on("change", renderAssignAreas);
+    if (typeof window.flatpickr === "function") {
+      flatpickr(".datepicker", {
+        locale: "th",
+        dateFormat: "d/m/Y",
+        allowInput: true,
+      });
+    }
+    $("#logoutBtn").on("click", () => {
+      const token = getStoredSessionToken();
+      if (token && window.google && google.script) {
+        google.script.run.logoutSession(token);
+      }
+      clearStoredSessionToken();
+      window.FIELD_FLOW_USER = null;
+      stopSessionActivity();
+      $("#appView").addClass("hidden");
+      $("#loginView").show();
+    });
+
+    $("[data-tab]").on("click", function () {
+      showTab($(this).data("tab"));
+    });
+    $(document).on("click", "[data-edit-job]", function () {
+      openAssignmentEditor($(this).data("edit-job"));
+    });
+    $("#editSite").on("change", function () {
+      $("#editArea").removeData("selected");
+      renderEditAreas();
+    });
+    $("#closeAssignmentDialog, #cancelEdit").on("click", closeAssignmentEditor);
+    $("#assignmentEditForm").on("submit", async function (event) {
+      event.preventDefault();
+      const dialog = $("#assignmentEditDialog");
+      const job = jobs.find((item) => String(item.id) === String(dialog.data("job-id")));
+      if (!job) return;
+      dialog[0].close();
+      const confirmed = await confirmAction("ยืนยันการแก้ไขงาน?", "ระบบจะอัปเดตข้อมูลของ " + job.id + " ลงในชีต", "บันทึกการแก้ไข");
+      if (!confirmed) {
+        dialog[0].showModal();
+        return;
+      }
+      const previousStatus = job.status;
+      job.status = "Updating";
+      renderRows();
+      const selectedForemen = Array.from(document.querySelectorAll("#editForemanOptions input:checked"));
+      const button = $("#saveEditAssignment").prop("disabled", true).attr("aria-busy", "true").text("กำลังบันทึก...");
+      google.script.run
+        .withSuccessHandler(() => {
+          Object.assign(job, {
+            site: $("#editSite").val(), area: $("#editArea").val(), job: $("#editJob").val(), rank: $("#editRank").val(),
+            assignmentDate: $("#editAssignDate").val(), date: formatDisplayDate($("#editAssignDate").val()),
+            foremanUsernames: selectedForemen.map((input) => input.value).join(", "),
+            foreman: selectedForemen.map((input) => input.dataset.name).join(", ") || "-",
+            status: previousStatus,
+          });
+          renderRows();
+          updateSummary();
+          closeAssignmentEditor();
+          toast("แก้ไขงาน " + job.id + " เรียบร้อยแล้ว");
+          button.prop("disabled", false).removeAttr("aria-busy").text("บันทึกการแก้ไข");
+        })
+        .withFailureHandler((error) => {
+          job.status = previousStatus;
+          renderRows();
+          button.prop("disabled", false).removeAttr("aria-busy").text("บันทึกการแก้ไข");
+          toast(error.message || "แก้ไขงานไม่สำเร็จ");
+        })
+        .updateAssignment({
+          username: window.FIELD_FLOW_USER.Username, assignmentId: job.id,
+          site: $("#editSite").val(), area: $("#editArea").val(), job: $("#editJob").val(), rank: $("#editRank").val(),
+          assignDate: $("#editAssignDate").val(), foremanUsernames: selectedForemen.map((input) => input.value), foremanNames: selectedForemen.map((input) => input.dataset.name),
+        });
+    });
+    $("#cancelAssignment").on("click", async function () {
+      const dialog = $("#assignmentEditDialog");
+      const job = jobs.find((item) => String(item.id) === String(dialog.data("job-id")));
+      if (!job) return;
+      dialog[0].close();
+      const confirmed = await confirmAction("ยืนยันยกเลิกงาน?", "งาน " + job.id + " จะเปลี่ยนเป็นสถานะ Cancelled", "ยืนยันยกเลิกงาน", "warning");
+      if (!confirmed) {
+        dialog[0].showModal();
+        return;
+      }
+      const previousStatus = job.status;
+      job.status = "Cancelling";
+      renderRows();
+      const button = $(this).prop("disabled", true).text("กำลังยกเลิก...");
+      google.script.run
+        .withSuccessHandler(() => {
+          job.status = "Cancelled";
+          renderRows();
+          updateSummary();
+          closeAssignmentEditor();
+          toast("ยกเลิกงาน " + job.id + " เรียบร้อยแล้ว");
+          button.prop("disabled", false).text("ยกเลิกงาน");
+        })
+        .withFailureHandler((error) => {
+          job.status = previousStatus;
+          renderRows();
+          button.prop("disabled", false).text("ยกเลิกงาน");
+          toast(error.message || "ยกเลิกงานไม่สำเร็จ");
+        })
+        .cancelAssignment(job.id, window.FIELD_FLOW_USER.Username);
+    });
+
+    $(document).on("change", "#submitList input[type=file]", function () {
+      const input = this,
+        file = this.files[0],
+        card = $(this).closest("[data-job-id]"),
+        jobId = card.data("job-id"),
+        kind = $(this).data("kind");
+      if (!file) return;
+      selectedFiles[jobId] || (selectedFiles[jobId] = {});
+      selectedFiles[jobId][kind] = file;
+      $(input)
+        .closest("label")
+        .addClass("!border-brand !text-brand")
+        .find("span")
+        .text(file.name.length > 18 ? file.name.slice(0, 15) + "…" : file.name);
+      toast("เลือกไฟล์แล้ว กำลังตรวจสอบสิทธิ์อัปโหลด...");
+      getUploadAuth()
+        .then(() => toast("พร้อมอัปโหลดไฟล์ไปยัง Google Drive"))
+        .catch((e) => toast(e.message || "ไม่สามารถขอ OAuth token ได้"));
+    });
+
+    $(document).on("click", ".submit-btn", async function () {
+      const btn = $(this),
+        card = btn.closest("[data-job-id]"),
+        jobId = card.data("job-id"),
+        files = selectedFiles[jobId] || {};
+      if (!files.before || !files.after) {
+        toast("กรุณาเลือกภาพก่อนและภาพหลังให้ครบ");
+        return;
+      }
+      btn.prop("disabled", true).text("กำลังอัปโหลด...");
+      const status = card.find(".upload-status").removeClass("hidden"),
+        bar = card.find(".upload-bar"),
+        pct = card.find(".upload-percent"),
+        label = card.find(".upload-label");
+      try {
+        label.text("กำลังบีบอัดภาพ...");
+        const [before, after] = await Promise.all([
+          compressSelected(files.before),
+          compressSelected(files.after),
+        ]);
+        const auth = await getUploadAuth();
+        const folder = await new Promise((resolve, reject) =>
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getJobFolder(jobId),
+        );
+        let beforeResult, afterResult;
+        label.text("กำลังอัปโหลดภาพก่อน...");
+        beforeResult = await uploadToDrive(before, auth, folder.folderId, (p) => {
+          bar.css("width", p / 2 + "%");
+          pct.text(Math.round(p / 2) + "%");
+        });
+        label.text("กำลังอัปโหลดภาพหลัง...");
+        afterResult = await uploadToDrive(after, auth, folder.folderId, (p) => {
+          const total = 50 + p / 2;
+          bar.css("width", total + "%");
+          pct.text(Math.round(total) + "%");
+        });
+        label.text("กำลังบันทึกข้อมูลลงชีต...");
+        await new Promise((resolve, reject) =>
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .saveSubmission({
+              assignmentId: jobId,
+              beforeFileId: beforeResult.id,
+              afterFileId: afterResult.id,
+              beforeUrl: "https://drive.google.com/open?id=" + beforeResult.id,
+              afterUrl: "https://drive.google.com/open?id=" + afterResult.id,
+            }),
+        );
+        bar.css("width", "100%");
+        pct.text("100%");
+        label.text("ส่งงานสำเร็จ");
+        toast("อัปโหลดและบันทึกงาน " + jobId + " เรียบร้อยแล้ว");
+        setTimeout(() => card.fadeOut(200), 700);
+      } catch (e) {
+        label.text("อัปโหลดไม่สำเร็จ");
+        toast(e.message || "อัปโหลดไม่สำเร็จ");
+        btn.prop("disabled", false).text("ส่งงาน");
+      }
+    });
+    $("#exportBtn").on("click", () =>
+      toast("กำลังเตรียมไฟล์ Excel รายงานเดือนกันยายน..."),
+    );
+    $("#loginPassword").on("keydown", (e) => {
+      if (e.key === "Enter") $("#loginBtn").click();
+    });
+  }
+
+  window.FIELD_FLOW_USER = null;
+  let appInitialized = false;
+  function updateSplash(message, progress) {
+    const value = Math.max(0, Math.min(100, Number(progress) || 0));
+    $("#splashMessage").text(message);
+    $("#splashProgress").css("width", value + "%");
+    $("#splashPercent").text(Math.round(value) + "%");
+    $("#sessionSplash [role=progressbar]").attr("aria-valuenow", value);
+  }
+  function showSplash(message, progress) {
+    document.documentElement.classList.remove("session-checking");
+    $("#sessionSplash").addClass("is-visible");
+    $("#splashProgress").removeClass("bg-red-400").addClass("bg-brand");
+    updateSplash(message, progress);
+    refreshIcons();
+  }
+  function hideSplash() {
+    $("#sessionSplash").removeClass("is-visible");
+  }
+  function showSplashError(message) {
+    $("#splashMessage").text(message);
+    $("#splashProgress").css("width", "100%").removeClass("bg-brand").addClass("bg-red-400");
+    $("#splashPercent").text("ไม่สำเร็จ");
+  }
+  function getStoredSessionToken() {
+    return localStorage.getItem("fieldFlowSessionToken") ||
+      sessionStorage.getItem("fieldFlowSessionToken");
+  }
+  function storeSessionToken(token, remember) {
+    localStorage.removeItem("fieldFlowSessionToken");
+    sessionStorage.removeItem("fieldFlowSessionToken");
+    (remember ? localStorage : sessionStorage).setItem("fieldFlowSessionToken", token);
+  }
+  function clearStoredSessionToken() {
+    localStorage.removeItem("fieldFlowSessionToken");
+    sessionStorage.removeItem("fieldFlowSessionToken");
+  }
+  function finishSessionCheck(showLogin) {
+    document.documentElement.classList.remove("session-checking");
+    if (showLogin) {
+      hideSplash();
+      $("#loginView").show();
+    }
+  }
+  function setAssignmentLoading(loading) {
+    const button = $("#saveAssignment");
+    button.prop("disabled", loading).attr("aria-busy", loading);
+    button.html(
+      loading
+        ? '<i data-lucide="loader-circle" class="w-4 animate-spin"></i>กำลังบันทึก...'
+        : '<i data-lucide="send" class="w-4"></i>มอบหมายงาน',
+    );
+    refreshIcons();
+  }
+  let sessionIdleTimer = null;
+  let lastSessionTouch = 0;
+  let sessionActivityHandler = null;
+  const SESSION_IDLE_MS = 60 * 60 * 1000;
+  const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+  function stopSessionActivity() {
+    if (sessionIdleTimer) clearTimeout(sessionIdleTimer);
+    sessionIdleTimer = null;
+    if (sessionActivityHandler) {
+      ["click", "keydown", "scroll", "touchstart"].forEach((eventName) =>
+        document.removeEventListener(eventName, sessionActivityHandler),
+      );
+      sessionActivityHandler = null;
+    }
+  }
+  function expireSession() {
+    const token = getStoredSessionToken();
+    if (token && window.google && google.script) google.script.run.logoutSession(token);
+    clearStoredSessionToken();
+    window.FIELD_FLOW_USER = null;
+    stopSessionActivity();
+    $("#appView").addClass("hidden");
+    $("#loginView").show();
+    toast("Session หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง");
+  }
+  function startSessionActivity() {
+    stopSessionActivity();
+    const markActivity = () => {
+      const token = getStoredSessionToken();
+      if (!token || !window.FIELD_FLOW_USER) return;
+      if (sessionIdleTimer) clearTimeout(sessionIdleTimer);
+      sessionIdleTimer = setTimeout(expireSession, SESSION_IDLE_MS);
+      const now = Date.now();
+      if (now - lastSessionTouch < SESSION_TOUCH_INTERVAL_MS) return;
+      lastSessionTouch = now;
+      google.script.run
+        .withFailureHandler(expireSession)
+        .touchSession(token);
+    };
+    sessionActivityHandler = markActivity;
+    ["click", "keydown", "scroll", "touchstart"].forEach((eventName) =>
+      document.addEventListener(eventName, markActivity, { passive: true }),
+    );
+    markActivity();
+  }
+  function loadUserSession(user) {
+    window.FIELD_FLOW_USER = user;
+    startSessionActivity();
+    $("#assignSupervisor").val(user.Name);
+    $("#loginView").hide();
+    $("#appView").addClass("hidden");
+    showSplash("ตรวจสอบ session ผ่านแล้ว กำลังโหลดข้อมูลเริ่มต้น...", 20);
+    $(".user-copy div:first-child").text(user.Name);
+    $(".user-copy div:last-child").text(user.Role);
+    $('.nav-item[data-tab="assign"]').toggle(user.Role === "Supervisor");
+    $("#assign .surface").first().toggle(user.Role === "Supervisor");
+    $('.nav-item[data-tab="submit"]').toggle(user.Role !== "Owner");
+    setJobs([]);
+    setForemen([]);
+    renderRows();
+    renderSubmit();
+    updateSplash("กำลังโหลดข้อมูล workspace...", 45);
+    new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(reject)
+        .getBootstrap();
+    })
+      .then(function (data) {
+        updateSplash("กำลังจัดเตรียมเมนูและรายการงาน...", 80);
+        const bootstrap = JSON.parse(data || "{}");
+        console.log("Bootstrap data:", bootstrap);
+        window.initialData = { master: bootstrap.master, dropdowns: bootstrap.dropdowns };
+        renderAssignDropdowns({ master: bootstrap.master, dropdowns: bootstrap.dropdowns }, user.Name);
+        setJobs(bootstrap.assignments);
+        setForemen(bootstrap.foremen);
+        renderRows();
+        renderSubmit();
+        updateSplash("พร้อมใช้งาน กำลังเปิด workspace...", 100);
+        window.setTimeout(() => {
+          hideSplash();
+          $("#appView").removeClass("hidden");
+        }, 180);
+      })
+      .catch(function (error) {
+        console.error("Bootstrap failed:", error);
+        clearStoredSessionToken();
+        window.FIELD_FLOW_USER = null;
+        stopSessionActivity();
+        showSplashError("โหลดข้อมูลเริ่มต้นไม่สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง");
+        window.setTimeout(() => {
+          hideSplash();
+          $("#appView").addClass("hidden");
+          $("#loginView").show();
+          toast(error.message || "โหลดข้อมูลเริ่มต้นไม่สำเร็จ");
+        }, 900);
+      });
+  }
+  function bootApp() {
+
+    initApp();
+
+    const login = document.getElementById("loginBtn");
+    if (login)
+      login.addEventListener("click", function () {
+        const username = document.getElementById("loginUsername").value.trim(),
+          password = document.getElementById("loginPassword").value;
+        if (!username || !password) {
+          toast("กรุณากรอก Username และ Password");
+          return;
+        }
+        if (!window.google || !google.script || !google.script.run) {
+          toast("กรุณาเปิดหน้านี้ผ่าน Google Apps Script Web App");
+          return;
+        }
+        login.disabled = true;
+        login.innerHTML = "กำลังตรวจสอบ...";
+        google.script.run
+          .withSuccessHandler(function (user) {
+            storeSessionToken(user.sessionToken, $("#rememberMe").prop("checked"));
+            showSplash("เข้าสู่ระบบสำเร็จ กำลังโหลดข้อมูลเริ่มต้น...", 20);
+            loadUserSession(user);
+            login.disabled = false;
+            login.innerHTML =
+              'เข้าสู่ระบบ <i data-lucide="arrow-right" class="inline w-4 ml-1 align-[-3px]"></i>';
+            refreshIcons();
+          })
+          .withFailureHandler(function (error) {
+            toast(error.message || "เข้าสู่ระบบไม่สำเร็จ");
+            login.disabled = false;
+            login.innerHTML =
+              'เข้าสู่ระบบ <i data-lucide="arrow-right" class="inline w-4 ml-1 align-[-3px]"></i>';
+            refreshIcons();
+          })
+          .authenticateUser(username, password);
+      });
+    document.addEventListener(
+      "click",
+      async function (e) {
+        const assign = e.target.closest("#saveAssignment");
+        if (assign) {
+          e.stopImmediatePropagation();
+          if (
+            !window.FIELD_FLOW_USER ||
+            window.FIELD_FLOW_USER.Role !== "Supervisor"
+          ) {
+            toast("เฉพาะ Supervisor เท่านั้นที่มอบหมายงานได้");
+            return;
+          }
+          const selectedForemen = Array.from(
+            document.querySelectorAll('#foremanOptions input[name="foreman"]:checked'),
+          );
+          if (!selectedForemen.length) {
+            toast("กรุณาเลือกผู้รับผิดชอบอย่างน้อย 1 คน");
+            return;
+          }
+          if (!await confirmAction("ยืนยันการสร้างงาน?", "ระบบจะบันทึกงานใหม่ลงในชีต Assignments", "บันทึกงาน")) return;
+          setAssignmentLoading(true);
+          const payload = {
+            username: window.FIELD_FLOW_USER.Username,
+            site: $("#assignSite").val(),
+            area: $("#assignArea").val(),
+            job: $("#assignJob").val(),
+            rank: $("#assignRank").val(),
+            assignDate: assignDateValue(),
+            supervisorName: window.FIELD_FLOW_USER.Name,
+            foremanUsernames: selectedForemen.map((input) => input.value),
+            foremanNames: selectedForemen.map((input) => input.dataset.name),
+          };
+          google.script.run
+            .withSuccessHandler((r) => {
+              toast("สร้างงาน " + r.assignmentId + " และบันทึกลงชีตแล้ว");
+              jobs.unshift({
+                id: r.assignmentId,
+                supervisor: $("#assignSupervisor").val(),
+                site: $("#assignSite").val(),
+                area: $("#assignArea").val(),
+                job: $("#assignJob").val(),
+                rank: $("#assignRank").val(),
+                date: formatDisplayDate(assignDateValue()),
+                foreman: selectedForemen.map((input) => input.dataset.name).join(", "),
+                status: "In progress",
+              });
+              updateSummary();
+              renderRows();
+              setAssignmentLoading(false);
+            })
+            .withFailureHandler((err) => {
+              setAssignmentLoading(false);
+              toast(err.message || "บันทึกงานไม่สำเร็จ");
+            })
+            .saveAssignment(payload);
+          return;
+        }
+        const submit = e.target.closest(".submit-btn");
+        if (submit) {
+          e.stopImmediatePropagation();
+          const card = $(submit).closest("[data-job-id]"),
+            jobId = card.data("job-id"),
+            files = selectedFiles[jobId] || {};
+          if (
+            !window.FIELD_FLOW_USER ||
+            window.FIELD_FLOW_USER.Role !== "Foreman"
+          ) {
+            toast("เฉพาะ Foreman เท่านั้นที่ส่งงานได้");
+            return;
+          }
+          if (!files.before || !files.after) {
+            toast("กรุณาเลือกภาพก่อนและภาพหลังให้ครบ");
+            return;
+          }
+          submit.disabled = true;
+          submit.textContent = "กำลังอัปโหลด...";
+          const status = card.find(".upload-status").removeClass("hidden"),
+            bar = card.find(".upload-bar"),
+            pct = card.find(".upload-percent"),
+            label = card.find(".upload-label");
+          (async () => {
+            try {
+              label.text("กำลังบีบอัดภาพ...");
+              const [before, after] = await Promise.all([
+                compressSelected(files.before),
+                compressSelected(files.after),
+              ]),
+                auth = await getUploadAuth(),
+                folder = await new Promise((resolve, reject) =>
+                  google.script.run
+                    .withSuccessHandler(resolve)
+                    .withFailureHandler(reject)
+                    .getJobFolder(jobId),
+                );
+              label.text("กำลังอัปโหลดภาพก่อน...");
+              const beforeResult = await uploadToDrive(
+                before,
+                auth,
+                folder.folderId,
+                (p) => {
+                  bar.css("width", p / 2 + "%");
+                  pct.text(Math.round(p / 2) + "%");
+                },
+              );
+              label.text("กำลังอัปโหลดภาพหลัง...");
+              const afterResult = await uploadToDrive(
+                after,
+                auth,
+                folder.folderId,
+                (p) => {
+                  bar.css("width", 50 + p / 2 + "%");
+                  pct.text(Math.round(50 + p / 2) + "%");
+                },
+              );
+              label.text("กำลังบันทึกข้อมูลลงชีต...");
+              await new Promise((resolve, reject) =>
+                google.script.run
+                  .withSuccessHandler(resolve)
+                  .withFailureHandler(reject)
+                  .saveSubmission({
+                    username: window.FIELD_FLOW_USER.Username,
+                    assignmentId: jobId,
+                    beforeFileId: beforeResult.id,
+                    afterFileId: afterResult.id,
+                    beforeUrl:
+                      "https://drive.google.com/open?id=" + beforeResult.id,
+                    afterUrl:
+                      "https://drive.google.com/open?id=" + afterResult.id,
+                  }),
+              );
+              bar.css("width", "100%");
+              pct.text("100%");
+              label.text("ส่งงานสำเร็จ");
+              toast("อัปโหลดและบันทึกงาน " + jobId + " เรียบร้อยแล้ว");
+              setTimeout(() => card.fadeOut(200), 700);
+            } catch (err) {
+              label.text("อัปโหลดไม่สำเร็จ");
+              toast(err.message || "อัปโหลดไม่สำเร็จ");
+              submit.disabled = false;
+              submit.textContent = "ส่งงาน";
+            }
+          })();
+        }
+      },
+      true,
+    );
+    const sessionToken = getStoredSessionToken();
+    if (sessionToken && window.google && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function (user) {
+          if (user) loadUserSession(user);
+          else {
+            clearStoredSessionToken();
+            finishSessionCheck(true);
+          }
+        })
+        .withFailureHandler(function () {
+          clearStoredSessionToken();
+          finishSessionCheck(true);
+        })
+        .getSession(sessionToken);
+    }
+  }
+  $(document).ready(bootApp);
+
+</script>

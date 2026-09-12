@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="th">
+
+<head>
+  <base target="_top" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldFlow · ระบบสั่งงานภาคสนาม</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ["Inter", "Noto Sans Thai", "Tahoma", "sans-serif"],
+          },
+          colors: {
+            ink: "#17211b",
+            muted: "#68746b",
+            line: "#e6ebe7",
+            brand: "#ec6a2d",
+            mint: "#e6f3ee",
+            paper: "#f7f9f7",
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
+  <script defer src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/compressorjs@1.2.1/dist/compressor.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@2.0.2/resumableupload2_js.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f7f9f7;
+      color: #17211b;
+      font-family: Inter, "Noto Sans Thai", Tahoma, sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .sidebar {
+      width: 256px;
+      background: #17211b;
+      color: #d9e2dc;
+    }
+
+    .nav-item {
+      color: #aebbb2;
+      transition: 0.2s;
+    }
+
+    .nav-item:hover,
+    .nav-item.active {
+      background: #29372f;
+      color: #fff;
+    }
+
+    .nav-item.active {
+      box-shadow: inset 3px 0 #ec6a2d;
+    }
+
+    .content {
+      min-width: 0;
+    }
+
+    .surface {
+      background: #fff;
+      border: 1px solid #e6ebe7;
+      border-radius: 14px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #ec6a2d;
+      color: #fff;
+      transition: 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #c94e1e;
+    }
+
+    .btn-primary svg,
+    .dropzone svg {
+      display: block;
+      flex: none;
+      margin: 0 !important;
+    }
+
+    .btn-secondary:has(svg),
+    .dropzone {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .btn-secondary svg {
+      display: block;
+      flex: none;
+      margin: 0 !important;
+    }
+
+    .btn-secondary {
+      background: #fff;
+      border: 1px solid #dce4df;
+      color: #34433a;
+    }
+
+    .btn-secondary:hover {
+      background: #f3f6f4;
+    }
+
+    .field {
+      height: 42px;
+      border: 1px solid #dbe3de;
+      border-radius: 8px;
+      background: #fff;
+      padding: 0 12px;
+      outline: none;
+      width: 100%;
+      font-size: 14px;
+    }
+
+    .field:focus {
+      border-color: #ec6a2d;
+      box-shadow: 0 0 0 3px #ec6a2d1c;
+    }
+
+    .label {
+      font-size: 12px;
+      color: #68746b;
+      font-weight: 600;
+      margin-bottom: 7px;
+      display: block;
+    }
+
+    .table-wrap {
+      overflow: auto;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 820px;
+    }
+
+    .data-table th {
+      font-size: 11px;
+      color: #7a877e;
+      text-align: left;
+      font-weight: 600;
+      padding: 12px 16px;
+      background: #fafcfb;
+      border-bottom: 1px solid #e6ebe7;
+      white-space: nowrap;
+    }
+
+    .data-table td {
+      font-size: 13px;
+      padding: 15px 16px;
+      border-bottom: 1px solid #edf1ee;
+      white-space: nowrap;
+    }
+
+    .data-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    dialog.assignment-dialog {
+      width: min(680px, calc(100vw - 32px));
+      max-height: calc(100vh - 32px);
+      border: 0;
+      border-radius: 14px;
+      padding: 0;
+      color: #17211b;
+    }
+
+    dialog.assignment-dialog::backdrop {
+      background: rgb(23 33 27 / 58%);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .status:before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 99px;
+      background: currentColor;
+    }
+
+    .status-progress {
+      background: #fff3df;
+      color: #b56b0c;
+    }
+
+    .status-success {
+      background: #e8f6ee;
+      color: #27824b;
+    }
+
+    .status-cancelled {
+      background: #f1f3f2;
+      color: #68746b;
+    }
+
+    .status-loading {
+      background: #eef3fb;
+      color: #5579b8;
+    }
+
+    .metric {
+      border-top: 3px solid #e6ebe7;
+    }
+
+    .metric.orange {
+      border-top-color: #ec6a2d;
+    }
+
+    .metric.green {
+      border-top-color: #55a875;
+    }
+
+    .metric.blue {
+      border-top-color: #6b93d6;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .dropzone {
+      border: 1px dashed #c9d7ce;
+      border-radius: 10px;
+      background: #fbfdfb;
+      transition: 0.2s;
+    }
+
+    .dropzone:hover {
+      border-color: #ec6a2d;
+      background: #fff7f2;
+    }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 30;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: 0.25s;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        width: 76px;
+      }
+
+      .sidebar .brand-copy,
+      .sidebar .nav-label,
+      .sidebar .user-copy {
+        display: none;
+      }
+
+      .sidebar .nav-item {
+        justify-content: center;
+      }
+
+      .sidebar .brand {
+        justify-content: center;
+      }
+
+      .main-pad {
+        padding: 20px !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .sidebar {
+        display: none;
+      }
+
+      .mobile-nav {
+        display: flex !important;
+      }
+
+      .main-pad {
+        padding: 16px !important;
+      }
+
+      .topbar {
+        padding: 14px 16px !important;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      .metric-grid {
+        grid-template-columns: 1fr 1fr !important;
+      }
+    }
+
+    #sessionSplash {
+      display: none;
+    }
+
+    #sessionSplash.is-visible {
+      display: flex;
+    }
+
+    html.session-checking #sessionSplash,
+    #sessionSplash.is-visible {
+      display: flex;
+    }
+  </style>
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem("fieldFlowSessionToken") || sessionStorage.getItem("fieldFlowSessionToken")) {
+          document.documentElement.classList.add("session-checking");
+        }
+      } catch (error) { }
+    })();
+  </script>
+</head>
+
+<body>
+  <div id="sessionSplash" class="fixed inset-0 z-50 min-h-screen items-center justify-center bg-[#17211b] text-white px-6">
+    <div class="w-full max-w-sm text-center">
+      <div class="w-12 h-12 mx-auto mb-4 rounded-xl bg-brand flex items-center justify-center">
+        <i data-lucide="route" class="w-7"></i>
+      </div>
+      <div class="font-extrabold text-xl">FieldFlow</div>
+      <div id="splashMessage" class="text-sm text-[#aebbb2] mt-2" aria-live="polite">กำลังตรวจสอบ session...</div>
+      <div class="mt-6 h-1.5 rounded-full bg-white/15 overflow-hidden" role="progressbar" aria-label="ความคืบหน้าการเตรียมระบบ" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="splashProgress" class="h-full rounded-full bg-brand transition-all duration-300" style="width: 0%"></div>
+      </div>
+      <div id="splashPercent" class="text-[11px] text-[#84948a] mt-2">0%</div>
+    </div>
+  </div>
+  <div id="loginView" class="min-h-screen flex items-center justify-center bg-[#17211b] p-5">
+    <div class="w-full max-w-[420px] bg-white rounded-2xl p-8 shadow-2xl">
+      <div class="flex items-center gap-3 mb-8">
+        <div class="w-11 h-11 rounded-xl bg-brand text-white flex items-center justify-center">
+          <i data-lucide="route" class="w-6"></i>
+        </div>
+        <div>
+          <div class="font-extrabold text-lg">FieldFlow</div>
+          <div class="text-xs text-muted">Field Operations Workspace</div>
+        </div>
+      </div>
+      <h1 class="text-2xl font-bold tracking-tight">เข้าสู่ระบบ</h1>
+      <p class="text-sm text-muted mt-2 mb-7">
+        จัดการงานภาคสนามให้เสร็จตรงเวลา ในที่เดียว
+      </p>
+      <label class="label">Username</label><input id="loginUsername" class="field mb-4" autocomplete="username" /><label
+        class="label">Password</label>
+      <div class="relative">
+        <input id="loginPassword" class="field pr-10" type="password" autocomplete="current-password" /><i
+          data-lucide="lock-keyhole" class="absolute right-3 top-3.5 w-4 text-muted"></i>
+      </div>
+      <label class="mt-4 flex items-center gap-2 text-sm text-muted cursor-pointer">
+        <input id="rememberMe" type="checkbox" class="accent-brand w-4 h-4" />
+        <span>จดจำการเข้าสู่ระบบ</span>
+      </label>
+      <button id="loginBtn" class="btn-primary w-full h-11 rounded-lg mt-6 font-semibold">
+        เข้าสู่ระบบ
+        <i data-lucide="arrow-right" class="inline w-4 ml-1 align-[-3px]"></i>
+      </button>
+    </div>
+  </div>
+  <div id="appView" class="hidden min-h-screen">
+    <aside class="sidebar fixed inset-y-0 left-0 z-20 flex flex-col">
+      <div class="brand h-[76px] flex items-center gap-3 px-5 border-b border-white/10">
+        <div class="w-9 h-9 rounded-lg bg-brand text-white flex items-center justify-center">
+          <i data-lucide="route" class="w-5"></i>
+        </div>
+        <div class="brand-copy">
+          <div class="text-white font-bold">FieldFlow</div>
+          <div class="text-[10px] text-[#84948a]">FIELD OPERATIONS</div>
+        </div>
+      </div>
+      <nav class="p-3 space-y-1 flex-1">
+        <div class="text-[10px] font-bold text-[#718076] px-3 pt-4 pb-2">
+          WORKSPACE
+        </div>
+        <button class="nav-item active w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm"
+          data-tab="dashboard">
+          <i data-lucide="layout-dashboard" class="w-4"></i><span class="nav-label">ภาพรวม</span></button><button
+          class="nav-item w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm" data-tab="assign">
+          <i data-lucide="clipboard-pen-line" class="w-4"></i><span class="nav-label">มอบหมายงาน</span></button><button
+          class="nav-item w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm" data-tab="submit">
+          <i data-lucide="camera" class="w-4"></i><span class="nav-label">ส่งงาน</span><span
+            class="nav-label ml-auto text-[10px] bg-brand text-white rounded-full px-1.5"
+            id="pendingCount">3</span></button><button
+          class="nav-item w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm" data-tab="report">
+          <i data-lucide="file-spreadsheet" class="w-4"></i><span class="nav-label">รายงาน</span>
+        </button>
+        <div class="text-[10px] font-bold text-[#718076] px-3 pt-7 pb-2">
+          SYSTEM
+        </div>
+        <button class="nav-item w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm" data-tab="settings">
+          <i data-lucide="settings-2" class="w-4"></i><span class="nav-label">ตั้งค่าระบบ</span>
+        </button>
+      </nav>
+      <div class="p-3 border-t border-white/10">
+        <button id="logoutBtn" class="nav-item w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm">
+          <i data-lucide="log-out" class="w-4"></i><span class="nav-label">ออกจากระบบ</span>
+        </button>
+      </div>
+    </aside>
+    <main class="content ml-[256px] min-h-screen">
+      <header
+        class="topbar h-[76px] bg-white border-b border-line flex items-center justify-between px-8 sticky top-0 z-10">
+        <div>
+          <div class="text-xs text-muted">Saturday, 12 September 2026</div>
+          <div class="font-bold text-lg">
+            สวัสดี, คุณกิตติศักดิ์ <span class="text-brand">●</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <button class="w-9 h-9 rounded-lg border border-line flex items-center justify-center text-muted">
+            <i data-lucide="bell" class="w-4"></i>
+          </button>
+          <div class="h-8 w-px bg-line"></div>
+          <div class="flex items-center gap-2">
+            <div class="w-9 h-9 bg-mint text-[#287850] rounded-full flex items-center justify-center text-sm font-bold">
+              กศ
+            </div>
+            <div class="user-copy">
+              <div class="text-xs font-semibold">กิตติศักดิ์ ส.</div>
+              <div class="text-[10px] text-muted">Supervisor</div>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div class="main-pad p-8 max-w-[1500px] mx-auto">
+        <section id="dashboard" class="tab-panel active">
+          <div class="flex items-end justify-between mb-7">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight">
+                ภาพรวมงานวันนี้
+              </h2>
+              <p class="text-sm text-muted mt-1">
+                ติดตามทุกงานในความรับผิดชอบของคุณ
+              </p>
+            </div>
+            <button class="btn-primary rounded-lg px-4 h-10 text-sm font-semibold" data-tab="assign">
+              <i data-lucide="plus" class="w-4 inline mr-1 align-[-3px]"></i>มอบหมายงานใหม่
+            </button>
+          </div>
+          <div class="metric-grid grid grid-cols-4 gap-4 mb-6">
+            <div class="surface metric orange p-5">
+              <div class="text-xs text-muted">งานทั้งหมด</div>
+              <div id="totalJobs" class="text-3xl font-bold mt-2">0</div>
+              <div class="text-xs text-muted mt-2">
+                <span id="totalJobsNote" class="text-brand font-semibold">ข้อมูลปัจจุบัน</span>
+              </div>
+            </div>
+            <div class="surface metric blue p-5">
+              <div class="text-xs text-muted">กำลังดำเนินการ</div>
+              <div id="progressJobs" class="text-3xl font-bold mt-2">0</div>
+              <div class="text-xs text-muted mt-2"><span id="progressRate">0%</span> ของงานทั้งหมด</div>
+            </div>
+            <div class="surface metric green p-5">
+              <div class="text-xs text-muted">เสร็จสิ้นแล้ว</div>
+              <div id="successJobs" class="text-3xl font-bold mt-2">0</div>
+              <div class="text-xs text-green-700 mt-2">อัตราสำเร็จ <span id="successRate">0%</span></div>
+            </div>
+            <div class="surface metric p-5">
+              <div class="text-xs text-muted">รอส่งงาน</div>
+              <div id="waitingJobs" class="text-3xl font-bold mt-2">0</div>
+              <div id="waitingJobsNote" class="text-xs text-muted mt-2">งานที่ยังไม่เสร็จ</div>
+            </div>
+          </div>
+          <div class="surface">
+            <div class="p-5 flex justify-between items-center">
+              <div>
+                <h3 class="font-bold">งานล่าสุด</h3>
+                <p class="text-xs text-muted mt-1">
+                  อัปเดตล่าสุดเมื่อไม่กี่นาทีที่ผ่านมา
+                </p>
+              </div>
+              <button class="text-xs text-brand font-semibold" data-tab="assign">
+                ดูทั้งหมด
+                <i data-lucide="arrow-up-right" class="w-3 inline align-[-2px]"></i>
+              </button>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>สถานะ</th>
+                    <th>เลขที่งาน</th>
+                    <th>ชื่องาน / สถานที่</th>
+                    <th>ผู้รับผิดชอบ</th>
+                    <th>วันส่งงาน</th>
+                  </tr>
+                </thead>
+                <tbody id="recentRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <section id="assign" class="tab-panel">
+          <div class="mb-7">
+            <h2 class="text-2xl font-bold tracking-tight">มอบหมายงาน</h2>
+            <p class="text-sm text-muted mt-1">
+              สร้างและติดตามงานสำหรับทีม Foreman
+            </p>
+          </div>
+          <div class="surface p-6 mb-6">
+            <div class="flex items-center justify-between mb-5">
+              <div>
+                <h3 class="font-bold">สร้างงานใหม่</h3>
+                <p class="text-xs text-muted mt-1">
+                  กรอกข้อมูลให้ครบเพื่อมอบหมายงาน
+                </p>
+              </div>
+              <span class="text-[11px] text-muted">แก้ไขย้อนหลังได้ไม่เกิน 30 วัน</span>
+            </div>
+            <div class="form-grid grid grid-cols-3 gap-4">
+              <div>
+                <label class="label">Supervisor</label><input id="assignSupervisor" class="field bg-[#f1f3f2]" readonly
+                  placeholder="ใช้ชื่อจากบัญชีที่เข้าสู่ระบบ" />
+              </div>
+              <div>
+                <label class="label">Site</label><select id="assignSite" class="field">
+                  <option value="">กำลังโหลดข้อมูล...</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">Area</label><select id="assignArea" class="field">
+                  <option value="">กำลังโหลดข้อมูล...</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">งาน</label><select id="assignJob" class="field">
+                  <option value="">กำลังโหลดข้อมูล...</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">Rank</label><select id="assignRank" class="field">
+                  <option value="">กำลังโหลดข้อมูล...</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">วันที่มอบหมาย</label><input id="assignDate" class="field datepicker"
+                  value="12/09/2026" />
+              </div>
+              <div class="col-span-1 sm:col-span-3 min-w-0">
+                <label class="label">ผู้รับผิดชอบ
+                  <span class="text-brand">· เลือกได้หลายคน</span></label>
+                <div id="foremanOptions"
+                  class="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-line bg-white p-2 min-h-[58px]">
+                  <span class="text-sm text-muted">กำลังโหลดรายชื่อ Foreman...</span>
+                </div>
+                <template id="foremanOptionTemplate">
+                  <label
+                    class="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm cursor-pointer hover:border-brand">
+                    <input type="checkbox" name="foreman" class="accent-brand w-4 h-4" />
+                    <span></span>
+                  </label>
+                </template>
+              </div>
+              <div class="col-span-1 sm:col-span-3 border-t border-line pt-4 flex items-center justify-end gap-2">
+                <button class="btn-secondary rounded-lg h-[42px] px-4 text-sm">
+                  ล้างข้อมูล</button><button id="saveAssignment"
+                  class="btn-primary rounded-lg h-[42px] px-5 text-sm font-semibold">
+                  <i data-lucide="send" class="w-4 inline mr-1 align-[-3px]"></i>มอบหมายงาน
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="surface">
+            <div class="p-5 border-b border-line flex flex-wrap gap-3 items-center justify-between">
+              <div>
+                <h3 class="font-bold">รายการงานทั้งหมด</h3>
+                <p class="text-xs text-muted mt-1">
+                  <span id="assignmentCount">0 รายการ</span>
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <select class="field !w-auto !h-9 text-xs">
+                  <option>ทั้งหมด</option>
+                  <option>In progress</option>
+                  <option>Success</option>
+                </select><input class="field datepicker !w-[140px] !h-9 text-xs" placeholder="กรองวันที่" />
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>สถานะ</th>
+                    <th>เลขที่งาน</th>
+                    <th>Supervisor</th>
+                    <th>Site</th>
+                    <th>Area</th>
+                    <th>งาน</th>
+                    <th>Rank</th>
+                    <th>วันที่มอบหมาย</th>
+                    <th>ผู้รับผิดชอบ</th>
+                  </tr>
+                </thead>
+                <tbody id="assignmentRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <section id="submit" class="tab-panel">
+          <div class="mb-7">
+            <h2 class="text-2xl font-bold tracking-tight">ส่งงาน</h2>
+            <p class="text-sm text-muted mt-1">
+              อัปโหลดภาพก่อนและหลังปฏิบัติงาน
+            </p>
+          </div>
+          <div class="surface p-5 mb-5 flex justify-between items-center">
+            <div>
+              <h3 class="font-bold">งานที่รอส่ง</h3>
+              <p class="text-xs text-muted mt-1">
+                เลือกงานเพื่อแนบหลักฐานการปฏิบัติงาน
+              </p>
+            </div>
+            <div class="flex gap-2">
+              <button class="btn-secondary rounded-lg px-3 h-9 text-xs">
+                วันนี้</button><button class="btn-secondary rounded-lg px-3 h-9 text-xs">
+                เดือนนี้
+              </button>
+            </div>
+          </div>
+          <div id="submitList" class="space-y-3"></div>
+          <template id="submitItemTemplate">
+            <div class="surface p-5 flex flex-wrap items-center gap-4" data-job-id>
+              <div class="w-10 h-10 rounded-lg bg-[#fff3df] text-brand flex items-center justify-center">
+                <i data-lucide="camera" class="w-5"></i>
+              </div>
+              <div class="flex-1 min-w-[220px]">
+                <div class="font-semibold text-sm" data-job-field="job"></div>
+                <div class="text-xs text-muted mt-1" data-job-field="meta"></div>
+              </div>
+              <div class="flex gap-2 items-center flex-wrap">
+                <label class="dropzone px-3 py-2 text-xs text-muted cursor-pointer">
+                  <i data-lucide="upload" class="w-4"></i>
+                  <span>ภาพก่อน</span>
+                  <input data-kind="before" type="file" accept="image/*,.heic,.heif" class="hidden" />
+                </label>
+                <label class="dropzone px-3 py-2 text-xs text-muted cursor-pointer">
+                  <i data-lucide="upload" class="w-4"></i>
+                  <span>ภาพหลัง</span>
+                  <input data-kind="after" type="file" accept="image/*,.heic,.heif" class="hidden" />
+                </label>
+                <button class="btn-primary rounded-lg h-9 px-3 text-xs font-semibold submit-btn">ส่งงาน</button>
+              </div>
+              <div class="w-full hidden upload-status">
+                <div class="flex justify-between text-[11px] text-muted mb-1">
+                  <span class="upload-label">กำลังเตรียมไฟล์...</span>
+                  <span class="upload-percent">0%</span>
+                </div>
+                <div class="h-1.5 bg-[#e9efeb] rounded-full overflow-hidden">
+                  <div class="upload-bar h-full bg-brand rounded-full" style="width:0%"></div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </section>
+        <section id="report" class="tab-panel">
+          <div class="mb-7 flex justify-between items-end">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight">รายงาน</h2>
+              <p class="text-sm text-muted mt-1">
+                สรุปข้อมูลสำหรับตรวจสอบและส่งต่อ
+              </p>
+            </div>
+            <button class="btn-primary rounded-lg px-4 h-10 text-sm font-semibold" id="exportBtn">
+              <i data-lucide="download" class="w-4 inline mr-1 align-[-3px]"></i>Export Excel
+            </button>
+          </div>
+          <div class="surface p-6">
+            <div class="grid grid-cols-3 gap-4 mb-6">
+              <div>
+                <label class="label">ตั้งแต่วันที่</label><input class="field datepicker" value="01/09/2026" />
+              </div>
+              <div>
+                <label class="label">ถึงวันที่</label><input class="field datepicker" value="30/09/2026" />
+              </div>
+              <div class="flex items-end">
+                <button class="btn-secondary h-[42px] rounded-lg px-5 text-sm">
+                  เรียกดูรายงาน
+                </button>
+              </div>
+            </div>
+            <div class="bg-mint rounded-lg p-4 flex items-center gap-3">
+              <i data-lucide="file-check-2" class="w-5 text-[#27824b]"></i>
+              <div>
+                <div class="font-semibold text-sm">พร้อมส่งออกรายงาน</div>
+                <div class="text-xs text-muted mt-0.5">
+                  <span id="reportSummary">ยังไม่มีข้อมูลงาน</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="settings" class="tab-panel">
+          <div class="mb-7">
+            <h2 class="text-2xl font-bold tracking-tight">ตั้งค่าระบบ</h2>
+            <p class="text-sm text-muted mt-1">
+              จัดการข้อมูลผู้ใช้งานและสิทธิ์การเข้าถึง
+            </p>
+          </div>
+          <div class="surface p-6">
+            <h3 class="font-bold mb-4">บทบาทผู้ใช้งาน</h3>
+            <div class="space-y-3">
+              <div class="flex justify-between border-b border-line pb-3">
+                <span class="text-sm">Supervisor</span><span
+                  class="text-xs bg-mint text-[#27824b] rounded-full px-2 py-1">Create · Read · Update</span>
+              </div>
+              <div class="flex justify-between border-b border-line pb-3">
+                <span class="text-sm">Foreman</span><span
+                  class="text-xs bg-[#eef3fb] text-[#5579b8] rounded-full px-2 py-1">Read · Update</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-sm">Owner</span><span
+                  class="text-xs bg-[#f1f3f2] text-muted rounded-full px-2 py-1">Read only</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <dialog id="assignmentEditDialog" class="assignment-dialog">
+    <form id="assignmentEditForm" method="dialog" class="p-6">
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <div class="text-xs text-muted">แก้ไขรายการงาน</div>
+          <h2 id="editAssignmentTitle" class="text-xl font-bold mt-1"></h2>
+        </div>
+        <button type="button" id="closeAssignmentDialog" class="text-muted hover:text-ink" aria-label="ปิด"><i data-lucide="x" class="w-5"></i></button>
+      </div>
+      <div class="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+        <div><label class="label">Site</label><select id="editSite" class="field"></select></div>
+        <div><label class="label">Area</label><select id="editArea" class="field"></select></div>
+        <div><label class="label">งาน</label><select id="editJob" class="field"></select></div>
+        <div><label class="label">Rank</label><select id="editRank" class="field"></select></div>
+        <div><label class="label">วันที่มอบหมาย</label><input id="editAssignDate" class="field" type="date" /></div>
+        <div class="col-span-2 max-sm:col-span-1"><label class="label">ผู้รับผิดชอบ</label>
+          <div id="editForemanOptions" class="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-line bg-white p-2 min-h-[58px]"></div>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line mt-6 pt-4">
+        <button type="button" id="cancelAssignment" class="text-sm font-semibold text-red-700 hover:text-red-900">ยกเลิกงาน</button>
+        <div class="flex gap-2"><button type="button" id="cancelEdit" class="btn-secondary rounded-lg h-[42px] px-4 text-sm">ปิด</button><button type="submit" id="saveEditAssignment" class="btn-primary rounded-lg h-[42px] px-5 text-sm font-semibold">บันทึกการแก้ไข</button></div>
+      </div>
+    </form>
+  </dialog>
+  <div class="mobile-nav hidden fixed bottom-0 inset-x-0 bg-white border-t border-line z-20 justify-around p-2">
+    <button class="text-brand text-[10px]" data-tab="dashboard">
+      <i data-lucide="layout-dashboard" class="w-5 block mx-auto"></i>ภาพรวม</button><button
+      class="text-muted text-[10px]" data-tab="assign">
+      <i data-lucide="clipboard-pen-line" class="w-5 block mx-auto"></i>มอบหมาย</button><button
+      class="text-muted text-[10px]" data-tab="submit">
+      <i data-lucide="camera" class="w-5 block mx-auto"></i>ส่งงาน</button><button class="text-muted text-[10px]"
+      data-tab="report">
+      <i data-lucide="file-spreadsheet" class="w-5 block mx-auto"></i>รายงาน
+    </button>
+  </div>
+  <div id="toast" class="toast bg-[#17211b] text-white rounded-lg px-4 py-3 text-sm shadow-lg"></div>
+  <script>
+  </script>
+  <!-- <script>
+    let initialData = <?!= initialDataJson ?>;
+  </script> -->
+  <?!= include("appjs") ?>
+
+
+</body>
+
+</html>
