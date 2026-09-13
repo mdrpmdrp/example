@@ -1,6 +1,10 @@
 <script defer>
   let jobs = [];
   let foremen = [];
+  let notifications = [];
+  let notificationTimer = null;
+  let assignmentFromPicker = null;
+  let assignmentToPicker = null;
   function formatDisplayDate(value) {
     return value
       ? new Date(value).toLocaleDateString("th-TH", {
@@ -12,6 +16,7 @@
     jobs = (assignments || []).map((a) => ({
       id: a.AssignmentId,
       date: formatDisplayDate(a.AssignDate),
+      assignmentDate: a.AssignDate,
       supervisor: a.SupervisorName || "-",
       job: a.Job,
       site: a.Site,
@@ -19,6 +24,12 @@
       rank: a.Rank,
       foreman: a.ForemanNames || "-",
       foremanUsernames: a.ForemanUsernames || "",
+      beforeNote: a.BeforeNote || "",
+      afterNote: a.AfterNote || "",
+      beforeFileId: a.BeforeFileId || "",
+      afterFileId: a.AfterFileId || "",
+      beforeUrl: a.BeforeUrl || "",
+      afterUrl: a.AfterUrl || "",
       assignmentDate: a.AssignDate,
       supervisorUsername: a.SupervisorUsername || "",
       status: a.Status || "In progress",
@@ -140,31 +151,89 @@
     const className = s === "Success" ? "status-success" : s === "Cancelled" ? "status-cancelled" : "status-progress";
     return `<span class="status ${className}">${s}</span>`;
   }
+  function dateKey(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+  }
+  function filterJobsByDate(period, singleDate, fromDate, toDate) {
+    let from = "", to = "";
+    const today = new Date();
+    if (period === "today") {
+      from = to = dateKey(today);
+    } else if (period === "week") {
+      const start = new Date(today);
+      const day = start.getDay() || 7;
+      start.setDate(start.getDate() - day + 1);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      from = dateKey(start);
+      to = dateKey(end);
+    } else if (period === "month") {
+      from = dateKey(new Date(today.getFullYear(), today.getMonth(), 1));
+      to = dateKey(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+    } else if (period === "single") {
+      from = to = singleDate;
+    } else if (period === "range") {
+      from = fromDate;
+      to = toDate;
+    }
+    return jobs.filter((job) => {
+      const jobDate = dateKey(job.assignmentDate);
+      const matchesDate = !from && !to ? true : Boolean(jobDate && from && (!to || jobDate <= to) && jobDate >= from);
+      return matchesDate;
+    });
+  }
+  function getFilteredJobs() {
+    const status = $("#assignmentStatusFilter").val() || "ทั้งหมด";
+    const filteredByDate = filterJobsByDate(
+      $("#assignmentDateFilter").val() || "all",
+      $("#assignmentSingleDate").val(), $("#assignmentFromDate").val(), $("#assignmentToDate").val(),
+    );
+    return filteredByDate.filter((job) => status === "ทั้งหมด" || job.status === status);
+  }
+  function updateAssignmentFilters() {
+    const period = $("#assignmentDateFilter").val();
+    $("#assignmentSingleDateWrap").toggleClass("hidden", period !== "single");
+    $("#assignmentDateRange").toggleClass("hidden", period !== "range").toggleClass("flex", period === "range");
+    renderRows();
+  }
+  function updateSubmitFilters() {
+    const period = $("#submitDateFilter").val() || "all";
+    $("#submitSingleDateWrap").toggleClass("hidden", period !== "single");
+    $("#submitDateRange").toggleClass("hidden", period !== "range").toggleClass("flex", period === "range");
+    renderSubmit();
+  }
   function refreshIcons() {
     if (window.lucide && typeof window.lucide.createIcons === "function") {
       window.lucide.createIcons();
     }
   }
   function renderRows() {
-    const assignmentHtml = jobs
+    const filteredJobs = getFilteredJobs();
+    const assignmentHtml = filteredJobs
       .map(
         (j) =>
-          `<tr><td>${statusTag(j.status)}</td><td><button type="button" class="font-semibold text-brand hover:underline" data-edit-job="${j.id}">${j.id}</button></td><td>${j.supervisor || "-"}</td><td>${j.site || "-"}</td><td>${j.area || "-"}</td><td><div class="font-semibold">${j.job || "-"}</div></td><td><span class="font-semibold">${j.rank || "-"}</span></td><td>${j.date}</td><td>${j.foreman || "-"}</td></tr>`,
+          `<tr><td>${statusTag(j.status)}</td><td><button type="button" class="font-semibold text-brand hover:underline" data-submit-job="${j.id}">${j.id}</button></td><td>${j.supervisor || "-"}</td><td>${j.site || "-"}</td><td>${j.area || "-"}</td><td><div class="font-semibold">${j.job || "-"}</div></td><td><span class="font-semibold">${j.rank || "-"}</span></td><td>${j.date}</td><td>${j.foreman || "-"}</td></tr>`,
       )
       .join("");
     const recentHtml = jobs
       .slice(0, 5)
       .map(
         (j) =>
-          `<tr><td>${statusTag(j.status)}</td><td><button type="button" class="font-semibold text-brand hover:underline" data-edit-job="${j.id}">${j.id}</button></td><td><div class="font-semibold">${j.job || "-"}</div><div class="text-[11px] text-muted mt-1">${j.site || "-"}</div></td><td>${j.foreman || "-"}</td><td>${j.date}</td></tr>`,
+          `<tr><td>${statusTag(j.status)}</td><td><button type="button" class="font-semibold text-brand hover:underline" data-submit-job="${j.id}">${j.id}</button></td><td>${j.supervisor || "-"}</td><td>${j.site || "-"}</td><td>${j.area || "-"}</td><td><div class="font-semibold">${j.job || "-"}</div></td><td><span class="font-semibold">${j.rank || "-"}</span></td><td>${j.date}</td><td>${j.foreman || "-"}</td></tr>`,
       )
       .join("");
-    $("#assignmentRows").html(assignmentHtml);
+    $("#assignmentRows").html(assignmentHtml || '<tr><td colspan="9" class="text-center text-muted py-8">ไม่พบงานตามเงื่อนไขที่เลือก</td></tr>');
+    $("#assignmentCount").text(filteredJobs.length + " จาก " + jobs.length + " รายการ");
     $("#recentRows").html(recentHtml);
     refreshIcons();
   }
   const selectedFiles = {};
-  let uploadAuthPromise = null;
+  const previewUrls = {};
+  let uploadToken = null;
+  const uploadFolderPromises = {};
   let uploadLibrariesPromise = null;
   function loadExternalScript(src) {
     return new Promise((resolve, reject) => {
@@ -176,26 +245,30 @@
     });
   }
 
-  function getUploadAuth() {
-    if (uploadAuthPromise) return uploadAuthPromise;
+  function getUploadAuth(jobId) {
+    if (!jobId) return Promise.reject(new Error("ไม่พบรหัสงานสำหรับเตรียมโฟลเดอร์อัปโหลด"));
+    if (uploadFolderPromises[jobId]) return uploadFolderPromises[jobId];
     if (!window.google || !google.script)
       return Promise.reject(
         new Error("กรุณาเปิดผ่าน Google Apps Script Web App"),
       );
-    uploadAuthPromise = new Promise((resolve, reject) =>
+    uploadFolderPromises[jobId] = new Promise((resolve, reject) =>
       google.script.run
-        .withSuccessHandler((r) => resolve(r.accessToken))
+        .withSuccessHandler((r) => {
+          uploadToken = uploadToken || r.accessToken;
+          resolve({ accessToken: uploadToken, folderId: r.folderId });
+        })
         .withFailureHandler(reject)
-        .getUploadAuth(),
+        .getUploadAuth(jobId),
     );
-    return uploadAuthPromise;
+    return uploadFolderPromises[jobId];
   }
 
   function compressSelected(file) {
     const isHeic =
       /\.(heic|heif)$/i.test(file.name) || /image\/heic/i.test(file.type);
     const converted = isHeic
-      ? heic2any({ blob: file, toType: "image/jpeg", quality: 0.82 }).then(
+      ? heic2any({ blob: file, toType: "image/jpeg", quality: 0.7 }).then(
         (blob) =>
           new File([blob], file.name.replace(/\.(heic|heif)$/i, ".jpg"), {
             type: "image/jpeg",
@@ -207,11 +280,14 @@
         new Promise(
           (resolve, reject) =>
             new Compressor(input, {
-              quality: 0.8,
-              maxWidth: 2000,
-              maxHeight: 2000,
-              convertSize: 1000000,
-              success: resolve,
+              quality: 0.65,
+              maxWidth: 1600,
+              maxHeight: 1600,
+              convertSize: 500000,
+              success: (output) => {
+                console.log(`[FieldFlow] ${file.name} | ก่อนบีบอัด: ${file.size} bytes | หลังบีบอัด: ${output.size} bytes`);
+                resolve(output);
+              },
               error: reject,
             }),
         ),
@@ -223,46 +299,98 @@
       const ru = new ResumableUploadToGoogleDrive2();
       ru.Do({ file, accessToken: token, folderId, fields: "id" }, (res, err) => {
         if (err) {
+          console.error("[FieldFlow upload] error", file.name, err);
           reject(err);
           return;
         }
+        console.log("[FieldFlow upload] callback", file.name, {
+          status: res?.status,
+          progressByte: res?.progressByte,
+          progressNumber: res?.progressNumber,
+        });
         if (res.status === "Uploading") {
-          const p = res.progressByte
-            ? Math.round(
-              (res.progressByte.current / res.progressByte.total) * 100,
-            )
-            : Math.round(
-              (res.progressNumber.current / res.progressNumber.end) * 100,
-            );
+          const current = Number(res.progressByte?.current ?? res.progressNumber?.current ?? 0);
+          const total = Number(res.progressByte?.total ?? res.progressNumber?.end ?? 0);
+          const p = total > 0 ? Math.round((current / total) * 100) : 0;
+          console.log("[FieldFlow upload] progress", file.name, current + "/" + total, p + "%");
           onProgress(Math.min(99, p));
         }
-        if (res.status === "Done") resolve(res.result);
+        if (res.status === "Done") {
+          console.log("[FieldFlow upload] done", file.name, res.result);
+          resolve(res.result);
+        }
       });
     });
   }
 
   function renderSubmit() {
-    const template = document.getElementById("submitItemTemplate");
-    const fragment = document.createDocumentFragment();
-
-    jobs
-      .filter((j) => j.status === "In progress")
-      .forEach((j) => {
-        const item = document.importNode(template.content, true).firstElementChild;
-        item.dataset.jobId = j.id;
-        item.querySelector('[data-job-field="job"]').textContent = j.job;
-        item.querySelector('[data-job-field="meta"]').textContent =
-          `${j.id} · ${j.site} · ${j.date}`;
-        fragment.appendChild(item);
-      });
-
-    $("#submitList").empty().append(fragment);
+    const filteredJobs = filterJobsByDate(
+      $("#submitDateFilter").val() || "all",
+      $("#submitSingleDate").val(), $("#submitFromDate").val(), $("#submitToDate").val(),
+    );
+    const imageCell = (fileId, url, label) => {
+      if (!fileId && !url) return '<span class="text-muted">-</span>';
+      const previewUrl = fileId ? "https://lh3.googleusercontent.com/d/" + fileId + "=w200" : url;
+      const fullUrl = fileId ? "https://lh3.googleusercontent.com/d/" + fileId : url;
+      return `<button type="button" class="image-thumb" data-preview-image="${fullUrl}" data-preview-title="${label}"><img src="${previewUrl}" alt="${label}" loading="lazy" /></button>`;
+    };
+    const html = filteredJobs.map((j) => `<tr data-job-id="${j.id}">
+      <td>${statusTag(j.status)}</td><td><button type="button" class="font-semibold text-brand hover:underline" data-submit-job="${j.id}">${j.id}</button></td>
+      <td>${j.supervisor || "-"}</td><td>${j.site || "-"}</td><td>${j.area || "-"}</td><td><div class="font-semibold">${j.job || "-"}</div></td><td>${j.rank || "-"}</td><td>${j.date}</td><td>${j.foreman || "-"}</td>
+      <td>${imageCell(j.beforeFileId, j.beforeUrl, "ภาพก่อน")}</td><td>${imageCell(j.afterFileId, j.afterUrl, "ภาพหลัง")}</td>
+      <td>${j.status === "In progress" ? '<button type="button" class="btn-primary rounded-lg h-9 px-3 text-xs font-semibold open-submit-modal">ส่งงาน</button>' : '<span class="text-xs text-muted">-</span>'}</td>
+    </tr>`).join("");
+    $("#submitList").html(html || '<tr><td colspan="12" class="text-center text-muted py-8">ไม่พบงานตามเงื่อนไขที่เลือก</td></tr>');
     refreshIcons();
   }
 
   function toast(msg) {
     $("#toast").text(msg).addClass("show");
     setTimeout(() => $("#toast").removeClass("show"), 2500);
+  }
+  function renderNotifications(payload) {
+    let data = payload;
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(data);
+      } catch (error) {
+        data = null;
+      }
+    }
+    data = data || {items: [], unreadCount: 0};
+    notifications = data.items || [];
+    const unreadCount = Number(data.unreadCount) || 0;
+    $("#notificationBadge").text(unreadCount > 99 ? "99+" : unreadCount).toggleClass("hidden", unreadCount === 0);
+    const list = $("#notificationList").empty();
+    if (!notifications.length) {
+      list.append($('<div class="p-6 text-center text-sm text-muted">ยังไม่มีการแจ้งเตือน</div>'));
+      return;
+    }
+    notifications.forEach((notification) => {
+      const item = $("<button type='button'>", {class: "notification-item"})
+        .toggleClass("unread", !notification.IsRead)
+        .attr("data-notification-id", notification.NotificationId)
+        .attr("data-assignment-id", notification.AssignmentId);
+      $("<div>", {class: "flex items-start gap-2"}).append(
+        $("<span>", {class: "mt-1 w-2 h-2 rounded-full bg-brand flex-none"}).toggleClass("invisible", notification.IsRead),
+        $("<span>", {class: "font-semibold text-sm"}).text(notification.Title),
+      ).appendTo(item);
+      $("<div>", {class: "text-xs text-muted mt-1 pl-4"}).text(notification.Message).appendTo(item);
+      item.appendTo(list);
+    });
+  }
+  function refreshNotifications() {
+    const token = getStoredSessionToken();
+    if (!token || !window.google || !google.script || !google.script.run) return;
+    google.script.run.withSuccessHandler(renderNotifications).getNotifications(token);
+  }
+  function startNotificationPolling() {
+    if (notificationTimer) clearInterval(notificationTimer);
+    notificationTimer = setInterval(refreshNotifications, 45000);
+  }
+  function stopNotificationPolling() {
+    if (notificationTimer) clearInterval(notificationTimer);
+    notificationTimer = null;
   }
 
   function showTab(tab) {
@@ -271,6 +399,15 @@
     $(".nav-item").removeClass("active");
     $(`.nav-item[data-tab="${tab}"]`).addClass("active");
     window.scrollTo(0, 0);
+  }
+  function uploadImagesTogether(images, token, folderId, onProgress) {
+    const progress = Object.fromEntries(Object.keys(images).map((kind) => [kind, 0]));
+    return Promise.all(Object.entries(images).map(([kind, file]) =>
+      uploadToDrive(file, token, folderId, (value) => {
+        progress[kind] = value;
+        onProgress({ ...progress });
+      }),
+    ));
   }
   function confirmAction(title, text, confirmButtonText, icon = "question") {
     return Swal.fire({
@@ -311,15 +448,15 @@
   }
   function openAssignmentEditor(jobId) {
     const job = jobs.find((item) => String(item.id) === String(jobId));
-    if (!job || !window.FIELD_FLOW_USER || window.FIELD_FLOW_USER.Role !== "Supervisor") return;
+    if (!job || !window.FIELD_FLOW_USER) return;
+    const canEdit = window.FIELD_FLOW_USER.Role === "Supervisor";
     if (job.status === "Updating" || job.status === "Cancelling") {
       toast("กำลังดำเนินการกับงานนี้ กรุณารอสักครู่");
       return;
     }
-    if (job.status === "Cancelled") {
-      toast("งานนี้ถูกยกเลิกแล้ว");
-      return;
-    }
+    const isCancelled = job.status === "Cancelled";
+    const isSuccess = job.status === "Success";
+    const isReadOnly = isCancelled || isSuccess || !canEdit;
     $("#editAssignmentTitle").text(job.id);
     editOptionValues("#editSite", (window.initialData.master?.supervisors || []).flatMap((s) => (s.sites || []).map((site) => site.site)), job.site);
     $("#editArea").data("selected", job.area);
@@ -336,12 +473,106 @@
       container.append(label);
     });
     if (!foremen.length) container.append($("<span>", { class: "text-sm text-muted" }).text("ไม่พบรายชื่อ Foreman"));
+    $("#assignmentEditForm input, #assignmentEditForm select").prop("disabled", isReadOnly);
+    $("#saveEditAssignment").prop("disabled", isReadOnly).toggleClass("hidden", isReadOnly);
+    $("#cancelAssignment")
+      .prop("disabled", isReadOnly)
+      .text(isCancelled ? "งานนี้ถูกยกเลิกแล้ว" : isSuccess ? "งานนี้เสร็จสิ้นแล้ว" : canEdit ? "ยกเลิกงาน" : "ดูรายละเอียดเท่านั้น")
+      .toggleClass("hidden", isReadOnly);
     $("#assignmentEditDialog").data("job-id", job.id)[0].showModal();
     refreshIcons();
+  }
+  function openJobModal(jobId) {
+    if (window.FIELD_FLOW_USER?.Role === "Foreman") openSubmitModal(jobId);
+    else openAssignmentEditor(jobId);
   }
   function closeAssignmentEditor() {
     const dialog = document.getElementById("assignmentEditDialog");
     if (dialog?.open) dialog.close();
+  }
+  function openSubmitModal(jobId) {
+    const job = jobs.find((item) => String(item.id) === String(jobId));
+    if (!job) return;
+    const submitDialog = document.getElementById("submitUploadDialog");
+    if (submitDialog.parentElement !== document.body) document.body.appendChild(submitDialog);
+    if (submitDialog.open) submitDialog.close();
+    const modal = $("#submitUploadDialog").attr("data-job-id", job.id).data("job-id", job.id);
+    $("#submitModalTitle").text(job.id + " · " + (job.job || "งานภาคสนาม"));
+    $("#submitModalMeta").text(`${job.site || "-"} · ${job.area || "-"} · ${job.date}`);
+    $("#submitBeforeNote").val(job.beforeNote || "");
+    $("#submitAfterNote").val(job.afterNote || "");
+    $("#submitBeforeFile, #submitAfterFile").val("");
+    $("#submitBeforePreview, #submitAfterPreview").addClass("hidden");
+    $("#submitBeforePreviewPlaceholder, #submitAfterPreviewPlaceholder").removeClass("hidden");
+    ["before", "after"].forEach((kind) => {
+      const file = selectedFiles[job.id]?.[kind];
+      if (file) updateSubmitPreview(kind, file);
+      else if (job[kind + "FileId"] || job[kind + "Url"]) showRemoteSubmitPreview(kind, job[kind + "FileId"], job[kind + "Url"]);
+    });
+    const canSubmit = window.FIELD_FLOW_USER.Role === "Foreman" && job.status !== "Cancelled" && job.status !== "Success";
+    $("#submitUploadDialog input[type=file], #submitUploadDialog textarea").prop("disabled", !canSubmit);
+    $("#submitModalUpload").prop("disabled", !canSubmit).text(job.status === "Success" ? "งานนี้เสร็จสิ้นแล้ว" : "ส่งงาน");
+    $("#submitAuthStatus").text(canSubmit ? "เลือกภาพก่อนและภาพหลังให้ครบ" : job.status === "Success" ? "งานนี้เสร็จสิ้นแล้ว ไม่สามารถแก้ไขได้" : "ดูรายละเอียดเท่านั้น");
+    if (canSubmit) prepareSubmitButton(job.id);
+    submitDialog.showModal();
+    refreshIcons();
+  }
+  function updateSubmitPreview(kind, file) {
+    if (previewUrls[kind]) URL.revokeObjectURL(previewUrls[kind]);
+    previewUrls[kind] = URL.createObjectURL(file);
+    $("#submit" + kind.charAt(0).toUpperCase() + kind.slice(1) + "Preview").attr("src", previewUrls[kind]);
+    $("#submit" + kind.charAt(0).toUpperCase() + kind.slice(1) + "Preview").removeClass("hidden");
+    $("#submit" + kind.charAt(0).toUpperCase() + kind.slice(1) + "PreviewPlaceholder").addClass("hidden");
+    $("#submit" + kind.charAt(0).toUpperCase() + kind.slice(1) + "File").closest("label").find("span").text(file.name.length > 18 ? file.name.slice(0, 15) + "…" : file.name);
+  }
+  function showRemoteSubmitPreview(kind, fileId, url) {
+    const name = kind.charAt(0).toUpperCase() + kind.slice(1);
+    const previewUrl = fileId ? "https://lh3.googleusercontent.com/d/" + fileId + "=w1000" : url;
+    $("#submit" + name + "Preview").attr("src", previewUrl).removeClass("hidden");
+    $("#submit" + name + "PreviewPlaceholder").addClass("hidden");
+  }
+  function syncSubmitFilesInput(jobId) {
+    const input = document.getElementById("submitFiles");
+    const files = selectedFiles[jobId] || {};
+    if (!input || !window.DataTransfer) return;
+    const transfer = new DataTransfer();
+    [files.before, files.after].filter(Boolean).forEach((file) => transfer.items.add(file));
+    input.files = transfer.files;
+  }
+  function prepareSubmitButton(jobId) {
+    const files = selectedFiles[jobId] || {};
+    const button = $("#submitModalUpload").prop("disabled", true);
+    if (!files.before || !files.after) {
+      $("#submitAuthStatus").text("เลือกภาพก่อนและภาพหลังให้ครบ");
+      return;
+    }
+    $("#submitAuthStatus").text("กำลังตรวจสอบสิทธิ์อัปโหลด...");
+    getUploadAuth(jobId)
+      .then(() => {
+        if (String($("#submitUploadDialog").data("job-id")) !== String(jobId)) return;
+        button.prop("disabled", false);
+        $("#submitAuthStatus").text("พร้อมส่งงาน");
+      })
+      .catch(() => {
+        $("#submitAuthStatus").text("ไม่สามารถตรวจสอบสิทธิ์อัปโหลดได้");
+      });
+  }
+  function closeSubmitModal() {
+    const modal = document.getElementById("submitUploadDialog");
+    if (modal?.open) modal.close();
+  }
+  function closeSubmitModalOnBackdrop(event) {
+    if (event.target === event.currentTarget) closeSubmitModal();
+  }
+  function openFullImage(url, title) {
+    Swal.fire({
+      title,
+      imageUrl: url,
+      imageAlt: title,
+      showCloseButton: true,
+      showConfirmButton: false,
+      width: "min(720px, 92vw)",
+    });
   }
 
   function initApp() {
@@ -360,7 +591,88 @@
         dateFormat: "d/m/Y",
         allowInput: true,
       });
+      const filterPickerOptions = {
+        locale: "th",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d/m/Y",
+        allowInput: true,
+        onChange: updateAssignmentFilters,
+      };
+      flatpickr("#assignmentSingleDate", filterPickerOptions);
+      assignmentFromPicker = flatpickr("#assignmentFromDate", {
+        ...filterPickerOptions,
+        onChange: (selectedDates) => {
+          const startDate = selectedDates[0] || null;
+          if (assignmentToPicker) {
+            assignmentToPicker.set("minDate", startDate);
+            const endDate = assignmentToPicker.selectedDates[0];
+            if (startDate && endDate && endDate < startDate) {
+              assignmentToPicker.clear();
+              Swal.fire({
+                icon: "warning",
+                title: "ช่วงวันที่ไม่ถูกต้อง",
+                text: "วันที่สิ้นสุดถูกล้างแล้ว เพราะต้องไม่ก่อนวันที่เริ่มต้น",
+                confirmButtonText: "ตกลง",
+                confirmButtonColor: "#ec6a2d",
+              });
+            }
+          }
+          updateAssignmentFilters();
+        },
+      });
+      assignmentToPicker = flatpickr("#assignmentToDate", {
+        ...filterPickerOptions,
+        onChange: (selectedDates) => {
+          const startDate = assignmentFromPicker?.selectedDates[0];
+          const endDate = selectedDates[0];
+          if (startDate && endDate && endDate < startDate) {
+            assignmentToPicker.clear();
+            Swal.fire({
+              icon: "warning",
+              title: "ช่วงวันที่ไม่ถูกต้อง",
+              text: "วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น",
+              confirmButtonText: "ตกลง",
+              confirmButtonColor: "#ec6a2d",
+            });
+            return;
+          }
+          updateAssignmentFilters();
+        },
+      });
+      const submitPickerOptions = { ...filterPickerOptions, onChange: updateSubmitFilters };
+      flatpickr("#submitSingleDate", submitPickerOptions);
+      let submitToPicker = null;
+      const submitFromPicker = flatpickr("#submitFromDate", {
+        ...submitPickerOptions,
+        onChange: (selectedDates) => {
+          const startDate = selectedDates[0] || null;
+          if (submitToPicker) submitToPicker.set("minDate", startDate);
+          updateSubmitFilters();
+        },
+      });
+      submitToPicker = flatpickr("#submitToDate", {
+        ...submitPickerOptions,
+        onChange: (selectedDates) => {
+          const startDate = submitFromPicker.selectedDates[0];
+          const endDate = selectedDates[0];
+          if (startDate && endDate && endDate < startDate) {
+            submitToPicker.clear();
+            Swal.fire({
+              icon: "warning",
+              title: "ช่วงวันที่ไม่ถูกต้อง",
+              text: "วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น",
+              confirmButtonText: "ตกลง",
+              confirmButtonColor: "#ec6a2d",
+            });
+            return;
+          }
+          updateSubmitFilters();
+        },
+      });
     }
+    $("#assignmentStatusFilter, #assignmentDateFilter, #assignmentSingleDate, #assignmentFromDate, #assignmentToDate").on("change", updateAssignmentFilters);
+    $("#submitDateFilter").on("change", updateSubmitFilters);
     $("#logoutBtn").on("click", () => {
       const token = getStoredSessionToken();
       if (token && window.google && google.script) {
@@ -376,9 +688,39 @@
     $("[data-tab]").on("click", function () {
       showTab($(this).data("tab"));
     });
+    $("#notificationBtn").on("click", function () {
+      const panel = $("#notificationPanel");
+      panel.toggleClass("hidden");
+      $(this).attr("aria-expanded", !panel.hasClass("hidden"));
+    });
+    $(document).on("click", "[data-notification-id]", function () {
+      const notificationId = $(this).data("notification-id");
+      const assignmentId = $(this).data("assignment-id");
+      google.script.run.withSuccessHandler(refreshNotifications).markNotificationRead(getStoredSessionToken(), notificationId);
+      $("#notificationPanel").addClass("hidden");
+      if (assignmentId) openJobModal(assignmentId);
+    });
+    $("#markAllNotifications").on("click", function () {
+      google.script.run.withSuccessHandler(refreshNotifications).markAllNotificationsRead(getStoredSessionToken());
+    });
+    $(document).on("click", function (event) {
+      if (!$(event.target).closest("#notificationBtn, #notificationPanel").length) $("#notificationPanel").addClass("hidden");
+    });
     $(document).on("click", "[data-edit-job]", function () {
       openAssignmentEditor($(this).data("edit-job"));
     });
+    $(document).on("click", "[data-submit-job]", function () {
+      openJobModal($(this).data("submit-job"));
+    });
+    $(document).on("click", ".open-submit-modal", function () {
+      openSubmitModal($(this).closest("[data-job-id]").data("job-id"));
+    });
+    $(document).on("click", "[data-preview-image]", function () {
+      openFullImage($(this).data("preview-image"), $(this).data("preview-title"));
+    });
+    $("#closeSubmitDialog, #cancelSubmitDialog").on("click", closeSubmitModal);
+    $("#submitUploadDialog").on("click", closeSubmitModalOnBackdrop);
+    document.getElementById("submitUploadDialog")?.addEventListener("cancel", closeSubmitModal);
     $("#editSite").on("change", function () {
       $("#editArea").removeData("selected");
       renderEditAreas();
@@ -459,7 +801,7 @@
         .cancelAssignment(job.id, window.FIELD_FLOW_USER.Username);
     });
 
-    $(document).on("change", "#submitList input[type=file]", function () {
+    $(document).on("change", "#submitUploadDialog input[type=file]", function () {
       const input = this,
         file = this.files[0],
         card = $(this).closest("[data-job-id]"),
@@ -468,18 +810,17 @@
       if (!file) return;
       selectedFiles[jobId] || (selectedFiles[jobId] = {});
       selectedFiles[jobId][kind] = file;
+      syncSubmitFilesInput(jobId);
+      updateSubmitPreview(kind, file);
       $(input)
         .closest("label")
         .addClass("!border-brand !text-brand")
         .find("span")
         .text(file.name.length > 18 ? file.name.slice(0, 15) + "…" : file.name);
-      toast("เลือกไฟล์แล้ว กำลังตรวจสอบสิทธิ์อัปโหลด...");
-      getUploadAuth()
-        .then(() => toast("พร้อมอัปโหลดไฟล์ไปยัง Google Drive"))
-        .catch((e) => toast(e.message || "ไม่สามารถขอ OAuth token ได้"));
+      prepareSubmitButton(jobId);
     });
 
-    $(document).on("click", ".submit-btn", async function () {
+    $(document).on("click", "#unused-submit-btn", async function () {
       const btn = $(this),
         card = btn.closest("[data-job-id]"),
         jobId = card.data("job-id"),
@@ -494,12 +835,13 @@
         pct = card.find(".upload-percent"),
         label = card.find(".upload-label");
       try {
-        label.text("กำลังบีบอัดภาพ...");
+        label.text("กำลังเตรียมไฟล์...");
         const [before, after] = await Promise.all([
           compressSelected(files.before),
           compressSelected(files.after),
         ]);
-        const auth = await getUploadAuth();
+        const uploadAuth = await getUploadAuth(jobId);
+        const auth = uploadAuth.accessToken;
         const folder = await new Promise((resolve, reject) =>
           google.script.run
             .withSuccessHandler(resolve)
@@ -524,18 +866,34 @@
             .withSuccessHandler(resolve)
             .withFailureHandler(reject)
             .saveSubmission({
+              username: window.FIELD_FLOW_USER.Username,
               assignmentId: jobId,
               beforeFileId: beforeResult.id,
               afterFileId: afterResult.id,
               beforeUrl: "https://drive.google.com/open?id=" + beforeResult.id,
               afterUrl: "https://drive.google.com/open?id=" + afterResult.id,
+              beforeNote: $("#submitBeforeNote").val().trim(),
+              afterNote: $("#submitAfterNote").val().trim(),
             }),
         );
         bar.css("width", "100%");
         pct.text("100%");
         label.text("ส่งงานสำเร็จ");
         toast("อัปโหลดและบันทึกงาน " + jobId + " เรียบร้อยแล้ว");
-        setTimeout(() => card.fadeOut(200), 700);
+        const submittedJob = jobs.find((job) => String(job.id) === String(jobId));
+        if (submittedJob) {
+          submittedJob.status = "Success";
+          submittedJob.beforeFileId = beforeResult.id;
+          submittedJob.afterFileId = afterResult.id;
+          submittedJob.beforeUrl = "https://drive.google.com/open?id=" + beforeResult.id;
+          submittedJob.afterUrl = "https://drive.google.com/open?id=" + afterResult.id;
+          submittedJob.beforeNote = $("#submitBeforeNote").val().trim();
+          submittedJob.afterNote = $("#submitAfterNote").val().trim();
+        }
+              renderRows();
+              renderSubmit();
+              closeSubmitModal();
+              refreshNotifications();
       } catch (e) {
         label.text("อัปโหลดไม่สำเร็จ");
         toast(e.message || "อัปโหลดไม่สำเร็จ");
@@ -624,7 +982,8 @@
     if (token && window.google && google.script) google.script.run.logoutSession(token);
     clearStoredSessionToken();
     window.FIELD_FLOW_USER = null;
-    stopSessionActivity();
+      stopSessionActivity();
+      stopNotificationPolling();
     $("#appView").addClass("hidden");
     $("#loginView").show();
     toast("Session หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง");
@@ -659,8 +1018,10 @@
     $(".user-copy div:first-child").text(user.Name);
     $(".user-copy div:last-child").text(user.Role);
     $('.nav-item[data-tab="assign"]').toggle(user.Role === "Supervisor");
+    $('[data-tab="assign"]').toggle(user.Role === "Supervisor");
     $("#assign .surface").first().toggle(user.Role === "Supervisor");
-    $('.nav-item[data-tab="submit"]').toggle(user.Role !== "Owner");
+    $('.nav-item[data-tab="submit"]').toggle(user.Role === "Foreman");
+    $('.mobile-nav [data-tab="submit"]').toggle(user.Role === "Foreman");
     setJobs([]);
     setForemen([]);
     renderRows();
@@ -670,7 +1031,7 @@
       google.script.run
         .withSuccessHandler(resolve)
         .withFailureHandler(reject)
-        .getBootstrap();
+        .getBootstrap(getStoredSessionToken());
     })
       .then(function (data) {
         updateSplash("กำลังจัดเตรียมเมนูและรายการงาน...", 80);
@@ -680,6 +1041,8 @@
         renderAssignDropdowns({ master: bootstrap.master, dropdowns: bootstrap.dropdowns }, user.Name);
         setJobs(bootstrap.assignments);
         setForemen(bootstrap.foremen);
+        renderNotifications(bootstrap.notifications);
+        startNotificationPolling();
         renderRows();
         renderSubmit();
         updateSplash("พร้อมใช้งาน กำลังเปิด workspace...", 100);
@@ -784,6 +1147,7 @@
                 job: $("#assignJob").val(),
                 rank: $("#assignRank").val(),
                 date: formatDisplayDate(assignDateValue()),
+                assignmentDate: assignDateValue(),
                 foreman: selectedForemen.map((input) => input.dataset.name).join(", "),
                 status: "In progress",
               });
@@ -798,12 +1162,13 @@
             .saveAssignment(payload);
           return;
         }
-        const submit = e.target.closest(".submit-btn");
+        const submit = e.target.closest("#submitModalUpload");
         if (submit) {
           e.stopImmediatePropagation();
           const card = $(submit).closest("[data-job-id]"),
             jobId = card.data("job-id"),
-            files = selectedFiles[jobId] || {};
+            files = selectedFiles[jobId] || {},
+            combinedFiles = Array.from(document.getElementById("submitFiles")?.files || []);
           if (
             !window.FIELD_FLOW_USER ||
             window.FIELD_FLOW_USER.Role !== "Foreman"
@@ -811,7 +1176,7 @@
             toast("เฉพาะ Foreman เท่านั้นที่ส่งงานได้");
             return;
           }
-          if (!files.before || !files.after) {
+          if (!files.before || !files.after || combinedFiles.length < 2) {
             toast("กรุณาเลือกภาพก่อนและภาพหลังให้ครบ");
             return;
           }
@@ -823,38 +1188,29 @@
             label = card.find(".upload-label");
           (async () => {
             try {
-              label.text("กำลังบีบอัดภาพ...");
+              label.text("กำลังเตรียมไฟล์...");
               const [before, after] = await Promise.all([
                 compressSelected(files.before),
                 compressSelected(files.after),
               ]),
-                auth = await getUploadAuth(),
-                folder = await new Promise((resolve, reject) =>
-                  google.script.run
-                    .withSuccessHandler(resolve)
-                    .withFailureHandler(reject)
-                    .getJobFolder(jobId),
-                );
-              label.text("กำลังอัปโหลดภาพก่อน...");
-              const beforeResult = await uploadToDrive(
-                before,
+                uploadAuth = await getUploadAuth(jobId),
+                auth = uploadAuth.accessToken,
+                folderId = uploadAuth.folderId;
+              bar.css("width", "10%");
+              pct.text("10%");
+              label.text("กำลังอัปโหลดภาพ...");
+              const [beforeResult, afterResult] = await uploadImagesTogether(
+                { before, after },
                 auth,
-                folder.folderId,
-                (p) => {
-                  bar.css("width", p / 2 + "%");
-                  pct.text(Math.round(p / 2) + "%");
+                folderId,
+                (progress) => {
+                  const total = 10 + (progress.before * 0.4) + (progress.after * 0.4);
+                  bar.css("width", total + "%");
+                  pct.text(Math.round(total) + "%");
                 },
               );
-              label.text("กำลังอัปโหลดภาพหลัง...");
-              const afterResult = await uploadToDrive(
-                after,
-                auth,
-                folder.folderId,
-                (p) => {
-                  bar.css("width", 50 + p / 2 + "%");
-                  pct.text(Math.round(50 + p / 2) + "%");
-                },
-              );
+              bar.css("width", "90%");
+              pct.text("90%");
               label.text("กำลังบันทึกข้อมูลลงชีต...");
               await new Promise((resolve, reject) =>
                 google.script.run
@@ -869,6 +1225,8 @@
                       "https://drive.google.com/open?id=" + beforeResult.id,
                     afterUrl:
                       "https://drive.google.com/open?id=" + afterResult.id,
+                    beforeNote: $("#submitBeforeNote").val().trim(),
+                    afterNote: $("#submitAfterNote").val().trim(),
                   }),
               );
               bar.css("width", "100%");

@@ -16,9 +16,20 @@ const CONFIG = Object.freeze({
 const HEADERS = Object.freeze({
   Master: ['Supervisor','Site','Owner','Foreman','Area','Rank','Job'],
   Users: ['Username','Password','Name','Role','Active'],
-  Assignments: ['AssignmentId','SupervisorUsername','SupervisorName','Company','Site','Area','Job','Rank','AssignDate','ForemanUsernames','ForemanNames','Status','BeforeFileId','AfterFileId','BeforeUrl','AfterUrl','CreatedAt','UpdatedAt','CancelledAt'],
-  Settings: ['Key','Value']
+  Assignments: ['AssignmentId','SupervisorUsername','SupervisorName','Company','Site','Area','Job','Rank','AssignDate','ForemanUsernames','ForemanNames','Status','BeforeFileId','AfterFileId','BeforeUrl','AfterUrl','CreatedAt','UpdatedAt','CancelledAt','BeforeNote','AfterNote'],
+  Settings: ['Key','Value'],
+  Notifications: ['NotificationId','RecipientUsername','Type','AssignmentId','Title','Message','IsRead','CreatedAt','ReadAt']
 });
+
+function withScriptLock_(callback) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    return callback();
+  } finally {
+    lock.releaseLock();
+  }
+}
 
 function doGet() {
   const template = HtmlService.createTemplateFromFile('index');
@@ -33,6 +44,7 @@ function include(filename) {
 
 /** รันครั้งเดียวจาก Apps Script Editor เพื่อสร้างชีต, header, ผู้ใช้เริ่มต้น และโฟลเดอร์อัปโหลด */
 function initSheet() {
+  return withScriptLock_(() => {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const legacyUsers = ss.getSheetByName(CONFIG.USERS_SHEET);
   const hasLegacyEmailUsers = legacyUsers && legacyUsers.getLastColumn() > 0 && String(legacyUsers.getRange(1,1).getValue()) === 'Email';
@@ -69,6 +81,7 @@ function initSheet() {
   PropertiesService.getScriptProperties().setProperty('FIELD_FLOW_ROOT_FOLDER_ID', root.getId());
   clearCache_();
   return {ok:true, message:'สร้างชีตและโฟลเดอร์ FieldFlow Uploads เรียบร้อยแล้ว', sheets:Object.keys(HEADERS), rootFolderId:root.getId()};
+  });
 }
 
 function authenticateUser(username, password) {
@@ -103,8 +116,15 @@ function touchSession(sessionToken) {
 function logoutSession(sessionToken) {
   if (sessionToken) CacheService.getScriptCache().remove(CONFIG.SESSION_CACHE_PREFIX + sessionToken);
 }
-function getBootstrap() { return getBootstrap_(); }
-function getUploadAuth() { return {accessToken:ScriptApp.getOAuthToken()}; }
+function getBootstrap(sessionToken) {
+  const session = getSession(sessionToken);
+  if (!session) throw new Error('Session หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง');
+  return getBootstrap_(session);
+}
+function getUploadAuth(jobId) {
+  if (!jobId) throw new Error('ต้องมีรหัสงานเพื่อเตรียมโฟลเดอร์อัปโหลด');
+  return {accessToken:ScriptApp.getOAuthToken(), folderId:getJobFolder(jobId).folderId};
+}
 function getJobFolder(jobId) {
   if (!jobId) throw new Error('ต้องมีรหัสงาน');
   const root = getOrCreateFolder_(CONFIG.UPLOAD_ROOT_FOLDER, null);
@@ -112,10 +132,11 @@ function getJobFolder(jobId) {
 }
 
 function saveAssignment(payload) {
+  return withScriptLock_(() => {
   assertPayload_(payload, ['site','area','job','rank','assignDate']);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.ASSIGNMENTS_SHEET) || initSheet_().assignments;
-  ensureAssignmentsSchema_(sheet);
+  ensureAssignmentsSchema_(sheet, true);
   const id = payload.assignmentId || nextAssignmentId_(sheet);
   const now = new Date();
   const actor = requireRole_(payload.username, 'Supervisor');
@@ -139,15 +160,26 @@ function saveAssignment(payload) {
   ]);
   const row = HEADERS.Assignments.map(header => values[header] === undefined ? '' : values[header]);
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+  foremanUsernames.split(',').map(username => username.trim()).filter(Boolean).forEach(username => {
+    createNotification_({
+      recipientUsername: username,
+      type: 'assignment_created',
+      assignmentId: id,
+      title: 'มีงานใหม่มอบหมายให้คุณ',
+      message: `${payload.job} · ${payload.site}`
+    }, true);
+  });
   clearCache_();
   return {ok:true, assignmentId:id};
+  });
 }
 
 function updateAssignment(payload) {
+  return withScriptLock_(() => {
   assertPayload_(payload, ['assignmentId','site','area','job','rank','assignDate','username']);
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.ASSIGNMENTS_SHEET);
   if (!sheet) throw new Error('ยังไม่มีชีต Assignments กรุณารัน initSheet()');
-  ensureAssignmentsSchema_(sheet);
+  ensureAssignmentsSchema_(sheet, true);
   const actor = requireRole_(payload.username, 'Supervisor');
   const values = sheet.getDataRange().getValues();
   const idCol = HEADERS.Assignments.indexOf('AssignmentId');
@@ -158,6 +190,7 @@ function updateAssignment(payload) {
     throw new Error('คุณไม่มีสิทธิ์แก้ไขงานนี้');
   }
   if (String(record.Status) === 'Cancelled') throw new Error('งานนี้ถูกยกเลิกแล้ว');
+  if (String(record.Status) === 'Success') throw new Error('งานนี้เสร็จสิ้นแล้ว ไม่สามารถแก้ไขได้');
   const h = Object.fromEntries(HEADERS.Assignments.map((header, index) => [header, index + 1]));
   sheet.getRange(row + 1, h.Site, 1, 6).setValues([[
     payload.site,
@@ -171,33 +204,55 @@ function updateAssignment(payload) {
   sheet.getRange(row + 1, h.UpdatedAt).setValue(new Date());
   clearCache_();
   return {ok:true, assignmentId:payload.assignmentId};
+  });
 }
 
 function saveSubmission(payload) {
+  return withScriptLock_(() => {
   assertPayload_(payload, ['assignmentId','beforeFileId','afterFileId']);
-  requireRole_(payload.username, 'Foreman');
+  const actor = requireRole_(payload.username, 'Foreman');
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.ASSIGNMENTS_SHEET);
   if (!sheet) throw new Error('ยังไม่มีชีต Assignments กรุณารัน initSheet()');
-  ensureAssignmentsSchema_(sheet);
+  ensureAssignmentsSchema_(sheet, true);
   const values = sheet.getDataRange().getValues();
   const idCol = HEADERS.Assignments.indexOf('AssignmentId');
   const row = values.findIndex((r,i) => i > 0 && String(r[idCol]) === String(payload.assignmentId));
   if (row < 1) throw new Error('ไม่พบรหัสงาน ' + payload.assignmentId);
   const r = row + 1;
   const h = Object.fromEntries(HEADERS.Assignments.map((x,i)=>[x,i+1]));
+  const status = String(values[row][HEADERS.Assignments.indexOf('Status')] || '');
+  if (status === 'Success') throw new Error('งานนี้เสร็จสิ้นแล้ว ไม่สามารถแก้ไขได้');
+  const supervisorUsername = String(values[row][HEADERS.Assignments.indexOf('SupervisorUsername')] || '').trim();
   sheet.getRange(r,h.BeforeFileId,1,4).setValues([[payload.beforeFileId,payload.afterFileId,payload.beforeUrl || '',payload.afterUrl || '']]);
+  sheet.getRange(r,h.BeforeNote,1,2).setValues([[payload.beforeNote || '', payload.afterNote || '']]);
   sheet.getRange(r,h.Status).setValue('Success');
   sheet.getRange(r,h.UpdatedAt).setValue(new Date());
+  if (status !== 'Success' && supervisorUsername) createNotification_({
+    recipientUsername: supervisorUsername,
+    type: 'submission_created',
+    assignmentId: payload.assignmentId,
+    title: 'มีการส่งงานใหม่',
+    message: `งาน ${payload.assignmentId} ถูกส่งโดย ${actor.Name}`
+  }, true);
   clearCache_();
   return {ok:true, assignmentId:payload.assignmentId, status:'Success'};
+  });
 }
 
-function ensureAssignmentsSchema_(sheet) {
+function ensureAssignmentsSchema_(sheet, lockHeld) {
+  if (!lockHeld) return withScriptLock_(() => ensureAssignmentsSchema_(sheet, true));
   const expected = HEADERS.Assignments;
   const current = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), expected.length)).getValues()[0]
     .map(value => String(value || '').trim());
   const isCorrect = expected.every((header, index) => current[index] === header);
   if (isCorrect) return;
+
+  const baseExpected = expected.slice(0, -2);
+  const hasMissingNotesOnly = baseExpected.every((header, index) => current[index] === header);
+  if (hasMissingNotesOnly) {
+    sheet.getRange(1, baseExpected.length + 1, 1, 2).setValues([[expected[expected.length - 2], expected[expected.length - 1]]]);
+    return;
+  }
 
   const oldJobIndex = current.indexOf('Job');
   const hasOldSchema = oldJobIndex === 5 && current.indexOf('Area') === -1;
@@ -211,6 +266,7 @@ function ensureAssignmentsSchema_(sheet) {
 }
 
 function cancelAssignment(assignmentId, username) {
+  return withScriptLock_(() => {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.ASSIGNMENTS_SHEET);
   const values = sheet.getDataRange().getValues(); const idCol = HEADERS.Assignments.indexOf('AssignmentId');
   const row = values.findIndex((r,i)=>i>0 && String(r[idCol])===String(assignmentId));
@@ -220,8 +276,10 @@ function cancelAssignment(assignmentId, username) {
   if (String(values[row][ownerCol]).toLowerCase() !== String(actor.Username).toLowerCase()) throw new Error('คุณไม่มีสิทธิ์ยกเลิกงานนี้');
   const statusCol = HEADERS.Assignments.indexOf('Status') + 1;
   if (String(values[row][statusCol - 1]) === 'Cancelled') throw new Error('งานนี้ถูกยกเลิกแล้ว');
+  if (String(values[row][statusCol - 1]) === 'Success') throw new Error('งานนี้เสร็จสิ้นแล้ว ไม่สามารถยกเลิกได้');
   const cancelledCol = HEADERS.Assignments.indexOf('CancelledAt') + 1;
   sheet.getRange(row+1,statusCol).setValue('Cancelled'); sheet.getRange(row+1,cancelledCol).setValue(new Date()); clearCache_(); return {ok:true};
+  });
 }
 
 function exportReportCsv(fromDate, toDate) {
@@ -231,13 +289,18 @@ function exportReportCsv(fromDate, toDate) {
   return rows.map(row => row.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
 }
 
-function getBootstrap_() {
+function getBootstrap_(session) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const initialData = getInitialData_();
   const users = readRows_(ss.getSheetByName(CONFIG.USERS_SHEET), HEADERS.Users);
   const assignmentSheet = ss.getSheetByName(CONFIG.ASSIGNMENTS_SHEET);
   if (assignmentSheet) ensureAssignmentsSchema_(assignmentSheet);
-  const assignments = readRows_(assignmentSheet, HEADERS.Assignments);
+  const allAssignments = readRows_(assignmentSheet, HEADERS.Assignments);
+  const assignments = session.Role === 'Foreman'
+    ? allAssignments.filter(assignment => String(assignment.ForemanUsernames || '').split(',').some(username =>
+      username.trim().toLowerCase() === String(session.Username).trim().toLowerCase()
+    ))
+    : allAssignments;
   const foremen = users
     .filter(u =>
       String(u.Role || '').trim().toLowerCase() === 'foreman' &&
@@ -245,7 +308,77 @@ function getBootstrap_() {
     )
     // ห้ามส่ง Password หรือคอลัมน์อื่นจาก Users ไปฝั่ง client
     .map(u => ({Username: u.Username, Name: u.Name}));
-  return JSON.stringify({master: initialData.master, dropdowns: initialData.dropdowns, foremen, assignments});
+  return JSON.stringify({master: initialData.master, dropdowns: initialData.dropdowns, foremen, assignments, notifications: getNotificationsForUser_(session.Username)});
+}
+
+function getNotifications(sessionToken) {
+  const session = getSession(sessionToken);
+  if (!session) throw new Error('Session หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง');
+  return JSON.stringify(getNotificationsForUser_(session.Username));
+}
+
+function markNotificationRead(sessionToken, notificationId) {
+  return withScriptLock_(() => {
+  const session = getSession(sessionToken);
+  if (!session) throw new Error('Session หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง');
+  const sheet = ensureNotificationsSheet_(true);
+  const values = sheet.getDataRange().getValues();
+  const recipientCol = HEADERS.Notifications.indexOf('RecipientUsername');
+  const idCol = HEADERS.Notifications.indexOf('NotificationId');
+  const row = values.findIndex((value, index) => index > 0 && String(value[idCol]) === String(notificationId) && String(value[recipientCol]).toLowerCase() === String(session.Username).toLowerCase());
+  if (row < 1) throw new Error('ไม่พบการแจ้งเตือน');
+  sheet.deleteRow(row + 1);
+  return {ok:true};
+  });
+}
+
+function markAllNotificationsRead(sessionToken) {
+  return withScriptLock_(() => {
+  const session = getSession(sessionToken);
+  if (!session) throw new Error('Session หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง');
+  const sheet = ensureNotificationsSheet_(true);
+  const values = sheet.getDataRange().getValues();
+  const recipientCol = HEADERS.Notifications.indexOf('RecipientUsername');
+  const rowsToDelete = [];
+  values.forEach((value, index) => {
+    if (index > 0 && String(value[recipientCol]).toLowerCase() === String(session.Username).toLowerCase() && String(value[HEADERS.Notifications.indexOf('IsRead')]).toLowerCase() !== 'true') {
+      rowsToDelete.push(index + 1);
+    }
+  });
+  rowsToDelete.reverse().forEach(rowNumber => sheet.deleteRow(rowNumber));
+  return {ok:true};
+  });
+}
+
+function getNotificationsForUser_(username) {
+  const sheet = ensureNotificationsSheet_();
+  const rows = readRows_(sheet, HEADERS.Notifications)
+    .filter(row => String(row.RecipientUsername).toLowerCase() === String(username).toLowerCase() && String(row.IsRead).toLowerCase() !== 'true')
+    .sort((a, b) => new Date(b.CreatedAt || 0).getTime() - new Date(a.CreatedAt || 0).getTime())
+    .slice(0, 30)
+    .map(row => ({...row, IsRead: String(row.IsRead).toLowerCase() === 'true'}));
+  return {items: rows, unreadCount: rows.filter(row => !row.IsRead).length};
+}
+
+function createNotification_(payload, lockHeld) {
+  if (!lockHeld) return withScriptLock_(() => createNotification_(payload, true));
+  const sheet = ensureNotificationsSheet_(true);
+  const now = new Date();
+  sheet.appendRow([Utilities.getUuid(), payload.recipientUsername, payload.type, payload.assignmentId, payload.title, payload.message, false, now, '']);
+}
+
+function ensureNotificationsSheet_(lockHeld) {
+  if (!lockHeld) return withScriptLock_(() => ensureNotificationsSheet_(true));
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Notifications') || ss.insertSheet('Notifications');
+  const header = HEADERS.Notifications;
+  const current = sheet.getRange(1, 1, 1, header.length).getValues()[0].map(value => String(value || '').trim());
+  if (!header.every((value, index) => current[index] === value)) {
+    sheet.getRange(1, 1, 1, header.length).setValues([header]);
+    sheet.setFrozenRows(1);
+    sheet.getRange(1, 1, 1, header.length).setFontWeight('bold').setBackground('#17211b').setFontColor('#ffffff');
+  }
+  return sheet;
 }
 
 function getInitialData_() {

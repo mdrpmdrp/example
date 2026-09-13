@@ -247,6 +247,22 @@
       color: #5579b8;
     }
 
+    .image-thumb {
+      display: block;
+      width: 52px;
+      height: 52px;
+      overflow: hidden;
+      border-radius: 8px;
+      background: #f1f3f2;
+      cursor: zoom-in;
+    }
+
+    .image-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
     .metric {
       border-top: 3px solid #e6ebe7;
     }
@@ -356,6 +372,37 @@
       display: flex;
     }
 
+    #notificationPanel {
+      overflow: hidden;
+    }
+
+    .notification-item {
+      display: block;
+      width: 100%;
+      margin: 0;
+      padding: 17px 20px;
+      border: 0;
+      border-bottom: 1px solid #e6ebe7;
+      background: #fff;
+      color: #17211b;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .notification-item:hover,
+    .notification-item.unread {
+      background: #fff8f3;
+    }
+
+    .notification-item:last-child {
+      border-bottom: 0;
+    }
+
+    #notificationPanel > div:first-child {
+      padding: 18px 20px;
+    }
+
     html.session-checking #sessionSplash,
     #sessionSplash.is-visible {
       display: flex;
@@ -444,12 +491,6 @@
           class="nav-item w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm" data-tab="report">
           <i data-lucide="file-spreadsheet" class="w-4"></i><span class="nav-label">รายงาน</span>
         </button>
-        <div class="text-[10px] font-bold text-[#718076] px-3 pt-7 pb-2">
-          SYSTEM
-        </div>
-        <button class="nav-item w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm" data-tab="settings">
-          <i data-lucide="settings-2" class="w-4"></i><span class="nav-label">ตั้งค่าระบบ</span>
-        </button>
       </nav>
       <div class="p-3 border-t border-white/10">
         <button id="logoutBtn" class="nav-item w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm">
@@ -467,9 +508,15 @@
           </div>
         </div>
         <div class="flex items-center gap-4">
-          <button class="w-9 h-9 rounded-lg border border-line flex items-center justify-center text-muted">
-            <i data-lucide="bell" class="w-4"></i>
-          </button>
+          <div class="relative">
+            <button id="notificationBtn" type="button" class="w-9 h-9 rounded-lg border border-line flex items-center justify-center text-muted" aria-label="การแจ้งเตือน" aria-expanded="false">
+              <i data-lucide="bell" class="w-4"></i><span id="notificationBadge" class="hidden absolute -right-1 -top-1 min-w-4 h-4 px-1 rounded-full bg-brand text-white text-[10px] leading-4 font-bold">0</span>
+            </button>
+            <div id="notificationPanel" class="hidden absolute right-0 top-12 z-30 w-[360px] max-w-[calc(100vw-32px)] bg-white border border-line rounded-xl shadow-lg">
+              <div class="flex items-center justify-between p-4 border-b border-line"><span class="font-bold text-sm">การแจ้งเตือน</span><button id="markAllNotifications" type="button" class="text-xs text-brand font-semibold">อ่านทั้งหมด</button></div>
+              <div id="notificationList" class="max-h-[360px] overflow-auto p-[8px]"></div>
+            </div>
+          </div>
           <div class="h-8 w-px bg-line"></div>
           <div class="flex items-center gap-2">
             <div class="w-9 h-9 bg-mint text-[#287850] rounded-full flex items-center justify-center text-sm font-bold">
@@ -540,9 +587,13 @@
                   <tr>
                     <th>สถานะ</th>
                     <th>เลขที่งาน</th>
-                    <th>ชื่องาน / สถานที่</th>
+                    <th>Supervisor</th>
+                    <th>Site</th>
+                    <th>Area</th>
+                    <th>งาน</th>
+                    <th>Rank</th>
+                    <th>วันที่มอบหมาย</th>
                     <th>ผู้รับผิดชอบ</th>
-                    <th>วันส่งงาน</th>
                   </tr>
                 </thead>
                 <tbody id="recentRows"></tbody>
@@ -628,12 +679,29 @@
                   <span id="assignmentCount">0 รายการ</span>
                 </p>
               </div>
-              <div class="flex gap-2">
-                <select class="field !w-auto !h-9 text-xs">
-                  <option>ทั้งหมด</option>
-                  <option>In progress</option>
-                  <option>Success</option>
-                </select><input class="field datepicker !w-[140px] !h-9 text-xs" placeholder="กรองวันที่" />
+              <div class="flex flex-wrap gap-2 justify-end">
+                <select id="assignmentStatusFilter" class="field !w-auto !h-9 text-xs" aria-label="กรองตามสถานะ">
+                  <option value="ทั้งหมด">ทุกสถานะ</option>
+                  <option value="In progress">กำลังดำเนินการ</option>
+                  <option value="Success">เสร็จสิ้นแล้ว</option>
+                  <option value="Cancelled">ยกเลิกแล้ว</option>
+                </select>
+                <select id="assignmentDateFilter" class="field !w-auto !h-9 text-xs" aria-label="กรองตามช่วงเวลา">
+                  <option value="all">ทุกช่วงเวลา</option>
+                  <option value="today">วันนี้</option>
+                  <option value="week">สัปดาห์นี้</option>
+                  <option value="month">เดือนนี้</option>
+                  <option value="single">เลือกวันที่</option>
+                  <option value="range">เลือกช่วงวันที่</option>
+                </select>
+                <div id="assignmentSingleDateWrap" class="hidden">
+                  <input id="assignmentSingleDate" class="field filter-datepicker !w-[140px] !h-9 text-xs" type="text" aria-label="เลือกวันที่" />
+                </div>
+                <div id="assignmentDateRange" class="hidden items-center gap-2">
+                  <input id="assignmentFromDate" class="field filter-datepicker !w-[140px] !h-9 text-xs" type="text" aria-label="วันที่เริ่มต้น" />
+                  <span class="text-xs text-muted">ถึง</span>
+                  <input id="assignmentToDate" class="field filter-datepicker !w-[140px] !h-9 text-xs" type="text" aria-label="วันที่สิ้นสุด" />
+                </div>
               </div>
             </div>
             <div class="table-wrap">
@@ -663,54 +731,68 @@
               อัปโหลดภาพก่อนและหลังปฏิบัติงาน
             </p>
           </div>
-          <div class="surface p-5 mb-5 flex justify-between items-center">
+          <div class="surface mb-5">
+            <div class="p-5 flex flex-wrap gap-4 justify-between items-center">
             <div>
-              <h3 class="font-bold">งานที่รอส่ง</h3>
+              <h3 class="font-bold">งานที่ได้รับมอบหมาย</h3>
               <p class="text-xs text-muted mt-1">
                 เลือกงานเพื่อแนบหลักฐานการปฏิบัติงาน
               </p>
             </div>
-            <div class="flex gap-2">
-              <button class="btn-secondary rounded-lg px-3 h-9 text-xs">
-                วันนี้</button><button class="btn-secondary rounded-lg px-3 h-9 text-xs">
-                เดือนนี้
-              </button>
+            <div class="flex flex-wrap gap-2 justify-end">
+              <select id="submitDateFilter" class="field !w-auto !h-9 text-xs" aria-label="กรองงานรอส่งตามช่วงเวลา">
+                <option value="all">ทุกช่วงเวลา</option>
+                <option value="today">วันนี้</option>
+                <option value="week">สัปดาห์นี้</option>
+                <option value="month">เดือนนี้</option>
+                <option value="single">เลือกวันที่</option>
+                <option value="range">เลือกช่วงวันที่</option>
+              </select>
+              <div id="submitSingleDateWrap" class="hidden">
+                <input id="submitSingleDate" class="field submit-filter-datepicker !w-[140px] !h-9 text-xs" type="text" aria-label="เลือกวันที่งานรอส่ง" />
+              </div>
+              <div id="submitDateRange" class="hidden items-center gap-2">
+                <input id="submitFromDate" class="field submit-filter-datepicker !w-[140px] !h-9 text-xs" type="text" aria-label="วันที่เริ่มต้นงานรอส่ง" />
+                <span class="text-xs text-muted">ถึง</span>
+                <input id="submitToDate" class="field submit-filter-datepicker !w-[140px] !h-9 text-xs" type="text" aria-label="วันที่สิ้นสุดงานรอส่ง" />
+              </div>
+            </div>
+            </div>
+            <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>สถานะ</th><th>เลขที่งาน</th><th>Supervisor</th><th>Site</th><th>Area</th><th>งาน</th><th>Rank</th><th>วันที่มอบหมาย</th><th>ผู้รับผิดชอบ</th><th>ภาพก่อน</th><th>ภาพหลัง</th><th>Action</th></tr></thead>
+              <tbody id="submitList"></tbody>
+            </table>
             </div>
           </div>
-          <div id="submitList" class="space-y-3"></div>
-          <template id="submitItemTemplate">
-            <div class="surface p-5 flex flex-wrap items-center gap-4" data-job-id>
-              <div class="w-10 h-10 rounded-lg bg-[#fff3df] text-brand flex items-center justify-center">
-                <i data-lucide="camera" class="w-5"></i>
+          <dialog id="submitUploadDialog" class="assignment-dialog">
+            <div class="p-6">
+              <div class="flex items-start justify-between gap-4 mb-6">
+                <div><div class="text-xs text-muted">แนบหลักฐานการทำงาน</div><h2 id="submitModalTitle" class="text-xl font-bold mt-1"></h2><p id="submitModalMeta" class="text-xs text-muted mt-1"></p></div>
+                <button type="button" id="closeSubmitDialog" class="text-muted hover:text-ink" aria-label="ปิด"><i data-lucide="x" class="w-5"></i></button>
               </div>
-              <div class="flex-1 min-w-[220px]">
-                <div class="font-semibold text-sm" data-job-field="job"></div>
-                <div class="text-xs text-muted mt-1" data-job-field="meta"></div>
-              </div>
-              <div class="flex gap-2 items-center flex-wrap">
-                <label class="dropzone px-3 py-2 text-xs text-muted cursor-pointer">
-                  <i data-lucide="upload" class="w-4"></i>
-                  <span>ภาพก่อน</span>
-                  <input data-kind="before" type="file" accept="image/*,.heic,.heif" class="hidden" />
-                </label>
-                <label class="dropzone px-3 py-2 text-xs text-muted cursor-pointer">
-                  <i data-lucide="upload" class="w-4"></i>
-                  <span>ภาพหลัง</span>
-                  <input data-kind="after" type="file" accept="image/*,.heic,.heif" class="hidden" />
-                </label>
-                <button class="btn-primary rounded-lg h-9 px-3 text-xs font-semibold submit-btn">ส่งงาน</button>
-              </div>
-              <div class="w-full hidden upload-status">
-                <div class="flex justify-between text-[11px] text-muted mb-1">
-                  <span class="upload-label">กำลังเตรียมไฟล์...</span>
-                  <span class="upload-percent">0%</span>
+              <div class="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                <div class="rounded-lg border border-line p-4">
+                  <div class="font-semibold text-sm mb-3">ภาพก่อน</div>
+                  <div id="submitBeforePreviewWrap" class="mb-3 aspect-square overflow-hidden rounded-lg bg-[#f1f3f2] flex items-center justify-center"><div id="submitBeforePreviewPlaceholder" class="text-center text-muted"><i data-lucide="image" class="w-8 h-8 mx-auto mb-2 opacity-60"></i><span class="text-xs">ยังไม่ได้เลือกภาพ</span></div><img id="submitBeforePreview" class="hidden w-full h-full object-cover" alt="ตัวอย่างภาพก่อน" /></div>
+                  <label class="dropzone w-full px-3 py-3 text-xs text-muted cursor-pointer"><i data-lucide="upload" class="w-4"></i><span>เลือกภาพก่อน</span><input id="submitBeforeFile" data-kind="before" type="file" accept="image/*,.heic,.heif" class="hidden" /></label>
+                  <label class="label mt-4">หมายเหตุภาพก่อน</label><textarea id="submitBeforeNote" class="field !h-20 py-2 resize-none" placeholder="เพิ่มหมายเหตุสำหรับภาพก่อน"></textarea>
                 </div>
-                <div class="h-1.5 bg-[#e9efeb] rounded-full overflow-hidden">
-                  <div class="upload-bar h-full bg-brand rounded-full" style="width:0%"></div>
+                <div class="rounded-lg border border-line p-4">
+                  <div class="font-semibold text-sm mb-3">ภาพหลัง</div>
+                  <div id="submitAfterPreviewWrap" class="mb-3 aspect-square overflow-hidden rounded-lg bg-[#f1f3f2] flex items-center justify-center"><div id="submitAfterPreviewPlaceholder" class="text-center text-muted"><i data-lucide="image" class="w-8 h-8 mx-auto mb-2 opacity-60"></i><span class="text-xs">ยังไม่ได้เลือกภาพ</span></div><img id="submitAfterPreview" class="hidden w-full h-full object-cover" alt="ตัวอย่างภาพหลัง" /></div>
+                  <label class="dropzone w-full px-3 py-3 text-xs text-muted cursor-pointer"><i data-lucide="upload" class="w-4"></i><span>เลือกภาพหลัง</span><input id="submitAfterFile" data-kind="after" type="file" accept="image/*,.heic,.heif" class="hidden" /></label>
+                  <label class="label mt-4">หมายเหตุภาพหลัง</label><textarea id="submitAfterNote" class="field !h-20 py-2 resize-none" placeholder="เพิ่มหมายเหตุสำหรับภาพหลัง"></textarea>
                 </div>
               </div>
+              <div class="w-full hidden upload-status mt-4">
+                <div class="flex justify-between text-[11px] text-muted mb-1"><span class="upload-label">กำลังเตรียมไฟล์...</span><span class="upload-percent">0%</span></div>
+                <div class="h-1.5 bg-[#e9efeb] rounded-full overflow-hidden"><div class="upload-bar h-full bg-brand rounded-full" style="width:0%"></div></div>
+              </div>
+              <input id="submitFiles" type="file" multiple class="hidden" aria-hidden="true" />
+              <div class="flex items-center justify-between gap-3 border-t border-line mt-6 pt-4"><span id="submitAuthStatus" class="text-xs text-muted" aria-live="polite"></span><div class="flex gap-2"><button type="button" id="cancelSubmitDialog" class="btn-secondary rounded-lg h-[42px] px-4 text-sm">ปิด</button><button type="button" id="submitModalUpload" class="btn-primary rounded-lg h-[42px] px-5 text-sm font-semibold" disabled>ส่งงาน</button></div></div>
             </div>
-          </template>
+          </dialog>
         </section>
         <section id="report" class="tab-panel">
           <div class="mb-7 flex justify-between items-end">
@@ -745,31 +827,6 @@
                 <div class="text-xs text-muted mt-0.5">
                   <span id="reportSummary">ยังไม่มีข้อมูลงาน</span>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-        <section id="settings" class="tab-panel">
-          <div class="mb-7">
-            <h2 class="text-2xl font-bold tracking-tight">ตั้งค่าระบบ</h2>
-            <p class="text-sm text-muted mt-1">
-              จัดการข้อมูลผู้ใช้งานและสิทธิ์การเข้าถึง
-            </p>
-          </div>
-          <div class="surface p-6">
-            <h3 class="font-bold mb-4">บทบาทผู้ใช้งาน</h3>
-            <div class="space-y-3">
-              <div class="flex justify-between border-b border-line pb-3">
-                <span class="text-sm">Supervisor</span><span
-                  class="text-xs bg-mint text-[#27824b] rounded-full px-2 py-1">Create · Read · Update</span>
-              </div>
-              <div class="flex justify-between border-b border-line pb-3">
-                <span class="text-sm">Foreman</span><span
-                  class="text-xs bg-[#eef3fb] text-[#5579b8] rounded-full px-2 py-1">Read · Update</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-sm">Owner</span><span
-                  class="text-xs bg-[#f1f3f2] text-muted rounded-full px-2 py-1">Read only</span>
               </div>
             </div>
           </div>
