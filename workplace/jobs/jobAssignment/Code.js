@@ -16,7 +16,7 @@ const CONFIG = Object.freeze({
 const HEADERS = Object.freeze({
   Master: ['Supervisor','Site','Owner','Foreman','Area','Rank','Job'],
   Users: ['Username','Password','Name','Role','Active'],
-  Assignments: ['AssignmentId','SupervisorUsername','SupervisorName','Company','Site','Area','Job','Rank','AssignDate','ForemanUsernames','ForemanNames','Status','BeforeFileId','AfterFileId','BeforeUrl','AfterUrl','CreatedAt','UpdatedAt','CancelledAt','BeforeNote','AfterNote'],
+  Assignments: ['AssignmentId','SupervisorUsername','SupervisorName','Owner','Site','Area','Job','Rank','AssignDate','ForemanUsernames','ForemanNames','Status','BeforeFileId','AfterFileId','BeforeUrl','AfterUrl','CreatedAt','UpdatedAt','CancelledAt','BeforeNote','AfterNote'],
   Settings: ['Key','Value'],
   Notifications: ['NotificationId','RecipientUsername','Type','AssignmentId','Title','Message','IsRead','CreatedAt','ReadAt']
 });
@@ -133,7 +133,7 @@ function getJobFolder(jobId) {
 
 function saveAssignment(payload) {
   return withScriptLock_(() => {
-  assertPayload_(payload, ['site','area','job','rank','assignDate']);
+  assertPayload_(payload, ['site','owner','area','job','rank','assignDate']);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.ASSIGNMENTS_SHEET) || initSheet_().assignments;
   ensureAssignmentsSchema_(sheet, true);
@@ -146,7 +146,7 @@ function saveAssignment(payload) {
     ['AssignmentId', id],
     ['SupervisorUsername', actor.Username],
     ['SupervisorName', actor.Name],
-    ['Company', ''],
+    ['Company', payload.owner],
     ['Site', payload.site],
     ['Area', payload.area],
     ['Job', payload.job],
@@ -176,7 +176,7 @@ function saveAssignment(payload) {
 
 function updateAssignment(payload) {
   return withScriptLock_(() => {
-  assertPayload_(payload, ['assignmentId','site','area','job','rank','assignDate','username']);
+  assertPayload_(payload, ['assignmentId','site','owner','area','job','rank','assignDate','username']);
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.ASSIGNMENTS_SHEET);
   if (!sheet) throw new Error('ยังไม่มีชีต Assignments กรุณารัน initSheet()');
   ensureAssignmentsSchema_(sheet, true);
@@ -200,6 +200,7 @@ function updateAssignment(payload) {
     new Date(payload.assignDate),
     (payload.foremanUsernames || []).join(', ')
   ]]);
+  sheet.getRange(row + 1, h.Company).setValue(payload.owner);
   sheet.getRange(row + 1, h.ForemanNames).setValue((payload.foremanNames || []).join(', '));
   sheet.getRange(row + 1, h.UpdatedAt).setValue(new Date());
   clearCache_();
@@ -387,7 +388,9 @@ function getInitialData_() {
   if (cachedJson) {
     try {
       const cached = JSON.parse(cachedJson);
-      if (cached && cached.master && Array.isArray(cached.master.supervisors)) return cached;
+      if (cached && cached.master && Array.isArray(cached.master.supervisors) &&
+          cached.dropdowns && Array.isArray(cached.dropdowns.sites) &&
+          Array.isArray(cached.dropdowns.owners) && Array.isArray(cached.dropdowns.areas)) return cached;
       cache.remove(CONFIG.INITIAL_DATA_CACHE_KEY);
     } catch (error) {
       cache.remove(CONFIG.INITIAL_DATA_CACHE_KEY);
@@ -415,6 +418,9 @@ function buildInitialDataFromMaster_() {
   const supervisorMap = new Map();
   const siteMap = new Map();
   const areaSetBySite = new Map();
+  const siteSet = new Set();
+  const ownerSet = new Set();
+  const areaSet = new Set();
   const rankSet = new Set();
   const jobSet = new Set();
   const rankJobSet = new Set();
@@ -431,6 +437,10 @@ function buildInitialDataFromMaster_() {
     const area = normalizeText_(row[4]);
     const rank = normalizeText_(row[5]);
     const job = normalizeText_(row[6]);
+
+    if (site && !siteSet.has(site)) { siteSet.add(site); result.dropdowns.sites.push(site); }
+    if (owner && !ownerSet.has(owner)) { ownerSet.add(owner); result.dropdowns.owners.push(owner); }
+    if (area && !areaSet.has(area)) { areaSet.add(area); result.dropdowns.areas.push(area); }
 
     if (rank && !rankSet.has(rank)) { rankSet.add(rank); result.dropdowns.ranks.push(rank); }
     if (job && !jobSet.has(job)) { jobSet.add(job); result.dropdowns.jobs.push(job); }
@@ -477,7 +487,7 @@ function buildInitialDataFromMaster_() {
 }
 
 function createEmptyInitialData_() {
-  return {master: {supervisors: []}, dropdowns: {sites: [], areas: [], ranks: [], jobs: [], rankJobs: []}};
+  return {master: {supervisors: []}, dropdowns: {sites: [], owners: [], areas: [], ranks: [], jobs: [], rankJobs: []}};
 }
 
 function normalizeText_(value) {

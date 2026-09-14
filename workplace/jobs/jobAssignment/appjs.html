@@ -20,6 +20,7 @@
       supervisor: a.SupervisorName || "-",
       job: a.Job,
       site: a.Site,
+      owner: a.Company || "",
       area: a.Area,
       rank: a.Rank,
       foreman: a.ForemanNames || "-",
@@ -79,21 +80,23 @@
     );
   }
   function renderAssignSites() {
-    const supervisor = selectedSupervisor();
-    const sites = [...new Set((supervisor?.sites || [])
-      .map((site) => site.site)
+    fillSelect("#assignSite", window.initialData.dropdowns?.sites || [], "เลือก...");
+  }
+  function ownersForSite(site) {
+    if (!site) return [];
+    return [...new Set((window.initialData.master?.supervisors || [])
+      .flatMap((supervisor) => supervisor.sites || [])
+      .filter((item) => item.site === site)
+      .map((item) => item.owner)
       .filter(Boolean))];
-    fillSelect("#assignSite", sites, "เลือก...");
-    renderAssignAreas();
+  }
+  function renderAssignOwners() {
+    const owners = ownersForSite($("#assignSite").val());
+    fillSelect("#assignOwner", owners, "เลือก...");
+    if (owners.length === 1) $("#assignOwner").val(owners[0]);
   }
   function renderAssignAreas() {
-    const supervisor = selectedSupervisor();
-    const site = $("#assignSite").val();
-    const areas = [...new Set((supervisor?.sites || [])
-      .filter((item) => item.site === site)
-      .flatMap((item) => item.areas || [])
-      .filter(Boolean))];
-    fillSelect("#assignArea", areas, "เลือก...");
+    fillSelect("#assignArea", window.initialData.dropdowns?.areas || [], "เลือก...");
   }
   function renderAssignJobs() {
     // งานเป็นรายการอิสระ ไม่ผูกกับ Rank
@@ -104,7 +107,7 @@
     const safeData = data || {};
     const existingData = window.initialData || {};
     const emptyDropdowns = {
-      sites: [], areas: [], ranks: [], jobs: [], rankJobs: [],
+      sites: [], owners: [], areas: [], ranks: [], jobs: [], rankJobs: [],
     };
     window.initialData = {
       master: safeData.master && Array.isArray(safeData.master.supervisors)
@@ -115,12 +118,28 @@
     $("#assignSupervisor").val(supervisorName || "");
     fillSelect("#assignRank", window.initialData.dropdowns?.ranks || [], "เลือก...");
     renderAssignSites();
+    renderAssignOwners();
+    renderAssignAreas();
     renderAssignJobs();
   }
   function assignDateValue() {
     const value = $("#assignDate").val();
     const parts = value.split("/");
     return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : value;
+  }
+  function setAssignDateToToday() {
+    const today = new Date();
+    const value = [today.getDate(), today.getMonth() + 1, today.getFullYear()]
+      .map((part) => String(part).padStart(2, "0"))
+      .join("/");
+    const picker = document.querySelector("#assignDate")?._flatpickr;
+    if (picker) picker.setDate(today, true);
+    else $("#assignDate").val(value);
+  }
+  function clearAssignmentForm() {
+    $("#assignSite, #assignOwner, #assignArea, #assignJob, #assignRank").val("");
+    $("#foremanOptions input[name=\"foreman\"]").prop("checked", false);
+    setAssignDateToToday();
   }
   function updateSummary() {
     const progress = jobs.filter((j) => j.status === "In progress").length;
@@ -437,14 +456,13 @@
     select.value = values.includes(selected) ? selected : "";
   }
   function renderEditAreas() {
-    const site = $("#editSite").val();
-    const areas = (window.initialData.master?.supervisors || [])
-      .flatMap((supervisor) => supervisor.sites || [])
-      .filter((item) => item.site === site)
-      .flatMap((item) => item.areas || []);
     const selected = $("#editArea").data("selected") || "";
-    editOptionValues("#editArea", areas, selected);
+    editOptionValues("#editArea", window.initialData.dropdowns?.areas || [], selected);
     $("#editArea").removeData("selected");
+  }
+  function renderEditOwners(selected) {
+    const owners = ownersForSite($("#editSite").val());
+    editOptionValues("#editOwner", owners, owners.length === 1 ? owners[0] : selected);
   }
   function openAssignmentEditor(jobId) {
     const job = jobs.find((item) => String(item.id) === String(jobId));
@@ -458,7 +476,8 @@
     const isSuccess = job.status === "Success";
     const isReadOnly = isCancelled || isSuccess || !canEdit;
     $("#editAssignmentTitle").text(job.id);
-    editOptionValues("#editSite", (window.initialData.master?.supervisors || []).flatMap((s) => (s.sites || []).map((site) => site.site)), job.site);
+    editOptionValues("#editSite", window.initialData.dropdowns?.sites || [], job.site);
+    renderEditOwners(job.owner || "");
     $("#editArea").data("selected", job.area);
     renderEditAreas();
     editOptionValues("#editJob", window.initialData.dropdowns?.jobs || [], job.job);
@@ -584,7 +603,12 @@
       return;
     }
     refreshIcons();
-    $("#assignSite").on("change", renderAssignAreas);
+    $("#assignSite").on("change", renderAssignOwners);
+    $("#clearAssignment").on("click", clearAssignmentForm);
+    $("#editSite").on("change", function () {
+      renderEditOwners("");
+    });
+    setAssignDateToToday();
     if (typeof window.flatpickr === "function") {
       flatpickr(".datepicker", {
         locale: "th",
@@ -721,10 +745,6 @@
     $("#closeSubmitDialog, #cancelSubmitDialog").on("click", closeSubmitModal);
     $("#submitUploadDialog").on("click", closeSubmitModalOnBackdrop);
     document.getElementById("submitUploadDialog")?.addEventListener("cancel", closeSubmitModal);
-    $("#editSite").on("change", function () {
-      $("#editArea").removeData("selected");
-      renderEditAreas();
-    });
     $("#closeAssignmentDialog, #cancelEdit").on("click", closeAssignmentEditor);
     $("#assignmentEditForm").on("submit", async function (event) {
       event.preventDefault();
@@ -745,7 +765,7 @@
       google.script.run
         .withSuccessHandler(() => {
           Object.assign(job, {
-            site: $("#editSite").val(), area: $("#editArea").val(), job: $("#editJob").val(), rank: $("#editRank").val(),
+            site: $("#editSite").val(), owner: $("#editOwner").val(), area: $("#editArea").val(), job: $("#editJob").val(), rank: $("#editRank").val(),
             assignmentDate: $("#editAssignDate").val(), date: formatDisplayDate($("#editAssignDate").val()),
             foremanUsernames: selectedForemen.map((input) => input.value).join(", "),
             foreman: selectedForemen.map((input) => input.dataset.name).join(", ") || "-",
@@ -765,7 +785,7 @@
         })
         .updateAssignment({
           username: window.FIELD_FLOW_USER.Username, assignmentId: job.id,
-          site: $("#editSite").val(), area: $("#editArea").val(), job: $("#editJob").val(), rank: $("#editRank").val(),
+          site: $("#editSite").val(), owner: $("#editOwner").val(), area: $("#editArea").val(), job: $("#editJob").val(), rank: $("#editRank").val(),
           assignDate: $("#editAssignDate").val(), foremanUsernames: selectedForemen.map((input) => input.value), foremanNames: selectedForemen.map((input) => input.dataset.name),
         });
     });
@@ -1128,6 +1148,7 @@
           const payload = {
             username: window.FIELD_FLOW_USER.Username,
             site: $("#assignSite").val(),
+            owner: $("#assignOwner").val(),
             area: $("#assignArea").val(),
             job: $("#assignJob").val(),
             rank: $("#assignRank").val(),
@@ -1143,6 +1164,7 @@
                 id: r.assignmentId,
                 supervisor: $("#assignSupervisor").val(),
                 site: $("#assignSite").val(),
+                owner: $("#assignOwner").val(),
                 area: $("#assignArea").val(),
                 job: $("#assignJob").val(),
                 rank: $("#assignRank").val(),
@@ -1153,6 +1175,7 @@
               });
               updateSummary();
               renderRows();
+              clearAssignmentForm();
               setAssignmentLoading(false);
             })
             .withFailureHandler((err) => {
