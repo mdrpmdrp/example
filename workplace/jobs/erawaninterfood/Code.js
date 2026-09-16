@@ -680,7 +680,8 @@ function formatInterviewDateText_(value, language) {
   if (!date) return '-'
 
   try {
-    return new Intl.DateTimeFormat('th-TH-u-ca-buddhist', {
+    const locale = language === 'my' ? 'en-GB' : 'th-TH-u-ca-buddhist'
+    return new Intl.DateTimeFormat(locale, {
       timeZone: 'Asia/Bangkok',
       day: 'numeric',
       month: 'short',
@@ -1337,7 +1338,7 @@ function recordToThaiRow_(record) {
     applicant.specialSkill || '',
     applicant.position || '',
     applicant.shiftAble || '',
-    applicant.phone || '',
+    "'" + applicant.phone || '',
     applicant.department || '',
     applicant.desiredIncome || '',
     applicant.latestCompany || '',
