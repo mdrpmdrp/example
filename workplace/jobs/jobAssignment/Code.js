@@ -34,7 +34,7 @@ function withScriptLock_(callback) {
 function doGet() {
   const template = HtmlService.createTemplateFromFile('index');
   template.initialDataJson = safeJsonForHtml_(getInitialData_());
-  return template.evaluate().setTitle('FieldFlow · ระบบสั่งงานภาคสนาม').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return template.evaluate().setTitle('FieldFlow · ระบบสั่งงานภาคสนาม').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
 }
 
 /** รวมไฟล์ client-side JavaScript จากไฟล์ app.js เข้าใน index.html */

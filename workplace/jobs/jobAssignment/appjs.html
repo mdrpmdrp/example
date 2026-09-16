@@ -438,7 +438,7 @@
       cancelButtonText: "กลับไปตรวจสอบ",
       reverseButtons: true,
       focusCancel: true,
-      confirmButtonColor: "#ec6a2d",
+      confirmButtonColor: "#07883f",
       cancelButtonColor: "#68746b",
     }).then((result) => result.isConfirmed);
   }
@@ -638,7 +638,7 @@
                 title: "ช่วงวันที่ไม่ถูกต้อง",
                 text: "วันที่สิ้นสุดถูกล้างแล้ว เพราะต้องไม่ก่อนวันที่เริ่มต้น",
                 confirmButtonText: "ตกลง",
-                confirmButtonColor: "#ec6a2d",
+                confirmButtonColor: "#07883f",
               });
             }
           }
@@ -657,7 +657,7 @@
               title: "ช่วงวันที่ไม่ถูกต้อง",
               text: "วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น",
               confirmButtonText: "ตกลง",
-              confirmButtonColor: "#ec6a2d",
+              confirmButtonColor: "#07883f",
             });
             return;
           }
@@ -687,7 +687,7 @@
               title: "ช่วงวันที่ไม่ถูกต้อง",
               text: "วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น",
               confirmButtonText: "ตกลง",
-              confirmButtonColor: "#ec6a2d",
+              confirmButtonColor: "#07883f",
             });
             return;
           }
@@ -920,9 +920,41 @@
         btn.prop("disabled", false).text("ส่งงาน");
       }
     });
-    $("#exportBtn").on("click", () =>
-      toast("กำลังเตรียมไฟล์ Excel รายงานเดือนกันยายน..."),
-    );
+    $("#exportBtn").on("click", () => {
+      if (!window.XLSX) {
+        toast("ไม่พบตัวช่วยสร้างไฟล์ Excel กรุณาโหลดหน้าใหม่");
+        return;
+      }
+
+      const exportRows = jobs.map((job) => ({
+        "เลขที่งาน": job.id || "-",
+        "สถานะ": job.status || "-",
+        Supervisor: job.supervisor || "-",
+        Site: job.site || "-",
+        Area: job.area || "-",
+        "งาน": job.job || "-",
+        Rank: job.rank || "-",
+        "วันที่มอบหมาย": job.date || "-",
+        "ผู้รับผิดชอบ": job.foreman || "-",
+        "หมายเหตุก่อนทำงาน": job.beforeNote || "",
+        "หมายเหตุหลังทำงาน": job.afterNote || "",
+      }));
+
+      try {
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.json_to_sheet(exportRows);
+        worksheet["!cols"] = [
+          { wch: 16 }, { wch: 16 }, { wch: 20 }, { wch: 20 }, { wch: 16 },
+          { wch: 28 }, { wch: 12 }, { wch: 18 }, { wch: 28 }, { wch: 32 }, { wch: 32 },
+        ];
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Assignments");
+        XLSX.writeFile(workbook, `FieldFlow-Assignments-${dateKey(new Date())}.xlsx`);
+        toast(`ส่งออกข้อมูล ${exportRows.length} รายการแล้ว`);
+      } catch (error) {
+        console.error("[FieldFlow export] error", error);
+        toast("ส่งออกไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      }
+    });
     $("#loginPassword").on("keydown", (e) => {
       if (e.key === "Enter") $("#loginBtn").click();
     });
