@@ -37,6 +37,10 @@ function doGet() {
   return template.evaluate().setTitle('FieldFlow · ระบบสั่งงานภาคสนาม').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
 }
 
+function getScriptURL() {
+  return ScriptApp.getService().getUrl();
+}
+
 /** รวมไฟล์ client-side JavaScript จากไฟล์ app.js เข้าใน index.html */
 function include(filename) {
   return HtmlService.createTemplateFromFile(filename).evaluate().getContent();

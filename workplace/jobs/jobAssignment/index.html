@@ -108,6 +108,10 @@
       border-radius: 12px;
     }
 
+    .swal2-popup.fieldflow-swal-popup {
+      border-radius: 12px !important;
+    }
+
     .btn-primary {
       display: inline-flex;
       align-items: center;
@@ -222,6 +226,50 @@
       background: rgb(23 53 42 / 58%);
     }
 
+    .upload-steps {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr 1.5fr 1fr;
+      gap: 8px;
+    }
+
+    .upload-step-label {
+      min-height: 30px;
+      color: #7a877e;
+      font-size: 10px;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .upload-step-track {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e9efeb;
+    }
+
+    .upload-step-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--brand);
+      transition: width 180ms ease-out, background-color 180ms ease-out;
+    }
+
+    .upload-step.is-active .upload-step-label,
+    .upload-step.is-complete .upload-step-label {
+      color: var(--brand);
+      font-weight: 600;
+    }
+
+    .upload-step.is-complete .upload-step-fill {
+      background: #62b982;
+    }
+
+    @media (max-width: 520px) {
+      .upload-steps { gap: 4px; }
+      .upload-step-label { font-size: 9px; }
+    }
+
     .status {
       display: inline-flex;
       align-items: center;
@@ -268,6 +316,23 @@
       border-radius: 8px;
       background: #edf4ee;
       cursor: zoom-in;
+    }
+
+    .image-placeholder {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      border: 1px dashed #b9c9bd;
+      border-radius: 8px;
+      background: #f7faf7;
+      color: #7a877e;
+    }
+
+    .image-thumb:focus-visible {
+      outline: 3px solid #07883f40;
+      outline-offset: 2px;
     }
 
     .image-thumb img {
@@ -443,7 +508,7 @@
       </div>
       <h1 class="text-2xl font-bold tracking-tight">เข้าสู่ระบบ</h1>
       <p class="text-sm text-muted mt-2 mb-7">
-        จัดการงานภาคสนามให้เสร็จตรงเวลา ในที่เดียว
+        จัดการงานภาคสนาม
       </p>
       <label class="label">Username</label><input id="loginUsername" class="field mb-4" autocomplete="username" /><label
         class="label">Password</label>
@@ -481,8 +546,8 @@
           <i data-lucide="clipboard-pen-line" class="w-4"></i><span class="nav-label">มอบหมายงาน</span></button><button
           class="nav-item w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm" data-tab="submit">
           <i data-lucide="camera" class="w-4"></i><span class="nav-label">ส่งงาน</span><span
-            class="nav-label ml-auto text-[10px] bg-brand text-white rounded-full px-1.5"
-            id="pendingCount">3</span></button><button
+            class="nav-label ml-auto text-[10px] bg-brand text-white rounded-full px-1.5 hidden"
+            id="pendingCount">รอส่ง 3</span></button><button
           class="nav-item w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm" data-tab="report">
           <i data-lucide="file-spreadsheet" class="w-4"></i><span class="nav-label">รายงาน</span>
         </button>
@@ -498,9 +563,6 @@
         class="topbar h-[76px] bg-white border-b border-line flex items-center justify-between px-8 sticky top-0 z-10">
         <div>
           <div class="text-xs text-muted">Saturday, 12 September 2026</div>
-          <div class="font-bold text-lg">
-            สวัสดี, คุณกิตติศักดิ์ <span class="text-brand">●</span>
-          </div>
         </div>
         <div class="flex items-center gap-4">
           <div class="relative">
@@ -589,6 +651,8 @@
                     <th>Rank</th>
                     <th>วันที่มอบหมาย</th>
                     <th>ผู้รับผิดชอบ</th>
+                    <th>ภาพก่อน</th>
+                    <th>ภาพหลัง</th>
                   </tr>
                 </thead>
                 <tbody id="recentRows"></tbody>
@@ -717,6 +781,8 @@
                     <th>Rank</th>
                     <th>วันที่มอบหมาย</th>
                     <th>ผู้รับผิดชอบ</th>
+                    <th>ภาพก่อน</th>
+                    <th>ภาพหลัง</th>
                   </tr>
                 </thead>
                 <tbody id="assignmentRows"></tbody>
@@ -785,9 +851,14 @@
                   <label class="label mt-4">หมายเหตุภาพหลัง</label><textarea id="submitAfterNote" class="field !h-20 py-2 resize-none" placeholder="เพิ่มหมายเหตุสำหรับภาพหลัง"></textarea>
                 </div>
               </div>
-              <div class="w-full hidden upload-status mt-4">
-                <div class="flex justify-between text-[11px] text-muted mb-1"><span class="upload-label">กำลังเตรียมไฟล์...</span><span class="upload-percent">0%</span></div>
-                <div class="h-1.5 bg-[#e9efeb] rounded-full overflow-hidden"><div class="upload-bar h-full bg-brand rounded-full" style="width:0%"></div></div>
+              <div class="w-full hidden upload-status mt-5" aria-live="polite">
+                <div class="upload-steps" role="progressbar" aria-label="ความคืบหน้าการส่งงาน" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                  <div class="upload-step" data-step="prepare"><div class="upload-step-label">เตรียมไฟล์</div><div class="upload-step-track"><div class="upload-step-fill"></div></div></div>
+                  <div class="upload-step" data-step="before"><div class="upload-step-label">อัปโหลดภาพก่อน</div><div class="upload-step-track"><div class="upload-step-fill"></div></div></div>
+                  <div class="upload-step" data-step="after"><div class="upload-step-label">อัปโหลดภาพหลัง</div><div class="upload-step-track"><div class="upload-step-fill"></div></div></div>
+                  <div class="upload-step" data-step="save"><div class="upload-step-label">บันทึก</div><div class="upload-step-track"><div class="upload-step-fill"></div></div></div>
+                </div>
+                <div class="flex justify-between text-[11px] text-muted mt-2"><span class="upload-label">กำลังเตรียมไฟล์...</span><span class="upload-percent">0%</span></div>
               </div>
               <input id="submitFiles" type="file" multiple class="hidden" aria-hidden="true" />
               <div class="flex items-center justify-between gap-3 border-t border-line mt-6 pt-4"><span id="submitAuthStatus" class="text-xs text-muted" aria-live="polite"></span><div class="flex gap-2"><button type="button" id="cancelSubmitDialog" class="btn-secondary rounded-lg h-[42px] px-4 text-sm">ปิด</button><button type="button" id="submitModalUpload" class="btn-primary rounded-lg h-[42px] px-5 text-sm font-semibold" disabled>ส่งงาน</button></div></div>
@@ -799,7 +870,7 @@
             <div>
               <h2 class="text-2xl font-bold tracking-tight">รายงาน</h2>
               <p class="text-sm text-muted mt-1">
-                สรุปข้อมูลสำหรับตรวจสอบและส่งต่อ
+                สรุปข้อมูลสำหรับตรวจสอบ
               </p>
             </div>
             <button class="btn-primary rounded-lg px-4 h-10 text-sm font-semibold" id="exportBtn">
@@ -809,13 +880,13 @@
           <div class="surface p-6">
             <div class="grid grid-cols-3 gap-4 mb-6">
               <div>
-                <label class="label">ตั้งแต่วันที่</label><input class="field datepicker" value="01/09/2026" />
+                <label class="label">ตั้งแต่วันที่</label><input id="reportFromDate" class="field datepicker" value="01/09/2026" />
               </div>
               <div>
-                <label class="label">ถึงวันที่</label><input class="field datepicker" value="30/09/2026" />
+                <label class="label">ถึงวันที่</label><input id="reportToDate" class="field datepicker" value="30/09/2026" />
               </div>
               <div class="flex items-end">
-                <button class="btn-secondary h-[42px] rounded-lg px-5 text-sm">
+                <button id="reportViewBtn" class="btn-secondary h-[42px] rounded-lg px-5 text-sm">
                   เรียกดูรายงาน
                 </button>
               </div>
@@ -828,6 +899,14 @@
                   <span id="reportSummary">ยังไม่มีข้อมูลงาน</span>
                 </div>
               </div>
+            </div>
+            <div class="table-wrap mt-6">
+              <table class="data-table">
+                <thead>
+                  <tr><th>สถานะ</th><th>เลขที่งาน</th><th>Supervisor</th><th>Site</th><th>Area</th><th>งาน</th><th>Rank</th><th>วันที่มอบหมาย</th><th>ผู้รับผิดชอบ</th></tr>
+                </thead>
+                <tbody id="reportRows"><tr><td colspan="9" class="text-center text-muted py-8">เลือกช่วงวันที่แล้วกดเรียกดูรายงาน</td></tr></tbody>
+              </table>
             </div>
           </div>
         </section>

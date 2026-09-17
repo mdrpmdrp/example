@@ -1,4 +1,5 @@
 <script defer>
+  let exportImageCache = new Map();
   let jobs = [];
   let foremen = [];
   let notifications = [];
@@ -8,8 +9,10 @@
   function formatDisplayDate(value) {
     return value
       ? new Date(value).toLocaleDateString("th-TH", {
-        day: "2-digit", month: "short", year: "2-digit",
-      })
+          day: "2-digit",
+          month: "short",
+          year: "2-digit",
+        })
       : "-";
   }
   function setJobs(assignments) {
@@ -57,7 +60,8 @@
       const input = option.querySelector("input");
       input.value = foreman.Username;
       input.dataset.name = foreman.Name;
-      option.querySelector("label span").textContent = `${foreman.Name} (Foreman)`;
+      option.querySelector("label span").textContent =
+        foreman.Name + " (Foreman)";
       container.appendChild(option);
     });
   }
@@ -74,21 +78,24 @@
     // ให้ผู้ใช้เลือกเองเสมอ ไม่เลือกค่ารายการแรกโดยอัตโนมัติ
     select.value = values.includes(previous) ? previous : "";
   }
-  function selectedSupervisor() {
-    return (initialData.master?.supervisors || []).find(
-      (item) => item.supervisor === $("#assignSupervisor").val(),
-    );
-  }
   function renderAssignSites() {
-    fillSelect("#assignSite", window.initialData.dropdowns?.sites || [], "เลือก...");
+    fillSelect(
+      "#assignSite",
+      window.initialData.dropdowns?.sites || [],
+      "เลือก...",
+    );
   }
   function ownersForSite(site) {
     if (!site) return [];
-    return [...new Set((window.initialData.master?.supervisors || [])
-      .flatMap((supervisor) => supervisor.sites || [])
-      .filter((item) => item.site === site)
-      .map((item) => item.owner)
-      .filter(Boolean))];
+    return [
+      ...new Set(
+        (window.initialData.master?.supervisors || [])
+          .flatMap((supervisor) => supervisor.sites || [])
+          .filter((item) => item.site === site)
+          .map((item) => item.owner)
+          .filter(Boolean),
+      ),
+    ];
   }
   function renderAssignOwners() {
     const owners = ownersForSite($("#assignSite").val());
@@ -96,7 +103,11 @@
     if (owners.length === 1) $("#assignOwner").val(owners[0]);
   }
   function renderAssignAreas() {
-    fillSelect("#assignArea", window.initialData.dropdowns?.areas || [], "เลือก...");
+    fillSelect(
+      "#assignArea",
+      window.initialData.dropdowns?.areas || [],
+      "เลือก...",
+    );
   }
   function renderAssignJobs() {
     // งานเป็นรายการอิสระ ไม่ผูกกับ Rank
@@ -107,16 +118,26 @@
     const safeData = data || {};
     const existingData = window.initialData || {};
     const emptyDropdowns = {
-      sites: [], owners: [], areas: [], ranks: [], jobs: [], rankJobs: [],
+      sites: [],
+      owners: [],
+      areas: [],
+      ranks: [],
+      jobs: [],
+      rankJobs: [],
     };
     window.initialData = {
-      master: safeData.master && Array.isArray(safeData.master.supervisors)
-        ? safeData.master
-        : (existingData.master || { supervisors: [] }),
+      master:
+        safeData.master && Array.isArray(safeData.master.supervisors)
+          ? safeData.master
+          : existingData.master || { supervisors: [] },
       dropdowns: safeData.dropdowns || existingData.dropdowns || emptyDropdowns,
     };
     $("#assignSupervisor").val(supervisorName || "");
-    fillSelect("#assignRank", window.initialData.dropdowns?.ranks || [], "เลือก...");
+    fillSelect(
+      "#assignRank",
+      window.initialData.dropdowns?.ranks || [],
+      "เลือก...",
+    );
     renderAssignSites();
     renderAssignOwners();
     renderAssignAreas();
@@ -125,7 +146,9 @@
   function assignDateValue() {
     const value = $("#assignDate").val();
     const parts = value.split("/");
-    return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : value;
+    return parts.length === 3
+      ? parts[2] + "-" + parts[1] + "-" + parts[0]
+      : value;
   }
   function setAssignDateToToday() {
     const today = new Date();
@@ -137,8 +160,10 @@
     else $("#assignDate").val(value);
   }
   function clearAssignmentForm() {
-    $("#assignSite, #assignOwner, #assignArea, #assignJob, #assignRank").val("");
-    $("#foremanOptions input[name=\"foreman\"]").prop("checked", false);
+    $("#assignSite, #assignOwner, #assignArea, #assignJob, #assignRank").val(
+      "",
+    );
+    $('#foremanOptions input[name="foreman"]').prop("checked", false);
     setAssignDateToToday();
   }
   function updateSummary() {
@@ -150,7 +175,10 @@
     $("#totalJobs").text(jobs.length);
     $("#progressJobs").text(progress);
     $("#successJobs").text(success);
-    $("#waitingJobs,#pendingCount").text(progress);
+    $("#waitingJobs").text(progress);
+    $("#pendingCount")
+      .text("รอส่ง " + progress)
+      .toggleClass("hidden", progress === 0);
     $("#totalJobsNote").text("ข้อมูลปัจจุบัน");
     $("#progressRate").text(progressRate + "%");
     $("#successRate").text(successRate + "%");
@@ -158,26 +186,46 @@
     $("#assignmentCount").text(jobs.length + " รายการ");
     $("#reportSummary").text(
       jobs.length
-        ? `ข้อมูล ${jobs.length} งาน · ${progress} งานกำลังดำเนินการ · ${success} งานเสร็จสิ้น`
+        ? "ข้อมูล " +
+            jobs.length +
+            " งาน · " +
+            progress +
+            " งานกำลังดำเนินการ · " +
+            success +
+            " งานเสร็จสิ้น"
         : "ยังไม่มีข้อมูลงาน",
     );
   }
   function statusTag(s) {
     if (s === "Updating" || s === "Cancelling") {
       const label = s === "Cancelling" ? "กำลังยกเลิก..." : "กำลังบันทึก...";
-      return `<span class="status status-loading"><i data-lucide="loader-circle" class="w-3 animate-spin"></i>${label}</span>`;
+      return (
+        '<span class="status status-loading"><i data-lucide="loader-circle" class="w-3 animate-spin"></i>' +
+        label +
+        "</span>"
+      );
     }
-    const className = s === "Success" ? "status-success" : s === "Cancelled" ? "status-cancelled" : "status-progress";
-    return `<span class="status ${className}">${s}</span>`;
+    const className =
+      s === "Success"
+        ? "status-success"
+        : s === "Cancelled"
+          ? "status-cancelled"
+          : "status-progress";
+    return '<span class="status ' + className + '">' + s + "</span>";
   }
   function dateKey(value) {
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "";
-    return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
   }
   function filterJobsByDate(period, singleDate, fromDate, toDate) {
-    let from = "", to = "";
+    let from = "",
+      to = "";
     const today = new Date();
     if (period === "today") {
       from = to = dateKey(today);
@@ -200,7 +248,12 @@
     }
     return jobs.filter((job) => {
       const jobDate = dateKey(job.assignmentDate);
-      const matchesDate = !from && !to ? true : Boolean(jobDate && from && (!to || jobDate <= to) && jobDate >= from);
+      const matchesDate =
+        !from && !to
+          ? true
+          : Boolean(
+              jobDate && from && (!to || jobDate <= to) && jobDate >= from,
+            );
       return matchesDate;
     });
   }
@@ -208,20 +261,81 @@
     const status = $("#assignmentStatusFilter").val() || "ทั้งหมด";
     const filteredByDate = filterJobsByDate(
       $("#assignmentDateFilter").val() || "all",
-      $("#assignmentSingleDate").val(), $("#assignmentFromDate").val(), $("#assignmentToDate").val(),
+      $("#assignmentSingleDate").val(),
+      $("#assignmentFromDate").val(),
+      $("#assignmentToDate").val(),
     );
-    return filteredByDate.filter((job) => status === "ทั้งหมด" || job.status === status);
+    return filteredByDate.filter(
+      (job) => status === "ทั้งหมด" || job.status === status,
+    );
+  }
+  function reportDateKey(value) {
+    const text = String(value || "").trim();
+    const thaiDate = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (thaiDate) {
+      return [
+        thaiDate[3],
+        String(thaiDate[2]).padStart(2, "0"),
+        String(thaiDate[1]).padStart(2, "0"),
+      ].join("-");
+    }
+    return dateKey(text);
+  }
+  function renderReportRows() {
+    const from = reportDateKey($("#reportFromDate").val());
+    const to = reportDateKey($("#reportToDate").val());
+    const filtered = jobs.filter((job) => {
+      const value = reportDateKey(job.assignmentDate);
+      return value && (!from || value >= from) && (!to || value <= to);
+    });
+    const cell = (value) => String(value || "-");
+    $("#reportRows").html(
+      filtered.length
+        ? filtered
+            .map(
+              (job) =>
+                "<tr><td>" +
+                statusTag(job.status) +
+                "</td><td>" +
+                cell(job.id) +
+                "</td><td>" +
+                cell(job.supervisor) +
+                "</td><td>" +
+                cell(job.site) +
+                "</td><td>" +
+                cell(job.area) +
+                "</td><td>" +
+                cell(job.job) +
+                "</td><td>" +
+                cell(job.rank) +
+                "</td><td>" +
+                cell(job.date) +
+                "</td><td>" +
+                cell(job.foreman) +
+                "</td></tr>",
+            )
+            .join("")
+        : '<tr><td colspan="9" class="text-center text-muted py-8">ไม่พบข้อมูลในช่วงวันที่ที่เลือก</td></tr>',
+    );
+    $("#reportSummary").text(
+      "พบ " + filtered.length + " งาน จากช่วงวันที่ที่เลือก",
+    );
+    refreshIcons();
   }
   function updateAssignmentFilters() {
     const period = $("#assignmentDateFilter").val();
     $("#assignmentSingleDateWrap").toggleClass("hidden", period !== "single");
-    $("#assignmentDateRange").toggleClass("hidden", period !== "range").toggleClass("flex", period === "range");
+    $("#assignmentDateRange")
+      .toggleClass("hidden", period !== "range")
+      .toggleClass("flex", period === "range");
     renderRows();
   }
   function updateSubmitFilters() {
     const period = $("#submitDateFilter").val() || "all";
     $("#submitSingleDateWrap").toggleClass("hidden", period !== "single");
-    $("#submitDateRange").toggleClass("hidden", period !== "range").toggleClass("flex", period === "range");
+    $("#submitDateRange")
+      .toggleClass("hidden", period !== "range")
+      .toggleClass("flex", period === "range");
     renderSubmit();
   }
   function refreshIcons() {
@@ -229,24 +343,105 @@
       window.lucide.createIcons();
     }
   }
+  function imageCell(fileId, url, label) {
+    if (!fileId && !url) {
+      return (
+        '<span class="image-placeholder" aria-label="ยังไม่มี' +
+        label +
+        '"><i data-lucide="image-off" class="w-5 h-5" aria-hidden="true"></i></span>'
+      );
+    }
+    const previewUrl = fileId
+      ? "https://lh3.googleusercontent.com/d/" + fileId + "?s=w200"
+      : url;
+    const fullUrl = fileId
+      ? "https://lh3.googleusercontent.com/d/" + fileId
+      : url;
+    return (
+      '<button type="button" class="image-thumb" data-preview-image="' +
+      fullUrl +
+      '" data-preview-title="' +
+      label +
+      '" aria-label="เปิด' +
+      label +
+      'เต็มขนาด"><img src="' +
+      previewUrl +
+      '" alt="' +
+      label +
+      '" data-export-file-id="' +
+      (fileId || "") +
+      '" loading="lazy" /></button>'
+    );
+  }
+  function cacheLoadedOverviewImage(imageElement) {
+    const fileId = imageElement.dataset.exportFileId;
+    if (!fileId || exportImageCache.has(fileId)) return;
+    const imagePromise = fetch(imageElement.currentSrc || imageElement.src)
+      .then((response) => (response.ok ? response.blob() : null))
+      .then(async (blob) => {
+        if (!blob || !blob.type.toLowerCase().includes("image")) return null;
+        return {
+          base64: await toBase64(blob),
+          dimensions: await getImageDimensions(blob),
+          extension: blob.type.toLowerCase().includes("png") ? "png" : "jpeg",
+        };
+      })
+      .then((image) => {
+        if (image) exportImageCache.set(fileId, Promise.resolve(image));
+        else exportImageCache.delete(fileId);
+        return image;
+      })
+      .catch(() => {
+        exportImageCache.delete(fileId);
+        return null;
+      });
+    exportImageCache.set(fileId, imagePromise);
+  }
+  function cacheOverviewImages() {
+    $("img[data-export-file-id]").each(function () {
+      if (this.complete && this.naturalWidth) cacheLoadedOverviewImage(this);
+      else $(this).one("load", () => cacheLoadedOverviewImage(this));
+    });
+  }
   function renderRows() {
     const filteredJobs = getFilteredJobs();
-    const assignmentHtml = filteredJobs
-      .map(
-        (j) =>
-          `<tr><td>${statusTag(j.status)}</td><td><button type="button" class="font-semibold text-brand hover:underline" data-submit-job="${j.id}">${j.id}</button></td><td>${j.supervisor || "-"}</td><td>${j.site || "-"}</td><td>${j.area || "-"}</td><td><div class="font-semibold">${j.job || "-"}</div></td><td><span class="font-semibold">${j.rank || "-"}</span></td><td>${j.date}</td><td>${j.foreman || "-"}</td></tr>`,
-      )
-      .join("");
-    const recentHtml = jobs
-      .slice(0, 5)
-      .map(
-        (j) =>
-          `<tr><td>${statusTag(j.status)}</td><td><button type="button" class="font-semibold text-brand hover:underline" data-submit-job="${j.id}">${j.id}</button></td><td>${j.supervisor || "-"}</td><td>${j.site || "-"}</td><td>${j.area || "-"}</td><td><div class="font-semibold">${j.job || "-"}</div></td><td><span class="font-semibold">${j.rank || "-"}</span></td><td>${j.date}</td><td>${j.foreman || "-"}</td></tr>`,
-      )
-      .join("");
-    $("#assignmentRows").html(assignmentHtml || '<tr><td colspan="9" class="text-center text-muted py-8">ไม่พบงานตามเงื่อนไขที่เลือก</td></tr>');
-    $("#assignmentCount").text(filteredJobs.length + " จาก " + jobs.length + " รายการ");
+    const jobRow = (j) =>
+      "<tr><td>" +
+      statusTag(j.status) +
+      '</td><td><button type="button" class="font-semibold text-brand hover:underline" data-submit-job="' +
+      j.id +
+      '">' +
+      j.id +
+      "</button></td><td>" +
+      (j.supervisor || "-") +
+      "</td><td>" +
+      (j.site || "-") +
+      "</td><td>" +
+      (j.area || "-") +
+      '</td><td><div class="font-semibold">' +
+      (j.job || "-") +
+      '</div></td><td><span class="font-semibold">' +
+      (j.rank || "-") +
+      "</span></td><td>" +
+      j.date +
+      "</td><td>" +
+      (j.foreman || "-") +
+      "</td><td>" +
+      imageCell(j.beforeFileId, j.beforeUrl, "ภาพก่อน") +
+      "</td><td>" +
+      imageCell(j.afterFileId, j.afterUrl, "ภาพหลัง") +
+      "</td></tr>";
+    const assignmentHtml = filteredJobs.map(jobRow).join("");
+    const recentHtml = jobs.slice(0, 5).map(jobRow).join("");
+    $("#assignmentRows").html(
+      assignmentHtml ||
+        '<tr><td colspan="11" class="text-center text-muted py-8">ไม่พบงานตามเงื่อนไขที่เลือก</td></tr>',
+    );
+    $("#assignmentCount").text(
+      filteredJobs.length + " จาก " + jobs.length + " รายการ",
+    );
     $("#recentRows").html(recentHtml);
+    cacheOverviewImages();
     refreshIcons();
   }
   const selectedFiles = {};
@@ -254,18 +449,11 @@
   let uploadToken = null;
   const uploadFolderPromises = {};
   let uploadLibrariesPromise = null;
-  function loadExternalScript(src) {
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = src;
-      script.onload = resolve;
-      script.onerror = () => reject(new Error("โหลดไลบรารีอัปโหลดไม่สำเร็จ"));
-      document.head.appendChild(script);
-    });
-  }
-
   function getUploadAuth(jobId) {
-    if (!jobId) return Promise.reject(new Error("ไม่พบรหัสงานสำหรับเตรียมโฟลเดอร์อัปโหลด"));
+    if (!jobId)
+      return Promise.reject(
+        new Error("ไม่พบรหัสงานสำหรับเตรียมโฟลเดอร์อัปโหลด"),
+      );
     if (uploadFolderPromises[jobId]) return uploadFolderPromises[jobId];
     if (!window.google || !google.script)
       return Promise.reject(
@@ -283,16 +471,16 @@
     return uploadFolderPromises[jobId];
   }
 
-  function compressSelected(file) {
+  function compressSelected(file, pct, label) {
     const isHeic =
       /\.(heic|heif)$/i.test(file.name) || /image\/heic/i.test(file.type);
     const converted = isHeic
       ? heic2any({ blob: file, toType: "image/jpeg", quality: 0.7 }).then(
-        (blob) =>
-          new File([blob], file.name.replace(/\.(heic|heif)$/i, ".jpg"), {
-            type: "image/jpeg",
-          }),
-      )
+          (blob) =>
+            new File([blob], file.name.replace(/\.(heic|heif)$/i, ".jpg"), {
+              type: "image/jpeg",
+            }),
+        )
       : Promise.resolve(file);
     return converted.then(
       (input) =>
@@ -304,7 +492,23 @@
               maxHeight: 1600,
               convertSize: 500000,
               success: (output) => {
-                console.log(`[FieldFlow] ${file.name} | ก่อนบีบอัด: ${file.size} bytes | หลังบีบอัด: ${output.size} bytes`);
+                // in MB
+                console.log(
+                  "[FieldFlow] " +
+                    file.name +
+                    " | ก่อนบีบอัด: " +
+                    (input.size / 1024 / 1024).toFixed(2) +
+                    " MB | หลังบีบอัด: " +
+                    (output.size / 1024 / 1024).toFixed(2) +
+                    " MB",
+                );
+                // bar.css("width", (bar.css("width") + 5) + "%");
+                let bar = $('.upload-step[data-step="prepare"]').find(
+                  ".upload-step-fill",
+                );
+                bar.css("width", parseInt(bar.css("width") || "0") + 50 + "%");
+                pct.text(parseInt(pct.text()) + 5 + "%");
+                label.text("กำลังบีบอัด...");
                 resolve(output);
               },
               error: reject,
@@ -313,53 +517,123 @@
     );
   }
 
-  function uploadToDrive(file, token, folderId, onProgress) {
+  function uploadToDrive(file, token, folderId, kind) {
+    console.log("[FieldFlow upload] start uploading", file.name, kind);
+    let progressBar = $('.upload-step[data-step="' + kind + '"]').find(
+      ".upload-step-fill",
+    );
+    let chunkSize = file.size > 5 * 1024 * 1024 ? 1024 * 1024 : 512 * 1024; // 5 MB ขึ้นไปใช้ chunk 1 MB, น้อยกว่าใช้ chunk 512 KB
+    let intervalId = setInterval(() => {
+      const currentWidth = parseFloat(progressBar.css("width")) || 0;
+      const parentWidth = parseFloat(progressBar.parent().css("width")) || 1;
+      const currentPercent = (currentWidth / parentWidth) * 100;
+      const newPercent = Math.min(99, currentPercent + 1);
+      progressBar.css("width", newPercent + "%");
+    }, 300);
     return new Promise((resolve, reject) => {
       const ru = new ResumableUploadToGoogleDrive2();
-      ru.Do({ file, accessToken: token, folderId, fields: "id" }, (res, err) => {
-        if (err) {
-          console.error("[FieldFlow upload] error", file.name, err);
-          reject(err);
-          return;
-        }
-        console.log("[FieldFlow upload] callback", file.name, {
-          status: res?.status,
-          progressByte: res?.progressByte,
-          progressNumber: res?.progressNumber,
-        });
-        if (res.status === "Uploading") {
-          const current = Number(res.progressByte?.current ?? res.progressNumber?.current ?? 0);
-          const total = Number(res.progressByte?.total ?? res.progressNumber?.end ?? 0);
-          const p = total > 0 ? Math.round((current / total) * 100) : 0;
-          console.log("[FieldFlow upload] progress", file.name, current + "/" + total, p + "%");
-          onProgress(Math.min(99, p));
-        }
-        if (res.status === "Done") {
-          console.log("[FieldFlow upload] done", file.name, res.result);
-          resolve(res.result);
-        }
-      });
+      ru.Do(
+        {
+          file,
+          accessToken: token,
+          folderId,
+          fields: "id",
+          chunkSize: chunkSize,
+        },
+        (res, err) => {
+          if (err) {
+            console.error("[FieldFlow upload] error", file.name, err);
+            reject(err);
+            return;
+          }
+          console.log("[FieldFlow upload] callback", file.name, {
+            status: res?.status,
+            progressByte: res?.progressByte,
+            progressNumber: res?.progressNumber,
+            kind: kind,
+          });
+          if (res.status === "Uploading") {
+            const current = Number(
+              res.progressByte?.current ?? res.progressNumber?.current ?? 0,
+            );
+            const total = Number(
+              res.progressByte?.total ?? res.progressNumber?.end ?? 0,
+            );
+            const p = total > 0 ? Math.round((current / total) * 100) : 0;
+            console.log(
+              "[FieldFlow upload] progress",
+              file.name,
+              (current / 1024 / 1024).toFixed(2) +
+                " MB/" +
+                (total / 1024 / 1024).toFixed(2) +
+                " MB",
+              p + "%",
+            );
+            progressBar.css("width", p + "%");
+          }
+          if (res.status === "Done") {
+            clearInterval(intervalId);
+            console.log("[FieldFlow upload] done", file.name, res.result);
+            progressBar.css("width", "100%");
+            resolve(res.result);
+          }
+        },
+      );
     });
   }
 
   function renderSubmit() {
     const filteredJobs = filterJobsByDate(
       $("#submitDateFilter").val() || "all",
-      $("#submitSingleDate").val(), $("#submitFromDate").val(), $("#submitToDate").val(),
+      $("#submitSingleDate").val(),
+      $("#submitFromDate").val(),
+      $("#submitToDate").val(),
     );
-    const imageCell = (fileId, url, label) => {
-      if (!fileId && !url) return '<span class="text-muted">-</span>';
-      const previewUrl = fileId ? "https://lh3.googleusercontent.com/d/" + fileId + "=w200" : url;
-      const fullUrl = fileId ? "https://lh3.googleusercontent.com/d/" + fileId : url;
-      return `<button type="button" class="image-thumb" data-preview-image="${fullUrl}" data-preview-title="${label}"><img src="${previewUrl}" alt="${label}" loading="lazy" /></button>`;
-    };
-    const html = filteredJobs.map((j) => `<tr data-job-id="${j.id}">
-      <td>${statusTag(j.status)}</td><td><button type="button" class="font-semibold text-brand hover:underline" data-submit-job="${j.id}">${j.id}</button></td>
-      <td>${j.supervisor || "-"}</td><td>${j.site || "-"}</td><td>${j.area || "-"}</td><td><div class="font-semibold">${j.job || "-"}</div></td><td>${j.rank || "-"}</td><td>${j.date}</td><td>${j.foreman || "-"}</td>
-      <td>${imageCell(j.beforeFileId, j.beforeUrl, "ภาพก่อน")}</td><td>${imageCell(j.afterFileId, j.afterUrl, "ภาพหลัง")}</td>
-      <td>${j.status === "In progress" ? '<button type="button" class="btn-primary rounded-lg h-9 px-3 text-xs font-semibold open-submit-modal">ส่งงาน</button>' : '<span class="text-xs text-muted">-</span>'}</td>
-    </tr>`).join("");
-    $("#submitList").html(html || '<tr><td colspan="12" class="text-center text-muted py-8">ไม่พบงานตามเงื่อนไขที่เลือก</td></tr>');
+    const html = filteredJobs
+      .map(
+        (j) =>
+          '<tr data-job-id="' +
+          j.id +
+          '">' +
+          "<td>" +
+          statusTag(j.status) +
+          '</td><td><button type="button" class="font-semibold text-brand hover:underline" data-submit-job="' +
+          j.id +
+          '">' +
+          j.id +
+          "</button></td>" +
+          "<td>" +
+          (j.supervisor || "-") +
+          "</td><td>" +
+          (j.site || "-") +
+          "</td><td>" +
+          (j.area || "-") +
+          '</td><td><div class="font-semibold">' +
+          (j.job || "-") +
+          "</div></td><td>" +
+          (j.rank || "-") +
+          "</td><td>" +
+          j.date +
+          "</td><td>" +
+          (j.foreman || "-") +
+          "</td>" +
+          "<td>" +
+          imageCell(j.beforeFileId, j.beforeUrl, "ภาพก่อน") +
+          "</td><td>" +
+          imageCell(j.afterFileId, j.afterUrl, "ภาพหลัง") +
+          "</td>" +
+          "<td>" +
+          (j.status === "In progress"
+            ? '<button type="button" class="btn-primary rounded-lg h-9 px-3 text-xs font-semibold open-submit-modal">ส่งงาน</button>'
+            : '<span class="text-xs text-muted">-</span>') +
+          "</td>" +
+          "</tr>",
+      )
+      .join("");
+    $("#submitList").html(
+      html ||
+        '<tr><td colspan="12" class="text-center text-muted py-8">ไม่พบงานตามเงื่อนไขที่เลือก</td></tr>',
+    );
     refreshIcons();
   }
 
@@ -376,32 +650,49 @@
         data = null;
       }
     }
-    data = data || {items: [], unreadCount: 0};
+    data = data || { items: [], unreadCount: 0 };
     notifications = data.items || [];
     const unreadCount = Number(data.unreadCount) || 0;
-    $("#notificationBadge").text(unreadCount > 99 ? "99+" : unreadCount).toggleClass("hidden", unreadCount === 0);
+    $("#notificationBadge")
+      .text(unreadCount > 99 ? "99+" : unreadCount)
+      .toggleClass("hidden", unreadCount === 0);
     const list = $("#notificationList").empty();
     if (!notifications.length) {
-      list.append($('<div class="p-6 text-center text-sm text-muted">ยังไม่มีการแจ้งเตือน</div>'));
+      list.append(
+        $(
+          '<div class="p-6 text-center text-sm text-muted">ยังไม่มีการแจ้งเตือน</div>',
+        ),
+      );
       return;
     }
     notifications.forEach((notification) => {
-      const item = $("<button type='button'>", {class: "notification-item"})
+      const item = $("<button type='button'>", { class: "notification-item" })
         .toggleClass("unread", !notification.IsRead)
         .attr("data-notification-id", notification.NotificationId)
         .attr("data-assignment-id", notification.AssignmentId);
-      $("<div>", {class: "flex items-start gap-2"}).append(
-        $("<span>", {class: "mt-1 w-2 h-2 rounded-full bg-brand flex-none"}).toggleClass("invisible", notification.IsRead),
-        $("<span>", {class: "font-semibold text-sm"}).text(notification.Title),
-      ).appendTo(item);
-      $("<div>", {class: "text-xs text-muted mt-1 pl-4"}).text(notification.Message).appendTo(item);
+      $("<div>", { class: "flex items-start gap-2" })
+        .append(
+          $("<span>", {
+            class: "mt-1 w-2 h-2 rounded-full bg-brand flex-none",
+          }).toggleClass("invisible", notification.IsRead),
+          $("<span>", { class: "font-semibold text-sm" }).text(
+            notification.Title,
+          ),
+        )
+        .appendTo(item);
+      $("<div>", { class: "text-xs text-muted mt-1 pl-4" })
+        .text(notification.Message)
+        .appendTo(item);
       item.appendTo(list);
     });
   }
   function refreshNotifications() {
     const token = getStoredSessionToken();
-    if (!token || !window.google || !google.script || !google.script.run) return;
-    google.script.run.withSuccessHandler(renderNotifications).getNotifications(token);
+    if (!token || !window.google || !google.script || !google.script.run)
+      return;
+    google.script.run
+      .withSuccessHandler(renderNotifications)
+      .getNotifications(token);
   }
   function startNotificationPolling() {
     if (notificationTimer) clearInterval(notificationTimer);
@@ -416,17 +707,18 @@
     $(".tab-panel").removeClass("active");
     $("#" + tab).addClass("active");
     $(".nav-item").removeClass("active");
-    $(`.nav-item[data-tab="${tab}"]`).addClass("active");
+    $(".nav-item[data-tab='" + tab + "']").addClass("active");
     window.scrollTo(0, 0);
   }
-  function uploadImagesTogether(images, token, folderId, onProgress) {
-    const progress = Object.fromEntries(Object.keys(images).map((kind) => [kind, 0]));
-    return Promise.all(Object.entries(images).map(([kind, file]) =>
-      uploadToDrive(file, token, folderId, (value) => {
-        progress[kind] = value;
-        onProgress({ ...progress });
+  function uploadImagesTogether(files, token, folderId) {
+    return Promise.all(
+      Object.entries(files).map(([kind, file]) => {
+        file = new File([file], "[" + kind + "] " + file.name, {
+          type: file.type,
+        });
+        return uploadToDrive(file, token, folderId, kind);
       }),
-    ));
+    );
   }
   function confirmAction(title, text, confirmButtonText, icon = "question") {
     return Swal.fire({
@@ -440,6 +732,13 @@
       focusCancel: true,
       confirmButtonColor: "#07883f",
       cancelButtonColor: "#68746b",
+      customClass: {
+        popup: "rounded-xl shadow-lg",
+        title: "text-lg font-semibold",
+        content: "text-sm text-muted",
+        confirmButton: "btn-primary",
+        cancelButton: "btn-secondary",
+      },
     }).then((result) => result.isConfirmed);
   }
 
@@ -452,17 +751,27 @@
     const select = document.querySelector(selector);
     if (!select) return;
     select.replaceChildren(new Option("เลือก...", ""));
-    [...new Set(values.filter(Boolean))].forEach((value) => select.appendChild(new Option(value, value)));
+    [...new Set(values.filter(Boolean))].forEach((value) =>
+      select.appendChild(new Option(value, value)),
+    );
     select.value = values.includes(selected) ? selected : "";
   }
   function renderEditAreas() {
     const selected = $("#editArea").data("selected") || "";
-    editOptionValues("#editArea", window.initialData.dropdowns?.areas || [], selected);
+    editOptionValues(
+      "#editArea",
+      window.initialData.dropdowns?.areas || [],
+      selected,
+    );
     $("#editArea").removeData("selected");
   }
   function renderEditOwners(selected) {
     const owners = ownersForSite($("#editSite").val());
-    editOptionValues("#editOwner", owners, owners.length === 1 ? owners[0] : selected);
+    editOptionValues(
+      "#editOwner",
+      owners,
+      owners.length === 1 ? owners[0] : selected,
+    );
   }
   function openAssignmentEditor(jobId) {
     const job = jobs.find((item) => String(item.id) === String(jobId));
@@ -476,27 +785,69 @@
     const isSuccess = job.status === "Success";
     const isReadOnly = isCancelled || isSuccess || !canEdit;
     $("#editAssignmentTitle").text(job.id);
-    editOptionValues("#editSite", window.initialData.dropdowns?.sites || [], job.site);
+    editOptionValues(
+      "#editSite",
+      window.initialData.dropdowns?.sites || [],
+      job.site,
+    );
     renderEditOwners(job.owner || "");
     $("#editArea").data("selected", job.area);
     renderEditAreas();
-    editOptionValues("#editJob", window.initialData.dropdowns?.jobs || [], job.job);
-    editOptionValues("#editRank", window.initialData.dropdowns?.ranks || [], job.rank);
+    editOptionValues(
+      "#editJob",
+      window.initialData.dropdowns?.jobs || [],
+      job.job,
+    );
+    editOptionValues(
+      "#editRank",
+      window.initialData.dropdowns?.ranks || [],
+      job.rank,
+    );
     $("#editAssignDate").val(toInputDate(job.assignmentDate));
     const container = $("#editForemanOptions").empty();
-    const selectedUsernames = String(job.foremanUsernames || "").split(",").map((name) => name.trim()).filter(Boolean);
+    const selectedUsernames = String(job.foremanUsernames || "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
     foremen.forEach((foreman) => {
-      const label = $("<label>", { class: "flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm cursor-pointer hover:border-brand" });
-      const input = $("<input>", { type: "checkbox", class: "accent-brand w-4 h-4", value: foreman.Username }).attr("data-name", foreman.Name).prop("checked", selectedUsernames.includes(foreman.Username));
-      label.append(input, $("<span>").text(`${foreman.Name} (Foreman)`));
+      const label = $("<label>", {
+        class:
+          "flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm cursor-pointer hover:border-brand",
+      });
+      const input = $("<input>", {
+        type: "checkbox",
+        class: "accent-brand w-4 h-4",
+        value: foreman.Username,
+      })
+        .attr("data-name", foreman.Name)
+        .prop("checked", selectedUsernames.includes(foreman.Username));
+      label.append(input, $("<span>").text(foreman.Name + " (Foreman)"));
       container.append(label);
     });
-    if (!foremen.length) container.append($("<span>", { class: "text-sm text-muted" }).text("ไม่พบรายชื่อ Foreman"));
-    $("#assignmentEditForm input, #assignmentEditForm select").prop("disabled", isReadOnly);
-    $("#saveEditAssignment").prop("disabled", isReadOnly).toggleClass("hidden", isReadOnly);
+    if (!foremen.length)
+      container.append(
+        $("<span>", { class: "text-sm text-muted" }).text(
+          "ไม่พบรายชื่อ Foreman",
+        ),
+      );
+    $("#assignmentEditForm input, #assignmentEditForm select").prop(
+      "disabled",
+      isReadOnly,
+    );
+    $("#saveEditAssignment")
+      .prop("disabled", isReadOnly)
+      .toggleClass("hidden", isReadOnly);
     $("#cancelAssignment")
       .prop("disabled", isReadOnly)
-      .text(isCancelled ? "งานนี้ถูกยกเลิกแล้ว" : isSuccess ? "งานนี้เสร็จสิ้นแล้ว" : canEdit ? "ยกเลิกงาน" : "ดูรายละเอียดเท่านั้น")
+      .text(
+        isCancelled
+          ? "งานนี้ถูกยกเลิกแล้ว"
+          : isSuccess
+            ? "งานนี้เสร็จสิ้นแล้ว"
+            : canEdit
+              ? "ยกเลิกงาน"
+              : "ดูรายละเอียดเท่านั้น",
+      )
       .toggleClass("hidden", isReadOnly);
     $("#assignmentEditDialog").data("job-id", job.id)[0].showModal();
     refreshIcons();
@@ -513,25 +864,46 @@
     const job = jobs.find((item) => String(item.id) === String(jobId));
     if (!job) return;
     const submitDialog = document.getElementById("submitUploadDialog");
-    if (submitDialog.parentElement !== document.body) document.body.appendChild(submitDialog);
+    if (submitDialog.parentElement !== document.body)
+      document.body.appendChild(submitDialog);
     if (submitDialog.open) submitDialog.close();
-    const modal = $("#submitUploadDialog").attr("data-job-id", job.id).data("job-id", job.id);
+    const modal = $("#submitUploadDialog")
+      .attr("data-job-id", job.id)
+      .data("job-id", job.id);
     $("#submitModalTitle").text(job.id + " · " + (job.job || "งานภาคสนาม"));
-    $("#submitModalMeta").text(`${job.site || "-"} · ${job.area || "-"} · ${job.date}`);
+    $("#submitModalMeta").text(
+      (job.site || "-") + " · " + (job.area || "-") + " · " + job.date,
+    );
     $("#submitBeforeNote").val(job.beforeNote || "");
     $("#submitAfterNote").val(job.afterNote || "");
     $("#submitBeforeFile, #submitAfterFile").val("");
     $("#submitBeforePreview, #submitAfterPreview").addClass("hidden");
-    $("#submitBeforePreviewPlaceholder, #submitAfterPreviewPlaceholder").removeClass("hidden");
+    $(
+      "#submitBeforePreviewPlaceholder, #submitAfterPreviewPlaceholder",
+    ).removeClass("hidden");
     ["before", "after"].forEach((kind) => {
       const file = selectedFiles[job.id]?.[kind];
       if (file) updateSubmitPreview(kind, file);
-      else if (job[kind + "FileId"] || job[kind + "Url"]) showRemoteSubmitPreview(kind, job[kind + "FileId"], job[kind + "Url"]);
+      else if (job[kind + "FileId"] || job[kind + "Url"])
+        showRemoteSubmitPreview(kind, job[kind + "FileId"], job[kind + "Url"]);
     });
-    const canSubmit = window.FIELD_FLOW_USER.Role === "Foreman" && job.status !== "Cancelled" && job.status !== "Success";
-    $("#submitUploadDialog input[type=file], #submitUploadDialog textarea").prop("disabled", !canSubmit);
-    $("#submitModalUpload").prop("disabled", !canSubmit).text(job.status === "Success" ? "งานนี้เสร็จสิ้นแล้ว" : "ส่งงาน");
-    $("#submitAuthStatus").text(canSubmit ? "เลือกภาพก่อนและภาพหลังให้ครบ" : job.status === "Success" ? "งานนี้เสร็จสิ้นแล้ว ไม่สามารถแก้ไขได้" : "ดูรายละเอียดเท่านั้น");
+    const canSubmit =
+      window.FIELD_FLOW_USER.Role === "Foreman" &&
+      job.status !== "Cancelled" &&
+      job.status !== "Success";
+    $(
+      "#submitUploadDialog input[type=file], #submitUploadDialog textarea",
+    ).prop("disabled", !canSubmit);
+    $("#submitModalUpload")
+      .prop("disabled", !canSubmit)
+      .text(job.status === "Success" ? "งานนี้เสร็จสิ้นแล้ว" : "ส่งงาน");
+    $("#submitAuthStatus").text(
+      canSubmit
+        ? "เลือกภาพก่อนและภาพหลังให้ครบ"
+        : job.status === "Success"
+          ? "งานนี้เสร็จสิ้นแล้ว ไม่สามารถแก้ไขได้"
+          : "ดูรายละเอียดเท่านั้น",
+    );
     if (canSubmit) prepareSubmitButton(job.id);
     submitDialog.showModal();
     refreshIcons();
@@ -539,27 +911,39 @@
   function updateSubmitPreview(kind, file) {
     if (previewUrls[kind]) URL.revokeObjectURL(previewUrls[kind]);
     previewUrls[kind] = URL.createObjectURL(file);
-    $("#submit" + kind.charAt(0).toUpperCase() + kind.slice(1) + "Preview").attr("src", previewUrls[kind]);
-    $("#submit" + kind.charAt(0).toUpperCase() + kind.slice(1) + "Preview").removeClass("hidden");
-    $("#submit" + kind.charAt(0).toUpperCase() + kind.slice(1) + "PreviewPlaceholder").addClass("hidden");
-    $("#submit" + kind.charAt(0).toUpperCase() + kind.slice(1) + "File").closest("label").find("span").text(file.name.length > 18 ? file.name.slice(0, 15) + "…" : file.name);
+    $(
+      "#submit" + kind.charAt(0).toUpperCase() + kind.slice(1) + "Preview",
+    ).attr("src", previewUrls[kind]);
+    $(
+      "#submit" + kind.charAt(0).toUpperCase() + kind.slice(1) + "Preview",
+    ).removeClass("hidden");
+    $(
+      "#submit" +
+        kind.charAt(0).toUpperCase() +
+        kind.slice(1) +
+        "PreviewPlaceholder",
+    ).addClass("hidden");
+    $("#submit" + kind.charAt(0).toUpperCase() + kind.slice(1) + "File")
+      .closest("label")
+      .find("span")
+      .text(file.name.length > 18 ? file.name.slice(0, 15) + "…" : file.name);
   }
   function showRemoteSubmitPreview(kind, fileId, url) {
     const name = kind.charAt(0).toUpperCase() + kind.slice(1);
-    const previewUrl = fileId ? "https://lh3.googleusercontent.com/d/" + fileId + "=w1000" : url;
-    $("#submit" + name + "Preview").attr("src", previewUrl).removeClass("hidden");
+    const previewUrl = fileId
+      ? "https://lh3.googleusercontent.com/d/" + fileId + "=w1000"
+      : url;
+    $("#submit" + name + "Preview")
+      .attr("src", previewUrl)
+      .removeClass("hidden");
     $("#submit" + name + "PreviewPlaceholder").addClass("hidden");
   }
-  function syncSubmitFilesInput(jobId) {
-    const input = document.getElementById("submitFiles");
-    const files = selectedFiles[jobId] || {};
-    if (!input || !window.DataTransfer) return;
-    const transfer = new DataTransfer();
-    [files.before, files.after].filter(Boolean).forEach((file) => transfer.items.add(file));
-    input.files = transfer.files;
-  }
   function prepareSubmitButton(jobId) {
-    const files = selectedFiles[jobId] || {};
+    const files = {
+      before: $("#submitBeforeFile")[0]?.files[0],
+      after: $("#submitAfterFile")[0]?.files[0],
+    };
+    console.log("[FieldFlow] prepareSubmitButton", jobId, files);
     const button = $("#submitModalUpload").prop("disabled", true);
     if (!files.before || !files.after) {
       $("#submitAuthStatus").text("เลือกภาพก่อนและภาพหลังให้ครบ");
@@ -568,7 +952,8 @@
     $("#submitAuthStatus").text("กำลังตรวจสอบสิทธิ์อัปโหลด...");
     getUploadAuth(jobId)
       .then(() => {
-        if (String($("#submitUploadDialog").data("job-id")) !== String(jobId)) return;
+        if (String($("#submitUploadDialog").data("job-id")) !== String(jobId))
+          return;
         button.prop("disabled", false);
         $("#submitAuthStatus").text("พร้อมส่งงาน");
       })
@@ -664,7 +1049,10 @@
           updateAssignmentFilters();
         },
       });
-      const submitPickerOptions = { ...filterPickerOptions, onChange: updateSubmitFilters };
+      const submitPickerOptions = {
+        ...filterPickerOptions,
+        onChange: updateSubmitFilters,
+      };
       flatpickr("#submitSingleDate", submitPickerOptions);
       let submitToPicker = null;
       const submitFromPicker = flatpickr("#submitFromDate", {
@@ -695,18 +1083,55 @@
         },
       });
     }
-    $("#assignmentStatusFilter, #assignmentDateFilter, #assignmentSingleDate, #assignmentFromDate, #assignmentToDate").on("change", updateAssignmentFilters);
+    $(
+      "#assignmentStatusFilter, #assignmentDateFilter, #assignmentSingleDate, #assignmentFromDate, #assignmentToDate",
+    ).on("change", updateAssignmentFilters);
     $("#submitDateFilter").on("change", updateSubmitFilters);
-    $("#logoutBtn").on("click", () => {
+    $("#reportViewBtn").on("click", renderReportRows);
+    $("#logoutBtn").on("click", async () => {
+      const confirmed = await confirmAction(
+        "ยืนยันการออกจากระบบ?",
+        "คุณต้องการออกจากระบบ FieldFlow และกลับไปยังหน้าเข้าสู่ระบบ หรือไม่",
+        "ออกจากระบบ",
+        "warning",
+      );
+      if (!confirmed) return;
       const token = getStoredSessionToken();
-      if (token && window.google && google.script) {
-        google.script.run.logoutSession(token);
-      }
       clearStoredSessionToken();
       window.FIELD_FLOW_USER = null;
       stopSessionActivity();
-      $("#appView").addClass("hidden");
-      $("#loginView").show();
+      Swal.fire({
+        title: "กำลังออกจากระบบ...",
+        text: "กรุณารอสักครู่",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        customClass: {
+          popup: "fieldflow-swal-popup rounded-2xl border border-line shadow-xl",
+          title: "text-lg font-bold text-ink",
+          htmlContainer: "text-sm text-muted",
+        },
+        didOpen: () => Swal.showLoading(),
+      });
+      if (token && window.google && google.script) {
+        google.script.run
+          .withSuccessHandler(function () {
+            google.script.run
+              .withSuccessHandler(function (url) {
+                window.open(url, "_top");
+              })
+              .withFailureHandler(function () {
+                window.open(window.location.href, "_top");
+              })
+              .getScriptURL();
+          })
+          .withFailureHandler(function () {
+            window.open(window.location.href, "_top");
+          })
+          .logoutSession(token);
+        return;
+      }
+      window.open(window.location.href, "_top");
     });
 
     $("[data-tab]").on("click", function () {
@@ -720,15 +1145,22 @@
     $(document).on("click", "[data-notification-id]", function () {
       const notificationId = $(this).data("notification-id");
       const assignmentId = $(this).data("assignment-id");
-      google.script.run.withSuccessHandler(refreshNotifications).markNotificationRead(getStoredSessionToken(), notificationId);
+      google.script.run
+        .withSuccessHandler(refreshNotifications)
+        .markNotificationRead(getStoredSessionToken(), notificationId);
       $("#notificationPanel").addClass("hidden");
       if (assignmentId) openJobModal(assignmentId);
     });
     $("#markAllNotifications").on("click", function () {
-      google.script.run.withSuccessHandler(refreshNotifications).markAllNotificationsRead(getStoredSessionToken());
+      google.script.run
+        .withSuccessHandler(refreshNotifications)
+        .markAllNotificationsRead(getStoredSessionToken());
     });
     $(document).on("click", function (event) {
-      if (!$(event.target).closest("#notificationBtn, #notificationPanel").length) $("#notificationPanel").addClass("hidden");
+      if (
+        !$(event.target).closest("#notificationBtn, #notificationPanel").length
+      )
+        $("#notificationPanel").addClass("hidden");
     });
     $(document).on("click", "[data-edit-job]", function () {
       openAssignmentEditor($(this).data("edit-job"));
@@ -740,19 +1172,30 @@
       openSubmitModal($(this).closest("[data-job-id]").data("job-id"));
     });
     $(document).on("click", "[data-preview-image]", function () {
-      openFullImage($(this).data("preview-image"), $(this).data("preview-title"));
+      openFullImage(
+        $(this).data("preview-image"),
+        $(this).data("preview-title"),
+      );
     });
     $("#closeSubmitDialog, #cancelSubmitDialog").on("click", closeSubmitModal);
     $("#submitUploadDialog").on("click", closeSubmitModalOnBackdrop);
-    document.getElementById("submitUploadDialog")?.addEventListener("cancel", closeSubmitModal);
+    document
+      .getElementById("submitUploadDialog")
+      ?.addEventListener("cancel", closeSubmitModal);
     $("#closeAssignmentDialog, #cancelEdit").on("click", closeAssignmentEditor);
     $("#assignmentEditForm").on("submit", async function (event) {
       event.preventDefault();
       const dialog = $("#assignmentEditDialog");
-      const job = jobs.find((item) => String(item.id) === String(dialog.data("job-id")));
+      const job = jobs.find(
+        (item) => String(item.id) === String(dialog.data("job-id")),
+      );
       if (!job) return;
       dialog[0].close();
-      const confirmed = await confirmAction("ยืนยันการแก้ไขงาน?", "ระบบจะอัปเดตข้อมูลของ " + job.id + " ลงในชีต", "บันทึกการแก้ไข");
+      const confirmed = await confirmAction(
+        "ยืนยันการแก้ไขงาน?",
+        "ระบบจะอัปเดตข้อมูลของ " + job.id + " ลงในชีต",
+        "บันทึกการแก้ไข",
+      );
       if (!confirmed) {
         dialog[0].showModal();
         return;
@@ -760,41 +1203,75 @@
       const previousStatus = job.status;
       job.status = "Updating";
       renderRows();
-      const selectedForemen = Array.from(document.querySelectorAll("#editForemanOptions input:checked"));
-      const button = $("#saveEditAssignment").prop("disabled", true).attr("aria-busy", "true").text("กำลังบันทึก...");
+      const selectedForemen = Array.from(
+        document.querySelectorAll("#editForemanOptions input:checked"),
+      );
+      const button = $("#saveEditAssignment")
+        .prop("disabled", true)
+        .attr("aria-busy", "true")
+        .text("กำลังบันทึก...");
       google.script.run
         .withSuccessHandler(() => {
           Object.assign(job, {
-            site: $("#editSite").val(), owner: $("#editOwner").val(), area: $("#editArea").val(), job: $("#editJob").val(), rank: $("#editRank").val(),
-            assignmentDate: $("#editAssignDate").val(), date: formatDisplayDate($("#editAssignDate").val()),
-            foremanUsernames: selectedForemen.map((input) => input.value).join(", "),
-            foreman: selectedForemen.map((input) => input.dataset.name).join(", ") || "-",
+            site: $("#editSite").val(),
+            owner: $("#editOwner").val(),
+            area: $("#editArea").val(),
+            job: $("#editJob").val(),
+            rank: $("#editRank").val(),
+            assignmentDate: $("#editAssignDate").val(),
+            date: formatDisplayDate($("#editAssignDate").val()),
+            foremanUsernames: selectedForemen
+              .map((input) => input.value)
+              .join(", "),
+            foreman:
+              selectedForemen.map((input) => input.dataset.name).join(", ") ||
+              "-",
             status: previousStatus,
           });
           renderRows();
           updateSummary();
           closeAssignmentEditor();
           toast("แก้ไขงาน " + job.id + " เรียบร้อยแล้ว");
-          button.prop("disabled", false).removeAttr("aria-busy").text("บันทึกการแก้ไข");
+          button
+            .prop("disabled", false)
+            .removeAttr("aria-busy")
+            .text("บันทึกการแก้ไข");
         })
         .withFailureHandler((error) => {
           job.status = previousStatus;
           renderRows();
-          button.prop("disabled", false).removeAttr("aria-busy").text("บันทึกการแก้ไข");
+          button
+            .prop("disabled", false)
+            .removeAttr("aria-busy")
+            .text("บันทึกการแก้ไข");
           toast(error.message || "แก้ไขงานไม่สำเร็จ");
         })
         .updateAssignment({
-          username: window.FIELD_FLOW_USER.Username, assignmentId: job.id,
-          site: $("#editSite").val(), owner: $("#editOwner").val(), area: $("#editArea").val(), job: $("#editJob").val(), rank: $("#editRank").val(),
-          assignDate: $("#editAssignDate").val(), foremanUsernames: selectedForemen.map((input) => input.value), foremanNames: selectedForemen.map((input) => input.dataset.name),
+          username: window.FIELD_FLOW_USER.Username,
+          assignmentId: job.id,
+          site: $("#editSite").val(),
+          owner: $("#editOwner").val(),
+          area: $("#editArea").val(),
+          job: $("#editJob").val(),
+          rank: $("#editRank").val(),
+          assignDate: $("#editAssignDate").val(),
+          foremanUsernames: selectedForemen.map((input) => input.value),
+          foremanNames: selectedForemen.map((input) => input.dataset.name),
         });
     });
     $("#cancelAssignment").on("click", async function () {
       const dialog = $("#assignmentEditDialog");
-      const job = jobs.find((item) => String(item.id) === String(dialog.data("job-id")));
+      const job = jobs.find(
+        (item) => String(item.id) === String(dialog.data("job-id")),
+      );
       if (!job) return;
       dialog[0].close();
-      const confirmed = await confirmAction("ยืนยันยกเลิกงาน?", "งาน " + job.id + " จะเปลี่ยนเป็นสถานะ Cancelled", "ยืนยันยกเลิกงาน", "warning");
+      const confirmed = await confirmAction(
+        "ยืนยันยกเลิกงาน?",
+        "งาน " + job.id + " จะเปลี่ยนเป็นสถานะ Cancelled",
+        "ยืนยันยกเลิกงาน",
+        "warning",
+      );
       if (!confirmed) {
         dialog[0].showModal();
         return;
@@ -821,107 +1298,40 @@
         .cancelAssignment(job.id, window.FIELD_FLOW_USER.Username);
     });
 
-    $(document).on("change", "#submitUploadDialog input[type=file]", function () {
-      const input = this,
-        file = this.files[0],
-        card = $(this).closest("[data-job-id]"),
-        jobId = card.data("job-id"),
-        kind = $(this).data("kind");
-      if (!file) return;
-      selectedFiles[jobId] || (selectedFiles[jobId] = {});
-      selectedFiles[jobId][kind] = file;
-      syncSubmitFilesInput(jobId);
-      updateSubmitPreview(kind, file);
-      $(input)
-        .closest("label")
-        .addClass("!border-brand !text-brand")
-        .find("span")
-        .text(file.name.length > 18 ? file.name.slice(0, 15) + "…" : file.name);
-      prepareSubmitButton(jobId);
-    });
+    $(document).on(
+      "change",
+      "#submitUploadDialog input[type=file]",
+      function () {
+        const input = this,
+          file = this.files[0],
+          card = $(this).closest("[data-job-id]"),
+          jobId = card.data("job-id"),
+          kind = $(this).data("kind");
+        console.log(
+          "[FieldFlow] selected file for job",
+          jobId,
+          kind,
+          file?.name,
+        );
+        if (!file) return;
+        updateSubmitPreview(kind, file);
+        $(input)
+          .closest("label")
+          .addClass("!border-brand !text-brand")
+          .find("span")
+          .text(
+            file.name.length > 18 ? file.name.slice(0, 15) + "…" : file.name,
+          );
+        prepareSubmitButton(jobId);
+      },
+    );
 
-    $(document).on("click", "#unused-submit-btn", async function () {
-      const btn = $(this),
-        card = btn.closest("[data-job-id]"),
-        jobId = card.data("job-id"),
-        files = selectedFiles[jobId] || {};
-      if (!files.before || !files.after) {
-        toast("กรุณาเลือกภาพก่อนและภาพหลังให้ครบ");
-        return;
-      }
-      btn.prop("disabled", true).text("กำลังอัปโหลด...");
-      const status = card.find(".upload-status").removeClass("hidden"),
-        bar = card.find(".upload-bar"),
-        pct = card.find(".upload-percent"),
-        label = card.find(".upload-label");
-      try {
-        label.text("กำลังเตรียมไฟล์...");
-        const [before, after] = await Promise.all([
-          compressSelected(files.before),
-          compressSelected(files.after),
-        ]);
-        const uploadAuth = await getUploadAuth(jobId);
-        const auth = uploadAuth.accessToken;
-        const folder = await new Promise((resolve, reject) =>
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)
-            .getJobFolder(jobId),
-        );
-        let beforeResult, afterResult;
-        label.text("กำลังอัปโหลดภาพก่อน...");
-        beforeResult = await uploadToDrive(before, auth, folder.folderId, (p) => {
-          bar.css("width", p / 2 + "%");
-          pct.text(Math.round(p / 2) + "%");
-        });
-        label.text("กำลังอัปโหลดภาพหลัง...");
-        afterResult = await uploadToDrive(after, auth, folder.folderId, (p) => {
-          const total = 50 + p / 2;
-          bar.css("width", total + "%");
-          pct.text(Math.round(total) + "%");
-        });
-        label.text("กำลังบันทึกข้อมูลลงชีต...");
-        await new Promise((resolve, reject) =>
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)
-            .saveSubmission({
-              username: window.FIELD_FLOW_USER.Username,
-              assignmentId: jobId,
-              beforeFileId: beforeResult.id,
-              afterFileId: afterResult.id,
-              beforeUrl: "https://drive.google.com/open?id=" + beforeResult.id,
-              afterUrl: "https://drive.google.com/open?id=" + afterResult.id,
-              beforeNote: $("#submitBeforeNote").val().trim(),
-              afterNote: $("#submitAfterNote").val().trim(),
-            }),
-        );
-        bar.css("width", "100%");
-        pct.text("100%");
-        label.text("ส่งงานสำเร็จ");
-        toast("อัปโหลดและบันทึกงาน " + jobId + " เรียบร้อยแล้ว");
-        const submittedJob = jobs.find((job) => String(job.id) === String(jobId));
-        if (submittedJob) {
-          submittedJob.status = "Success";
-          submittedJob.beforeFileId = beforeResult.id;
-          submittedJob.afterFileId = afterResult.id;
-          submittedJob.beforeUrl = "https://drive.google.com/open?id=" + beforeResult.id;
-          submittedJob.afterUrl = "https://drive.google.com/open?id=" + afterResult.id;
-          submittedJob.beforeNote = $("#submitBeforeNote").val().trim();
-          submittedJob.afterNote = $("#submitAfterNote").val().trim();
-        }
-              renderRows();
-              renderSubmit();
-              closeSubmitModal();
-              refreshNotifications();
-      } catch (e) {
-        label.text("อัปโหลดไม่สำเร็จ");
-        toast(e.message || "อัปโหลดไม่สำเร็จ");
-        btn.prop("disabled", false).text("ส่งงาน");
-      }
-    });
     function excelCell(value, style) {
-      return { v: value == null || value === "" ? "-" : String(value), t: "s", s: style };
+      return {
+        v: value == null || value === "" ? "-" : String(value),
+        t: "s",
+        s: style,
+      };
     }
 
     function exportReportSheet(exportJobs) {
@@ -931,77 +1341,354 @@
       const paleGreen = "E2F0D9";
       const paleRed = "FCE4D6";
       const border = { style: "thin", color: { rgb: "B7C9D6" } };
-      const allBorders = { top: border, bottom: border, left: border, right: border };
-      const centered = { alignment: { horizontal: "center", vertical: "center", wrapText: true }, border: allBorders };
-      const body = { alignment: { vertical: "center", wrapText: true }, border: allBorders };
-      const header = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: navy } }, ...centered };
-      const section = { font: { bold: true, color: { rgb: navy } }, fill: { fgColor: { rgb: paleBlue } }, ...centered };
+      const allBorders = {
+        top: border,
+        bottom: border,
+        left: border,
+        right: border,
+      };
+      const centered = {
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        border: allBorders,
+      };
+      const body = {
+        alignment: { vertical: "center", wrapText: true },
+        border: allBorders,
+      };
+      const header = {
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: navy } },
+        ...centered,
+      };
+      const section = {
+        font: { bold: true, color: { rgb: navy } },
+        fill: { fgColor: { rgb: paleBlue } },
+        ...centered,
+      };
 
-      const reportNo = `FIELD-FLOW-${dateKey(new Date()).replace(/-/g, "")}`;
-      const sites = [...new Set(exportJobs.map((job) => job.site).filter(Boolean))].join(" / ") || "-";
-      const owners = [...new Set(exportJobs.map((job) => job.owner).filter(Boolean))].join(" / ") || "-";
-      const supervisors = [...new Set(exportJobs.map((job) => job.supervisor).filter(Boolean))].join(" / ") || "-";
-      const dates = exportJobs.map((job) => dateKey(job.assignmentDate)).filter(Boolean).sort();
-      const period = dates.length ? (dates[0] === dates[dates.length - 1] ? formatDisplayDate(dates[0]) : `${formatDisplayDate(dates[0])} - ${formatDisplayDate(dates[dates.length - 1])}`) : "-";
+      const reportNo = "FIELD-FLOW-" + dateKey(new Date()).replace(/-/g, "");
+      const sites =
+        [...new Set(exportJobs.map((job) => job.site).filter(Boolean))].join(
+          " / ",
+        ) || "-";
+      const owners =
+        [...new Set(exportJobs.map((job) => job.owner).filter(Boolean))].join(
+          " / ",
+        ) || "-";
+      const supervisors =
+        [
+          ...new Set(exportJobs.map((job) => job.supervisor).filter(Boolean)),
+        ].join(" / ") || "-";
+      const dates = exportJobs
+        .map((job) => dateKey(job.assignmentDate))
+        .filter(Boolean)
+        .sort();
+      const period = dates.length
+        ? dates[0] === dates[dates.length - 1]
+          ? formatDisplayDate(dates[0])
+          : formatDisplayDate(dates[0]) +
+            " - " +
+            formatDisplayDate(dates[dates.length - 1])
+        : "-";
 
       const rows = [
-        ["", "", "", "", excelCell("FIELD FLOW · รายงานตรวจงาน", { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 16 }, fill: { fgColor: { rgb: navy } }, alignment: { horizontal: "center", vertical: "center" } }), "", "", "", "", "", excelCell("Report No. :", { font: { bold: true, color: { rgb: navy } }, alignment: { horizontal: "right", vertical: "center" } }), excelCell(reportNo, { font: { bold: true, color: { rgb: blue } }, alignment: { horizontal: "left", vertical: "center" } })],
-        ["", "", "", "", excelCell("แบบรายงานการมอบหมายและตรวจงานภาคสนาม", { font: { bold: true, color: { rgb: navy }, sz: 14 }, alignment: { horizontal: "center", vertical: "center" } }), "", "", "", "", "", excelCell("รายการ :", { font: { bold: true, color: { rgb: navy } }, alignment: { horizontal: "right", vertical: "center" } }), excelCell(`${exportJobs.length} งาน`, { font: { bold: true, color: { rgb: blue } }, alignment: { horizontal: "left", vertical: "center" } })],
+        [
+          "",
+          "",
+          "",
+          "",
+          excelCell("FIELD FLOW · รายงานตรวจงาน", {
+            font: { bold: true, color: { rgb: "FFFFFF" }, sz: 16 },
+            fill: { fgColor: { rgb: navy } },
+            alignment: { horizontal: "center", vertical: "center" },
+          }),
+          "",
+          "",
+          "",
+          "",
+          "",
+          excelCell("Report No. :", {
+            font: { bold: true, color: { rgb: navy } },
+            alignment: { horizontal: "right", vertical: "center" },
+          }),
+          excelCell(reportNo, {
+            font: { bold: true, color: { rgb: blue } },
+            alignment: { horizontal: "left", vertical: "center" },
+          }),
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          excelCell("แบบรายงานการมอบหมายและตรวจงานภาคสนาม", {
+            font: { bold: true, color: { rgb: navy }, sz: 14 },
+            alignment: { horizontal: "center", vertical: "center" },
+          }),
+          "",
+          "",
+          "",
+          "",
+          "",
+          excelCell("รายการ :", {
+            font: { bold: true, color: { rgb: navy } },
+            alignment: { horizontal: "right", vertical: "center" },
+          }),
+          excelCell(exportJobs.length + " งาน", {
+            font: { bold: true, color: { rgb: blue } },
+            alignment: { horizontal: "left", vertical: "center" },
+          }),
+        ],
         ["", "", "", "", "", "", "", "", "", "", "", ""],
-        [excelCell("รายละเอียดรายงาน", section), "", "", "", "", "", "", "", "", "", "", ""],
-        [excelCell("Site Name :", body), excelCell(sites, body), "", excelCell("Owner :", body), excelCell(owners, body), "", excelCell("Supervisor :", body), excelCell(supervisors, body), "", excelCell("ช่วงวันที่ :", body), excelCell(period, body), ""],
-        [excelCell("สถานะรายงาน", section), "", excelCell("ทั้งหมด", section), "", excelCell("กำลังดำเนินการ", section), "", excelCell("เสร็จสิ้น", section), "", excelCell("ยกเลิก", section), "", "", ""],
-        [excelCell("", header), excelCell("", header), excelCell("", header), excelCell("", header), excelCell("", header), excelCell("", header), excelCell("", header), excelCell("", header), excelCell("", header), excelCell("", header), excelCell("", header), excelCell("", header)],
-        [excelCell("NO.", header), excelCell("Inspection Date", header), excelCell("Location / Commodity", header), excelCell("Inspection Activities", header), excelCell("Rank", header), excelCell("Foreman / ผู้รับผิดชอบ", header), excelCell("สถานะ", header), excelCell("Before", header), excelCell("After", header), excelCell("หมายเหตุก่อนทำงาน", header), excelCell("หมายเหตุหลังทำงาน", header), excelCell("เลขที่งาน", header)],
+        [
+          excelCell("รายละเอียดรายงาน", section),
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+        ],
+        [
+          excelCell("Site Name :", body),
+          excelCell(sites, body),
+          "",
+          excelCell("Owner :", body),
+          excelCell(owners, body),
+          "",
+          excelCell("Supervisor :", body),
+          excelCell(supervisors, body),
+          "",
+          excelCell("ช่วงวันที่ :", body),
+          excelCell(period, body),
+          "",
+        ],
+        [
+          excelCell("สถานะรายงาน", section),
+          "",
+          excelCell("ทั้งหมด", section),
+          "",
+          excelCell("กำลังดำเนินการ", section),
+          "",
+          excelCell("เสร็จสิ้น", section),
+          "",
+          excelCell("ยกเลิก", section),
+          "",
+          "",
+          "",
+        ],
+        [
+          excelCell("", header),
+          excelCell("", header),
+          excelCell("", header),
+          excelCell("", header),
+          excelCell("", header),
+          excelCell("", header),
+          excelCell("", header),
+          excelCell("", header),
+          excelCell("", header),
+          excelCell("", header),
+          excelCell("", header),
+          excelCell("", header),
+        ],
+        [
+          excelCell("NO.", header),
+          excelCell("Inspection Date", header),
+          excelCell("Location / Commodity", header),
+          excelCell("Inspection Activities", header),
+          excelCell("Rank", header),
+          excelCell("Foreman / ผู้รับผิดชอบ", header),
+          excelCell("สถานะ", header),
+          excelCell("Before", header),
+          excelCell("After", header),
+          excelCell("หมายเหตุก่อนทำงาน", header),
+          excelCell("หมายเหตุหลังทำงาน", header),
+          excelCell("เลขที่งาน", header),
+        ],
       ];
 
       exportJobs.forEach((job, index) => {
-        const statusFill = job.status === "Success" ? paleGreen : job.status === "Cancelled" ? paleRed : "FFFFFF";
-        const statusStyle = { ...centered, fill: { fgColor: { rgb: statusFill } }, font: { bold: true, color: { rgb: job.status === "Success" ? "548235" : job.status === "Cancelled" ? "C00000" : navy } } };
-        const linkStyle = { ...centered, font: { color: { rgb: "0563C1" }, underline: true } };
+        const statusFill =
+          job.status === "Success"
+            ? paleGreen
+            : job.status === "Cancelled"
+              ? paleRed
+              : "FFFFFF";
+        const statusStyle = {
+          ...centered,
+          fill: { fgColor: { rgb: statusFill } },
+          font: {
+            bold: true,
+            color: {
+              rgb:
+                job.status === "Success"
+                  ? "548235"
+                  : job.status === "Cancelled"
+                    ? "C00000"
+                    : navy,
+            },
+          },
+        };
+        const linkStyle = {
+          ...centered,
+          font: { color: { rgb: "0563C1" }, underline: true },
+        };
         rows.push([
-          excelCell(index + 1, centered), excelCell(job.date, centered), excelCell([job.site, job.area].filter(Boolean).join("\n") || "-", body),
-          excelCell(job.job, body), excelCell(job.rank, centered), excelCell(job.foreman, body), excelCell(job.status, statusStyle),
-          excelCell(job.beforeUrl ? "เปิดรูป Before" : "-", linkStyle), excelCell(job.afterUrl ? "เปิดรูป After" : "-", linkStyle),
-          excelCell(job.beforeNote, body), excelCell(job.afterNote, body), excelCell(job.id, centered),
+          excelCell(index + 1, centered),
+          excelCell(job.date, centered),
+          excelCell(
+            [job.site, job.area].filter(Boolean).join("\n") || "-",
+            body,
+          ),
+          excelCell(job.job, body),
+          excelCell(job.rank, centered),
+          excelCell(job.foreman, body),
+          excelCell(job.status, statusStyle),
+          excelCell(job.beforeUrl ? "เปิดรูป Before" : "-", linkStyle),
+          excelCell(job.afterUrl ? "เปิดรูป After" : "-", linkStyle),
+          excelCell(job.beforeNote, body),
+          excelCell(job.afterNote, body),
+          excelCell(job.id, centered),
         ]);
-        if (job.beforeUrl) rows[rows.length - 1][7].l = { Target: job.beforeUrl, Tooltip: "เปิดรูปก่อนทำงาน" };
-        if (job.afterUrl) rows[rows.length - 1][8].l = { Target: job.afterUrl, Tooltip: "เปิดรูปหลังทำงาน" };
+        if (job.beforeUrl)
+          rows[rows.length - 1][7].l = {
+            Target: job.beforeUrl,
+            Tooltip: "เปิดรูปก่อนทำงาน",
+          };
+        if (job.afterUrl)
+          rows[rows.length - 1][8].l = {
+            Target: job.afterUrl,
+            Tooltip: "เปิดรูปหลังทำงาน",
+          };
       });
 
       const footerRow = rows.length + 1;
-      rows.push(["", excelCell("Submitted by :", section), "", "", excelCell("Inspected by :", section), "", "", excelCell("Checked by :", section), "", "", excelCell("Witnessed by :", section), ""]);
-      rows.push(["", "", "", excelCell("Sign / Date", body), "", "", excelCell("Foreman Sign / Date", body), "", excelCell("Supervisor Sign / Date", body), "", excelCell("SCGC Sign / Date", body), ""]);
+      rows.push([
+        "",
+        excelCell("Submitted by :", section),
+        "",
+        "",
+        excelCell("Inspected by :", section),
+        "",
+        "",
+        excelCell("Checked by :", section),
+        "",
+        "",
+        excelCell("Witnessed by :", section),
+        "",
+      ]);
+      rows.push([
+        "",
+        "",
+        "",
+        excelCell("Sign / Date", body),
+        "",
+        "",
+        excelCell("Foreman Sign / Date", body),
+        "",
+        excelCell("Supervisor Sign / Date", body),
+        "",
+        excelCell("SCGC Sign / Date", body),
+        "",
+      ]);
 
       const ws = XLSX.utils.aoa_to_sheet(rows);
       ws["!merges"] = [
-        { s: { r: 0, c: 4 }, e: { r: 0, c: 9 } }, { s: { r: 1, c: 4 }, e: { r: 1, c: 9 } },
-        { s: { r: 3, c: 0 }, e: { r: 3, c: 11 } }, { s: { r: 4, c: 0 }, e: { r: 4, c: 2 } },
-        { s: { r: 4, c: 6 }, e: { r: 4, c: 8 } }, { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } },
-        { s: { r: 5, c: 2 }, e: { r: 5, c: 3 } }, { s: { r: 5, c: 4 }, e: { r: 5, c: 5 } },
-        { s: { r: 5, c: 6 }, e: { r: 5, c: 7 } }, { s: { r: 5, c: 8 }, e: { r: 5, c: 9 } },
-        { s: { r: footerRow - 1, c: 1 }, e: { r: footerRow - 1, c: 3 } }, { s: { r: footerRow - 1, c: 4 }, e: { r: footerRow - 1, c: 6 } },
-        { s: { r: footerRow - 1, c: 7 }, e: { r: footerRow - 1, c: 9 } }, { s: { r: footerRow - 1, c: 10 }, e: { r: footerRow - 1, c: 11 } },
+        { s: { r: 0, c: 4 }, e: { r: 0, c: 9 } },
+        { s: { r: 1, c: 4 }, e: { r: 1, c: 9 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 11 } },
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 2 } },
+        { s: { r: 4, c: 6 }, e: { r: 4, c: 8 } },
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } },
+        { s: { r: 5, c: 2 }, e: { r: 5, c: 3 } },
+        { s: { r: 5, c: 4 }, e: { r: 5, c: 5 } },
+        { s: { r: 5, c: 6 }, e: { r: 5, c: 7 } },
+        { s: { r: 5, c: 8 }, e: { r: 5, c: 9 } },
+        { s: { r: footerRow - 1, c: 1 }, e: { r: footerRow - 1, c: 3 } },
+        { s: { r: footerRow - 1, c: 4 }, e: { r: footerRow - 1, c: 6 } },
+        { s: { r: footerRow - 1, c: 7 }, e: { r: footerRow - 1, c: 9 } },
+        { s: { r: footerRow - 1, c: 10 }, e: { r: footerRow - 1, c: 11 } },
       ];
-      ws["!cols"] = [{ wch: 6 }, { wch: 12 }, { wch: 19 }, { wch: 24 }, { wch: 7 }, { wch: 16 }, { wch: 13 }, { wch: 12 }, { wch: 12 }, { wch: 17 }, { wch: 17 }, { wch: 12 }];
-      ws["!rows"] = rows.map((_, rowIndex) => ({ hpt: rowIndex === 0 ? 30 : rowIndex === 1 ? 27 : rowIndex === 2 ? 8 : rowIndex === 3 ? 22 : rowIndex === 4 ? 28 : rowIndex === 5 ? 22 : rowIndex === 6 ? 8 : rowIndex === 7 ? 30 : rowIndex < footerRow - 1 ? 36 : 28 }));
+      ws["!cols"] = [
+        { wch: 6 },
+        { wch: 12 },
+        { wch: 19 },
+        { wch: 24 },
+        { wch: 7 },
+        { wch: 16 },
+        { wch: 13 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 17 },
+        { wch: 17 },
+        { wch: 12 },
+      ];
+      ws["!rows"] = rows.map((_, rowIndex) => ({
+        hpt:
+          rowIndex === 0
+            ? 30
+            : rowIndex === 1
+              ? 27
+              : rowIndex === 2
+                ? 8
+                : rowIndex === 3
+                  ? 22
+                  : rowIndex === 4
+                    ? 28
+                    : rowIndex === 5
+                      ? 22
+                      : rowIndex === 6
+                        ? 8
+                        : rowIndex === 7
+                          ? 30
+                          : rowIndex < footerRow - 1
+                            ? 36
+                            : 28,
+      }));
       ws["!freeze"] = { xSplit: 0, ySplit: 8 };
-      ws["!margins"] = { left: 0.25, right: 0.25, top: 0.35, bottom: 0.25, header: 0.1, footer: 0.1 };
-      ws["!pageSetup"] = { paperSize: 9, orientation: "portrait", fitToWidth: 1, fitToHeight: 1, scale: 59 };
+      ws["!margins"] = {
+        left: 0.25,
+        right: 0.25,
+        top: 0.35,
+        bottom: 0.25,
+        header: 0.1,
+        footer: 0.1,
+      };
+      ws["!pageSetup"] = {
+        paperSize: 9,
+        orientation: "portrait",
+        fitToWidth: 1,
+        fitToHeight: 1,
+        scale: 59,
+      };
       ws["!printOptions"] = { horizontalCentered: true };
-      ws["!printArea"] = `A1:L${rows.length}`;
-      ws["!autofilter"] = { ref: `A8:L${Math.max(8, exportJobs.length + 8)}` };
+      ws["!printArea"] = "A1:L" + rows.length;
+      ws["!autofilter"] = { ref: "A8:L" + Math.max(8, exportJobs.length + 8) };
       ws["!tabColor"] = "FFC000";
       return ws;
     }
 
     function exportAuth(jobId) {
-      return new Promise((resolve, reject) => google.script.run
-        .withSuccessHandler(resolve).withFailureHandler(reject).getUploadAuth(jobId));
+      return new Promise((resolve, reject) =>
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject)
+          .getUploadAuth(jobId),
+      );
     }
 
     function toBase64(blob) {
-      return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(",")[1]); reader.onerror = reject; reader.readAsDataURL(blob); });
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
     }
 
     function getImageDimensions(blob) {
@@ -1021,23 +1708,53 @@
     }
 
     function containImage(image, box) {
-      const scale = Math.min(box.width / image.width, box.height / image.height);
+      const scale = Math.min(
+        box.width / image.width,
+        box.height / image.height,
+      );
       return {
         width: Math.max(1, Math.round(image.width * scale)),
         height: Math.max(1, Math.round(image.height * scale)),
       };
     }
 
-    function centeredImagePlacement(image, box, anchor, columnWidth, columnPixelWidth, rowHeightPx, rowHeightPoints) {
+    function centeredImagePlacement(
+      image,
+      box,
+      anchor,
+      columnPixelWidths,
+      columnWidths,
+      rowPixelHeight,
+      rowHeightPoints,
+    ) {
       const size = containImage(image, box);
       const offsetX = (box.width - size.width) / 2;
       const offsetY = (box.height - size.height) / 2;
+      let remainingX = Math.max(0, offsetX);
+      let nativeCol = anchor.col;
+      while (
+        nativeCol < anchor.col + columnPixelWidths.length - 1 &&
+        remainingX >= columnPixelWidths[nativeCol - anchor.col]
+      ) {
+        remainingX -= columnPixelWidths[nativeCol - anchor.col];
+        nativeCol += 1;
+      }
       return {
         tl: {
-          nativeCol: anchor.col,
-          nativeColOff: Math.max(0, Math.round(offsetX / columnPixelWidth * columnWidth * 10000)),
+          nativeCol,
+          nativeColOff: Math.max(
+            0,
+            Math.round(
+              (remainingX / columnPixelWidths[nativeCol - anchor.col]) *
+                columnWidths[nativeCol - anchor.col] *
+                10000,
+            ),
+          ),
           nativeRow: anchor.row,
-          nativeRowOff: Math.max(0, Math.round(offsetY / rowHeightPx * rowHeightPoints * 10000)),
+          nativeRowOff: Math.max(
+            0,
+            Math.round((offsetY / rowPixelHeight) * rowHeightPoints * 10000),
+          ),
         },
         ext: size,
         editAs: "oneCell",
@@ -1046,89 +1763,587 @@
 
     async function fetchExportImage(fileId, token) {
       if (!fileId) return null;
-      const response = await fetch("https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(fileId) + "?alt=media", { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(
+        "https://www.googleapis.com/drive/v3/files/" +
+          encodeURIComponent(fileId) +
+          "?alt=media",
+        { headers: { Authorization: "Bearer " + token } },
+      );
       if (!response.ok) return null;
-      const blob = await response.blob(); const type = blob.type.toLowerCase();
-      if (!type.includes("png") && !type.includes("jpeg") && !type.includes("jpg")) return null;
-      return { base64: await toBase64(blob), dimensions: await getImageDimensions(blob), extension: type.includes("png") ? "png" : "jpeg" };
+      const blob = await response.blob();
+      const type = blob.type.toLowerCase();
+      if (
+        !type.includes("png") &&
+        !type.includes("jpeg") &&
+        !type.includes("jpg")
+      )
+        return null;
+      return {
+        base64: await toBase64(blob),
+        dimensions: await getImageDimensions(blob),
+        extension: type.includes("png") ? "png" : "jpeg",
+      };
+    }
+
+    function fetchCachedExportImage(fileId, token) {
+      if (!fileId) return Promise.resolve(null);
+      if (exportImageCache.has(fileId)) return exportImageCache.get(fileId);
+      const startedAt = performance.now();
+      const imagePromise = fetchExportImage(fileId, token)
+        .then((image) => {
+          console.debug(
+            "[FieldFlow export] image",
+            fileId,
+            Math.round(performance.now() - startedAt) + " ms",
+          );
+          if (image) exportImageCache.set(fileId, Promise.resolve(image));
+          else exportImageCache.delete(fileId);
+          return image;
+        })
+        .catch((error) => {
+          exportImageCache.delete(fileId);
+          throw error;
+        });
+      exportImageCache.set(fileId, imagePromise);
+      return imagePromise;
     }
 
     async function fetchRemoteImage(url) {
       try {
         const response = await fetch(url);
         if (!response.ok) return null;
-        const blob = await response.blob(); const type = blob.type.toLowerCase();
-        if (!type.includes("png") && !type.includes("jpeg") && !type.includes("jpg")) return null;
-        return { base64: await toBase64(blob), dimensions: await getImageDimensions(blob), extension: type.includes("png") ? "png" : "jpeg" };
+        const blob = await response.blob();
+        const type = blob.type.toLowerCase();
+        if (
+          !type.includes("png") &&
+          !type.includes("jpeg") &&
+          !type.includes("jpg")
+        )
+          return null;
+        return {
+          base64: await toBase64(blob),
+          dimensions: await getImageDimensions(blob),
+          extension: type.includes("png") ? "png" : "jpeg",
+        };
       } catch (error) {
         console.warn("[FieldFlow export] โหลดภาพหัวรายงานไม่สำเร็จ", error);
         return null;
       }
     }
 
-    async function buildExactReportWorkbook(exportJobs) {
-      const workbook = new ExcelJS.Workbook(); workbook.creator = "FieldFlow";
-      const ws = workbook.addWorksheet("Report Week-1", { views: [{ showGridLines: false, zoomScale: 85 }] });
-      ws.pageSetup = { paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalDpi: 300, verticalDpi: 300 };
-      ws.pageSetup.margins = { left: 0.25, right: 0.25, top: 0.28, bottom: 0.2, header: 0, footer: 0 }; ws.pageSetup.printArea = `A1:N${Math.max(14, exportJobs.length * 2 + 12)}`;
-      ws.columns = [4, 7, 13, 13, 19, 16, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5].map((width) => ({ width }));
-      const line = { style: "thin", color: { argb: "FF808080" } }; const border = { top: line, bottom: line, left: line, right: line };
-      const center = { horizontal: "center", vertical: "middle", wrapText: true }; const base = { name: "Arial", size: 8 };
-      const labelStyle = { font: { ...base, bold: true }, alignment: center, border, fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9EAF7" } } };
-      const bodyStyle = { font: base, alignment: { vertical: "middle", wrapText: true }, border }; const headerStyle = { font: { ...base, bold: true, color: { argb: "FFFFFFFF" } }, alignment: center, border, fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FF17324D" } } };
-      const cellAddress = (reference) => { const match = reference.match(/^([A-Z]+)(\d+)$/); let column = 0; for (const char of match[1]) column = column * 26 + char.charCodeAt(0) - 64; return { row: Number(match[2]), column }; };
-      const styleRange = (range, style) => { const [start, end = start] = range.split(":").map(cellAddress); for (let row = start.row; row <= end.row; row += 1) for (let column = start.column; column <= end.column; column += 1) ws.getCell(row, column).style = style; };
-      const mergeStyled = (range, style) => { styleRange(range, style); ws.mergeCells(range); styleRange(range, style); };
-      const put = (range, value, style) => { mergeStyled(range, style); ws.getCell(range.split(":")[0]).value = value; };
-      put("A1:N1", "Page : 1/1", { font: { ...base, size: 8 }, alignment: { horizontal: "right", vertical: "middle" }, fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFFFF" } } });
-      put("A2:N2", "หจก.ไร่หญ้า แสงอรุณการ์เด้น", { ...headerStyle, font: { ...base, bold: true, size: 13, color: { argb: "FFFFFFFF" } } });
-      put("E3:J4", "เอกสารตรวจสอบงาน\nงานภูมิทัศน์ และบำรุงรักษาบริเวณ", { ...bodyStyle, alignment: center, font: { ...base, bold: true, size: 12 } }); put("K3:N3", "Report No. :", labelStyle); put("K4:N4", `FIELD-FLOW-${dateKey(new Date()).replace(/-/g, "")}`, labelStyle);
-      mergeStyled("A3:D6", bodyStyle); put("E5:G6", "เอกสารตรวจสอบงาน", { ...bodyStyle, alignment: center, font: { ...base, bold: true, size: 10 } }); put("H5:N5", `Site Name : ${[...new Set(exportJobs.map((job) => job.site).filter(Boolean))].join(" / ") || "-"}`, bodyStyle); put("H6:N7", `Owner : ${[...new Set(exportJobs.map((job) => job.owner).filter(Boolean))].join(" / ") || "-"}`, bodyStyle);
-      put("A7:C7", "Inspection Notice No. :", labelStyle); put("D7:G7", "FIELD-FLOW", bodyStyle); put("A8:C8", "RSG Inspector. :", labelStyle); put("D8:G8", [...new Set(exportJobs.map((job) => job.supervisor).filter(Boolean))].join(" / ") || "-", bodyStyle); put("H8:I8", "WEEK#1", labelStyle); put("J8:N8", exportJobs.map((job) => job.date).filter(Boolean).join(" - ") || "-", bodyStyle);
-      [["A9:A10", "NO."], ["B9:D10", "Inspection Date"], ["E9:E10", "Location / Commodity"], ["F9:F10", "Inspection Activities"], ["G9:J10", "Before"], ["K9:N10", "After"]].forEach(([range, value]) => put(range, value, headerStyle));
-      const headerImage = await fetchRemoteImage("https://lh3.googleusercontent.com/d/1Ra468zIOSIRvUqGt9zXvvHFHKnkW09iP");
-      if (headerImage) ws.addImage(workbook.addImage({ base64: headerImage.base64, extension: headerImage.extension }), centeredImagePlacement(headerImage.dimensions, { width: 259, height: 80 }, { col: 0, row: 2 }, 4, 28, 60 * 96 / 72, 60));
-      const ids = [...new Set(exportJobs.flatMap((job) => [job.beforeFileId, job.afterFileId]).filter(Boolean))]; const cache = new Map(); let token = null;
-      if (ids.length && exportJobs[0]) { token = (await exportAuth(exportJobs[0].id)).accessToken; await Promise.all(ids.map(async (id) => { cache.set(id, await fetchExportImage(id, token)); })); }
-      const imageHeight = 83 * 96 / 72;
-      exportJobs.forEach((job, index) => { const row = 11 + index * 2; const remarkRow = row + 1; ws.getRow(row).height = 85; ws.getRow(remarkRow).height = 22; const centeredBody = { ...bodyStyle, alignment: center }; mergeStyled(`A${row}:A${remarkRow}`, centeredBody); mergeStyled(`B${row}:D${remarkRow}`, centeredBody); mergeStyled(`E${row}:E${remarkRow}`, bodyStyle); mergeStyled(`F${row}:F${remarkRow}`, bodyStyle); mergeStyled(`G${row}:J${row}`, bodyStyle); mergeStyled(`K${row}:N${row}`, bodyStyle); mergeStyled(`G${remarkRow}:J${remarkRow}`, centeredBody); mergeStyled(`K${remarkRow}:N${remarkRow}`, centeredBody); ws.getCell(`A${row}`).value = index + 1; ws.getCell(`B${row}`).value = job.date || "-"; ws.getCell(`E${row}`).value = [job.site, job.area].filter(Boolean).join("\n") || "-"; ws.getCell(`F${row}`).value = `${job.job || "-"}\nRank: ${job.rank || "-"}\n${job.foreman || "-"}\n${job.status || "In progress"}`; ws.getCell(`G${remarkRow}`).value = job.beforeNote || "-"; ws.getCell(`K${remarkRow}`).value = job.afterNote || "-"; const before = cache.get(job.beforeFileId); const after = cache.get(job.afterFileId); if (before) ws.addImage(workbook.addImage({ base64: before.base64, extension: before.extension }), centeredImagePlacement(before.dimensions, { width: 210, height: imageHeight }, { col: 6, row: row - 1 }, 10.5, 73.5, 85 * 96 / 72, 85)); if (after) ws.addImage(workbook.addImage({ base64: after.base64, extension: after.extension }), centeredImagePlacement(after.dimensions, { width: 210, height: imageHeight }, { col: 10, row: row - 1 }, 10.5, 73.5, 85 * 96 / 72, 85)); });
-      const footer = 11 + exportJobs.length * 2; const signatureStyle = { ...bodyStyle, alignment: { horizontal: "center", vertical: "bottom", wrapText: true } }; ws.getRow(footer + 1).height = 60; put(`A${footer}:D${footer}`, "Submitted by :", labelStyle); put(`E${footer}:F${footer}`, "Inspected by :", labelStyle); put(`G${footer}:J${footer}`, "Checked by :", labelStyle); put(`K${footer}:N${footer}`, "Witnessed by :", labelStyle); put(`A${footer + 1}:D${footer + 1}`, "Sign / Date", signatureStyle); put(`E${footer + 1}:F${footer + 1}`, "Foreman Sign / Date", signatureStyle); put(`G${footer + 1}:J${footer + 1}`, "Supervisor Sign / Date", signatureStyle); put(`K${footer + 1}:N${footer + 1}`, "SCGC Sign / Date", signatureStyle);
+    let reportHeaderImagePromise = null;
+    function fetchReportHeaderImage() {
+      if (!reportHeaderImagePromise)
+        reportHeaderImagePromise = fetchRemoteImage(
+          "https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb",
+        );
+      return reportHeaderImagePromise;
+    }
+
+    function getReportWeekInfo(job) {
+      const value = new Date(job.assignmentDate);
+      if (Number.isNaN(value.getTime()) || value.getDay() === 0) return null;
+      const month = value.toLocaleString("en-US", { month: "long" }).toUpperCase();
+      const firstDay = new Date(value.getFullYear(), value.getMonth(), 1);
+      const mondayOffset = (firstDay.getDay() + 6) % 7;
+      const week = Math.floor((value.getDate() - 1 + mondayOffset) / 7) + 1;
+      const monday = new Date(value);
+      const dayOffset = (monday.getDay() + 6) % 7;
+      monday.setDate(monday.getDate() - dayOffset);
+      const saturday = new Date(monday);
+      saturday.setDate(saturday.getDate() + 5);
+      const monthStart = new Date(value.getFullYear(), value.getMonth(), 1);
+      const monthEnd = new Date(value.getFullYear(), value.getMonth() + 1, 0);
+      const rangeStart = monday < monthStart ? monthStart : monday;
+      const rangeEnd = saturday > monthEnd ? monthEnd : saturday;
+      const formatDate = (date) =>
+        date
+          .toLocaleDateString("en-US", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          })
+          .toUpperCase();
+      return {
+        key: value.getFullYear() + "-" + value.getMonth() + "-" + week,
+        label: month + "-WEEK#" + week,
+        dateRange: formatDate(rangeStart) + " - " + formatDate(rangeEnd),
+        sortKey: rangeStart.getTime(),
+      };
+    }
+
+    async function buildExactReportWorkbook(
+      exportJobs,
+      workbook = new ExcelJS.Workbook(),
+      sheetName = "Report Week-1",
+      weekLabel = "WEEK#1",
+      dateRange = "-",
+    ) {
+      workbook.creator = "FieldFlow";
+      const headerImagePromise = fetchReportHeaderImage();
+      const ws = workbook.addWorksheet(sheetName, {
+        views: [{ showGridLines: false, zoomScale: 85 }],
+      });
+      ws.pageSetup = {
+        paperSize: 9,
+        orientation: "portrait",
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 0,
+        horizontalDpi: 300,
+        verticalDpi: 300,
+      };
+      ws.pageSetup.margins = {
+        left: 0.25,
+        right: 0.25,
+        top: 0.28,
+        bottom: 0.2,
+        header: 0,
+        footer: 0,
+      };
+      ws.pageSetup.printArea =
+        "A1:N" + Math.max(14, exportJobs.length * 2 + 12);
+      ws.columns = [
+        4, 7, 13, 13, 19, 16, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5,
+      ].map((width) => ({ width }));
+      const line = { style: "thin", color: { argb: "FF808080" } };
+      const border = { top: line, bottom: line, left: line, right: line };
+      const center = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true,
+      };
+      const base = { name: "Arial", size: 8 };
+      const labelStyle = {
+        font: { ...base, bold: true },
+        alignment: center,
+        border,
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFD9EAF7" },
+        },
+      };
+      const bodyStyle = {
+        font: base,
+        alignment: { vertical: "middle", wrapText: true },
+        border,
+      };
+      const headerStyle = {
+        font: { ...base, bold: true, color: { argb: "FFFFFFFF" } },
+        alignment: center,
+        border,
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF17324D" },
+        },
+      };
+      const cellAddress = (reference) => {
+        const match = reference.match(/^([A-Z]+)(\d+)$/);
+        let column = 0;
+        for (const char of match[1])
+          column = column * 26 + char.charCodeAt(0) - 64;
+        return { row: Number(match[2]), column };
+      };
+      const styleRange = (range, style) => {
+        const [start, end = start] = range.split(":").map(cellAddress);
+        for (let row = start.row; row <= end.row; row += 1)
+          for (let column = start.column; column <= end.column; column += 1)
+            ws.getCell(row, column).style = style;
+      };
+      const mergeStyled = (range, style) => {
+        ws.mergeCells(range);
+        styleRange(range, style);
+      };
+      const put = (range, value, style) => {
+        mergeStyled(range, style);
+        ws.getCell(range.split(":")[0]).value = value;
+      };
+      put("A1:N1", "Page : 1/1", {
+        font: { ...base, size: 8 },
+        alignment: { horizontal: "right", vertical: "middle" },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFFFFFFF" },
+        },
+      });
+      put("A2:N2", "หจก.ไร่หญ้า แสงอรุณการ์เด้น", {
+        ...headerStyle,
+        font: { ...base, bold: true, size: 13, color: { argb: "FFFFFFFF" } },
+      });
+      put("E3:J4", "เอกสารตรวจสอบงาน\nงานภูมิทัศน์ และบำรุงรักษาบริเวณ", {
+        ...bodyStyle,
+        alignment: center,
+        font: { ...base, bold: true, size: 12 },
+      });
+      put("K3:N3", "Report No. :", labelStyle);
+      put(
+        "K4:N4",
+        "FIELD-FLOW-" + dateKey(new Date()).replace(/-/g, ""),
+        labelStyle,
+      );
+      mergeStyled("A3:D6", bodyStyle);
+      put("E5:G6", "เอกสารตรวจสอบงาน", {
+        ...bodyStyle,
+        alignment: center,
+        font: { ...base, bold: true, size: 10 },
+      });
+      put(
+        "H5:N5",
+        "Site Name : " +
+          ([...new Set(exportJobs.map((job) => job.site).filter(Boolean))].join(
+            " / ",
+          ) || "-"),
+        bodyStyle,
+      );
+      put(
+        "H6:N7",
+        "Owner : " +
+          ([
+            ...new Set(exportJobs.map((job) => job.owner).filter(Boolean)),
+          ].join(" / ") || "-"),
+        bodyStyle,
+      );
+      put("A7:C7", "Inspection Notice No. :", labelStyle);
+      put("D7:G7", "FIELD-FLOW", bodyStyle);
+      put("A8:C8", "RSG Inspector. :", labelStyle);
+      put(
+        "D8:G8",
+        [
+          ...new Set(exportJobs.map((job) => job.supervisor).filter(Boolean)),
+        ].join(" / ") || "-",
+        bodyStyle,
+      );
+      put("H8:I8", weekLabel, labelStyle);
+      put(
+        "J8:N8",
+        dateRange,
+        bodyStyle,
+      );
+      [
+        ["A9:A10", "NO."],
+        ["B9:D10", "Inspection Date"],
+        ["E9:E10", "Location / Commodity"],
+        ["F9:F10", "Inspection Activities"],
+        ["G9:J10", "Before"],
+        ["K9:N10", "After"],
+      ].forEach(([range, value]) => put(range, value, headerStyle));
+      const headerImage = await headerImagePromise;
+      if (headerImage)
+        ws.addImage(
+          workbook.addImage({
+            base64: headerImage.base64,
+            extension: headerImage.extension,
+          }),
+          centeredImagePlacement(
+            headerImage.dimensions,
+            { width: 259, height: 80 },
+            { col: 0, row: 2 },
+            [28, 49, 91, 91],
+            [4, 7, 13, 13],
+            20,
+            15,
+          ),
+        );
+      const ids = [
+        ...new Set(
+          exportJobs
+            .flatMap((job) => [job.beforeFileId, job.afterFileId])
+            .filter(Boolean),
+        ),
+      ];
+      const cache = new Map();
+      let token = null;
+      if (ids.length && exportJobs[0]) {
+        token = (await exportAuth(exportJobs[0].id)).accessToken;
+        await Promise.all(
+          ids.map(async (id) => {
+            try {
+              cache.set(id, await fetchCachedExportImage(id, token));
+            } catch (error) {
+              console.warn("[FieldFlow export] image load skipped", id, error);
+              cache.set(id, null);
+            }
+          }),
+        );
+      }
+      const imageHeight = (83 * 96) / 72;
+      const cellRange = (start, end, firstRow, lastRow) =>
+        start + firstRow + ":" + end + lastRow;
+      exportJobs.forEach((job, index) => {
+        const row = 11 + index * 2;
+        const remarkRow = row + 1;
+        ws.getRow(row).height = 85;
+        ws.getRow(remarkRow).height = 22;
+        const centeredBody = { ...bodyStyle, alignment: center };
+        mergeStyled(cellRange("A", "A", row, remarkRow), centeredBody);
+        mergeStyled(cellRange("B", "D", row, remarkRow), centeredBody);
+        mergeStyled(cellRange("E", "E", row, remarkRow), bodyStyle);
+        mergeStyled(cellRange("F", "F", row, remarkRow), bodyStyle);
+        mergeStyled(cellRange("G", "J", row, row), bodyStyle);
+        mergeStyled(cellRange("K", "N", row, row), bodyStyle);
+        mergeStyled(cellRange("G", "J", remarkRow, remarkRow), centeredBody);
+        mergeStyled(cellRange("K", "N", remarkRow, remarkRow), centeredBody);
+        ws.getCell("A" + row).value = index + 1;
+        ws.getCell("B" + row).value = job.date || "-";
+        ws.getCell("E" + row).value =
+          [job.site, job.area].filter(Boolean).join("\n") || "-";
+        ws.getCell("F" + row).value =
+          (job.job || "-") +
+          "\nRank: " +
+          (job.rank || "-") +
+          "\n" +
+          (job.foreman || "-") +
+          "\n" +
+          (job.status || "In progress");
+        ws.getCell("G" + remarkRow).value = job.beforeNote || "-";
+        ws.getCell("K" + remarkRow).value = job.afterNote || "-";
+        const before = cache.get(job.beforeFileId);
+        const after = cache.get(job.afterFileId);
+        if (before)
+          ws.addImage(
+            workbook.addImage({
+              base64: before.base64,
+              extension: before.extension,
+            }),
+            centeredImagePlacement(
+              before.dimensions,
+              { width: 294, height: imageHeight },
+              { col: 6, row: row - 1 },
+              [73.5, 73.5, 73.5, 73.5],
+              [10.5, 10.5, 10.5, 10.5],
+              (85 * 96) / 72,
+              85,
+            ),
+          );
+        if (after)
+          ws.addImage(
+            workbook.addImage({
+              base64: after.base64,
+              extension: after.extension,
+            }),
+            centeredImagePlacement(
+              after.dimensions,
+              { width: 294, height: imageHeight },
+              { col: 10, row: row - 1 },
+              [73.5, 73.5, 73.5, 73.5],
+              [10.5, 10.5, 10.5, 10.5],
+              (85 * 96) / 72,
+              85,
+            ),
+          );
+      });
+      const footer = 11 + exportJobs.length * 2;
+      const signatureStyle = {
+        ...bodyStyle,
+        alignment: { horizontal: "center", vertical: "bottom", wrapText: true },
+      };
+      ws.getRow(footer + 1).height = 60;
+      put(cellRange("A", "D", footer, footer), "Submitted by :", labelStyle);
+      put(cellRange("E", "F", footer, footer), "Inspected by :", labelStyle);
+      put(cellRange("G", "J", footer, footer), "Checked by :", labelStyle);
+      put(cellRange("K", "N", footer, footer), "Witnessed by :", labelStyle);
+      put(
+        cellRange("A", "D", footer + 1, footer + 1),
+        "Sign / Date",
+        signatureStyle,
+      );
+      put(
+        cellRange("E", "F", footer + 1, footer + 1),
+        "Foreman Sign / Date",
+        signatureStyle,
+      );
+      put(
+        cellRange("G", "J", footer + 1, footer + 1),
+        "Supervisor Sign / Date",
+        signatureStyle,
+      );
+      put(
+        cellRange("K", "N", footer + 1, footer + 1),
+        "SCGC Sign / Date",
+        signatureStyle,
+      );
       return workbook;
     }
 
     $("#exportBtn").on("click", async () => {
+      const exportButton = $("#exportBtn");
+      if (exportButton.prop("disabled")) return;
+      let exportProgressTimer = null;
       if (!window.ExcelJS) {
         toast("ไม่พบตัวช่วยสร้างไฟล์ Excel กรุณาโหลดหน้าใหม่");
         return;
       }
 
+      const originalExportButtonHtml = exportButton.html();
+      const exportStartedAt = performance.now();
+      const reportExportTiming = (stage) =>
+        console.debug(
+          "[FieldFlow export]",
+          stage,
+          Math.round(performance.now() - exportStartedAt) + " ms",
+        );
+      const setExportProgress = (percent, label) => {
+        exportButton.html(
+          '<i data-lucide="loader-circle" class="w-4 inline mr-1 align-[-3px] animate-spin"></i>' +
+            label +
+            " " +
+            percent +
+            "%",
+        );
+        refreshIcons();
+      };
+      exportButton
+        .prop("disabled", true)
+        .attr("aria-busy", "true")
+        .html(
+          '<i data-lucide="loader-circle" class="w-4 inline mr-1 align-[-3px] animate-spin"></i>กำลังส่งออก...',
+        );
+      refreshIcons();
+      setExportProgress(0, "กำลังเริ่มส่งออก");
+
       const exportJobs = getFilteredJobs();
+      reportExportTiming("filter data");
+      setExportProgress(10, "กำลังเตรียมข้อมูล");
       const exportRows = exportJobs.map((job) => ({
-        "เลขที่งาน": job.id || "-",
-        "สถานะ": job.status || "-",
+        เลขที่งาน: job.id || "-",
+        สถานะ: job.status || "-",
         Supervisor: job.supervisor || "-",
         Site: job.site || "-",
         Area: job.area || "-",
-        "งาน": job.job || "-",
+        งาน: job.job || "-",
         Rank: job.rank || "-",
-        "วันที่มอบหมาย": job.date || "-",
-        "ผู้รับผิดชอบ": job.foreman || "-",
-        "หมายเหตุก่อนทำงาน": job.beforeNote || "",
-        "หมายเหตุหลังทำงาน": job.afterNote || "",
+        วันที่มอบหมาย: job.date || "-",
+        ผู้รับผิดชอบ: job.foreman || "-",
+        หมายเหตุก่อนทำงาน: job.beforeNote || "",
+        หมายเหตุหลังทำงาน: job.afterNote || "",
       }));
 
       try {
-        const workbook = await buildExactReportWorkbook(exportJobs);
-        const detailSheet = workbook.addWorksheet("Assignments", { views: [{ showGridLines: false }] });
-        const headers = Object.keys(exportRows[0] || { "เลขที่งาน": "" });
-        detailSheet.addRow(headers); exportRows.forEach((row) => detailSheet.addRow(headers.map((header) => row[header])));
-        detailSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } }; detailSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF17324D" } }; detailSheet.getRow(1).alignment = { horizontal: "center", vertical: "middle", wrapText: true }; detailSheet.getRow(1).height = 28;
-        detailSheet.columns.forEach((column) => { column.width = 18; }); detailSheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: Math.max(1, exportRows.length + 1), column: headers.length } };
-        const buffer = await workbook.xlsx.writeBuffer(); const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `FieldFlow-Report-${dateKey(new Date())}.xlsx`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-        toast(`ส่งออกข้อมูล ${exportRows.length} รายการแล้ว`);
+        setExportProgress(20, "กำลังสร้างรายงาน");
+        reportExportTiming("start workbook");
+        let preparationProgress = 20;
+        exportProgressTimer = setInterval(() => {
+          preparationProgress = Math.min(74, preparationProgress + 1);
+          setExportProgress(preparationProgress, "กำลังสร้างรายงาน");
+        }, 1000);
+        const workbook = new ExcelJS.Workbook();
+        /* image progress callback removed */
+        /*
+          if (loadedImageIds.has(fileId)) return;
+          loadedImageIds.add(fileId);
+          loadedImageCount += 1;
+          const percent = exportImageIds.length
+            ? 25 + Math.round((loadedImageCount / exportImageIds.length) * 45)
+            : 70;
+          setExportProgress(
+            Math.min(70, percent),
+            "กำลังโหลดรูปภาพ " +
+              loadedImageCount +
+              "/" +
+              exportImageIds.length,
+          );
+        };
+        */
+        const reportGroups = new Map();
+        exportJobs.forEach((job) => {
+          const info = getReportWeekInfo(job);
+          if (!info) return;
+          if (!reportGroups.has(info.key))
+            reportGroups.set(info.key, {
+              label: info.label,
+              dateRange: info.dateRange,
+              sortKey: info.sortKey,
+              jobs: [],
+            });
+          reportGroups.get(info.key).jobs.push(job);
+        });
+        if (reportGroups.size) {
+          const sortedGroups = [...reportGroups.values()].sort(
+            (a, b) => a.sortKey - b.sortKey,
+          );
+          for (const group of sortedGroups)
+            await buildExactReportWorkbook(
+              group.jobs,
+              workbook,
+              group.label,
+              group.label,
+              group.dateRange,
+            );
+        } else {
+          await buildExactReportWorkbook(
+            [],
+            workbook,
+            "NO-REPORT-DATES",
+            "NO-REPORT-DATES",
+            "-",
+          );
+        }
+        clearInterval(exportProgressTimer);
+        exportProgressTimer = null;
+        setExportProgress(75, "กำลังจัดเตรียมชีท");
+        reportExportTiming("fetch images and build report sheets");
+        setExportProgress(90, "กำลังสร้างไฟล์");
+        const detailSheet = workbook.addWorksheet("Assignments", {
+          views: [{ showGridLines: false }],
+        });
+        const headers = Object.keys(exportRows[0] || { เลขที่งาน: "" });
+        detailSheet.addRow(headers);
+        exportRows.forEach((row) =>
+          detailSheet.addRow(headers.map((header) => row[header])),
+        );
+        detailSheet.getRow(1).font = {
+          bold: true,
+          color: { argb: "FFFFFFFF" },
+        };
+        detailSheet.getRow(1).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF17324D" },
+        };
+        detailSheet.getRow(1).alignment = {
+          horizontal: "center",
+          vertical: "middle",
+          wrapText: true,
+        };
+        detailSheet.getRow(1).height = 28;
+        detailSheet.columns.forEach((column) => {
+          column.width = 18;
+        });
+        detailSheet.autoFilter = {
+          from: { row: 1, column: 1 },
+          to: {
+            row: Math.max(1, exportRows.length + 1),
+            column: headers.length,
+          },
+        };
+        reportExportTiming("build assignments sheet");
+      
+        const buffer = await workbook.xlsx.writeBuffer();
+        reportExportTiming("writeBuffer");
+        const blob = new Blob([buffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "FieldFlow-Report-" + dateKey(new Date()) + ".xlsx";
+        link.click();
+        setExportProgress(100, "ส่งออกสำเร็จ");
+        reportExportTiming("download triggered");
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        toast("ส่งออกข้อมูล " + exportRows.length + " รายการแล้ว");
       } catch (error) {
         console.error("[FieldFlow export] error", error);
         toast("ส่งออกไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      } finally {
+        if (exportProgressTimer) clearInterval(exportProgressTimer);
+        exportButton
+          .prop("disabled", false)
+          .removeAttr("aria-busy")
+          .html(originalExportButtonHtml);
+        refreshIcons();
       }
     });
     $("#loginPassword").on("keydown", (e) => {
@@ -1157,17 +2372,25 @@
   }
   function showSplashError(message) {
     $("#splashMessage").text(message);
-    $("#splashProgress").css("width", "100%").removeClass("bg-brand").addClass("bg-red-400");
+    $("#splashProgress")
+      .css("width", "100%")
+      .removeClass("bg-brand")
+      .addClass("bg-red-400");
     $("#splashPercent").text("ไม่สำเร็จ");
   }
   function getStoredSessionToken() {
-    return localStorage.getItem("fieldFlowSessionToken") ||
-      sessionStorage.getItem("fieldFlowSessionToken");
+    return (
+      localStorage.getItem("fieldFlowSessionToken") ||
+      sessionStorage.getItem("fieldFlowSessionToken")
+    );
   }
   function storeSessionToken(token, remember) {
     localStorage.removeItem("fieldFlowSessionToken");
     sessionStorage.removeItem("fieldFlowSessionToken");
-    (remember ? localStorage : sessionStorage).setItem("fieldFlowSessionToken", token);
+    (remember ? localStorage : sessionStorage).setItem(
+      "fieldFlowSessionToken",
+      token,
+    );
   }
   function clearStoredSessionToken() {
     localStorage.removeItem("fieldFlowSessionToken");
@@ -1207,11 +2430,12 @@
   }
   function expireSession() {
     const token = getStoredSessionToken();
-    if (token && window.google && google.script) google.script.run.logoutSession(token);
+    if (token && window.google && google.script)
+      google.script.run.logoutSession(token);
     clearStoredSessionToken();
     window.FIELD_FLOW_USER = null;
-      stopSessionActivity();
-      stopNotificationPolling();
+    stopSessionActivity();
+    stopNotificationPolling();
     $("#appView").addClass("hidden");
     $("#loginView").show();
     toast("Session หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง");
@@ -1226,9 +2450,7 @@
       const now = Date.now();
       if (now - lastSessionTouch < SESSION_TOUCH_INTERVAL_MS) return;
       lastSessionTouch = now;
-      google.script.run
-        .withFailureHandler(expireSession)
-        .touchSession(token);
+      google.script.run.withFailureHandler(expireSession).touchSession(token);
     };
     sessionActivityHandler = markActivity;
     ["click", "keydown", "scroll", "touchstart"].forEach((eventName) =>
@@ -1247,7 +2469,9 @@
     $(".user-copy div:last-child").text(user.Role);
     $('.nav-item[data-tab="assign"]').toggle(user.Role === "Supervisor");
     $('[data-tab="assign"]').toggle(user.Role === "Supervisor");
-    $("#assign .surface").first().toggle(user.Role === "Supervisor");
+    $("#assign .surface")
+      .first()
+      .toggle(user.Role === "Supervisor");
     $('.nav-item[data-tab="submit"]').toggle(user.Role === "Foreman");
     $('.mobile-nav [data-tab="submit"]').toggle(user.Role === "Foreman");
     setJobs([]);
@@ -1265,8 +2489,14 @@
         updateSplash("กำลังจัดเตรียมเมนูและรายการงาน...", 80);
         const bootstrap = JSON.parse(data || "{}");
         console.log("Bootstrap data:", bootstrap);
-        window.initialData = { master: bootstrap.master, dropdowns: bootstrap.dropdowns };
-        renderAssignDropdowns({ master: bootstrap.master, dropdowns: bootstrap.dropdowns }, user.Name);
+        window.initialData = {
+          master: bootstrap.master,
+          dropdowns: bootstrap.dropdowns,
+        };
+        renderAssignDropdowns(
+          { master: bootstrap.master, dropdowns: bootstrap.dropdowns },
+          user.Name,
+        );
         setJobs(bootstrap.assignments);
         setForemen(bootstrap.foremen);
         renderNotifications(bootstrap.notifications);
@@ -1294,7 +2524,6 @@
       });
   }
   function bootApp() {
-
     initApp();
 
     const login = document.getElementById("loginBtn");
@@ -1311,13 +2540,20 @@
           return;
         }
         login.disabled = true;
-        login.innerHTML = "กำลังตรวจสอบ...";
+        login.setAttribute("aria-busy", "true");
+        login.innerHTML =
+          '<i data-lucide="loader-circle" class="inline w-4 mr-1 align-[-3px] animate-spin"></i>กำลังตรวจสอบ...';
+        refreshIcons();
         google.script.run
           .withSuccessHandler(function (user) {
-            storeSessionToken(user.sessionToken, $("#rememberMe").prop("checked"));
+            storeSessionToken(
+              user.sessionToken,
+              $("#rememberMe").prop("checked"),
+            );
             showSplash("เข้าสู่ระบบสำเร็จ กำลังโหลดข้อมูลเริ่มต้น...", 20);
             loadUserSession(user);
             login.disabled = false;
+            login.removeAttribute("aria-busy");
             login.innerHTML =
               'เข้าสู่ระบบ <i data-lucide="arrow-right" class="inline w-4 ml-1 align-[-3px]"></i>';
             refreshIcons();
@@ -1325,6 +2561,7 @@
           .withFailureHandler(function (error) {
             toast(error.message || "เข้าสู่ระบบไม่สำเร็จ");
             login.disabled = false;
+            login.removeAttribute("aria-busy");
             login.innerHTML =
               'เข้าสู่ระบบ <i data-lucide="arrow-right" class="inline w-4 ml-1 align-[-3px]"></i>';
             refreshIcons();
@@ -1345,13 +2582,22 @@
             return;
           }
           const selectedForemen = Array.from(
-            document.querySelectorAll('#foremanOptions input[name="foreman"]:checked'),
+            document.querySelectorAll(
+              '#foremanOptions input[name="foreman"]:checked',
+            ),
           );
           if (!selectedForemen.length) {
             toast("กรุณาเลือกผู้รับผิดชอบอย่างน้อย 1 คน");
             return;
           }
-          if (!await confirmAction("ยืนยันการสร้างงาน?", "ระบบจะบันทึกงานใหม่ลงในชีต Assignments", "บันทึกงาน")) return;
+          if (
+            !(await confirmAction(
+              "ยืนยันการสร้างงาน?",
+              "ระบบจะบันทึกงานใหม่ลงในชีต Assignments",
+              "บันทึกงาน",
+            ))
+          )
+            return;
           setAssignmentLoading(true);
           const payload = {
             username: window.FIELD_FLOW_USER.Username,
@@ -1378,7 +2624,9 @@
                 rank: $("#assignRank").val(),
                 date: formatDisplayDate(assignDateValue()),
                 assignmentDate: assignDateValue(),
-                foreman: selectedForemen.map((input) => input.dataset.name).join(", "),
+                foreman: selectedForemen
+                  .map((input) => input.dataset.name)
+                  .join(", "),
                 status: "In progress",
               });
               updateSummary();
@@ -1398,8 +2646,11 @@
           e.stopImmediatePropagation();
           const card = $(submit).closest("[data-job-id]"),
             jobId = card.data("job-id"),
-            files = selectedFiles[jobId] || {},
-            combinedFiles = Array.from(document.getElementById("submitFiles")?.files || []);
+            files = {
+              before: $("#submitBeforeFile")[0]?.files[0],
+              after: $("#submitAfterFile")[0]?.files[0],
+            };
+          console.log("Submitting job", jobId, files);
           if (
             !window.FIELD_FLOW_USER ||
             window.FIELD_FLOW_USER.Role !== "Foreman"
@@ -1407,42 +2658,45 @@
             toast("เฉพาะ Foreman เท่านั้นที่ส่งงานได้");
             return;
           }
-          if (!files.before || !files.after || combinedFiles.length < 2) {
+          if (!files.before || !files.after) {
             toast("กรุณาเลือกภาพก่อนและภาพหลังให้ครบ");
             return;
           }
           submit.disabled = true;
           submit.textContent = "กำลังอัปโหลด...";
           const status = card.find(".upload-status").removeClass("hidden"),
-            bar = card.find(".upload-bar"),
             pct = card.find(".upload-percent"),
             label = card.find(".upload-label");
           (async () => {
+            let intervalId = null;
             try {
               label.text("กำลังเตรียมไฟล์...");
-              const [before, after] = await Promise.all([
-                compressSelected(files.before),
-                compressSelected(files.after),
-              ]),
-                uploadAuth = await getUploadAuth(jobId),
+              files.before = await compressSelected(files.before, pct, label);
+              files.after = await compressSelected(files.after, pct, label);
+              const uploadAuth = await getUploadAuth(jobId),
                 auth = uploadAuth.accessToken,
                 folderId = uploadAuth.folderId;
-              bar.css("width", "10%");
               pct.text("10%");
               label.text("กำลังอัปโหลดภาพ...");
               const [beforeResult, afterResult] = await uploadImagesTogether(
-                { before, after },
+                files,
                 auth,
                 folderId,
-                (progress) => {
-                  const total = 10 + (progress.before * 0.4) + (progress.after * 0.4);
-                  bar.css("width", total + "%");
-                  pct.text(Math.round(total) + "%");
-                },
               );
-              bar.css("width", "90%");
+              console.log("Upload results:", beforeResult, afterResult);
               pct.text("90%");
               label.text("กำลังบันทึกข้อมูลลงชีต...");
+              let progressBar = $('.upload-step[data-step="save"]').find(
+                ".upload-step-fill",
+              );
+              intervalId = setInterval(() => {
+                const currentWidth = parseFloat(progressBar.css("width")) || 0;
+                const parentWidth =
+                  parseFloat(progressBar.parent().css("width")) || 1;
+                const currentPercent = (currentWidth / parentWidth) * 100;
+                const newPercent = Math.min(99, currentPercent + 1);
+                progressBar.css("width", newPercent + "%");
+              }, 300);
               await new Promise((resolve, reject) =>
                 google.script.run
                   .withSuccessHandler(resolve)
@@ -1460,12 +2714,37 @@
                     afterNote: $("#submitAfterNote").val().trim(),
                   }),
               );
-              bar.css("width", "100%");
+              clearInterval(intervalId);
+              progressBar.css("width", "100%");
               pct.text("100%");
               label.text("ส่งงานสำเร็จ");
               toast("อัปโหลดและบันทึกงาน " + jobId + " เรียบร้อยแล้ว");
-              setTimeout(() => card.fadeOut(200), 700);
+              const submittedBeforeNote = $("#submitBeforeNote").val().trim();
+              const submittedAfterNote = $("#submitAfterNote").val().trim();
+              const submittedJob = jobs.find(
+                (job) => String(job.id) === String(jobId),
+              );
+              if (submittedJob) {
+                submittedJob.status = "Success";
+                submittedJob.beforeFileId = beforeResult.id;
+                submittedJob.afterFileId = afterResult.id;
+                submittedJob.beforeUrl =
+                  "https://drive.google.com/open?id=" + beforeResult.id;
+                submittedJob.afterUrl =
+                  "https://drive.google.com/open?id=" + afterResult.id;
+                submittedJob.beforeNote = submittedBeforeNote;
+                submittedJob.afterNote = submittedAfterNote;
+              }
+              // Close the native dialog instead of hiding it with jQuery. Hiding an
+              // open dialog leaves its modal backdrop active and blocks the page.
+              setTimeout(() => {
+                closeSubmitModal();
+                updateSummary();
+                renderRows();
+                renderSubmit();
+              }, 700);
             } catch (err) {
+              if (intervalId) clearInterval(intervalId);
               label.text("อัปโหลดไม่สำเร็จ");
               toast(err.message || "อัปโหลดไม่สำเร็จ");
               submit.disabled = false;
@@ -1494,5 +2773,4 @@
     }
   }
   $(document).ready(bootApp);
-
 </script>
