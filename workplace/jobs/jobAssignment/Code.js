@@ -34,7 +34,10 @@ function withScriptLock_(callback) {
 function doGet() {
   const template = HtmlService.createTemplateFromFile('index');
   template.initialDataJson = safeJsonForHtml_(getInitialData_());
-  return template.evaluate().setTitle('FieldFlow · ระบบสั่งงานภาคสนาม').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+  return template.evaluate()
+  .setTitle('FieldFlow · ระบบสั่งงานภาคสนาม')
+  .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+  .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
 }
 
 function getScriptURL() {

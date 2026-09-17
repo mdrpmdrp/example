@@ -4,7 +4,7 @@
 <head>
   <base target="_top" />
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>FieldFlow · ระบบสั่งงานภาคสนาม</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -39,12 +39,6 @@
   <script defer src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
   <script defer src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/compressorjs@1.2.1/dist/compressor.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-  <script
-    src="https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@2.0.2/resumableupload2_js.min.js"></script>
   <style>
     :root {
       color-scheme: light;
@@ -252,7 +246,7 @@
       height: 100%;
       border-radius: inherit;
       background: var(--brand);
-      transition: width 180ms ease-out, background-color 180ms ease-out;
+      transition: background-color 180ms ease-out;
     }
 
     .upload-step.is-active .upload-step-label,
@@ -473,6 +467,616 @@
     #sessionSplash.is-visible {
       display: flex;
     }
+
+    /* Context adaptation: the same workspace must remain usable with a thumb,
+       a tablet stylus, or a mouse. These rules complement the utility classes
+       above instead of creating a separate mobile layout. */
+    .mobile-nav {
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+
+    .table-wrap {
+      overscroll-behavior-inline: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+
+    .mobile-nav button {
+      min-width: 64px;
+      min-height: 44px;
+      padding: 5px 8px;
+      border-radius: 8px;
+    }
+
+    .mobile-nav button.active {
+      background: var(--brand-soft);
+      color: var(--brand-deep);
+      font-weight: 700;
+    }
+
+    @media (pointer: coarse) {
+      .nav-item,
+      .btn-primary,
+      .btn-secondary,
+      .field,
+      .notification-item,
+      .dropzone {
+        min-height: 44px;
+      }
+
+      .image-thumb,
+      .image-placeholder {
+        width: 56px;
+        height: 56px;
+      }
+    }
+
+    @media (max-width: 1024px) {
+      .main-pad {
+        padding: 24px !important;
+      }
+
+      .topbar {
+        padding-left: 24px !important;
+        padding-right: 24px !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding-bottom: calc(68px + env(safe-area-inset-bottom));
+        overflow-x: hidden;
+      }
+
+      .sidebar {
+        display: none !important;
+      }
+
+      #appView .content {
+        margin-left: 0 !important;
+        width: 100%;
+      }
+
+      .main-pad {
+        padding: 20px 16px 28px !important;
+      }
+
+      .topbar {
+        height: 64px;
+        padding: 12px 16px !important;
+      }
+
+      .topbar > div:first-child {
+        min-width: 0;
+      }
+
+      .topbar > div:first-child > div {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .topbar .mobile-brand {
+        display: flex;
+        overflow: visible;
+      }
+
+      .topbar .topbar-date {
+        display: none;
+      }
+
+      .topbar .user-copy,
+      .topbar .h-8.w-px {
+        display: none;
+      }
+
+      #notificationPanel {
+        right: -8px;
+      }
+
+      .surface {
+        border-radius: 10px;
+      }
+
+      .data-table {
+        min-width: 900px;
+      }
+
+      dialog.assignment-dialog {
+        width: calc(100vw - 20px);
+        max-height: calc(100dvh - 20px);
+        border-radius: 12px;
+      }
+
+      dialog.assignment-dialog > div,
+      dialog.assignment-dialog > form {
+        padding: 20px !important;
+      }
+
+      .metric-grid {
+        gap: 10px !important;
+      }
+
+      .metric {
+        padding: 14px !important;
+      }
+
+      .metric .text-3xl {
+        font-size: 1.65rem;
+      }
+
+      .mobile-nav {
+        display: flex !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .mobile-nav button {
+        min-width: 0;
+        flex: 1;
+        padding-left: 4px;
+        padding-right: 4px;
+      }
+
+      .metric-grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+
+    /* FieldFlow workspace system: task-first hierarchy with quiet structure. */
+    :root {
+      --canvas: #eef3ef;
+      --surface-strong: #ffffff;
+      --ink: #17352a;
+      --muted: #617269;
+      --line: #d8e4db;
+      --brand: #087c3d;
+      --brand-deep: #055f2f;
+      --brand-soft: #e3f2e6;
+      --sun: #f3cc2f;
+      --focus: #087c3d;
+      --success-ink: oklch(0.42 0.12 150);
+      --success-surface: oklch(0.95 0.045 150);
+      --warning-ink: oklch(0.43 0.12 82);
+      --warning-surface: oklch(0.95 0.055 92);
+      --info-ink: oklch(0.43 0.1 235);
+      --info-surface: oklch(0.95 0.035 235);
+      --danger-ink: oklch(0.44 0.14 28);
+      --danger-surface: oklch(0.95 0.045 28);
+      --radius-panel: 14px;
+    }
+
+    html,
+    body {
+      background: var(--canvas);
+    }
+
+    body {
+      letter-spacing: -0.005em;
+    }
+
+    button,
+    a,
+    input,
+    select,
+    textarea {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :where(button, input, select, textarea, [tabindex]):focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--focus) 28%, transparent);
+      outline-offset: 2px;
+    }
+
+    .sidebar {
+      width: 236px;
+      background: #142d23;
+      border-right: 1px solid rgb(255 255 255 / 8%);
+    }
+
+    .sidebar .brand {
+      height: 68px;
+      padding-inline: 18px;
+      border-bottom-color: rgb(255 255 255 / 12%);
+    }
+
+    .sidebar nav {
+      padding: 18px 10px;
+    }
+
+    .sidebar nav > div:first-child {
+      padding: 6px 12px 10px;
+      color: #84988b;
+      letter-spacing: 0.08em;
+    }
+
+    .nav-item {
+      min-height: 42px;
+      color: #b9c9be;
+      border-radius: 9px;
+      transition: background-color 160ms ease-out, color 160ms ease-out;
+    }
+
+    .nav-item:hover {
+      background: rgb(255 255 255 / 8%);
+      color: #fff;
+    }
+
+    .nav-item.active {
+      background: #25513b;
+      color: #fff;
+      box-shadow: inset 3px 0 var(--sun);
+    }
+
+    .content {
+      margin-left: 236px;
+    }
+
+    .topbar {
+      height: 68px;
+      background: rgb(255 255 255 / 94%);
+      border-bottom-color: var(--line);
+      backdrop-filter: blur(10px);
+    }
+
+    .mobile-brand {
+      display: none;
+    }
+
+    .main-pad {
+      padding: 34px 36px 56px;
+      max-width: 1540px;
+    }
+
+    .tab-panel > .flex.items-end,
+    .tab-panel > .mb-7 {
+      margin-bottom: 24px;
+    }
+
+    .tab-panel h2 {
+      font-size: clamp(1.55rem, 2vw, 2rem);
+      line-height: 1.15;
+      letter-spacing: -0.035em;
+      text-wrap: balance;
+    }
+
+    .tab-panel h3 {
+      letter-spacing: -0.02em;
+    }
+
+    .surface {
+      border-color: var(--line);
+      border-radius: var(--radius-panel);
+      box-shadow: 0 1px 2px rgb(23 53 42 / 4%);
+    }
+
+    .metric-grid {
+      grid-template-columns: minmax(1.25fr, 1.4fr) repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      min-height: 126px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .metric:first-child {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff;
+    }
+
+    .metric:first-child .text-muted,
+    .metric:first-child #totalJobsNote {
+      color: #b9d2c2;
+    }
+
+    .metric .text-3xl {
+      font-size: 2.25rem;
+      line-height: 1;
+      letter-spacing: -0.05em;
+    }
+
+    .metric:nth-child(2) .text-3xl {
+      color: var(--info-ink);
+    }
+
+    .metric:nth-child(3) .text-3xl {
+      color: var(--success-ink);
+    }
+
+    .metric:nth-child(4) .text-3xl {
+      color: var(--warning-ink);
+    }
+
+    .status-progress {
+      background: var(--warning-surface);
+      color: var(--warning-ink);
+    }
+
+    .status-success {
+      background: var(--success-surface);
+      color: var(--success-ink);
+    }
+
+    .status-cancelled {
+      background: var(--danger-surface);
+      color: var(--danger-ink);
+    }
+
+    .status-loading {
+      background: var(--info-surface);
+      color: var(--info-ink);
+    }
+
+    .data-table th {
+      background: #f7faf7;
+      color: #64756a;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.045em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .data-table td {
+      border-top-color: #e4ece6;
+    }
+
+    .data-table tbody tr {
+      transition: background-color 140ms ease-out;
+    }
+
+    .data-table tbody tr:hover {
+      background: #f4f9f5;
+    }
+
+    .field {
+      min-height: 44px;
+      height: 44px;
+      border-color: #c8d8cc;
+      border-radius: 9px;
+      color: var(--ink);
+    }
+
+    textarea.field {
+      height: auto;
+      min-height: 80px;
+    }
+
+    .field::placeholder {
+      color: #75877b;
+      opacity: 1;
+    }
+
+    .field:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgb(8 124 61 / 16%);
+    }
+
+    .label {
+      color: #506359;
+      font-size: 11px;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+      min-height: 42px;
+      border-radius: 9px;
+      transition: background-color 160ms ease-out, border-color 160ms ease-out, transform 160ms ease-out;
+    }
+
+    .btn-primary:hover,
+    .btn-secondary:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active,
+    .btn-secondary:active {
+      transform: translateY(0);
+    }
+
+    #loginView {
+      background: #142d23;
+      padding: 24px;
+    }
+
+    #loginView > div {
+      max-width: 440px;
+      border-radius: 14px;
+      padding: 36px;
+      box-shadow: 0 20px 50px rgb(0 0 0 / 18%);
+    }
+
+    #loginView h1 {
+      font-size: 1.8rem;
+      letter-spacing: -0.04em;
+    }
+
+    #loginView .field {
+      background: #fbfdfb;
+    }
+
+    .mobile-nav {
+      min-height: 64px;
+      background: rgb(255 255 255 / 96%);
+      box-shadow: 0 -4px 18px rgb(23 53 42 / 8%);
+      backdrop-filter: blur(10px);
+    }
+
+    .table-wrap {
+      min-width: 0;
+      scroll-margin-top: 84px;
+    }
+
+    @media (max-width: 1100px) {
+      .sidebar {
+        width: 76px;
+      }
+
+      .sidebar .brand-copy,
+      .sidebar .nav-label,
+      .sidebar .user-copy {
+        display: none;
+      }
+
+      .sidebar .nav-item,
+      .sidebar .brand {
+        justify-content: center;
+      }
+
+      .content {
+        margin-left: 76px;
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .metric:first-child {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .main-pad {
+        padding: 24px 16px 32px !important;
+      }
+
+      .tab-panel > .flex.items-end,
+      .tab-panel > .mb-7 {
+        margin-bottom: 20px;
+      }
+
+      .tab-panel > .flex.items-end {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .tab-panel > .flex.items-end > button,
+      #report > .mb-7 > button {
+        width: 100%;
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+
+      .metric:first-child {
+        grid-column: span 2;
+      }
+
+      .metric {
+        min-height: 112px;
+      }
+
+      #loginView > div {
+        padding: 28px 22px;
+      }
+
+      .surface > .p-5,
+      .surface > .p-6 {
+        padding: 18px !important;
+      }
+
+      .table-wrap {
+        overflow: visible;
+      }
+
+      .data-table,
+      .data-table thead,
+      .data-table tbody,
+      .data-table tr,
+      .data-table td {
+        display: block;
+        width: 100%;
+      }
+
+      .data-table {
+        min-width: 0 !important;
+      }
+
+      .data-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .data-table tbody tr {
+        padding: 12px 16px;
+        border-top: 1px solid var(--line);
+      }
+
+      .data-table tbody tr:first-child {
+        border-top: 0;
+      }
+
+      .data-table tbody td {
+        display: grid;
+        grid-template-columns: minmax(92px, 34%) minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+        min-height: 36px;
+        padding: 7px 0;
+        border: 0;
+        text-align: right;
+        overflow-wrap: anywhere;
+      }
+
+      .data-table tbody td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-align: left;
+        text-transform: uppercase;
+      }
+
+      .data-table tbody td > * {
+        justify-self: end;
+        max-width: 100%;
+      }
+
+      .data-table tbody td[colspan] {
+        display: block;
+        text-align: center;
+      }
+
+      .data-table tbody td[colspan]::before {
+        display: none;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .metric-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      .metric:first-child {
+        grid-column: auto;
+      }
+    }
   </style>
   <script>
     (function () {
@@ -488,7 +1092,7 @@
 <body>
   <div id="sessionSplash" class="fixed inset-0 z-50 min-h-screen items-center justify-center bg-ink text-white px-6">
     <div class="w-full max-w-sm text-center">
-      <img src="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb" alt="Panarpsaenkarun Garden" class="w-[360px] h-[216px] max-w-full mx-auto mb-4 object-contain" loading="eager" fetchpriority="high" decoding="async" />
+      <img src="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb" alt="Panarpsaenkarun Garden" class="w-[260px] md:w-[360px] max-w-full mx-auto mb-4 object-contain" loading="eager" fetchpriority="high" decoding="async" />
       <div class="font-extrabold text-xl">FieldFlow</div>
       <div id="splashMessage" class="text-sm text-[#aebbb2] mt-2" aria-live="polite">กำลังตรวจสอบ session...</div>
       <div class="mt-6 h-1.5 rounded-full bg-white/15 overflow-hidden" role="progressbar" aria-label="ความคืบหน้าการเตรียมระบบ" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
@@ -510,8 +1114,8 @@
       <p class="text-sm text-muted mt-2 mb-7">
         จัดการงานภาคสนาม
       </p>
-      <label class="label">Username</label><input id="loginUsername" class="field mb-4" autocomplete="username" /><label
-        class="label">Password</label>
+      <label class="label" for="loginUsername">Username</label><input id="loginUsername" class="field mb-4" autocomplete="username" /><label
+        class="label" for="loginPassword">Password</label>
       <div class="relative">
         <input id="loginPassword" class="field pr-10" type="password" autocomplete="current-password" /><i
           data-lucide="lock-keyhole" class="absolute right-3 top-3.5 w-4 text-muted"></i>
@@ -561,8 +1165,12 @@
     <main class="content ml-[256px] min-h-screen">
       <header
         class="topbar h-[76px] bg-white border-b border-line flex items-center justify-between px-8 sticky top-0 z-10">
-        <div>
-          <div class="text-xs text-muted">Saturday, 12 September 2026</div>
+        <div class="topbar-context">
+          <div class="mobile-brand hidden items-center gap-2">
+            <img src="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb" alt="FieldFlow" class="w-9 h-7 object-contain flex-none" loading="eager" decoding="async" />
+            <span class="text-sm font-bold tracking-tight">FieldFlow</span>
+          </div>
+          <div class="topbar-date text-xs text-muted">Saturday, 12 September 2026</div>
         </div>
         <div class="flex items-center gap-4">
           <div class="relative">
@@ -633,7 +1241,7 @@
                   อัปเดตล่าสุดเมื่อไม่กี่นาทีที่ผ่านมา
                 </p>
               </div>
-              <button class="text-xs text-brand font-semibold" data-tab="assign">
+              <button class="text-xs text-brand font-semibold" data-tab="assign" data-scroll-target="assignmentRows">
                 ดูทั้งหมด
                 <i data-lucide="arrow-up-right" class="w-3 inline align-[-2px]"></i>
               </button>
@@ -679,36 +1287,36 @@
             </div>
             <div class="form-grid grid grid-cols-3 gap-4">
               <div>
-                <label class="label">Supervisor</label><input id="assignSupervisor" class="field bg-[#edf4ee]" readonly
+                <label class="label" for="assignSupervisor">Supervisor</label><input id="assignSupervisor" class="field bg-[#edf4ee]" readonly
                   placeholder="ใช้ชื่อจากบัญชีที่เข้าสู่ระบบ" />
               </div>
               <div>
-                <label class="label">Site</label><select id="assignSite" class="field">
+                <label class="label" for="assignSite">Site</label><select id="assignSite" class="field">
                   <option value="">กำลังโหลดข้อมูล...</option>
                 </select>
               </div>
               <div>
-                <label class="label">เจ้าของ</label><select id="assignOwner" class="field">
+                <label class="label" for="assignOwner">เจ้าของ</label><select id="assignOwner" class="field">
                   <option value="">กำลังโหลดข้อมูล...</option>
                 </select>
               </div>
               <div>
-                <label class="label">Area</label><select id="assignArea" class="field">
+                <label class="label" for="assignArea">Area</label><select id="assignArea" class="field">
                   <option value="">กำลังโหลดข้อมูล...</option>
                 </select>
               </div>
               <div>
-                <label class="label">งาน</label><select id="assignJob" class="field">
+                <label class="label" for="assignJob">งาน</label><select id="assignJob" class="field">
                   <option value="">กำลังโหลดข้อมูล...</option>
                 </select>
               </div>
               <div>
-                <label class="label">Rank</label><select id="assignRank" class="field">
+                <label class="label" for="assignRank">Rank</label><select id="assignRank" class="field">
                   <option value="">กำลังโหลดข้อมูล...</option>
                 </select>
               </div>
               <div>
-                <label class="label">วันที่มอบหมาย</label><input id="assignDate" class="field datepicker"
+                <label class="label" for="assignDate">วันที่มอบหมาย</label><input id="assignDate" class="field datepicker"
                   value="" />
               </div>
               <div class="col-span-1 sm:col-span-3 min-w-0">
@@ -831,7 +1439,7 @@
             </table>
             </div>
           </div>
-          <dialog id="submitUploadDialog" class="assignment-dialog">
+          <dialog id="submitUploadDialog" class="assignment-dialog" aria-labelledby="submitModalTitle">
             <div class="p-6">
               <div class="flex items-start justify-between gap-4 mb-6">
                 <div><div class="text-xs text-muted">แนบหลักฐานการทำงาน</div><h2 id="submitModalTitle" class="text-xl font-bold mt-1"></h2><p id="submitModalMeta" class="text-xs text-muted mt-1"></p></div>
@@ -842,13 +1450,13 @@
                   <div class="font-semibold text-sm mb-3">ภาพก่อน</div>
                   <div id="submitBeforePreviewWrap" class="mb-3 aspect-square overflow-hidden rounded-lg bg-[#f1f3f2] flex items-center justify-center"><div id="submitBeforePreviewPlaceholder" class="text-center text-muted"><i data-lucide="image" class="w-8 h-8 mx-auto mb-2 opacity-60"></i><span class="text-xs">ยังไม่ได้เลือกภาพ</span></div><img id="submitBeforePreview" class="hidden w-full h-full object-cover" alt="ตัวอย่างภาพก่อน" /></div>
                   <label class="dropzone w-full px-3 py-3 text-xs text-muted cursor-pointer"><i data-lucide="upload" class="w-4"></i><span>เลือกภาพก่อน</span><input id="submitBeforeFile" data-kind="before" type="file" accept="image/*,.heic,.heif" class="hidden" /></label>
-                  <label class="label mt-4">หมายเหตุภาพก่อน</label><textarea id="submitBeforeNote" class="field !h-20 py-2 resize-none" placeholder="เพิ่มหมายเหตุสำหรับภาพก่อน"></textarea>
+                  <label class="label mt-4" for="submitBeforeNote">หมายเหตุภาพก่อน</label><textarea id="submitBeforeNote" class="field !h-20 py-2 resize-none" placeholder="เพิ่มหมายเหตุสำหรับภาพก่อน"></textarea>
                 </div>
                 <div class="rounded-lg border border-line p-4">
                   <div class="font-semibold text-sm mb-3">ภาพหลัง</div>
                   <div id="submitAfterPreviewWrap" class="mb-3 aspect-square overflow-hidden rounded-lg bg-[#f1f3f2] flex items-center justify-center"><div id="submitAfterPreviewPlaceholder" class="text-center text-muted"><i data-lucide="image" class="w-8 h-8 mx-auto mb-2 opacity-60"></i><span class="text-xs">ยังไม่ได้เลือกภาพ</span></div><img id="submitAfterPreview" class="hidden w-full h-full object-cover" alt="ตัวอย่างภาพหลัง" /></div>
                   <label class="dropzone w-full px-3 py-3 text-xs text-muted cursor-pointer"><i data-lucide="upload" class="w-4"></i><span>เลือกภาพหลัง</span><input id="submitAfterFile" data-kind="after" type="file" accept="image/*,.heic,.heif" class="hidden" /></label>
-                  <label class="label mt-4">หมายเหตุภาพหลัง</label><textarea id="submitAfterNote" class="field !h-20 py-2 resize-none" placeholder="เพิ่มหมายเหตุสำหรับภาพหลัง"></textarea>
+                  <label class="label mt-4" for="submitAfterNote">หมายเหตุภาพหลัง</label><textarea id="submitAfterNote" class="field !h-20 py-2 resize-none" placeholder="เพิ่มหมายเหตุสำหรับภาพหลัง"></textarea>
                 </div>
               </div>
               <div class="w-full hidden upload-status mt-5" aria-live="polite">
@@ -880,10 +1488,10 @@
           <div class="surface p-6">
             <div class="grid grid-cols-3 gap-4 mb-6">
               <div>
-                <label class="label">ตั้งแต่วันที่</label><input id="reportFromDate" class="field datepicker" value="01/09/2026" />
+                <label class="label" for="reportFromDate">ตั้งแต่วันที่</label><input id="reportFromDate" class="field datepicker" value="01/09/2026" />
               </div>
               <div>
-                <label class="label">ถึงวันที่</label><input id="reportToDate" class="field datepicker" value="30/09/2026" />
+                <label class="label" for="reportToDate">ถึงวันที่</label><input id="reportToDate" class="field datepicker" value="30/09/2026" />
               </div>
               <div class="flex items-end">
                 <button id="reportViewBtn" class="btn-secondary h-[42px] rounded-lg px-5 text-sm">
@@ -913,7 +1521,7 @@
       </div>
     </main>
   </div>
-  <dialog id="assignmentEditDialog" class="assignment-dialog">
+  <dialog id="assignmentEditDialog" class="assignment-dialog" aria-labelledby="editAssignmentTitle">
     <form id="assignmentEditForm" method="dialog" class="p-6">
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
@@ -923,12 +1531,12 @@
         <button type="button" id="closeAssignmentDialog" class="text-muted hover:text-ink" aria-label="ปิด"><i data-lucide="x" class="w-5"></i></button>
       </div>
       <div class="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-        <div><label class="label">Site</label><select id="editSite" class="field"></select></div>
-        <div><label class="label">เจ้าของ</label><select id="editOwner" class="field"></select></div>
-        <div><label class="label">Area</label><select id="editArea" class="field"></select></div>
-        <div><label class="label">งาน</label><select id="editJob" class="field"></select></div>
-        <div><label class="label">Rank</label><select id="editRank" class="field"></select></div>
-        <div><label class="label">วันที่มอบหมาย</label><input id="editAssignDate" class="field" type="date" /></div>
+        <div><label class="label" for="editSite">Site</label><select id="editSite" class="field"></select></div>
+        <div><label class="label" for="editOwner">เจ้าของ</label><select id="editOwner" class="field"></select></div>
+        <div><label class="label" for="editArea">Area</label><select id="editArea" class="field"></select></div>
+        <div><label class="label" for="editJob">งาน</label><select id="editJob" class="field"></select></div>
+        <div><label class="label" for="editRank">Rank</label><select id="editRank" class="field"></select></div>
+        <div><label class="label" for="editAssignDate">วันที่มอบหมาย</label><input id="editAssignDate" class="field" type="date" /></div>
         <div class="col-span-2 max-sm:col-span-1"><label class="label">ผู้รับผิดชอบ</label>
           <div id="editForemanOptions" class="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-line bg-white p-2 min-h-[58px]"></div>
         </div>
@@ -948,10 +1556,39 @@
       <i data-lucide="camera" class="w-5 block mx-auto"></i>ส่งงาน</button><button class="text-muted text-[10px]"
       data-tab="report">
       <i data-lucide="file-spreadsheet" class="w-5 block mx-auto"></i>รายงาน
+    </button><button id="mobileLogoutBtn" type="button" class="text-muted text-[10px]" aria-label="ออกจากระบบ">
+      <i data-lucide="log-out" class="w-5 block mx-auto"></i>ออกจากระบบ
     </button>
   </div>
   <div id="toast" class="toast bg-ink text-white rounded-lg px-4 py-3 text-sm shadow-lg"></div>
   <script>
+    (function () {
+      const loaded = {};
+      const load = (key, src) => {
+        if (loaded[key]) return loaded[key];
+        loaded[key] = new Promise((resolve, reject) => {
+          if (window[key]) return resolve(window[key]);
+          const script = document.createElement("script");
+          script.src = src;
+          script.async = true;
+          script.onload = () => resolve(window[key]);
+          script.onerror = () => reject(new Error("โหลดตัวช่วยไม่สำเร็จ: " + key));
+          document.head.appendChild(script);
+        });
+        return loaded[key];
+      };
+      window.FieldFlowLoaders = {
+        loadUpload: () => Promise.all([
+          load("Compressor", "https://cdn.jsdelivr.net/npm/compressorjs@1.2.1/dist/compressor.min.js"),
+          load("heic2any", "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"),
+          load("ResumableUploadToGoogleDrive2", "https://cdn.jsdelivr.net/gh/tanaikech/ResumableUploadForGoogleDrive_js@2.0.2/resumableupload2_js.min.js")
+        ]),
+        loadExport: () => Promise.all([
+          load("XLSX", "https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"),
+          load("ExcelJS", "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js")
+        ])
+      };
+    })();
   </script>
   <!-- <script>
     let initialData = <?!= initialDataJson ?>;

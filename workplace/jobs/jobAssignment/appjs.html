@@ -281,6 +281,18 @@
     }
     return dateKey(text);
   }
+  function syncResponsiveTableLabels() {
+    document.querySelectorAll(".data-table").forEach((table) => {
+      const labels = [...table.querySelectorAll("thead th")].map((th) =>
+        th.textContent.trim(),
+      );
+      table.querySelectorAll("tbody tr").forEach((row) => {
+        [...row.cells].forEach((cell, index) => {
+          if (labels[index]) cell.dataset.label = labels[index];
+        });
+      });
+    });
+  }
   function renderReportRows() {
     const from = reportDateKey($("#reportFromDate").val());
     const to = reportDateKey($("#reportToDate").val());
@@ -321,6 +333,7 @@
       "พบ " + filtered.length + " งาน จากช่วงวันที่ที่เลือก",
     );
     refreshIcons();
+    syncResponsiveTableLabels();
   }
   function updateAssignmentFilters() {
     const period = $("#assignmentDateFilter").val();
@@ -443,6 +456,7 @@
     $("#recentRows").html(recentHtml);
     cacheOverviewImages();
     refreshIcons();
+    syncResponsiveTableLabels();
   }
   const selectedFiles = {};
   const previewUrls = {};
@@ -635,6 +649,7 @@
         '<tr><td colspan="12" class="text-center text-muted py-8">ไม่พบงานตามเงื่อนไขที่เลือก</td></tr>',
     );
     refreshIcons();
+    syncResponsiveTableLabels();
   }
 
   function toast(msg) {
@@ -703,12 +718,29 @@
     notificationTimer = null;
   }
 
-  function showTab(tab) {
+  function showTab(tab, scrollTargetId) {
     $(".tab-panel").removeClass("active");
     $("#" + tab).addClass("active");
     $(".nav-item").removeClass("active");
     $(".nav-item[data-tab='" + tab + "']").addClass("active");
-    window.scrollTo(0, 0);
+    $(".mobile-nav button").removeClass("active");
+    $(".mobile-nav button[data-tab='" + tab + "']").addClass("active");
+    if (!scrollTargetId) {
+      window.scrollTo({ top: 0, behavior: "auto" });
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(scrollTargetId);
+      const scrollContainer = target?.closest(".table-wrap") || target;
+      if (!scrollContainer) return;
+      const prefersReducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      scrollContainer.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    });
   }
   function uploadImagesTogether(files, token, folderId) {
     return Promise.all(
@@ -1088,7 +1120,7 @@
     ).on("change", updateAssignmentFilters);
     $("#submitDateFilter").on("change", updateSubmitFilters);
     $("#reportViewBtn").on("click", renderReportRows);
-    $("#logoutBtn").on("click", async () => {
+    const handleLogout = async () => {
       const confirmed = await confirmAction(
         "ยืนยันการออกจากระบบ?",
         "คุณต้องการออกจากระบบ FieldFlow และกลับไปยังหน้าเข้าสู่ระบบ หรือไม่",
@@ -1132,10 +1164,11 @@
         return;
       }
       window.open(window.location.href, "_top");
-    });
+    };
+    $("#logoutBtn, #mobileLogoutBtn").on("click", handleLogout);
 
     $("[data-tab]").on("click", function () {
-      showTab($(this).data("tab"));
+      showTab($(this).data("tab"), $(this).attr("data-scroll-target"));
     });
     $("#notificationBtn").on("click", function () {
       const panel = $("#notificationPanel");
@@ -2171,6 +2204,12 @@
     $("#exportBtn").on("click", async () => {
       const exportButton = $("#exportBtn");
       if (exportButton.prop("disabled")) return;
+      try {
+        await window.FieldFlowLoaders.loadExport();
+      } catch (error) {
+        toast("โหลดตัวช่วยสร้างไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+        return;
+      }
       let exportProgressTimer = null;
       if (!window.ExcelJS) {
         toast("ไม่พบตัวช่วยสร้างไฟล์ Excel กรุณาโหลดหน้าใหม่");
@@ -2320,7 +2359,7 @@
           },
         };
         reportExportTiming("build assignments sheet");
-      
+
         const buffer = await workbook.xlsx.writeBuffer();
         reportExportTiming("writeBuffer");
         const blob = new Blob([buffer], {
@@ -2671,6 +2710,7 @@
             let intervalId = null;
             try {
               label.text("กำลังเตรียมไฟล์...");
+              await window.FieldFlowLoaders.loadUpload();
               files.before = await compressSelected(files.before, pct, label);
               files.after = await compressSelected(files.after, pct, label);
               const uploadAuth = await getUploadAuth(jobId),
