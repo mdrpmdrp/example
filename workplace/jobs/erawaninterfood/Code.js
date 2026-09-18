@@ -988,7 +988,21 @@ function renderInterviewCandidate_(controlSheet, match, criteria) {
 }
 
 function buildInterviewImageFormula_(url) {
-  return `=IMAGE("${escapeInterviewFormulaText_(url)}",4,150,150)`
+  return `=IMAGE("${escapeInterviewFormulaText_(ensureImageLink(url))}",4,150,150)`
+}
+
+function ensureImageLink(fileUrl) {
+  const value = String(fileUrl || '').trim()
+  if (!value) return ''
+
+  const fileIdMatch = value.match(/\/d\/([a-zA-Z0-9_-]+)/)
+    || value.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+  const fileId = fileIdMatch ? fileIdMatch[1] : value
+
+  // Keep non-Drive URLs unchanged, but normalize Drive file IDs/URLs to the
+  // direct image endpoint used by Google Sheets IMAGE().
+  if (!fileId || (value.includes('://') && !fileIdMatch)) return value
+  return `https://lh3.googleusercontent.com/d/${encodeURIComponent(fileId)}`
 }
 
 function buildInterviewHyperlinkFormula_(url) {
