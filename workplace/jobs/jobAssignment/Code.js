@@ -41,7 +41,7 @@ function doGet() {
 }
 
 function getScriptURL() {
-  return ScriptApp.getService().getUrl();
+  return ScriptApp.getService().getUrl().replace('script.google.com/macros', 'https://script.google.com/macros/a/*/')
 }
 
 /** รวมไฟล์ client-side JavaScript จากไฟล์ app.js เข้าใน index.html */
