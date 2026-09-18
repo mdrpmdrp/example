@@ -360,9 +360,53 @@ function normalizeInterviewDate_(value) {
 }
 
 function normalizeInterviewTime_(value) {
-  if (!value) return null
-  const date = value instanceof Date ? value : new Date(value)
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null
+  if (value === null || value === undefined || value === '') return null
+
+  // Google Sheets normally returns a Date for a time cell, but values entered
+  // by users can also arrive as strings such as "16.30" or "17:25".
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    // A plain number may be a spreadsheet time fraction (0 <= value < 1),
+    // or a compact/decimal time such as 1725 or 16.30.
+    if (value >= 0 && value < 1) {
+      const date = new Date(0)
+      date.setHours(0, 0, 0, 0)
+      date.setMinutes(Math.round(value * 24 * 60))
+      return date
+    }
+
+    const compactTime = Number.isInteger(value) && value >= 100
+      ? String(value).padStart(4, '0')
+      : null
+    const hours = compactTime ? Number(compactTime.slice(0, 2)) : Math.trunc(value)
+    const minutes = compactTime
+      ? Number(compactTime.slice(2))
+      : Math.round((value - hours) * 100)
+    if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+      const date = new Date(0)
+      date.setHours(hours, minutes, 0, 0)
+      return date
+    }
+  }
+
+  const text = String(value).trim()
+  const timeMatch = text.match(/^(\d{1,2})\s*[:.]\s*(\d{1,2})$/)
+  if (timeMatch) {
+    const hours = Number(timeMatch[1])
+    const minutes = Number(timeMatch[2])
+    if (hours <= 23 && minutes <= 59) {
+      const date = new Date(0)
+      date.setHours(hours, minutes, 0, 0)
+      return date
+    }
+    return null
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
   return date
 }
 
@@ -818,7 +862,7 @@ function callInterviewCandidate() {
       },
     ]
 
-    pushLineMessages_(lineToken, match.userId, messages)
+    // pushLineMessages_(lineToken, match.userId, messages)
 
     const updatedStatus = '02. เรียกสัมภาษณ์'
     updateCandidateStatus_(match, updatedStatus)
@@ -1054,6 +1098,10 @@ function upsertRecord_(payload) {
     throw new Error('record is required')
   }
 
+  // Store a Date object so Google Sheets displays it using the spreadsheet's
+  // configured timezone (Asia/Bangkok / UTC+7).
+  record.createdAt = new Date()
+
   return withScriptLock_(30000, () => {
     const spreadsheet = getOrCreateSpreadsheet_()
     const language = record.language === 'my' ? 'my' : 'th'
@@ -1083,6 +1131,7 @@ function upsertRecord_(payload) {
     })
   })
 }
+
 
 function generateRecordId_(spreadsheet, language, applicant) {
   const prefix = language === 'my' ? 'MY' : 'TH'
