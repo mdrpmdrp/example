@@ -1116,7 +1116,7 @@ function upsertRecord_(payload) {
   // configured timezone (Asia/Bangkok / UTC+7).
   record.createdAt = new Date()
 
-  return withScriptLock_(30000, () => {
+  return withScriptTryLock_(15000, () => {
     const spreadsheet = getOrCreateSpreadsheet_()
     const language = record.language === 'my' ? 'my' : 'th'
     if (!String(record.status || '').trim()) {
@@ -1201,6 +1201,8 @@ function moveFilesToRecordFolder_(payload) {
   const recordsFolder = folders.records
   const recordFolder = getOrCreateChildFolder_(recordsFolder, recordId)
   const movedIds = moveFilesWithBatchRequest_(attachments, folders.temp.getId(), recordFolder.getId())
+  // Make the applicant folder public only after all files have been moved.
+  ensurePublicFolder_(recordFolder)
 
   return jsonResponse_({
     ok: true,
@@ -1270,6 +1272,11 @@ function ensureFolders_() {
   props.setProperty('RECORDS_FOLDER_ID', records.getId())
 
   return { root, temp, records }
+}
+
+function ensurePublicFolder_(folder) {
+  if (!folder) return
+  folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW)
 }
 
 function getOrCreateSpreadsheet_() {
@@ -1535,8 +1542,7 @@ function findRowIndexByRecordId_(sheet, recordId) {
 
 function getOrCreateChildFolder_(parentFolder, childName) {
   const folders = parentFolder.getFoldersByName(childName)
-  if (folders.hasNext()) return folders.next()
-  return parentFolder.createFolder(childName)
+  return folders.hasNext() ? folders.next() : parentFolder.createFolder(childName)
 }
 
 function writeConfigValue_(key, value) {
@@ -1562,6 +1568,19 @@ function writeConfigValue_(key, value) {
 function withScriptLock_(timeoutMs, fn) {
   const lock = LockService.getScriptLock()
   lock.waitLock(timeoutMs || 30000)
+
+  try {
+    return fn()
+  } finally {
+    lock.releaseLock()
+  }
+}
+
+function withScriptTryLock_(timeoutMs, fn) {
+  const lock = LockService.getScriptLock()
+  if (!lock.tryLock(timeoutMs || 5000)) {
+    throw new Error('ระบบกำลังบันทึกข้อมูลอื่นอยู่ กรุณาลองใหม่อีกครั้ง')
+  }
 
   try {
     return fn()

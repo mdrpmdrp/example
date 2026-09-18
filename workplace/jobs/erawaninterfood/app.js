@@ -5,6 +5,8 @@
   const LANGUAGE_KEY = 'erawan-interfood-language'
   const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzvS3ejPR7NYSniz8EeNpmMflKCOGhAkZlB6ccriWMLd4Mr5JqTyJVjUQyQ8q3rTyE/exec'
   const REQUEST_TIMEOUT_MS = 30000
+  const SAVE_TIMEOUT_MS = 45000
+  const MOVE_FILES_TIMEOUT_MS = 120000
   const THAI_YEAR_OFFSET = 543
 
   const UPLOAD_DEFINITIONS = {
@@ -1034,14 +1036,14 @@
       showLoadingDialog(copy.saveInprogress, copy.saveInprogressDesc)
 
       const record = buildRecord()
-      const result = await postApi('upsertRecord', { record })
+      const result = await postApi('upsertRecord', { record }, { timeoutMs: SAVE_TIMEOUT_MS })
       const recordId = result?.recordId || record.recordId
       if (attachmentCheck.attachments.length) {
-        postApi('movefilestorecordfolder', {
+        await postApi('movefilestorecordfolder', {
           recordId,
           language: state.lang,
           attachments: attachmentCheck.attachments,
-        })
+        }, { timeoutMs: MOVE_FILES_TIMEOUT_MS })
       }
 
       await sendSubmissionFlexMessage(recordId, record)
@@ -1355,7 +1357,6 @@
 
       uploadFile.id = response.id || ''
       if (isPublicPhotoUpload(uploadFile.fieldKey) && uploadFile.id) {
-        await makeDriveFilePublic(uploadFile.id, auth.accessToken)
         uploadFile.url = buildPublicDriveImageUrl(uploadFile.id)
       } else {
         uploadFile.url = response.webViewLink || ''
@@ -1916,30 +1917,11 @@
     return `https://lh3.googleusercontent.com/d/${encodeURIComponent(String(fileId || '').trim())}`
   }
 
-  async function makeDriveFilePublic(fileId, accessToken) {
-    if (!fileId || !accessToken) return false
-    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: JSON.stringify({
-        role: 'reader',
-        type: 'anyone',
-        allowFileDiscovery: false,
-      }),
-    })
-    if (!response.ok) {
-      throw new Error(`Permission update failed (${response.status})`)
-    }
-    return true
-  }
-
-  async function postApi(action, payload) {
+  async function postApi(action, payload, options = {}) {
     if (!BACKEND_URL) throw new Error(appText[state.lang].uploadAuthErr)
     const controller = new AbortController()
-    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    const timeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : REQUEST_TIMEOUT_MS
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
     try {
       const response = await fetch(BACKEND_URL, {
         method: 'POST',
