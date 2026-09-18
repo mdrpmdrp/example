@@ -862,7 +862,7 @@ function callInterviewCandidate() {
       },
     ]
 
-    // pushLineMessages_(lineToken, match.userId, messages)
+    pushLineMessages_(lineToken, match.userId, messages)
 
     const updatedStatus = '02. เรียกสัมภาษณ์'
     updateCandidateStatus_(match, updatedStatus)
