@@ -141,6 +141,7 @@ function getJobFolder(jobId) {
 function saveAssignment(payload) {
   return withScriptLock_(() => {
   assertPayload_(payload, ['site','owner','area','job','rank','assignDate']);
+  assertMasterSiteArea_(payload.site, payload.area);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.ASSIGNMENTS_SHEET) || initSheet_().assignments;
   ensureAssignmentsSchema_(sheet, true);
@@ -184,6 +185,7 @@ function saveAssignment(payload) {
 function updateAssignment(payload) {
   return withScriptLock_(() => {
   assertPayload_(payload, ['assignmentId','site','owner','area','job','rank','assignDate','username']);
+  assertMasterSiteArea_(payload.site, payload.area);
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.ASSIGNMENTS_SHEET);
   if (!sheet) throw new Error('ยังไม่มีชีต Assignments กรุณารัน initSheet()');
   ensureAssignmentsSchema_(sheet, true);
@@ -217,7 +219,7 @@ function updateAssignment(payload) {
 
 function saveSubmission(payload) {
   return withScriptLock_(() => {
-  assertPayload_(payload, ['assignmentId','beforeFileId','afterFileId']);
+  assertPayload_(payload, ['assignmentId']);
   const actor = requireRole_(payload.username, 'Foreman');
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.ASSIGNMENTS_SHEET);
   if (!sheet) throw new Error('ยังไม่มีชีต Assignments กรุณารัน initSheet()');
@@ -230,12 +232,20 @@ function saveSubmission(payload) {
   const h = Object.fromEntries(HEADERS.Assignments.map((x,i)=>[x,i+1]));
   const status = String(values[row][HEADERS.Assignments.indexOf('Status')] || '');
   if (status === 'Success') throw new Error('งานนี้เสร็จสิ้นแล้ว ไม่สามารถแก้ไขได้');
+  const beforeFileId = payload.beforeFileId || values[row][h.BeforeFileId - 1] || '';
+  const afterFileId = payload.afterFileId || values[row][h.AfterFileId - 1] || '';
+  if (!beforeFileId && !afterFileId) throw new Error('ต้องมีภาพก่อนหรือภาพหลังอย่างน้อย 1 ภาพ');
+  const beforeUrl = payload.beforeUrl !== undefined ? payload.beforeUrl : values[row][h.BeforeUrl - 1] || '';
+  const afterUrl = payload.afterUrl !== undefined ? payload.afterUrl : values[row][h.AfterUrl - 1] || '';
+  const beforeNote = payload.beforeNote !== undefined ? payload.beforeNote : values[row][h.BeforeNote - 1] || '';
+  const afterNote = payload.afterNote !== undefined ? payload.afterNote : values[row][h.AfterNote - 1] || '';
+  const nextStatus = beforeFileId && afterFileId ? 'Success' : 'In progress';
   const supervisorUsername = String(values[row][HEADERS.Assignments.indexOf('SupervisorUsername')] || '').trim();
-  sheet.getRange(r,h.BeforeFileId,1,4).setValues([[payload.beforeFileId,payload.afterFileId,payload.beforeUrl || '',payload.afterUrl || '']]);
-  sheet.getRange(r,h.BeforeNote,1,2).setValues([[payload.beforeNote || '', payload.afterNote || '']]);
-  sheet.getRange(r,h.Status).setValue('Success');
+  sheet.getRange(r,h.BeforeFileId,1,4).setValues([[beforeFileId,afterFileId,beforeUrl,afterUrl]]);
+  sheet.getRange(r,h.BeforeNote,1,2).setValues([[beforeNote, afterNote]]);
+  sheet.getRange(r,h.Status).setValue(nextStatus);
   sheet.getRange(r,h.UpdatedAt).setValue(new Date());
-  if (status !== 'Success' && supervisorUsername) createNotification_({
+  if (status !== 'Success' && nextStatus === 'Success' && supervisorUsername) createNotification_({
     recipientUsername: supervisorUsername,
     type: 'submission_created',
     assignmentId: payload.assignmentId,
@@ -243,7 +253,7 @@ function saveSubmission(payload) {
     message: `งาน ${payload.assignmentId} ถูกส่งโดย ${actor.Name}`
   }, true);
   clearCache_();
-  return {ok:true, assignmentId:payload.assignmentId, status:'Success'};
+  return {ok:true, assignmentId:payload.assignmentId, status:nextStatus};
   });
 }
 
@@ -506,6 +516,16 @@ function readRows_(sheet, headers) { if (!sheet || sheet.getLastRow() < 2) retur
 function nextAssignmentId_(sheet) { const year = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyMM'); const count = Math.max(0,sheet.getLastRow()-1)+1; return 'FF-' + year + String(count).padStart(3,'0'); }
 function requireRole_(username, role) { const users = readRows_(SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.USERS_SHEET), HEADERS.Users); const user = users.find(u => String(u.Username).toLowerCase() === String(username || '').trim().toLowerCase() && String(u.Active).toLowerCase() !== 'false'); if (!user || user.Role !== role) throw new Error('ไม่มีสิทธิ์ดำเนินการสำหรับ role นี้'); return user; }
 function assertPayload_(payload, fields) { if (!payload) throw new Error('ข้อมูลไม่ครบ'); fields.forEach(f=>{if (payload[f] === undefined || payload[f] === null || payload[f] === '') throw new Error('ข้อมูลไม่ครบ: ' + f);}); }
+function assertMasterSiteArea_(site, area) {
+  const normalizedSite = normalizeText_(site);
+  const normalizedArea = normalizeText_(area);
+  const master = getInitialData_().master || {supervisors: []};
+  const valid = (master.supervisors || [])
+    .flatMap(supervisor => supervisor.sites || [])
+    .filter(item => normalizeText_(item.site) === normalizedSite)
+    .some(item => (item.areas || []).some(value => normalizeText_(value) === normalizedArea));
+  if (!valid) throw new Error('พื้นที่ไม่สัมพันธ์กับ Site ตามข้อมูล Master');
+}
 function getOrCreateFolder_(name, parent) { const it = parent ? parent.getFoldersByName(name) : DriveApp.getFoldersByName(name); return it.hasNext() ? it.next() : (parent ? parent.createFolder(name) : DriveApp.createFolder(name)); }
 function clearInitialDataCache() {
   CacheService.getScriptCache().remove(CONFIG.INITIAL_DATA_CACHE_KEY);

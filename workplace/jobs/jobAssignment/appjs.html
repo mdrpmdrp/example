@@ -102,12 +102,21 @@
     fillSelect("#assignOwner", owners, "เลือก...");
     if (owners.length === 1) $("#assignOwner").val(owners[0]);
   }
+  function areasForSite(site) {
+    if (!site) return [];
+    return [
+      ...new Set(
+        (window.initialData.master?.supervisors || [])
+          .flatMap((supervisor) => supervisor.sites || [])
+          .filter((item) => item.site === site)
+          .flatMap((item) => item.areas || [])
+          .filter(Boolean),
+      ),
+    ];
+  }
   function renderAssignAreas() {
-    fillSelect(
-      "#assignArea",
-      window.initialData.dropdowns?.areas || [],
-      "เลือก...",
-    );
+    const site = $("#assignSite").val();
+    fillSelect("#assignArea", areasForSite(site), site ? "เลือก..." : "เลือก Site ก่อน");
   }
   function renderAssignJobs() {
     // งานเป็นรายการอิสระ ไม่ผูกกับ Rank
@@ -163,6 +172,7 @@
     $("#assignSite, #assignOwner, #assignArea, #assignJob, #assignRank").val(
       "",
     );
+    renderAssignAreas();
     $('#foremanOptions input[name="foreman"]').prop("checked", false);
     setAssignDateToToday();
   }
@@ -744,12 +754,19 @@
   }
   function uploadImagesTogether(files, token, folderId) {
     return Promise.all(
-      Object.entries(files).map(([kind, file]) => {
+      Object.entries(files)
+        .filter(([, file]) => file)
+        .map(([kind, file]) => {
         file = new File([file], "[" + kind + "] " + file.name, {
           type: file.type,
         });
-        return uploadToDrive(file, token, folderId, kind);
-      }),
+        return uploadToDrive(file, token, folderId, kind).then((result) => ({
+          kind,
+          result,
+        }));
+        }),
+    ).then((items) =>
+      Object.fromEntries(items.map((item) => [item.kind, item.result])),
     );
   }
   function confirmAction(title, text, confirmButtonText, icon = "question") {
@@ -792,7 +809,7 @@
     const selected = $("#editArea").data("selected") || "";
     editOptionValues(
       "#editArea",
-      window.initialData.dropdowns?.areas || [],
+      areasForSite($("#editSite").val()),
       selected,
     );
     $("#editArea").removeData("selected");
@@ -928,10 +945,10 @@
     ).prop("disabled", !canSubmit);
     $("#submitModalUpload")
       .prop("disabled", !canSubmit)
-      .text(job.status === "Success" ? "งานนี้เสร็จสิ้นแล้ว" : "ส่งงาน");
+      .text(job.status === "Success" ? "งานนี้เสร็จสิ้นแล้ว" : "บันทึกภาพที่เลือก");
     $("#submitAuthStatus").text(
       canSubmit
-        ? "เลือกภาพก่อนและภาพหลังให้ครบ"
+        ? "อัพโหลดภาพก่อนและภาพหลังปฏิบัติงาน"
         : job.status === "Success"
           ? "งานนี้เสร็จสิ้นแล้ว ไม่สามารถแก้ไขได้"
           : "ดูรายละเอียดเท่านั้น",
@@ -977,8 +994,8 @@
     };
     console.log("[FieldFlow] prepareSubmitButton", jobId, files);
     const button = $("#submitModalUpload").prop("disabled", true);
-    if (!files.before || !files.after) {
-      $("#submitAuthStatus").text("เลือกภาพก่อนและภาพหลังให้ครบ");
+    if (!files.before && !files.after) {
+      $("#submitAuthStatus").text("เลือกภาพก่อนหรือภาพหลังอย่างน้อย 1 ภาพ");
       return;
     }
     $("#submitAuthStatus").text("กำลังตรวจสอบสิทธิ์อัปโหลด...");
@@ -1021,9 +1038,11 @@
     }
     refreshIcons();
     $("#assignSite").on("change", renderAssignOwners);
+    $("#assignSite").on("change", renderAssignAreas);
     $("#clearAssignment").on("click", clearAssignmentForm);
     $("#editSite").on("change", function () {
       renderEditOwners("");
+      renderEditAreas();
     });
     setAssignDateToToday();
     if (typeof window.flatpickr === "function") {
@@ -2684,7 +2703,7 @@
         if (submit) {
           e.stopImmediatePropagation();
           const card = $(submit).closest("[data-job-id]"),
-            jobId = card.data("job-id"),
+            jobId = card.data("job-id") || $("#submitUploadDialog").data("job-id"),
             files = {
               before: $("#submitBeforeFile")[0]?.files[0],
               after: $("#submitAfterFile")[0]?.files[0],
@@ -2697,8 +2716,8 @@
             toast("เฉพาะ Foreman เท่านั้นที่ส่งงานได้");
             return;
           }
-          if (!files.before || !files.after) {
-            toast("กรุณาเลือกภาพก่อนและภาพหลังให้ครบ");
+          if (!files.before && !files.after) {
+            toast("กรุณาเลือกภาพก่อนหรือภาพหลังอย่างน้อย 1 ภาพ");
             return;
           }
           submit.disabled = true;
@@ -2711,19 +2730,23 @@
             try {
               label.text("กำลังเตรียมไฟล์...");
               await window.FieldFlowLoaders.loadUpload();
-              files.before = await compressSelected(files.before, pct, label);
-              files.after = await compressSelected(files.after, pct, label);
+              if (files.before)
+                files.before = await compressSelected(files.before, pct, label);
+              if (files.after)
+                files.after = await compressSelected(files.after, pct, label);
               const uploadAuth = await getUploadAuth(jobId),
                 auth = uploadAuth.accessToken,
                 folderId = uploadAuth.folderId;
               pct.text("10%");
               label.text("กำลังอัปโหลดภาพ...");
-              const [beforeResult, afterResult] = await uploadImagesTogether(
+              const uploadResults = await uploadImagesTogether(
                 files,
                 auth,
                 folderId,
               );
-              console.log("Upload results:", beforeResult, afterResult);
+              const beforeResult = uploadResults.before;
+              const afterResult = uploadResults.after;
+              console.log("Upload results:", uploadResults);
               pct.text("90%");
               label.text("กำลังบันทึกข้อมูลลงชีต...");
               let progressBar = $('.upload-step[data-step="save"]').find(
@@ -2737,43 +2760,59 @@
                 const newPercent = Math.min(99, currentPercent + 1);
                 progressBar.css("width", newPercent + "%");
               }, 300);
-              await new Promise((resolve, reject) =>
+              const saved = await new Promise((resolve, reject) =>
                 google.script.run
                   .withSuccessHandler(resolve)
                   .withFailureHandler(reject)
                   .saveSubmission({
                     username: window.FIELD_FLOW_USER.Username,
                     assignmentId: jobId,
-                    beforeFileId: beforeResult.id,
-                    afterFileId: afterResult.id,
-                    beforeUrl:
-                      "https://drive.google.com/open?id=" + beforeResult.id,
-                    afterUrl:
-                      "https://drive.google.com/open?id=" + afterResult.id,
-                    beforeNote: $("#submitBeforeNote").val().trim(),
-                    afterNote: $("#submitAfterNote").val().trim(),
+                    ...(beforeResult
+                      ? {
+                          beforeFileId: beforeResult.id,
+                          beforeUrl:
+                            "https://drive.google.com/open?id=" + beforeResult.id,
+                          beforeNote: $("#submitBeforeNote").val().trim(),
+                        }
+                      : {}),
+                    ...(afterResult
+                      ? {
+                          afterFileId: afterResult.id,
+                          afterUrl:
+                            "https://drive.google.com/open?id=" + afterResult.id,
+                          afterNote: $("#submitAfterNote").val().trim(),
+                        }
+                      : {}),
                   }),
               );
               clearInterval(intervalId);
               progressBar.css("width", "100%");
               pct.text("100%");
-              label.text("ส่งงานสำเร็จ");
-              toast("อัปโหลดและบันทึกงาน " + jobId + " เรียบร้อยแล้ว");
+              label.text(saved.status === "Success" ? "ส่งงานสำเร็จ" : "บันทึกภาพสำเร็จ");
+              toast(
+                saved.status === "Success"
+                  ? "อัปโหลดและส่งงาน " + jobId + " เรียบร้อยแล้ว"
+                  : "บันทึกภาพที่เลือกของงาน " + jobId + " แล้ว",
+              );
               const submittedBeforeNote = $("#submitBeforeNote").val().trim();
               const submittedAfterNote = $("#submitAfterNote").val().trim();
               const submittedJob = jobs.find(
                 (job) => String(job.id) === String(jobId),
               );
               if (submittedJob) {
-                submittedJob.status = "Success";
-                submittedJob.beforeFileId = beforeResult.id;
-                submittedJob.afterFileId = afterResult.id;
-                submittedJob.beforeUrl =
-                  "https://drive.google.com/open?id=" + beforeResult.id;
-                submittedJob.afterUrl =
-                  "https://drive.google.com/open?id=" + afterResult.id;
-                submittedJob.beforeNote = submittedBeforeNote;
-                submittedJob.afterNote = submittedAfterNote;
+                submittedJob.status = saved.status || "In progress";
+                if (beforeResult) {
+                  submittedJob.beforeFileId = beforeResult.id;
+                  submittedJob.beforeUrl =
+                    "https://drive.google.com/open?id=" + beforeResult.id;
+                  submittedJob.beforeNote = submittedBeforeNote;
+                }
+                if (afterResult) {
+                  submittedJob.afterFileId = afterResult.id;
+                  submittedJob.afterUrl =
+                    "https://drive.google.com/open?id=" + afterResult.id;
+                  submittedJob.afterNote = submittedAfterNote;
+                }
               }
               // Close the native dialog instead of hiding it with jQuery. Hiding an
               // open dialog leaves its modal backdrop active and blocks the page.
@@ -2788,7 +2827,7 @@
               label.text("อัปโหลดไม่สำเร็จ");
               toast(err.message || "อัปโหลดไม่สำเร็จ");
               submit.disabled = false;
-              submit.textContent = "ส่งงาน";
+              submit.textContent = "บันทึกภาพที่เลือก";
             }
           })();
         }
