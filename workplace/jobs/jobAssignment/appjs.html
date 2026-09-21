@@ -721,7 +721,7 @@
   }
   function startNotificationPolling() {
     if (notificationTimer) clearInterval(notificationTimer);
-    notificationTimer = setInterval(refreshNotifications, 45000);
+    notificationTimer = setInterval(refreshNotifications, 60000);
   }
   function stopNotificationPolling() {
     if (notificationTimer) clearInterval(notificationTimer);
@@ -824,6 +824,7 @@
   }
   function openAssignmentEditor(jobId) {
     const job = jobs.find((item) => String(item.id) === String(jobId));
+    console.log("[FieldFlow] openAssignmentEditor", jobId, job);
     if (!job || !window.FIELD_FLOW_USER) return;
     const canEdit = window.FIELD_FLOW_USER.Role === "Supervisor";
     if (job.status === "Updating" || job.status === "Cancelling") {
@@ -856,7 +857,7 @@
     const container = $("#editForemanOptions").empty();
     const selectedUsernames = String(job.foremanUsernames || "")
       .split(",")
-      .map((name) => name.trim())
+      .map((name) => String(name).trim().toLowerCase())
       .filter(Boolean);
     foremen.forEach((foreman) => {
       const label = $("<label>", {
@@ -869,7 +870,12 @@
         value: foreman.Username,
       })
         .attr("data-name", foreman.Name)
-        .prop("checked", selectedUsernames.includes(foreman.Username));
+        .prop(
+          "checked",
+          selectedUsernames.includes(
+            String(foreman.Username || "").trim().toLowerCase(),
+          ),
+        );
       label.append(input, $("<span>").text(foreman.Name + " (Foreman)"));
       container.append(label);
     });
@@ -2682,6 +2688,9 @@
                 rank: $("#assignRank").val(),
                 date: formatDisplayDate(assignDateValue()),
                 assignmentDate: assignDateValue(),
+                foremanUsernames: selectedForemen
+                  .map((input) => input.value)
+                  .join(", "),
                 foreman: selectedForemen
                   .map((input) => input.dataset.name)
                   .join(", "),
