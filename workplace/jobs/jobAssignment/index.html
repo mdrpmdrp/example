@@ -28,7 +28,6 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin />
-  <link rel="preload" as="image" href="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb" fetchpriority="high" />
   <link
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
@@ -335,6 +334,46 @@
       object-fit: cover;
     }
 
+    .edit-image-preview {
+      display: block;
+      width: 100%;
+      min-height: 180px;
+      overflow: hidden;
+      border-radius: 10px;
+      background: #edf4ee;
+      cursor: zoom-in;
+    }
+
+    .edit-image-preview img {
+      display: block;
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+    }
+
+    dialog.image-preview-dialog {
+      width: min(720px, calc(100vw - 32px));
+      max-width: 92vw;
+      padding: 0;
+      border: 0;
+      border-radius: 12px;
+      overflow: hidden;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    dialog.image-preview-dialog::backdrop {
+      background: rgb(23 53 42 / 72%);
+    }
+
+    .image-preview-dialog img {
+      display: block;
+      width: 100%;
+      max-height: 78vh;
+      object-fit: contain;
+      background: #101713;
+    }
+
     .metric {
       border-top: 1px solid var(--line);
     }
@@ -364,14 +403,47 @@
       right: 24px;
       bottom: 24px;
       z-index: 30;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      max-width: min(420px, calc(100vw - 32px));
       transform: translateY(100px);
       opacity: 0;
       transition: 0.25s;
     }
 
+    .toast-message {
+      flex: 1;
+      min-width: 0;
+      white-space: pre-line;
+    }
+
+    .toast-close {
+      flex: none;
+      margin: -4px -4px 0 0;
+      padding: 0 4px;
+      color: #aebbb2;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .toast-close:hover {
+      color: #ffffff;
+    }
+
     .toast.show {
       transform: translateY(0);
       opacity: 1;
+    }
+
+    .toast.toast-top {
+      top: 24px;
+      bottom: auto;
+      transform: translateY(-100px);
+    }
+
+    .toast.toast-top.show {
+      transform: translateY(0);
     }
 
     @media (max-width: 900px) {
@@ -436,8 +508,15 @@
       overflow: hidden;
     }
 
+    #notificationList {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
     .notification-item {
       display: block;
+      flex: 0 0 auto;
       width: 100%;
       margin: 0;
       padding: 17px 20px;
@@ -1092,7 +1171,7 @@
 <body>
   <div id="sessionSplash" class="fixed inset-0 z-50 min-h-screen items-center justify-center bg-ink text-white px-6">
     <div class="w-full max-w-sm text-center">
-      <img src="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb" alt="Panarpsaenkarun Garden" class="w-[260px] md:w-[360px] max-w-full mx-auto mb-4 object-contain" loading="eager" fetchpriority="high" decoding="async" />
+      <img src="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb=s400" alt="Panarpsaenkarun Garden" class="w-[260px] md:w-[360px] max-w-full mx-auto mb-4 object-contain" loading="eager" fetchpriority="high" decoding="async" />
       <div class="font-extrabold text-xl">FieldFlow</div>
       <div id="splashMessage" class="text-sm text-[#aebbb2] mt-2" aria-live="polite">กำลังตรวจสอบ session...</div>
       <div class="mt-6 h-1.5 rounded-full bg-white/15 overflow-hidden" role="progressbar" aria-label="ความคืบหน้าการเตรียมระบบ" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
@@ -1104,7 +1183,7 @@
   <div id="loginView" class="min-h-screen flex items-center justify-center bg-ink p-5">
     <div class="w-full max-w-[420px] bg-white rounded-2xl p-8 shadow-2xl">
       <div class="flex items-center gap-3 mb-8">
-        <img src="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb" alt="Panarpsaenkarun Garden" class="w-20 h-11 object-contain" loading="eager" decoding="async" />
+        <img src="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb=s220" alt="Panarpsaenkarun Garden" class="w-20 h-11 object-contain" loading="eager" decoding="async" />
         <div>
           <div class="font-extrabold text-lg">FieldFlow</div>
           <div class="text-xs text-muted">Field Operations Workspace</div>
@@ -1133,7 +1212,7 @@
   <div id="appView" class="hidden min-h-screen">
     <aside class="sidebar fixed inset-y-0 left-0 z-20 flex flex-col">
       <div class="brand h-[76px] flex items-center gap-3 px-5 border-b border-white/10">
-        <img src="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb" alt="Panarpsaenkarun Garden" class="w-16 h-9 object-contain flex-none" loading="eager" decoding="async" />
+        <img src="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb=s100" alt="Panarpsaenkarun Garden" class="w-16 h-9 object-contain flex-none" loading="eager" decoding="async" />
         <div class="brand-copy">
           <div class="text-white font-bold">FieldFlow</div>
           <div class="text-[10px] text-[#84948a]">FIELD OPERATIONS</div>
@@ -1167,7 +1246,7 @@
         class="topbar h-[76px] bg-white border-b border-line flex items-center justify-between px-8 sticky top-0 z-10">
         <div class="topbar-context">
           <div class="mobile-brand hidden items-center gap-2">
-            <img src="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb" alt="FieldFlow" class="w-9 h-7 object-contain flex-none" loading="eager" decoding="async" />
+            <img src="https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb=s100" alt="FieldFlow" class="w-9 h-7 object-contain flex-none" loading="eager" decoding="async" />
             <span class="text-sm font-bold tracking-tight">FieldFlow</span>
           </div>
           <div class="topbar-date text-xs text-muted">Saturday, 12 September 2026</div>
@@ -1184,12 +1263,12 @@
           </div>
           <div class="h-8 w-px bg-line"></div>
           <div class="flex items-center gap-2">
-            <div class="w-9 h-9 bg-mint text-[#287850] rounded-full flex items-center justify-center text-sm font-bold">
-              กศ
+            <div id="userAvatar" class="w-9 h-9 bg-mint text-[#287850] rounded-full flex items-center justify-center text-sm font-bold" aria-label="ผู้ใช้" title="ผู้ใช้">
+              --
             </div>
             <div class="user-copy">
-              <div class="text-xs font-semibold">กิตติศักดิ์ ส.</div>
-              <div class="text-[10px] text-muted">Supervisor</div>
+              <div class="text-xs font-semibold">ผู้ใช้</div>
+              <div class="text-[10px] text-muted">-</div>
             </div>
           </div>
         </div>
@@ -1541,11 +1620,28 @@
           <div id="editForemanOptions" class="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-line bg-white p-2 min-h-[58px]"></div>
         </div>
       </div>
+      <section id="editCompletedImages" class="hidden mt-6 border-t border-line pt-5" aria-labelledby="editCompletedImagesTitle">
+        <div class="flex items-center gap-2 mb-3">
+          <i data-lucide="images" class="w-4 text-brand" aria-hidden="true"></i>
+          <h3 id="editCompletedImagesTitle" class="text-sm font-semibold">ภาพประกอบงานที่เสร็จสิ้น</h3>
+        </div>
+        <div class="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+          <div><div class="text-xs text-muted mb-2">ภาพก่อน</div><div id="editBeforeImagePreview"></div></div>
+          <div><div class="text-xs text-muted mb-2">ภาพหลัง</div><div id="editAfterImagePreview"></div></div>
+        </div>
+      </section>
       <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line mt-6 pt-4">
         <button type="button" id="cancelAssignment" class="text-sm font-semibold text-red-700 hover:text-red-900">ยกเลิกงาน</button>
         <div class="flex gap-2"><button type="button" id="cancelEdit" class="btn-secondary rounded-lg h-[42px] px-4 text-sm">ปิด</button><button type="submit" id="saveEditAssignment" class="btn-primary rounded-lg h-[42px] px-5 text-sm font-semibold">บันทึกการแก้ไข</button></div>
       </div>
     </form>
+  </dialog>
+  <dialog id="imagePreviewDialog" class="image-preview-dialog" aria-labelledby="imagePreviewTitle">
+    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-line">
+      <h2 id="imagePreviewTitle" class="text-sm font-semibold"></h2>
+      <button type="button" id="closeImagePreview" class="text-muted hover:text-ink" aria-label="ปิดภาพตัวอย่าง"><i data-lucide="x" class="w-5"></i></button>
+    </div>
+    <img id="imagePreview" alt="" />
   </dialog>
   <div class="mobile-nav hidden fixed bottom-0 inset-x-0 bg-white border-t border-line z-20 justify-around p-2">
     <button class="text-brand text-[10px]" data-tab="dashboard">
@@ -1560,7 +1656,10 @@
       <i data-lucide="log-out" class="w-5 block mx-auto"></i>ออกจากระบบ
     </button>
   </div>
-  <div id="toast" class="toast bg-ink text-white rounded-lg px-4 py-3 text-sm shadow-lg"></div>
+  <div id="toast" class="toast bg-ink text-white rounded-lg px-4 py-3 text-sm shadow-lg" role="status" aria-live="polite">
+    <span id="toastMessage" class="toast-message"></span>
+    <button id="toastClose" class="toast-close" type="button" aria-label="ปิดการแจ้งเตือน">×</button>
+  </div>
   <script>
     (function () {
       const loaded = {};

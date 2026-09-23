@@ -4,6 +4,8 @@
   let foremen = [];
   let notifications = [];
   let notificationTimer = null;
+  let notificationUnreadCount = null;
+  let toastTimer = null;
   let assignmentFromPicker = null;
   let assignmentToPicker = null;
   function formatDisplayDate(value) {
@@ -375,7 +377,7 @@
       );
     }
     const previewUrl = fileId
-      ? "https://lh3.googleusercontent.com/d/" + fileId + "?s=w200"
+      ? "https://lh3.googleusercontent.com/d/" + fileId + "=s100-c"
       : url;
     const fullUrl = fileId
       ? "https://lh3.googleusercontent.com/d/" + fileId
@@ -396,35 +398,32 @@
       '" loading="lazy" /></button>'
     );
   }
-  function cacheLoadedOverviewImage(imageElement) {
-    const fileId = imageElement.dataset.exportFileId;
-    if (!fileId || exportImageCache.has(fileId)) return;
-    const imagePromise = fetch(imageElement.currentSrc || imageElement.src)
-      .then((response) => (response.ok ? response.blob() : null))
-      .then(async (blob) => {
-        if (!blob || !blob.type.toLowerCase().includes("image")) return null;
-        return {
-          base64: await toBase64(blob),
-          dimensions: await getImageDimensions(blob),
-          extension: blob.type.toLowerCase().includes("png") ? "png" : "jpeg",
-        };
-      })
-      .then((image) => {
-        if (image) exportImageCache.set(fileId, Promise.resolve(image));
-        else exportImageCache.delete(fileId);
-        return image;
-      })
-      .catch(() => {
-        exportImageCache.delete(fileId);
-        return null;
-      });
-    exportImageCache.set(fileId, imagePromise);
-  }
-  function cacheOverviewImages() {
-    $("img[data-export-file-id]").each(function () {
-      if (this.complete && this.naturalWidth) cacheLoadedOverviewImage(this);
-      else $(this).one("load", () => cacheLoadedOverviewImage(this));
-    });
+  function renderEditImagePreview(selector, fileId, url, label) {
+    const container = document.querySelector(selector);
+    if (!container) return;
+    container.replaceChildren();
+    if (!fileId && !url) {
+      const placeholder = document.createElement("div");
+      placeholder.className = "image-placeholder w-full !h-[180px]";
+      placeholder.setAttribute("aria-label", "ยังไม่มี" + label);
+      placeholder.innerHTML = '<i data-lucide="image-off" class="w-7 h-7" aria-hidden="true"></i>';
+      container.appendChild(placeholder);
+      return;
+    }
+    const previewUrl = fileId ? "https://lh3.googleusercontent.com/d/" + fileId + "=s600-c" : url;
+    const fullUrl = fileId ? "https://lh3.googleusercontent.com/d/" + fileId : url;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "edit-image-preview";
+    button.dataset.previewImage = fullUrl;
+    button.dataset.previewTitle = label;
+    button.setAttribute("aria-label", "เปิด" + label + "เต็มขนาด");
+    const image = document.createElement("img");
+    image.src = previewUrl;
+    image.alt = label;
+    image.loading = "lazy";
+    button.appendChild(image);
+    container.appendChild(button);
   }
   function renderRows() {
     const filteredJobs = getFilteredJobs();
@@ -464,7 +463,6 @@
       filteredJobs.length + " จาก " + jobs.length + " รายการ",
     );
     $("#recentRows").html(recentHtml);
-    cacheOverviewImages();
     refreshIcons();
     syncResponsiveTableLabels();
   }
@@ -662,9 +660,21 @@
     syncResponsiveTableLabels();
   }
 
-  function toast(msg) {
-    $("#toast").text(msg).addClass("show");
-    setTimeout(() => $("#toast").removeClass("show"), 2500);
+  function toast(msg, placement, duration = 2500) {
+    const toastElement = $("#toast");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastElement
+      .toggleClass("toast-top", placement === "top")
+      .addClass("show");
+    $("#toastMessage").text(msg);
+    toastTimer = setTimeout(() => {
+      closeToast();
+    }, duration);
+  }
+  function closeToast() {
+    if (toastTimer) clearTimeout(toastTimer);
+    $("#toast").removeClass("show toast-top");
+    toastTimer = null;
   }
   function renderNotifications(payload) {
     let data = payload;
@@ -676,8 +686,44 @@
       }
     }
     data = data || { items: [], unreadCount: 0 };
-    notifications = data.items || [];
+    const previousNotifications = notifications;
+    const previousNotificationIds = new Set(
+      previousNotifications.map((notification) =>
+        String(notification.NotificationId || ""),
+      ),
+    );
+    const nextNotifications = data.items || [];
     const unreadCount = Number(data.unreadCount) || 0;
+    const previousUnreadCount = notificationUnreadCount;
+    notificationUnreadCount = unreadCount;
+    const newNotifications =
+      previousUnreadCount === null
+        ? []
+        : nextNotifications.filter(
+            (notification) =>
+              !previousNotificationIds.has(
+                String(notification.NotificationId || ""),
+              ),
+          );
+    notifications = nextNotifications;
+    if (previousUnreadCount !== null && newNotifications.length) {
+      const details = newNotifications
+        .slice(0, 3)
+        .map((notification) =>
+          [notification.Title, notification.Message].filter(Boolean).join("\n"),
+        )
+        .join("\n\n");
+      toast(
+        "มีการแจ้งเตือนใหม่" +
+          (newNotifications.length > 1
+            ? " " + newNotifications.length + " รายการ"
+            : "") +
+          "\n" +
+          details,
+        "top",
+        15000,
+      );
+    }
     $("#notificationBadge")
       .text(unreadCount > 99 ? "99+" : unreadCount)
       .toggleClass("hidden", unreadCount === 0);
@@ -705,7 +751,7 @@
           ),
         )
         .appendTo(item);
-      $("<div>", { class: "text-xs text-muted mt-1 pl-4" })
+      $("<div>", { class: "text-xs text-muted mt-1 pl-4 text-left" })
         .text(notification.Message)
         .appendTo(item);
       item.appendTo(list);
@@ -721,7 +767,7 @@
   }
   function startNotificationPolling() {
     if (notificationTimer) clearInterval(notificationTimer);
-    notificationTimer = setInterval(refreshNotifications, 45000);
+    notificationTimer = setInterval(refreshNotifications, 60000);
   }
   function stopNotificationPolling() {
     if (notificationTimer) clearInterval(notificationTimer);
@@ -824,6 +870,7 @@
   }
   function openAssignmentEditor(jobId) {
     const job = jobs.find((item) => String(item.id) === String(jobId));
+    console.log("[FieldFlow] openAssignmentEditor", jobId, job);
     if (!job || !window.FIELD_FLOW_USER) return;
     const canEdit = window.FIELD_FLOW_USER.Role === "Supervisor";
     if (job.status === "Updating" || job.status === "Cancelling") {
@@ -856,7 +903,7 @@
     const container = $("#editForemanOptions").empty();
     const selectedUsernames = String(job.foremanUsernames || "")
       .split(",")
-      .map((name) => name.trim())
+      .map((name) => String(name).trim().toLowerCase())
       .filter(Boolean);
     foremen.forEach((foreman) => {
       const label = $("<label>", {
@@ -869,7 +916,12 @@
         value: foreman.Username,
       })
         .attr("data-name", foreman.Name)
-        .prop("checked", selectedUsernames.includes(foreman.Username));
+        .prop(
+          "checked",
+          selectedUsernames.includes(
+            String(foreman.Username || "").trim().toLowerCase(),
+          ),
+        );
       label.append(input, $("<span>").text(foreman.Name + " (Foreman)"));
       container.append(label);
     });
@@ -879,6 +931,13 @@
           "ไม่พบรายชื่อ Foreman",
         ),
       );
+    $("#editCompletedImages").toggleClass("hidden", !isSuccess);
+    if (isSuccess) {
+      renderEditImagePreview("#editBeforeImagePreview", job.beforeFileId, job.beforeUrl, "ภาพก่อน");
+      renderEditImagePreview("#editAfterImagePreview", job.afterFileId, job.afterUrl, "ภาพหลัง");
+    } else {
+      $("#editBeforeImagePreview, #editAfterImagePreview").empty();
+    }
     $("#assignmentEditForm input, #assignmentEditForm select").prop(
       "disabled",
       isReadOnly,
@@ -980,7 +1039,7 @@
   function showRemoteSubmitPreview(kind, fileId, url) {
     const name = kind.charAt(0).toUpperCase() + kind.slice(1);
     const previewUrl = fileId
-      ? "https://lh3.googleusercontent.com/d/" + fileId + "=w1000"
+      ? "https://lh3.googleusercontent.com/d/" + fileId + "=s1000"
       : url;
     $("#submit" + name + "Preview")
       .attr("src", previewUrl)
@@ -1018,14 +1077,20 @@
     if (event.target === event.currentTarget) closeSubmitModal();
   }
   function openFullImage(url, title) {
-    Swal.fire({
-      title,
-      imageUrl: url,
-      imageAlt: title,
-      showCloseButton: true,
-      showConfirmButton: false,
-      width: "min(720px, 92vw)",
-    });
+    const dialog = document.getElementById("imagePreviewDialog");
+    const image = document.getElementById("imagePreview");
+    const heading = document.getElementById("imagePreviewTitle");
+    if (!dialog || !image || !heading) return;
+    heading.textContent = title || "ตัวอย่างภาพ";
+    image.src = url;
+    image.alt = title || "ตัวอย่างภาพ";
+    dialog.showModal();
+    refreshIcons();
+  }
+
+  function closeImagePreview() {
+    const dialog = document.getElementById("imagePreviewDialog");
+    if (dialog?.open) dialog.close();
   }
 
   function initApp() {
@@ -1037,6 +1102,7 @@
       return;
     }
     refreshIcons();
+    $("#toastClose").on("click", closeToast);
     $("#assignSite").on("change", renderAssignOwners);
     $("#assignSite").on("change", renderAssignAreas);
     $("#clearAssignment").on("click", clearAssignmentForm);
@@ -1228,6 +1294,10 @@
         $(this).data("preview-image"),
         $(this).data("preview-title"),
       );
+    });
+    $("#closeImagePreview").on("click", closeImagePreview);
+    $("#imagePreviewDialog").on("click", function (event) {
+      if (event.target === this) closeImagePreview();
     });
     $("#closeSubmitDialog, #cancelSubmitDialog").on("click", closeSubmitModal);
     $("#submitUploadDialog").on("click", closeSubmitModalOnBackdrop);
@@ -1725,22 +1795,10 @@
       return ws;
     }
 
-    function exportAuth(jobId) {
-      return new Promise((resolve, reject) =>
-        google.script.run
-          .withSuccessHandler(resolve)
-          .withFailureHandler(reject)
-          .getUploadAuth(jobId),
-      );
-    }
-
-    function toBase64(blob) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result).split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+    function base64ToBlob(base64, mimeType) {
+      const binary = atob(base64);
+      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+      return new Blob([bytes], { type: mimeType });
     }
 
     function getImageDimensions(blob) {
@@ -1813,35 +1871,28 @@
       };
     }
 
-    async function fetchExportImage(fileId, token) {
+    async function fetchExportImage(fileId) {
       if (!fileId) return null;
-      const response = await fetch(
-        "https://www.googleapis.com/drive/v3/files/" +
-          encodeURIComponent(fileId) +
-          "?alt=media",
-        { headers: { Authorization: "Bearer " + token } },
+      const image = await new Promise((resolve, reject) =>
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject)
+          .getExportImageBase64(fileId, getStoredSessionToken()),
       );
-      if (!response.ok) return null;
-      const blob = await response.blob();
-      const type = blob.type.toLowerCase();
-      if (
-        !type.includes("png") &&
-        !type.includes("jpeg") &&
-        !type.includes("jpg")
-      )
-        return null;
+      if (!image || !image.base64) return null;
+      const blob = base64ToBlob(image.base64, image.mimeType);
       return {
-        base64: await toBase64(blob),
+        base64: image.base64,
         dimensions: await getImageDimensions(blob),
-        extension: type.includes("png") ? "png" : "jpeg",
+        extension: image.extension,
       };
     }
 
-    function fetchCachedExportImage(fileId, token) {
+    function fetchCachedExportImage(fileId) {
       if (!fileId) return Promise.resolve(null);
       if (exportImageCache.has(fileId)) return exportImageCache.get(fileId);
       const startedAt = performance.now();
-      const imagePromise = fetchExportImage(fileId, token)
+      const imagePromise = fetchExportImage(fileId)
         .then((image) => {
           console.debug(
             "[FieldFlow export] image",
@@ -1860,34 +1911,11 @@
       return imagePromise;
     }
 
-    async function fetchRemoteImage(url) {
-      try {
-        const response = await fetch(url);
-        if (!response.ok) return null;
-        const blob = await response.blob();
-        const type = blob.type.toLowerCase();
-        if (
-          !type.includes("png") &&
-          !type.includes("jpeg") &&
-          !type.includes("jpg")
-        )
-          return null;
-        return {
-          base64: await toBase64(blob),
-          dimensions: await getImageDimensions(blob),
-          extension: type.includes("png") ? "png" : "jpeg",
-        };
-      } catch (error) {
-        console.warn("[FieldFlow export] โหลดภาพหัวรายงานไม่สำเร็จ", error);
-        return null;
-      }
-    }
-
     let reportHeaderImagePromise = null;
     function fetchReportHeaderImage() {
       if (!reportHeaderImagePromise)
-        reportHeaderImagePromise = fetchRemoteImage(
-          "https://lh3.googleusercontent.com/d/1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb",
+        reportHeaderImagePromise = fetchExportImage(
+          "1hx5eZ65hQIxQXFMObH6bYLZ3C-ropVzb",
         );
       return reportHeaderImagePromise;
     }
@@ -2107,13 +2135,11 @@
         ),
       ];
       const cache = new Map();
-      let token = null;
       if (ids.length && exportJobs[0]) {
-        token = (await exportAuth(exportJobs[0].id)).accessToken;
         await Promise.all(
           ids.map(async (id) => {
             try {
-              cache.set(id, await fetchCachedExportImage(id, token));
+              cache.set(id, await fetchCachedExportImage(id));
             } catch (error) {
               console.warn("[FieldFlow export] image load skipped", id, error);
               cache.set(id, null);
@@ -2492,6 +2518,7 @@
       google.script.run.logoutSession(token);
     clearStoredSessionToken();
     window.FIELD_FLOW_USER = null;
+    notificationUnreadCount = null;
     stopSessionActivity();
     stopNotificationPolling();
     $("#appView").addClass("hidden");
@@ -2516,8 +2543,31 @@
     );
     markActivity();
   }
+  function getUserInitials(name, username) {
+    const value = String(name || username || "").trim();
+    if (!value) return "?";
+    const words = value.split(/\s+/).filter(Boolean);
+    const firstCharacter = (word) => {
+      const characters = Array.from(word);
+      return (
+        characters.find((character) => /[ก-ฮ]/u.test(character)) ||
+        characters.find((character) => /[A-Za-z]/u.test(character)) ||
+        characters.find((character) => /[\p{L}\p{N}]/u.test(character)) ||
+        ""
+      );
+    };
+    const initials =
+    words.length > 1
+        ? firstCharacter(words[0]) + firstCharacter(words[words.length - 1])
+        : Array.from(words[0])
+            .filter((character) => /[ก-ฮA-Za-z]/u.test(character))
+            .slice(0, 2)
+            .join("");
+    return initials || "?";
+  }
   function loadUserSession(user) {
     window.FIELD_FLOW_USER = user;
+    notificationUnreadCount = null;
     startSessionActivity();
     $("#assignSupervisor").val(user.Name);
     $("#loginView").hide();
@@ -2525,6 +2575,13 @@
     showSplash("ตรวจสอบ session ผ่านแล้ว กำลังโหลดข้อมูลเริ่มต้น...", 20);
     $(".user-copy div:first-child").text(user.Name);
     $(".user-copy div:last-child").text(user.Role);
+    const userAvatar = document.getElementById("userAvatar");
+    if (userAvatar) {
+      const initials = getUserInitials(user.Name, user.Username);
+      userAvatar.textContent = initials;
+      userAvatar.setAttribute("aria-label", user.Name || user.Username || "ผู้ใช้");
+      userAvatar.setAttribute("title", user.Name || user.Username || "ผู้ใช้");
+    }
     $('.nav-item[data-tab="assign"]').toggle(user.Role === "Supervisor");
     $('[data-tab="assign"]').toggle(user.Role === "Supervisor");
     $("#assign .surface")
@@ -2682,6 +2739,9 @@
                 rank: $("#assignRank").val(),
                 date: formatDisplayDate(assignDateValue()),
                 assignmentDate: assignDateValue(),
+                foremanUsernames: selectedForemen
+                  .map((input) => input.value)
+                  .join(", "),
                 foreman: selectedForemen
                   .map((input) => input.dataset.name)
                   .join(", "),
