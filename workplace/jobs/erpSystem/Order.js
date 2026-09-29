@@ -495,11 +495,15 @@ function archiveOrdersBeforeCurrentMonth() {
   }
 
   var ordersToMove = [];
+  var ordersToKeep = [];
   var orderIds = {};
-  orderRows.forEach(function (row, index) {
-    if (getOrderRecordMonthKey_(row[1]) && getOrderRecordMonthKey_(row[1]) < currentMonthKey) {
-      ordersToMove.push({ row: row, rowIndex: index + 2 });
+  orderRows.forEach(function (row) {
+    var rowMonthKey = getOrderRecordMonthKey_(row[1]);
+    if (rowMonthKey && rowMonthKey < currentMonthKey) {
+      ordersToMove.push(row);
       orderIds[row[0]] = true;
+    } else {
+      ordersToKeep.push(row);
     }
   });
 
@@ -508,17 +512,21 @@ function archiveOrdersBeforeCurrentMonth() {
   }
 
   var orderItemsToMove = [];
-  itemRows.forEach(function (row, index) {
+  var orderItemsToKeep = [];
+  itemRows.forEach(function (row) {
     if (orderIds[row[1]]) {
-      orderItemsToMove.push({ row: row, rowIndex: index + 2 });
+      orderItemsToMove.push(row);
+    } else {
+      orderItemsToKeep.push(row);
     }
   });
 
-  appendRows_(SHEETS.BACKUP_ORDERS, ordersToMove.map(function (entry) { return entry.row; }));
-  appendRows_(SHEETS.BACKUP_ORDER_ITEMS, orderItemsToMove.map(function (entry) { return entry.row; }));
+  appendRows_(SHEETS.BACKUP_ORDERS, ordersToMove);
+  appendRows_(SHEETS.BACKUP_ORDER_ITEMS, orderItemsToMove);
 
-  deleteRowsByIndexes_(itemSheet, orderItemsToMove.map(function (entry) { return entry.rowIndex; }));
-  deleteRowsByIndexes_(orderSheet, ordersToMove.map(function (entry) { return entry.rowIndex; }));
+  // Rebuild the active sheets in two batch writes instead of deleting rows one by one.
+  replaceDataRows_(itemSheet, orderItemsToKeep, itemRows.length ? itemRows[0].length : 0);
+  replaceDataRows_(orderSheet, ordersToKeep, orderRows.length ? orderRows[0].length : 0);
 
   return {
     ordersMoved: ordersToMove.length,

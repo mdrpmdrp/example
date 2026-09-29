@@ -112,8 +112,11 @@ function addProduct(data) {
 
 /** Create a product through the authenticated UI path. */
 function createProduct(sessionToken, data) {
-  requireRole(sessionToken, ['OWNER', 'ADMIN']);
+  const user = requireRole(sessionToken, ['OWNER', 'ADMIN']);
   if (!data) throw new Error('Product details are required');
+  if (data.Cost === false && user.role !== 'OWNER') {
+    throw new Error('Only an owner can create a product without an existing cost');
+  }
   const productId = String(data.ProductID || '').trim().toUpperCase();
   const productName = String(data.ProductName || '').trim();
   const baseUnit = normalizeProductBaseUnit_(data.BaseUnit || data.UnitName);
@@ -156,12 +159,13 @@ function updateProduct(data) {
     if (values[i][0] == data.ProductID) {
       var currentStatus = String(data.Status || values[i][7] || 'ACTIVE').trim() || 'ACTIVE';
       var currentCreated = values[i][8] || new Date();
+      var nextCost = data.Cost === false ? values[i][3] : data.Cost;
 
       sheet.getRange(i + 1, 2, 1, 11).setValues([[
 
         data.ProductName,
         normalizeProductCategory_(data.Category),
-        data.Cost,
+        nextCost,
         data.RetailPrice,
         data.Stock,
         data.MinStock,
