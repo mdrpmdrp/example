@@ -73,6 +73,24 @@ function doGet() {
     .addMetaTag("viewport", "width=device-width, initial-scale=1.0");
 }
 
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("Master")
+    .addItem("อัพเดทข้อมูล Master", "updateMasterData")
+    .addToUi();
+}
+
+function updateMasterData() {
+  clearInitialDataCache();
+  getInitialData_();
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    "อัพเดทข้อมูล Master เรียบร้อยแล้ว",
+    "Master",
+    5,
+  );
+   createMasterEditTrigger();
+}
+
 function getScriptURL() {
   return ScriptApp.getService()
     .getUrl()
