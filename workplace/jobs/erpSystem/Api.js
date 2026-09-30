@@ -128,6 +128,7 @@ function buildOrdersPayload_(sessionToken, monthKey = 'today') {
         shippingAmount: Number(order.shippingAmount || 0),
         discountAmount: Number(order.discountAmount || 0),
         totalAmount: Number(order.totalAmount),
+        netAmount: Number(order.netAmount),
         customerName: String(order.customerName || ''),
         customerAddress: String(order.customerAddress || ''),
         customerPhone: String(order.customerPhone || ''),

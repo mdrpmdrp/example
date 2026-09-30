@@ -985,7 +985,7 @@
                 var regularShipping = isColdShippingType_(order && order.shippingType) ? 0 : shippingAmount;
                 var coldShipping = isColdShippingType_(order && order.shippingType) ? shippingAmount : 0;
                 var items = asArray(order && order.items);
-                var orderTotalAmount = Number(order && order.totalAmount) || 0;
+                var orderTotalAmount = getOrderNetAmount_(order);
                 var lineItems = items.length ? items : [null];
 
                 lineItems.forEach(function (item, itemIndex) {
@@ -1024,7 +1024,7 @@
         function buildSummaryExportDetailSheet_(agentName, ordersList, dateLabel) {
             var styles = createXlsxStyles_();
             var totalNetAmount = asArray(ordersList).reduce(function (sum, order) {
-                return sum + (Number(order && order.totalAmount) || 0);
+                return sum + getOrderNetAmount_(order);
             }, 0);
             var rows = [
                 ['รายละเอียดรายการของตัวแทน'],
@@ -1138,7 +1138,7 @@
                 var subtotalAmount = Number(order && order.subtotalAmount) || 0;
                 var shippingAmount = Number(order && order.shippingAmount) || 0;
                 var discountAmount = Number(order && order.discountAmount) || 0;
-                var netAmount = Number(order && order.totalAmount) || 0;
+                var netAmount = getOrderNetAmount_(order);
                 totalSubtotal += subtotalAmount;
                 totalShipping += shippingAmount;
                 totalDiscount += discountAmount;
@@ -1312,6 +1312,11 @@
             return normalizeSummaryDateKey(order && (order.orderDateKey || order.orderDate || order.createdAt || order.created));
         }
 
+        function getOrderNetAmount_(order) {
+            var netAmount = Number(order && order.netAmount);
+            return Number.isFinite(netAmount) ? netAmount : (Number(order && order.totalAmount) || 0);
+        }
+
         function getSummaryOrdersForDate(dateKey) {
             var key = normalizeSummaryDateKey(dateKey) || getTodaySummaryDateKey();
             var monthKey = getMonthKeyFromDateKey(key);
@@ -1348,7 +1353,7 @@
                     };
                 }
                 rows[agentName].billCount += 1;
-                rows[agentName].totalAmount += Number(order.totalAmount) || 0;
+                rows[agentName].totalAmount += getOrderNetAmount_(order);
                 rows[agentName].subtotalAmount += Number(order.subtotalAmount) || 0;
                 rows[agentName].shippingAmount += Number(order.shippingAmount) || 0;
                 rows[agentName].discountAmount += Number(order.discountAmount) || 0;
@@ -1378,7 +1383,7 @@
             orderTime.textContent = order.orderDateLabel ? (order.orderDateLabel + (order.orderTimeLabel ? ' · ' + order.orderTimeLabel : '')) : (order.orderTimeLabel || '');
             left.append(orderId, orderTime);
             total.className = 'text-xs font-black text-primary-700 font-mono';
-            total.textContent = '฿' + Number(order.totalAmount || 0).toLocaleString();
+            total.textContent = '฿' + getOrderNetAmount_(order).toLocaleString();
             right.appendChild(total);
             head.append(left, right);
             bill.appendChild(head);
@@ -1450,7 +1455,7 @@
                 { label: 'ยอดสินค้า', value: Number(order.subtotalAmount || 0) },
                 { label: 'ค่าส่ง', value: Number(order.shippingAmount || 0) },
                 { label: 'ส่วนลด', value: Number(order.discountAmount || 0) },
-                { label: 'ยอดจ่าย', value: Number(order.totalAmount || 0), highlight: true }
+                { label: 'ยอดจ่าย', value: getOrderNetAmount_(order), highlight: true }
             ];
             footerItems.forEach(function (item) {
                 var box = document.createElement('div');
@@ -1480,7 +1485,7 @@
                 acc.subtotalAmount += Number(order.subtotalAmount) || 0;
                 acc.shippingAmount += Number(order.shippingAmount) || 0;
                 acc.discountAmount += Number(order.discountAmount) || 0;
-                acc.totalAmount += Number(order.totalAmount) || 0;
+                acc.totalAmount += getOrderNetAmount_(order);
                 return acc;
             }, { billCount: 0, subtotalAmount: 0, shippingAmount: 0, discountAmount: 0, totalAmount: 0 });
 
@@ -1564,7 +1569,7 @@
             html.push('</div>');
             html.push('<div class="bill-total-row">');
             html.push('  <span class="bill-total-label">รวมสุทธิ (' + itemCount + ' ชิ้น)</span>');
-            html.push('  <span class="bill-total-val">฿' + money(order.totalAmount) + '</span>');
+            html.push('  <span class="bill-total-val">฿' + money(getOrderNetAmount_(order)) + '</span>');
             html.push('</div>');
             html.push('</div>');
             return html.join('');
@@ -1578,7 +1583,7 @@
                 acc.subtotalAmount += Number(order.subtotalAmount) || 0;
                 acc.shippingAmount += Number(order.shippingAmount) || 0;
                 acc.discountAmount += Number(order.discountAmount) || 0;
-                acc.totalAmount += Number(order.totalAmount) || 0;
+                acc.totalAmount += getOrderNetAmount_(order);
                 acc.itemLines += (order.items || []).length;
                 return acc;
             }, { subtotalAmount: 0, shippingAmount: 0, discountAmount: 0, totalAmount: 0, itemLines: 0 });

@@ -423,6 +423,7 @@ function buildOrderPayloadFromRows_(rows, canViewCost, indexes) {
       shippingAmount: Number(row[14]) || 0,
       discountAmount: discountAmount,
       totalAmount: Number(row[4]) || 0,
+      netAmount: Number(row[17]) || 0,
       customerName: String(row[10] || ''),
       customerAddress: String(row[11] || ''),
       customerPhone: String(row[12] || ''),
