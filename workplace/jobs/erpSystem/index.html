@@ -2376,7 +2376,7 @@
             const packUnits = readPackUnitsFromForm();
             const retail = parseInt(document.getElementById('prod-retail').value);
             const costInput = document.getElementById('prod-cost').value;
-            const cost = currentRole === 'owner' ? (parseInt(costInput) || 0) : Math.round(retail * 0.6);
+            const cost = currentRole === 'owner' ? (parseInt(costInput) || 0) : false;
             const stock = parseInt(document.getElementById('prod-stock').value);
             const min = parseInt(document.getElementById('prod-min').value) || 10;
             const status = document.getElementById('prod-status-switch')?.checked ? 'ACTIVE' : 'INACTIVE';
@@ -2414,7 +2414,14 @@
                 methodName: action,
                 args: args,
                 onSuccess: function (serverResult) {
-                    upsertLocalProductState_(data);
+                    var localProductData = Object.assign({}, data);
+                    if (localProductData.Cost === false && isEditMode) {
+                        var currentProduct = asArray(products).find(function (item) {
+                            return String(item && item.id || '').trim() === String(data.ProductID || '').trim();
+                        });
+                        if (currentProduct) localProductData.Cost = currentProduct.cost;
+                    }
+                    upsertLocalProductState_(localProductData);
                     renderStockTable();
                     postSaveRefresh('product', {
                         message: message

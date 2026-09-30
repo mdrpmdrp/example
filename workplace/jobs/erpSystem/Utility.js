@@ -148,6 +148,28 @@ function appendRows_(sheetName, rows) {
   sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
 }
 
+/** Replace all data rows in a sheet with one batch write and clear the tail. */
+function replaceDataRows_(sheet, rows, columnCount) {
+  if (!sheet) return;
+
+  var existingDataRows = Math.max(sheet.getLastRow() - 1, 0);
+  var width = Number(columnCount) || (rows && rows.length ? rows[0].length : sheet.getLastColumn());
+  if (!width) return;
+
+  if (rows && rows.length) {
+    sheet.getRange(2, 1, rows.length, width).setValues(rows);
+  }
+
+  if (existingDataRows > (rows ? rows.length : 0)) {
+    sheet.getRange(
+      2 + (rows ? rows.length : 0),
+      1,
+      existingDataRows - (rows ? rows.length : 0),
+      width
+    ).clearContent();
+  }
+}
+
 function findRow(
     sheetName,
     id
