@@ -87,6 +87,79 @@ function normalizePriceTierInput_(tier) {
   return { min: min, max: max, price: price };
 }
 
+/**
+ * Find overlapping quantity ranges in a price-tier sheet without changing data.
+ * Two tiers overlap when they belong to the same target and product and their
+ * inclusive MinQty-MaxQty ranges intersect.
+ */
+function findPriceTierOverlaps_(sheetName, targetLabel) {
+  var rows = getData(sheetName);
+  var groups = {};
+  var overlaps = [];
+
+  rows.forEach(function (row, index) {
+    var target = String(row[1] || '').trim();
+    var productId = String(row[2] || '').trim();
+    var min = Number(row[3]);
+    var max = Number(row[4]);
+
+    if (!target || !productId || !Number.isInteger(min) || !Number.isInteger(max)) return;
+
+    var key = target + '\u0001' + productId;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push({
+      sheetName: sheetName,
+      rowNumber: index + 2,
+      rateId: String(row[0] || '').trim(),
+      target: target,
+      productId: productId,
+      min: min,
+      max: max,
+      price: Number(row[5]) || 0
+    });
+  });
+
+  Object.keys(groups).forEach(function (key) {
+    var tiers = groups[key].sort(function (a, b) {
+      return a.min - b.min || a.max - b.max || a.rowNumber - b.rowNumber;
+    });
+
+    for (var firstIndex = 0; firstIndex < tiers.length; firstIndex++) {
+      for (var secondIndex = firstIndex + 1; secondIndex < tiers.length; secondIndex++) {
+        var first = tiers[firstIndex];
+        var second = tiers[secondIndex];
+        if (second.min > first.max || first.min > second.max) continue;
+
+        overlaps.push({
+          sheetName: sheetName,
+          targetType: targetLabel,
+          target: first.target,
+          productId: first.productId,
+          firstRateId: first.rateId,
+          firstRow: first.rowNumber,
+          firstRange: first.min + '-' + first.max,
+          secondRateId: second.rateId,
+          secondRow: second.rowNumber,
+          secondRange: second.min + '-' + second.max,
+          overlapRange: Math.max(first.min, second.min) + '-' + Math.min(first.max, second.max)
+        });
+      }
+    }
+  });
+
+  return overlaps;
+}
+
+/**
+ * Audit both price-tier sheets. This is read-only and returns all conflicts.
+ */
+function checkPriceTierOverlaps(sessionToken) {
+  requireRole(sessionToken, ['OWNER', 'ADMIN']);
+
+  return findPriceTierOverlaps_(SHEETS.AGENT_GROUP_RATES, 'AGENT_GROUP')
+    .concat(findPriceTierOverlaps_(SHEETS.AGENT_RATES, 'AGENT'));
+}
+
 function ensureAgentGroupRatesSheet_() {
   return ensureSheetWithHeaders(SHEETS.AGENT_GROUP_RATES, [
     'RateID',
