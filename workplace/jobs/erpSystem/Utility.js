@@ -2,6 +2,7 @@
  * คืนค่า Sheet
  */
 const SHEET_CACHE = {};
+const DATA_CACHE_ = {};
 function getSheet(sheetName) {
   return SHEET_CACHE[sheetName] || (SHEET_CACHE[sheetName] = ss.getSheetByName(sheetName));
 }
@@ -24,17 +25,19 @@ function getData(sheetName) {
     const sheet = getSheet(sheetName);
     if (!sheet) return [];
 
-    const lastRow = getRealLastRow('A', sheet);
-    const lastCol = getRealLastCol(1, sheet);
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
 
-    if (lastRow < 2) return [];
+    if (lastRow < 2 || lastCol < 1) return [];
 
-    return sheet.getRange(
+
+    var rows = sheet.getRange(
       2,
       1,
       lastRow - 1,
       lastCol
     ).getValues();
+    return rows;
   });
 
 }

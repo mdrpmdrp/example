@@ -108,7 +108,7 @@ function buildOrdersPayload_(sessionToken, monthKey = 'today') {
   return withConsoleTiming_('server:buildOrdersPayload', function () {
     var user = requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
     var canViewCost = user.role === 'OWNER';
-    var rows = monthKey === 'today' ? getTodayOrderRows_(sessionToken) : getOrderRowsForMonth_(sessionToken, monthKey);
+    var rows = monthKey === 'today' ? getTodayOrderRows_(sessionToken) : getOrderRowsForMonth_(monthKey);
     var indexes = buildOrderIndexes_(rows);
     var productsById = indexes.productsById || {};
     return buildOrderPayloadFromRows_(rows, canViewCost, indexes).map(function(order) {
@@ -199,6 +199,14 @@ function getAgentsBundle(sessionToken) {
 function listOrders(sessionToken, monthKey) {
   return withConsoleTiming_('server:listOrders', function () {
     return buildOrdersPayload_(sessionToken, monthKey);
+  });
+}
+
+// Fast path for dashboards/reporting. The detail endpoint above remains
+// unchanged so order screens can still show line items.
+function listDailySummary(sessionToken, startDateKey, endDateKey) {
+  return withConsoleTiming_('server:listDailySummary', function () {
+    return getDailySummaryRows_(sessionToken, startDateKey, endDateKey);
   });
 }
 

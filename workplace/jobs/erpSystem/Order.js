@@ -320,6 +320,74 @@ function getOrderRowsForMonth_(monthKey) {
   });
 }
 
+function getOrderMonthCacheKey_(monthKey, role) {
+  var version = PropertiesService.getScriptProperties().getProperty('ORDER_MONTH_CACHE_VERSION') || '1';
+  return 'order-month-v3:' + version + ':' + normalizeMonthKey(monthKey) + ':' + String(role || 'USER').toUpperCase();
+}
+
+function getCachedOrderMonthPayload_(monthKey, role) {
+  try {
+    var raw = CacheService.getScriptCache().get(getOrderMonthCacheKey_(monthKey, role));
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function cacheOrderMonthPayload_(monthKey, role, payload) {
+  try {
+    CacheService.getScriptCache().put(
+      getOrderMonthCacheKey_(monthKey, role),
+      JSON.stringify(payload),
+      ORDER_MONTH_CACHE_TTL_SECONDS
+    );
+  } catch (error) {
+    // CacheService has a per-entry size limit. A large month simply falls
+    // back to the normal read path and remains correct.
+  }
+}
+
+function invalidateOrderMonthCache_(monthKey) {
+  var key = normalizeMonthKey(monthKey);
+  try {
+    CacheService.getScriptCache().remove(getOrderMonthCacheKey_(key, 'OWNER'));
+    CacheService.getScriptCache().remove(getOrderMonthCacheKey_(key, 'ADMIN'));
+    CacheService.getScriptCache().remove(getOrderMonthCacheKey_(key, 'SALES'));
+  } catch (error) {}
+}
+
+function invalidateAllOrderMonthCache_() {
+  try {
+    PropertiesService.getScriptProperties().setProperty('ORDER_MONTH_CACHE_VERSION', String(Date.now()));
+  } catch (error) {}
+}
+
+function getDailySummaryRows_(sessionToken, startDateKey, endDateKey) {
+  requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);
+  var sheet = getSheet(SHEETS.SUMMARY_DAILY);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  var start = String(startDateKey || '').trim();
+  var end = String(endDateKey || start).trim();
+  return getData(SHEETS.SUMMARY_DAILY).filter(function (row) {
+    var key = row[0] instanceof Date
+      ? Utilities.formatDate(row[0], Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      : String(row[0] || '').trim();
+    return (!start || key >= start) && (!end || key <= end);
+  }).map(function (row) {
+    return {
+      date: String(row[0] || ''),
+      orderCount: Number(row[1]) || 0,
+      totalQty: Number(row[2]) || 0,
+      subtotalAmount: Number(row[3]) || 0,
+      shippingAmount: Number(row[4]) || 0,
+      discountAmount: Number(row[5]) || 0,
+      netAmount: Number(row[6]) || 0,
+      totalCost: Number(row[7]) || 0,
+      profit: Number(row[8]) || 0
+    };
+  });
+}
+
 function getTodayOrderRows_(sessionToken) {
   return withConsoleTiming_('server:getTodayOrderRows', function () {
     requireRole(sessionToken, ['OWNER', 'ADMIN', 'SALES']);

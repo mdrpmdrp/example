@@ -154,10 +154,11 @@ function findPriceTierOverlaps_(sheetName, targetLabel) {
  * Audit both price-tier sheets. This is read-only and returns all conflicts.
  */
 function checkPriceTierOverlaps(sessionToken) {
-  requireRole(sessionToken, ['OWNER', 'ADMIN']);
+  // requireRole(sessionToken, ['OWNER', 'ADMIN']);
 
-  return findPriceTierOverlaps_(SHEETS.AGENT_GROUP_RATES, 'AGENT_GROUP')
+  let x =  findPriceTierOverlaps_(SHEETS.AGENT_GROUP_RATES, 'AGENT_GROUP')
     .concat(findPriceTierOverlaps_(SHEETS.AGENT_RATES, 'AGENT'));
+  Logger.log(JSON.stringify(x))
 }
 
 function ensureAgentGroupRatesSheet_() {

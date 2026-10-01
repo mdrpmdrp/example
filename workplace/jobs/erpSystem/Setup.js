@@ -29,6 +29,7 @@ function setupDatabase() {
   createStockMovement();
   createUsers();
   createConfig();
+  createDailySummary();
 
   insertDemoData();
   installMonthlyOrderBackupTrigger();
