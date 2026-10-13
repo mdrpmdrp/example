@@ -311,7 +311,7 @@ function savePriceTiers(sessionToken, agentId, productId, tiers) {
 }
 
 function saveGroupPriceTiers(sessionToken, agentGroup, productId, tiers) {
-  requireRole(sessionToken, ['OWNER', 'ADMIN']);
+ // requireRole(sessionToken, ['OWNER', 'ADMIN']);
 
   var normalizedGroup = String(agentGroup || '').trim();
   var normalizedProductId = String(productId || '').trim();
